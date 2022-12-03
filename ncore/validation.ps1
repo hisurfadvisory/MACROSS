@@ -329,7 +329,7 @@ function setUser(){
     getThis $GRN
 
     if( $USR -notMatch "^admin*" ){   ## Your environment may not specify admin users with an "admin."; adjust these checks as necessary
-        $Global:vf19_GAVIL = $true      ## Prevent loading certain tools for non-admins to avoid alerts
+        $Global:vf19_NOPE = $true      ## Prevent loading certain tools for non-admins to avoid alerts
         $Global:vf19_USR = whoami
         $Global:vf19_USR = $vf19_USR.replace("^(.+\\)?",'')
         $Global:USR = $vf19_USR
