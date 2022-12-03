@@ -2,6 +2,9 @@
 #_ver 1.0
 
 <# 
+    
+    Author: HiSurfAdvisory
+    
     This script requires the file "gubaba.txt" located in the /resources folder.
     That text file needs to be in whatever directory that gets set as $vf19_TABLES
     during MACROSS's start up.
