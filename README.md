@@ -5,7 +5,7 @@ Powershell framework for interweaving Powershell and Python API automations for 
 
 TL;DR -- A "no-command-line-necessary" powershell menu to link multiple automation scripts together for blue-team investigators. When you run MACROSS for the first time, select the option for 'DEMO' to get a quick walkthru on configuring your defaults.
 
-Multi-API-Cross-Search Console (MACROSS) tool interface is a very simple powershell framework to connect multiple automation scripts together. I've included a few of my own scripts here, but the key to MACROSS is adding scripts specific to your environment, and letting the console seamlessly link them together.
+Multi-API-Cross-Search Console (MACROSS --- yeah, I'm a hardcore Macross nerd) tool interface is a very simple powershell framework to connect multiple automation scripts together. I've included a few of my own scripts here, but the key to MACROSS is adding scripts specific to your environment, and letting the console seamlessly link them together.
 
 The purpose of this framework is to make automation tasks available to everyone on your blue team regardless of their skill with command-line. This can make things alot quicker if you're able to use APIs to query security tools instead of web-interfaces (See my CARBON8 tool which uses the Carbon Black API).
 
@@ -24,9 +24,11 @@ See the full readme below for details, but the basic FAQ is that core functions 
 FRAMEWORK SETUP (modify however works best for you):
 1. All core functions are kept in the "ncore" folder
 1a. Default variables are base-64 encoded and stored in the opening comments line within "extras.ps1" in the ncore folder
-2. Custom automation scripts are kept in the "nmods" folder
+1b. The "ncore" folder also contains a subfolder called "py_classes". A very basic python library, "mcdefs", is located here, and you can place your own custom libraries/classes here, as well.
+1c. The mcdefs library enables python scripts to share the default resources/values of MACROSS powershell scripts.
+2. Custom automation/API scripts (powershell and python) are kept in the "nmods" folder
 2a. Custom scripts must contain "#_wut " in the first line, and "#_ver " in the second line, or they will be ignored
-2b. Custom python scripts are always passed 4 arguments by default (see the availableMods function in "validation.ps1"): the logged in user, their desktop location, the location of the "nmods" folder, and the array of base64-encoded defaults
+2b. Custom python scripts are always passed 6 arguments by default (see the availableMods function in "validation.ps1"): the logged in user, their desktop location, the array of base64-encoded defaults, the "numchk" integer MACROSS uses for common mathing, the location of the mcdefs python library, and the filepath to the MACROSS root folder
 2c. MACROSS ignores python scripts if Python3 isn't installed
 3. All core variables (when possible) are named beginning "$vf19_" to control cleanup
 3a. For the same reason, custom variables (when possible) should be named beginning with "$dyrl_"
@@ -34,5 +36,5 @@ FRAMEWORK SETUP (modify however works best for you):
 	$PROTOCULTURE = the thing being investigated (A file, a value, a username, etc)
 	$CALLER = the name of the script calling functions in another
 	$HOWMANY = the number of successful results being tracked between scripts
-4. files used for enrichment are kept in the "resources" folder
+4. Files used for enrichment are kept in the "resources" folder
 
