@@ -53,7 +53,7 @@ catch{
     Remove-Variable dyrl_* -Scope Global
     Exit
 }
-if( $vf19_GAVIL ){
+if( $vf19_NOPE ){
     adminChk 'pass'
 }
 #>
