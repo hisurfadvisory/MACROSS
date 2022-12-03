@@ -2,7 +2,7 @@
 #_ver 0.1
 
 # By default, MACROSS always passes these vars to any python scripts it loads from the menu:
-# $USR, $vf19_DEFAULTPATH, $vf19_TABLES, $vf19_numchk, $vf19_pylib
+# $USR, $vf19_DEFAULTPATH, $vf19_PYOPT, $vf19_numchk, $vf19_pylib, $vf19_TOOLSROOT
 
 import sys
 L = len(sys.argv)
