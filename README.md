@@ -3,7 +3,7 @@
 # MACROSS
 Powershell framework for interweaving Powershell and Python API automations for blueteams
 
-TL;DR -- A "no-command-line-necessary" powershell menu to link multiple automation scripts together for blue-team investigators. When you run MACROSS for the first time, select the option for 'DEMO' to get a quick walkthru on configuring your defaults.
+TL;DR -- A "no-command-line-necessary" powershell menu to link multiple automation scripts together for blue-team investigators. When you run MACROSS for the first time, select one of the several demo scripts to get a quick walkthru on configuring your defaults.
 
 Multi-API-Cross-Search Console (MACROSS --- yeah, I'm a hardcore Macross nerd) tool interface is a very simple powershell framework to connect multiple automation scripts together. I've included a few of my own scripts here, but the key to MACROSS is adding scripts specific to your environment, and letting the console seamlessly link them together.
 
@@ -19,7 +19,7 @@ Just a couple examples of why I created it:
 
 Any analyst on the team could quickly launch one of these options from MACROSS, and easily pass results into their choice of other functions within the console to aid them investigating alerts from their security tools. No hand-jamming commands necessary, and was usually faster than logging into a web-interface (or several web interfaces).
 
-See the full readme below for details, but the basic FAQ is that core functions are kept in the 'ncore' folder within the same directory as MACROSS.ps1 (usually on the user's desktop), and all of your custom powershell scripts, when dropped into the 'nmods' folder, will automatically become options in the MACROSS menu. If you host a master repo for MACROSS on your network and modify the extras.ps1 file to include its encoded filepath, then any updates you make to your scripts in the 'nmods' folder will automatically get pushed out to your SOC users.
+See the many script internal comments for details, but the basic FAQ is that core functions are kept in the 'ncore' folder within the same directory as MACROSS.ps1 (usually on the user's desktop), and all of your custom powershell scripts, when dropped into the 'nmods' folder, will automatically become options in the MACROSS menu. If you host a master repo for MACROSS on your network and modify the extras.ps1 file to include its encoded filepath, then any updates you make to your scripts in the 'nmods' folder will automatically get pushed out to your SOC users.
 
 FRAMEWORK SETUP (modify however works best for you):
 1. All core functions are kept in the "ncore" folder
