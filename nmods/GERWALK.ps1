@@ -1,4 +1,4 @@
-﻿#_wut CarbonBlack EDR quick queries
+#_wut CarbonBlack EDR quick queries
 #_ver 1.0
 
 <#
@@ -15,8 +15,8 @@
     for you. See the 'findThese' function in this script for creating
     your API key's variables.
 
-    Also, I recommend you remove all of the "how this works" comments
-    before running this in your prod environments.
+    Also, I HIGHLY recommend you remove all of the "how this works" 
+    comments before running this in your prod environments.
 
 
     AUTHOR: HiSurfAdvisory
@@ -145,7 +145,7 @@ function inspectBin($1,$2){
     
 
     if( $2 -ne $null ){
-        $gh = $(CertUtil -hashfile $1 $2) -split("\n")  ## stupid windows utility gives back the hash value + 2 useless lines
+        $gh = $(CertUtil -hashfile $1 $2) -split("\n")  ## Windows utility gives back the hash value + 2 useless lines
         $gh = $gh[1]                                    ## only care about the second line that gets returned
         if($2 -eq 'sha256'){
             $file = "sha256%3A$gh"                      ## build query for the file's sha256 val
@@ -170,7 +170,7 @@ function inspectBin($1,$2){
 ########################
 ##  Build additional queries based on these values (not in use yet)
 function reviewResults($1,$2){
-    $r = $vf19_WORKSPACE.results[$1]
+    $r = $dyrl_ger_WORKSPACE.results[$1]
 
     $uname = $r.username
     $proc = $r.process_name
@@ -197,7 +197,7 @@ function reviewResults($1,$2){
 
  $2 must be set to 0 for adjusting Carbon Black's result time (this is for display only)
     OR
- $2 must be set to 1 for adjusting analysts's search windows
+ $2 must be set to 1 for adjusting analysts's search windows (NOT YET IMPLEMENTED)
 #>
 function adjustTime($1,$2){
     $clock = 0..23
@@ -406,7 +406,7 @@ function findThese($1,$2){
             -begin with a 'd' if searching for visits to a website
             -'e' to exit
 
-            Example:  usuzyq*            = prepend 'u' to search for a user;
+            Example:  usuzyq*            = prepend 'u' to search for user suzyque;
                       pRundll32.exe      = prepend 'p' to search for RunDLL32 process;
                       3389               = search for a TCP/UDP port 3389;
                       8.8.8.8            = search for an IP
@@ -597,11 +597,11 @@ function findThese($1,$2){
     $qbuild = $qbuild + $res
     $qbuild = $qbuild + '&sort=server_added_timestamp%20desc&start=0'
 
-    ## $vf19_APK is your API key. You'll need to figure out a secure way to
+    ## $dyrl_ger_APK is your API key. You'll need to figure out a secure way to
     ## pass it in here, where it will get plugged in by the "craftQuery" function
 
 
-    craftQuery $qbuild $qsection $vf19_APK $max
+    craftQuery $qbuild $qsection $dyrl_ger_APK $max
     
     
 }
@@ -620,7 +620,7 @@ function craftQuery($1,$2,$3,$4){
 
     getThis $dash_TOOLSOPT['ger']    ## Encode your Carbon Black server's IP/URL in the extras.ps1 file (see the MACROSS README.md)
     $SRV1 = "$dash_READ"
-    getThis 'IC1IICdYLUF1dGgtVG9rZW46IA=='  ## This is " -H 'X-Auth-Token: ", gets decoded into $SRV2. Append your API key to the $SRV2 variable
+    getThis 'IC1IICdYLUF1dGgtVG9rZW46IA=='  ## This is " -H 'X-Auth-Token: ", it gets decoded into $SRV2. Your API key ($3) gets appended to the $SRV2 variable
     $SRV2 = $dash_READ
 
     $qopen = "curl.exe -k -A '$ua' $SRV1"  ## Recommend you configure your Carbon Black API to only accept encrypted connections
@@ -714,7 +714,7 @@ while($r -Match "[0-9]"){
         findThese
     }
 
-    $Global:HOWMANY = ($vf19_WORKSPACE.results).length
+    $Global:HOWMANY = ($dyrl_ger_WORKSPACE.results).length
 
     if( $HOWMANY -gt 0){
 
@@ -729,7 +729,7 @@ while($r -Match "[0-9]"){
             Write-Host -f GREEN ' results:'
             Write-Host -f YELLOW "    ======================================
             "
-            $vf19_WORKSPACE.results | Foreach-Object{  ## Prettify the results by picking & choosing elements to show onscreen
+            $dyrl_ger_WORKSPACE.results | Foreach-Object{  ## Prettify the results by picking & choosing elements to show onscreen
                 $r++
                 $Script:vf19_RESLIST.Add($r,$_)
                 $startt = $_.start #-replace 'T',' ' -replace "\.[0-9]+Z$",' ZULU'
@@ -750,7 +750,7 @@ while($r -Match "[0-9]"){
                 ## Create menus dynamically based on API called; add more as needed
 
                 ## BINARY API:
-                if( $vf19_BINARYQ ){
+                if( $dyrl_ger_BINARYQ ){
                     Write-Host -f GREEN "   $r. FILE: " -NoNewline;
                     Write-Host -f YELLOW "$fname"
                     Write-Host -f GREEN "         REAL NAME: " -NoNewline;
@@ -770,7 +770,7 @@ while($r -Match "[0-9]"){
                 ## PROCESS API:
                 else{
                     Write-Host -f GREEN "   $r. EVENT TIME: " -NoNewline;
-                    Write-Host -f YELLOW "$vf19_LOCAL LOCAL"
+                    Write-Host -f YELLOW "$dyrl_ger_LOCAL LOCAL"
                     Write-Host -f GREEN "         HOST: " -NoNewline;
                     Write-Host -f YELLOW "$hname"
                     Write-Host -f GREEN "         USER: " -NoNewline;
@@ -786,21 +786,21 @@ while($r -Match "[0-9]"){
         }
 
         Write-Host ''
-        $vf19_Z = ''
-        while($vf19_Z -ne 'f'){
+        $dyrl_ger_Z = ''
+        while($dyrl_ger_Z -ne 'f'){
             showRES
             Clear-Variable -Force vf19_Z
             Write-Host ''
             Write-Host -f GREEN "    Select a result to drill down, or 'f' to finish:  " -NoNewline;
-            $vf19_Z = Read-Host
-            if($vf19_Z -in $vf19_RESLIST.Keys){
-                Write-Host -f GREEN "   $vf19_Z. EVENT TIME: " -NoNewline;
-                Write-Host -f YELLOW "$vf19_LOCAL"
-                $vf19_RESLIST[[int]$vf19_Z]
+            $dyrl_ger_Z = Read-Host
+            if($dyrl_ger_Z -in $dyrl_ger_RESLIST.Keys){
+                Write-Host -f GREEN "   $dyrl_ger_Z. EVENT TIME: " -NoNewline;
+                Write-Host -f YELLOW "$dyrl_ger_LOCAL"
+                $dyrl_ger_RESLIST[[int]$dyrl_ger_Z]
                 Read-Host '    Hit ENTER to continue.'
             }
-            elseif($vf19_Z -ne 'f'){
-                Write-Host "    $vf19_Z isn't one of the results..."
+            elseif($dyrl_ger_Z -ne 'f'){
+                Write-Host "    $dyrl_ger_Z isn't one of the results..."
                 ss 1
             }
         }
@@ -810,13 +810,13 @@ while($r -Match "[0-9]"){
         }
         else{
             searchAgain    ## Analyst can run manual searches as much as they need
-            $r = 0         ## Make sure the next $vf19_RESLIST list gets numbered correctly
+            $r = 0         ## Make sure the next $dyrl_ger_RESLIST list gets numbered correctly
         }
     
     }
     else{
         
-        $vf19_Z = ''
+        $dyrl_ger_Z = ''
         Write-Host -f CYAN "
         No results found...
         "
