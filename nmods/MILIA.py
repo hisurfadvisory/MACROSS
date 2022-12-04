@@ -126,8 +126,9 @@ if npath:
 
     The variable naming style (vf19_) is meant to keep things uniform in MACROSS. (And
     Nekki Basara's VF-19 Fire Valkyrie is the coolest valkyrie in any Macross series, IMHO).
-    You don't have to follow this convention, but it is part of why I consider this a framework
-    and not a toolset.
+    You don't have to follow this convention, but it is HIGHLY recommended. Using the same
+    prefix for shared core variables in MACROSS allows managing when/if they get cleared out as
+    needed.
     
     Let's see what vf19_MPOD contains after using 'getDefaults'! Hit ENTER:""")
     input()
@@ -143,26 +144,12 @@ if npath:
     like MACROSS' $vf19_MPOD hashtable, and can be used the exact same way!""")
     
     print("""
-    Okay, so what if I need to use one of these encoded values in my script? We'll call the
-    same 'getDefaults' function again, but this time using the index it created for us, and
-    sending '1' as the second parameter/argument. 
+    Okay, so what if I need to use one of these encoded values in my script? (Right now, these
+    are all unused placeholders). We'll call the same 'getDefaults' function again, but this time
+    using the index it created for us, and sending '1' as the second parameter/argument. 
     """)
-    Z = ''
-    while Z not in ['tbl','nre','exa']:
-        Z = input('''
+    Z = input('''
         Choose one of the three-letter index keys shown above >  ''')
-    if Z == 'nre':
-        print("""
-    """,Z,"""is for decoding the repository filepath, which you'll need to set up.
-    Right now it's just got a placeholder IP address.""")
-    elif Z == 'tbl':
-        print("""
-    """,Z,"""is for decoding MACROSS' $vf19_TABLES filepath, which is where you'll store
-    any extra files your scripts might need; txt, xml, or whatever. As it is right now,
-    this value is a rubbish placeholder until you set it in the extras.ps1 file.""")
-    elif Z == 'exa':
-        print("""
-    """,Z,"""is a placeholder URL just to add another example to this demo.""")
 
     ZZ = '\'' + Z + '\''
     print("""
