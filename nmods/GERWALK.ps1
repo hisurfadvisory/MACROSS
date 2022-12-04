@@ -618,7 +618,7 @@ function craftQuery($1,$2,$3,$4){
     $ua = 'MACROSS'   ## Set this user-agent however you'd like, so this script's curl activity can be
                       ##  easily identified in logs and whitelisted if necessary
 
-    getThis $dash_TOOLSOPT['ger']    ## Encode your Carbon Black server's IP/URL in the extras.ps1 file (see the MACROSS README.md)
+    getThis $dash_TOOLSOPT['ger']    ## Encode your Carbon Black server's IP/URL in the extras.ps1 file (see the MACROSS README.md). Use 'ger' as your index.
     $SRV1 = "$dash_READ"
     getThis 'IC1IICdYLUF1dGgtVG9rZW46IA=='  ## This is " -H 'X-Auth-Token: ", it gets decoded into $SRV2. Your API key ($3) gets appended to the $SRV2 variable
     $SRV2 = $dash_READ
