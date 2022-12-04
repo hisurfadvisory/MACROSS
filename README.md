@@ -15,6 +15,10 @@ DISCLAIMER: I'm a bash junkie, but Windows is what I work on in most corporate e
 
 See the many script internal comments for details, but the basic FAQ is that core functions are kept in the 'ncore' folder within the same directory as MACROSS.ps1 (usually on the user's desktop), and all of your custom powershell scripts, when dropped into the 'nmods' folder, will automatically become options in the MACROSS menu. If you host a master repo for MACROSS on your network and modify the extras.ps1 file to include its encoded filepath, then any updates you make to your scripts in the 'nmods' folder will automatically get pushed out to your SOC users.
 
+When you run this for the first time, you'll see a warning about disabling updates. This is because it has no master repository defined, and you can ignore
+this if you don't plan to use one.
+
+
 FRAMEWORK SETUP (modify however works best for you):
 1. All core functions are kept in the "ncore" folder<br>
 1a. Default variables are base-64 encoded and stored in the opening comments line within "extras.ps1" in the ncore folder<br>
