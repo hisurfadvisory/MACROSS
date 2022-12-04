@@ -282,7 +282,7 @@ function transitionSplash($1){
 
 
 
-## Function to pause your scripts for $1 seconds
+## Function to pause your scripts for $sec seconds
 function ss(){
     param(
         [Parameter(Mandatory=$true)]
@@ -294,11 +294,11 @@ function ss(){
 <######################################
 ## Set the default startup object
     When you have resources like tables/arrays to be built from text
-    files, you can base64 encode the file path, add a 3-letter identifier
-    so that you can easily decode them when necessary, then add them to
-    line 5 in 'extras.ps1', separated by '@@@' as delimiters.
+    files or web pages, you can base64 encode the file path, add a 3-letter 
+    identifier so that you can easily decode them when necessary, then add 
+    them to line 5 in 'extras.ps1', separated by '@@@' as delimiters.
 
-    This function reads line 5 from 'extras.ps1' and creates an array of
+    This function reads line 4 from 'extras.ps1' and creates an array of
     base64 values with the 3-letter identifier as its index. When you
     need to call your encoded filepath, you use the 'getThis' function,
     which returns $vf19_READ as your decoded filepath:
@@ -310,12 +310,13 @@ function ss(){
 ######################################>
 function startUp(){
     ## Check if necessary progs are available; add as many as you need
+    ## This allows your scripts to quickly check whether or not they can use common programs/utils
     #$INST = Get-ChildItem 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall'
     $INST = Get-ChildItem 'HKLM:Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall'
     foreach($i in $INST){
         $prog = $i.GetValue('DisplayName')
         if($prog -match 'python'){
-            $Global:MONTY = $true
+            $Global:MONTY = $true    ## Can use python, yay!
             $Global:vf19_PYOPT = ''  ## Prep string values for passing to python scripts
             $p = @()
         }
@@ -327,7 +328,8 @@ function startUp(){
         }
     }
 
-    ## Build the options list
+    ## Build the options list; this contains all the encoded values from the
+    ## extras.ps1 comment lines
     $Global:vf19_MPOD = @{}
     $aa = @()
     $x = 3
@@ -438,7 +440,7 @@ function chooseMod(){
     ####################
     if( $Global:vf19_PAGE -eq 'X' -or $Global:vf19_PAGE -eq $null ){
         $vf19_FIRSTTOOL = '1'
-        foreach($vf19_STUFF in $Global:vf19_FIRSTPAGE.GetEnumerator()){
+        foreach($vf19_STUFF in ($Global:vf19_FIRSTPAGE.GetEnumerator() | Sort -Property Name -Descending)){
             $vf19_MODCT++
             $d_a = $vf19_STUFF.Key
 
@@ -469,7 +471,7 @@ function chooseMod(){
         $vf19_FIRSTTOOL = '10'
         $vf19_MODCT = 9
         splashPage
-        foreach($vf19_STUFF in $Global:vf19_NEXTPAGE.GetEnumerator()){
+        foreach($vf19_STUFF in ($Global:vf19_NEXTPAGE.GetEnumerator() | Sort -Property Name -Descending)){
             $vf19_MODCT++
             $d_d = $vf19_STUFF.Key
             $d_d1 = $d_d -replace("\s*",'')
