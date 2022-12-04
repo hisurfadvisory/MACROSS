@@ -186,7 +186,8 @@ setUser                              ## see the validation.ps1 file
 getThis $vf19_TOOLSOPT['nre']
 $Global:vf19_REPO = $vf19_READ       ## This sets the main repo for MACROSS that users can pull updates from
 getThis $vf19_TOOLSOPT['tbl']
-$Global:vf19_TABLES = $vf19_READ     ## This sets the location of txt/xml files used for your custom scripts
+$Global:vf19_TABLES = $vf19_READ     ## This sets the location of resource files used by your custom scripts (the resources folder that contains gubaba.txt);
+				     ## it's better to set this in a central location rather than have it get copied to everybody's hard drive
 $vf19_VERSION = Get-Content "$vf19_TOOLSROOT\MACROSS.ps1" | Select -Index 1
 $vf19_VERSION = $vf19_VERSION -replace "^#_ver ",""  ## This gets the current version of MACROSS to write on-screen
 
