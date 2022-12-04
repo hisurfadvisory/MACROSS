@@ -5,7 +5,7 @@ Powershell framework for interweaving Powershell and Python API automations for 
 
 TL;DR -- A "no-command-line-necessary" powershell menu to link multiple automation scripts together for blue-team investigators. When you run MACROSS for the first time, select one of the several demo scripts to get a quick walkthru on configuring your defaults.
 
-Multi-API-Cross-Search Console (MACROSS --- yeah, I'm a hardcore Macross nerd) tool interface is a very simple powershell framework to connect multiple automation scripts together. I've included a few of my own scripts here, but the key to MACROSS is adding scripts specific to your environment, and letting the console seamlessly link them together.
+Multi-API-Cross-Search Console (MACROSS --- yeah, I'm a hardcore Macross anime nerd) tool interface is a very simple powershell framework to connect multiple automation scripts together. I've included a few of my own scripts here, but the key to MACROSS is adding scripts specific to your environment, and letting the console seamlessly link them together.
 
 The purpose of this framework is to make automation tasks available to everyone on your blue team regardless of their skill with command-line. This can make things alot quicker if you're able to use APIs to query security tools instead of web-interfaces (See my GERWALK tool which uses the Carbon Black API).
 
