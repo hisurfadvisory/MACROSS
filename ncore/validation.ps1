@@ -15,6 +15,7 @@ function varCleanup($1){
     Remove-Variable PROTOCULTURE -Scope Global
     if( $1 -eq 1 ){  ## Erase everything when quitting MACROSS
         Remove-Variable MONTY -Scope Global
+        Remove-Variable MAPPER -Scope Global
         Remove-Variable SHARK -Scope Global
         Remove-Variable USR -Scope Global
         Remove-Variable vf19_* -Scope Global
