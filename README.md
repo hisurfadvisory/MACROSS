@@ -9,7 +9,7 @@ Multi-API-Cross-Search Console (MACROSS --- yeah, I'm a hardcore Macross anime n
 
 The purpose of this framework is to make automation tasks available to everyone on your blue team regardless of their skill with command-line. This can make things alot quicker if you're able to use APIs to query security tools instead of web-interfaces (See my GERWALK tool which uses the Carbon Black API).
 
-DISCLAIMER: I'm a bash junkie, but Windows is what I work on in most corporate environments, and this project originally started as a way simplify my most common investigation queries. While I am experienced in a few scripting languages, I am NOT a powershell expert. I'm sure there's tons of optimizations that could be done to this framework.
+DISCLAIMER: I'm a bash junkie, but Windows is what I work on in most corporate environments, and we don't always get to have all the goodies we want to have on every single network. This project originally started as a way simplify my most common investigation queries. While I am experienced in a few scripting languages, I am NOT a powershell expert. I'm sure there's tons of optimizations that could be done to this framework.
 
 Just a couple examples of why I created it:
 
