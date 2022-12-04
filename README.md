@@ -7,7 +7,7 @@ TL;DR -- A "no-command-line-necessary" powershell menu to link multiple automati
 
 Multi-API-Cross-Search Console (MACROSS --- yeah, I'm a hardcore Macross nerd) tool interface is a very simple powershell framework to connect multiple automation scripts together. I've included a few of my own scripts here, but the key to MACROSS is adding scripts specific to your environment, and letting the console seamlessly link them together.
 
-The purpose of this framework is to make automation tasks available to everyone on your blue team regardless of their skill with command-line. This can make things alot quicker if you're able to use APIs to query security tools instead of web-interfaces (See my CARBON8 tool which uses the Carbon Black API).
+The purpose of this framework is to make automation tasks available to everyone on your blue team regardless of their skill with command-line. This can make things alot quicker if you're able to use APIs to query security tools instead of web-interfaces (See my GERWALK tool which uses the Carbon Black API).
 
 DISCLAIMER: I'm a bash junkie, but Windows is what I work on in most corporate environments, and this project originally started as a way simplify my most common investigation queries. While I am experienced in a few scripting languages, I am NOT a powershell expert. I'm sure there's tons of optimizations that could be done to this framework.
 
