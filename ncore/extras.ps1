@@ -1,9 +1,9 @@
 ## MACROSS added functionalities
 ## Do not modify or delete the checks below!
 <#  Add your own defaults below here (see the readme!)
-tblJFBTU2NyaXB0Um9vdFxyZXNvdXJjZXM=@@@exaaHR0cDovL3lv@@@geraHR0cHM6
-Ly95b3VyLmNhcmJvbmJsYWNrc2VydmVyLmxvY2Fs@@@dXIud2ViLmZpbGUvZXhhbXBs
-ZS50eHQ=@@@nreaHR0cDovLzE5Mi4xNjguMTAwLjEwL3JlcG8v
+tblJFBTU2NyaXB0Um9vdFxyZXNvdXJjZXM=@@@exaaHR0cDovL3lvdXIud2ViLmZpbGUvZXhhbXBs
+ZS50eHQ=@@@nreaHR0cDovLzE5Mi4xNjguMTAwLjEwL3JlcG8v@@@geraHR0cHM6Ly95b3VyLmNhc
+mJvbmJsYWNrc2VydmVyLmxvY2Fs
 #>
 
 ## Pause the console so user can run their own commands
