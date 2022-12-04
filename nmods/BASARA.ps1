@@ -120,10 +120,11 @@ Write-Host -f GREEN "    How to use your own default variables:
          Write-Host -f GREEN " file, as well as the
          setUser function, which is in the " -NoNewline;
          Write-Host -f YELLOW "validation.ps1" -NoNewline;
-         Write-Host -f GREEN " file. The setUser function
-         performs tasks that restrict who can use your scripts, and is entirely
-         optional, so if you're not planning to make use of it you don't need to
-         worry about its reserved indexes.
+         Write-Host -f GREEN " file. Look for instances of
+         'getThis' being used. The setUser function performs tasks that restrict
+         who can use your scripts, and is entirely optional, so if you're not
+         planning to make use of it you don't need to worry about its reserved
+         indexes.
       3. Next you need to open " -NoNewline;
         Write-Host -f YELLOW "extras.ps1" -NoNewline;
         Write-Host -f GREEN " and add a '@@@' to the end of whatever
