@@ -1,8 +1,9 @@
-﻿## MACROSS added functionalities
+## MACROSS added functionalities
 ## Do not modify or delete the checks below!
-<#  Add your own encoded defaults below here (see the readme!)
-tblJFBTU2NyaXB0Um9vdFxyZXNvdXJjZXM=@@@exaaHR0cDovL3lv
-dXIud2ViLmZpbGUvZXhhbXBsZS50eHQ=@@@nreaHR0cDovLzE5Mi4xNjguMTAwLjEwL3JlcG8v
+<#  Add your own defaults below here (see the readme!)
+tblJFBTU2NyaXB0Um9vdFxyZXNvdXJjZXM=@@@exaaHR0cDovL3lv@@@geraHR0cHM6
+Ly95b3VyLmNhcmJvbmJsYWNrc2VydmVyLmxvY2Fs@@@dXIud2ViLmZpbGUvZXhhbXBs
+ZS50eHQ=@@@nreaHR0cDovLzE5Mi4xNjguMTAwLjEwL3JlcG8v
 #>
 
 ## Pause the console so user can run their own commands
@@ -22,6 +23,7 @@ function runSomething(){
 }
 
 ## Simple deobfuscation for investigating events
+##  Call with a '1' to encode strings to base64
 function decodeSomething($1){
     cls
     if($1 -eq 1){
@@ -51,11 +53,19 @@ function decodeSomething($1){
     Write-Host -f YELLOW "
     $vf19_READ
     "
-
-    Write-Host -f GREEN '
-    Decode another? ' -NoNewline; $Z = Read-Host
-    if( $Z -Match "^y" ){
-        plainTexter
+    if($1 -eq 1){
+        Write-Host -f GREEN '
+        Encode another? ' -NoNewline; $Z = Read-Host
+        if( $Z -Match "^y" ){
+            decodeSomething 1
+        }
+    }
+    else{
+        Write-Host -f GREEN '
+        Decode another? ' -NoNewline; $Z = Read-Host
+        if( $Z -Match "^y" ){
+            decodeSomething
+        }
     }
 }
 
