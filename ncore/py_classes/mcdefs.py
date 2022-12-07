@@ -43,9 +43,9 @@
 
 import base64 as b64
 import array as arr
-import subprocess as s
-import os
-import time as t
+from subprocess import run as srun
+from os import system as osys
+from time import sleep as t
 import sys
 import re
 
@@ -70,12 +70,13 @@ def makeM(n):
 def psc(c,subf = None):
     """The psc function performs os.system() commands that you pass in, if you don't want to use the psp function instead.\n\nUsage:  mcdefs.psc('powershell.exe "filepath\\myscript.ps1" "argument 1"') << Will launch your powershell script with args"""
     if subf == None:
-        os.system(c)
+        osys(c)
+        
 
 
 def psp(p):
     """The psp function is simply 'subprocess.run()' made readily available to MACROSS python scripts.\n\nUsage:  mcdefs.psp('powershell.exe "filepath\\myscript.ps1" "argument 1"') << Will launch your powershell script with args"""
-    s.run(p)
+    srun(p)
     
 
 '''
