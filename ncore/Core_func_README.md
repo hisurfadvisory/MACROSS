@@ -8,7 +8,7 @@ Line 4 in the extras.ps1 file is reserved for a string of Base64-encoded lines d
 inserted into this file's multi-line comment, as long as you prepend it with a three-letter identifier, and separate each base64
 value with '@@@'.
 
-I wrote this as a way to avoid hardcoding paths, and values like GPO strings. This should NOT be used to obscure sensitive details!
+I wrote this as a way to avoid hardcoding paths in plaintext, and values like GPO strings. This should NOT be used to obscure sensitive details!
 (Also, the better method for this would be to have a restricted web or fileserver that contains a textfile with these base64 values,
 and use line 4 only for the base64 encoded path to THAT protected file. But you'll need to modify the <b>startUp</b> function in
 display.ps1 to do this properly.)
