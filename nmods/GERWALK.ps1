@@ -689,16 +689,17 @@ while($r -Match "[0-9]"){
     ## Import args from other tools
     if( $CALLER ){
         if( $CALLER -eq "MACROSS" ){
-            Write-Host -f GREEN "
-            Enter the ENTIRE file path to search for a specific hash, or
-            JUST the filename for a general search: " -NoNewline;
+            Write-Host -f GREEN '
+            Hit ENTER to select a file for hash searches, or
+            type in the filename for a general search: ' -NoNewline;
             $Z1 = Read-Host
 
-            if( $Z1 -Match "\\"){
-                if( ! (Test-Path $Z1) ){
-                    Write-Host -f CYAN "
-                    File does not exist!"
-                    Return
+            if( $Z1 -eq '' ){
+                $Z1 = getFile  ## open dialog for user to select a file; kill the script if they cancel file selection
+                if( $Z1 -eq '' ){
+                    Write-Host -f CYAN '  No file selected. Exiting...'
+                    ss 2
+                    Exit
                 }
                 while($Z2 -notMatch "^(md5|sha256)$"){
                     Write-Host -f GREEN "
