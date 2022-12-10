@@ -445,6 +445,9 @@ function collab(){
         A CALLER name wasn't supplied!
         ”
     }
+    else{
+        $Global:CALLER = $C
+    }
 
     ## Python check
     if( $module -Match "py$" ){
