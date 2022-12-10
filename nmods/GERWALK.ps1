@@ -25,7 +25,8 @@
     Runs basic queries and accepts inputs from other MACROSS scripts
 
     TO DO:
-        Enable searching via local time windows
+        Enable searching via local time windows. Current default is
+        1 week.
 
 #>
 
