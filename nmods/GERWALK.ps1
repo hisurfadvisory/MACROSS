@@ -4,10 +4,10 @@
 <#
 
     GERWALK Carbon Black module for MACROSS
-    Designed for VMWare Carbon Black EDR
+    Designed and tested for VMWare Carbon Black EDR
 
     Run quick & dirty queries between MACROSS modules to gather
-    info
+    info on usernames, files, processes, etc.
 
     ***************!!! AUTHENTICATION !!!***************
     You will need to develop a secure method for passing in your
@@ -318,6 +318,8 @@ function findThese($1,$2){
     #>
     $qbuild = '&q='
     $qsection = 'v1/process?facet=true'  ## Default API call
+    $startt = 'start:-168h '             ## Default time window is 1 week
+    $onlyusers = '-(username:*SERVICE OR username:root OR username:*SYSTEM OR username:' + "$USR) "
 
     if($2 -ne $null){
         if( $1 -ne $qsection ){
@@ -334,7 +336,7 @@ function findThese($1,$2){
                 }
                 elseif($2 -Match "^[a-z]"){
                     $qbuild = $qbuild + "hostname:$2 "
-                    $qbuild = $qbuild + '-(username:*SERVICE OR username:root OR username:*SYSTEM OR username:svc*) '
+                    $qbuild = $qbuild + $onlyusers
                     $skipsys = $true
                     $skipres = $true
                     $Script:vf19_RES = 1
@@ -362,7 +364,7 @@ function findThese($1,$2){
                 Write-Host -f GREEN '        Omit SYSTEM accounts?  ' -NoNewline;
                 if($Z -Match "^y"){
                     $skipsys = $true
-                    $qbuild = $qbuild + '-(username:*SERVICE OR username:root OR username:*SYSTEM) '
+                    $qbuild = $qbuild + $onlyusers
                 }
             }
             # $skipres gets set by other scripts that want specific maximum results
@@ -388,6 +390,8 @@ function findThese($1,$2){
             ##  immediately need tons of details. For that reason "OR" operators aren't
             ##  allowed in this script; the filter terms specified below can each be used
             ##  ONCE in any query, connected by "AND" operators.
+        
+        $qbuild = $qbuild + $startt
         
         while($Z2 -notMatch "^n"){
 
@@ -550,11 +554,11 @@ function findThese($1,$2){
     ## Get input if analyst is querying manually; Helps narrow their searches if
     ##  they only care about user activity 
     if( ! $oneuser -and ! $skipsys ){
-        Write-Host -f GREEN "
-        Do you want to omit results for SYSTEM/ROOT accounts? " -NoNewline;
+        Write-Host ''
+        Write-Host -f GREEN "  Do you want to omit results for SYSTEM/ROOT accounts? (also ignores your username) " -NoNewline;
         $Z = Read-Host
         if($Z -Match "^y"){
-            $qbuild = $qbuild + '-(username:*SERVICE OR username:root OR username:*SYSTEM) '
+            $qbuild = $qbuild + $onlyusers
         }
         Clear-Variable -Force Z
     }
@@ -590,6 +594,7 @@ function findThese($1,$2){
     '
     
     ## URL encode the query
+    $Script:qdisplay = $qbuild  ## Shows the user their search so they can modify later
     $qbuild = $qbuild -replace ' ','%20'
     $qbuild = $qbuild -replace ':','%3A'
     $qbuild = $qbuild -replace "[",'%5B'
@@ -722,6 +727,8 @@ while($r -Match "[0-9]"){
         function showRES(){
             cls
             $Script:vf19_RESLIST = @{}  ## This list will allow analysts to pick any event to drill down into
+            Write-Host -f CYAN '  You searched:'
+            Write-Host "  $qdisplay"
             Write-Host -f GREEN "
     
             Displaying the latest " -NoNewline;
