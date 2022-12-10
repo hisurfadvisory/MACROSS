@@ -144,7 +144,7 @@ To further customize and modify these core functions to your liking, see the com
 	<b>G.</b> errMsg() = This function contains various error messages that can be reused across scripts. Change or add new messages however you
 	need.<br>
 <br>
-	<b>H.</b> setUser() and setUserCt() = This is a convulted function that attempts to perform user control if you don't have a better method
+	<b>H.</b> setUser() and setUserCt() = This is a convoluted function that attempts to perform user control if you don't have a better method
 	available. See the function comments for the details, but the TLDR is that it reads the user's GPO
 	to check for a group membership string that you specify, then creates a random key for that user
 	($vf19_SOC for an analyst, $vf19_DFIR for an incident response investigator). Your scripts can then
