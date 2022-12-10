@@ -133,7 +133,7 @@ $C = @(
 
 ## Make sure sensitive vars get cleaned up
 function wrapItUp($1){
-    Remove-Variable -Force vf19_APK,vf19_WORKSPACE,vf19_RESLIST
+    Remove-Variable -Force dyrl_ger_APK,dyrl_ger_WORKSPACE,dyrl_ger_RESLIST
     if($1 -eq 1){
         Exit
     }
@@ -167,7 +167,7 @@ function inspectBin($1,$2){
         $file = 'observed_filename%3A*' + [string]$1    ## if no hash method was provided, buid query for the filename
     }
 
-    $Script:vf19_BINARYQ = $true
+    $Script:dyrl_ger_BINARYQ = $true
     findThese $module $file
 
 }
@@ -259,7 +259,7 @@ function adjustTime($1,$2){
         }
 
         $day_diff = $m + '/' + $day_diff
-        $Script:vf19_LOCAL = $day_diff + ' ' + $hour_diff + ':' + $zmins
+        $Script:dyrl_ger_LOCAL = $day_diff + ' ' + $hour_diff + ':' + $zmins
 
     }
     elseif($2 -eq 1){
@@ -345,7 +345,7 @@ function findThese($1,$2){
                     $qbuild = $qbuild + $onlyusers
                     $skipsys = $true
                     $skipres = $true
-                    $Script:vf19_RES = 1
+                    $Script:dyrl_ger_RES = 1
                     $res ="&rows=1"
                 }
             }
@@ -360,7 +360,7 @@ function findThese($1,$2){
                 $qbuild = $qbuild + "(cmdline:*$2* OR fileless_scriptload_cmdline:*$2*) "
                 $skipsys = $true
                 $skipres = $true
-                $Script:vf19_RES = 15
+                $Script:dyrl_ger_RES = 15
                 $res ="&rows=15"
             }
             
@@ -378,11 +378,11 @@ function findThese($1,$2){
                 Write-Host -f GREEN '        Display how many results? (1-50)  ' -NoNewline;
                 $Z = Read-Host
                 if($Z -notMatch "^[0-9]+$"){
-                    $Script:vf19_RES = 10
+                    $Script:dyrl_ger_RES = 10
                     $res ="&rows=10"
                 }
                 else{
-                    $Script:vf19_RES = $Z
+                    $Script:dyrl_ger_RES = $Z
                     $res ="&rows=$Z"
                 }
                 $skipres = $true
@@ -586,11 +586,11 @@ function findThese($1,$2){
                 $Z = 50
                 ss 2
             }
-            $Script:vf19_RES = $Z
+            $Script:dyrl_ger_RES = $Z
             $res ="&rows=$Z"
         }
         else{
-            $Script:vf19_RES = 10
+            $Script:dyrl_ger_RES = 10
             $res='&rows=10'
         }
     }
@@ -624,7 +624,7 @@ function findThese($1,$2){
 ## $3 is the API Key built in "findThese"
 ## $4 is the max number of results to fetch
 function craftQuery($1,$2,$3,$4){
-    Clear-Variable vf19_WORKSPACE -Force
+    Clear-Variable dyrl_ger_WORKSPACE -Force
 
     $ua = 'MACROSS'   ## Set this user-agent however you'd like, so this script's curl activity can be
                       ##  easily identified in logs and whitelisted if necessary
@@ -652,7 +652,7 @@ function craftQuery($1,$2,$3,$4){
     '
     }
 
-    $Script:vf19_WORKSPACE = iex "$getResults" | ConvertFrom-Json  ## JSON response gets manipulated in the MAIN body for the analyst to view
+    $Script:dyrl_ger_WORKSPACE = iex "$getResults" | ConvertFrom-Json  ## JSON response gets manipulated in the MAIN body for the analyst to view
     Remove-Variable -Force 3  ## Can't be too careful with access keys
 }
 
@@ -733,7 +733,7 @@ while($r -Match "[0-9]"){
         ## Display results as an indexed list
         function showRES(){
             cls
-            $Script:vf19_RESLIST = @{}  ## This list will allow analysts to pick any event to drill down into
+            $Script:dyrl_ger_RESLIST = @{}  ## This list will allow analysts to pick any event to drill down into
             Write-Host -f CYAN '  You searched:'
             Write-Host "  $qdisplay"
             Write-Host -f GREEN "
@@ -745,7 +745,7 @@ while($r -Match "[0-9]"){
             "
             $dyrl_ger_WORKSPACE.results | Foreach-Object{  ## Prettify the results by picking & choosing elements to show onscreen
                 $r++
-                $Script:vf19_RESLIST.Add($r,$_)
+                $Script:dyrl_ger_RESLIST.Add($r,$_)
                 $startt = $_.start #-replace 'T',' ' -replace "\.[0-9]+Z$",' ZULU'
                 $hname = $_.hostname
                 $uname = $_.username
@@ -803,7 +803,7 @@ while($r -Match "[0-9]"){
         $dyrl_ger_Z = ''
         while($dyrl_ger_Z -ne 'f'){
             showRES
-            Clear-Variable -Force vf19_Z
+            Clear-Variable -Force dyrl_ger_Z
             Write-Host ''
             Write-Host -f GREEN "    Select a result to drill down, or 'f' to finish:  " -NoNewline;
             $dyrl_ger_Z = Read-Host
