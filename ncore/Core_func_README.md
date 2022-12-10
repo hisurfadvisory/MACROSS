@@ -94,7 +94,114 @@ After you've created your encoded GPO strings in extras.ps1, you can make use of
 
 
 <b>FINALLY...</b>
-To further customize and modify these core functions to your liking, see the comments in each .ps1 file.
+To further customize and modify these core functions to your liking, see the comments in each .ps1 file and the README below.
 
 
-  
+
+<b>ALL CORE FUNCTIONS IN DETAIL</b>
+
+<b>I. display.ps1</b><br>
+	<b>A.</b> splashPage() = a cosmetic function for the MACROSS menu<br>
+<br>
+	<b>B.</b> transitionSplash() = various Macross ASCII art for certain scripts<br>
+<br>
+	<b>C.</b> ss() = Sleep function; provide it the number of seconds you want your script to pause<br>
+<br>
+	<b>D.</b> startUp() = This is the first function to run when MACROSS loads. It sets many of the default variable values, and
+	checks to see if programs like python are installed<br>
+<br>
+	<b>E.</b> chooseMod() = This function builds the main menu screen in MACROSS. It reads the contents of the nmods folder, strips
+	out file extensions, and creates hashtables using the script names and the descriptions found in the
+	first line of those scripts. If the startUp() function did not detect python, chooseMod() will only look
+	for scripts ending in ".ps1" or ".psm" and ignore any ".py".<br>
+<br>
+	<b>F.</b> scrollPage() = If you have more than 9 scripts in your nmods folder, a second "page" will be created in chooseMods().
+	The scrollPage() function is then used to switch between them.<br>
+<br>
+<br>
+<b>II. validation.ps1</b><br>
+	<b>A.</b> varCleanup() = Everytime a script exits and returns to the MACROSS menu, this function clears out the shared variables
+	to make sure they're ready to use with the next script<br>
+<br>
+	<b>B.</b> getHelp1() and getHelp2() = These functions are used to control who can run your scripts (see the setUser() function
+	below). The intended usage is that you call these functions within a "try" statement, and if
+	they fail, your script will exit.<br>
+<br>
+	<b>C.</b> getThis() = This function will decode Base64 and Hexadecimal strings. Call it with your encoded string as the first param.
+	Leave the second param empty if decoding base64; if you are decoding hexadecimal you must pass it a '1' as your
+	second param. The decoded value gets stored as <i>$vf19_READ</i>. Alternatively, if you pass a plaintext string as
+	your first parameter, with '0' as your second param, getThis() will write a Base64-encoded value to <i>$vf19_READ</i>.<br>
+<br>
+	<b>D.</b> SJW() = This function checks the user's privilege, which is determined in the setUser() function. It alerts MACROSS users
+		   that they may not have the required privilege to run some scripts.<br>
+<br>
+	<b>E.</b> $vf19_M = This takes the $vf19_numchk value from MACROSS.ps1, and splits into 6 individual integers that can be used for mathing.<br>
+<br>
+	<b>F.</b> adminChk() = You can use this function in your scripts to either kill the script for non-admins, or prevent certain values/functions
+	from loading. Call adminChk() with 'pass' to let the user decide whether to continue with limited functionality, or
+	'deny' to kill the script and let the user know they need to be an admin.<br>
+<br>
+	<b>G.</b> errMsg() = This function contains various error messages that can be reused across scripts. Change or add new messages however you
+	need.<br>
+<br>
+	<b>H.</b> setUser() and setUserCt() = This is a convulted function that attempts to perform user control if you don't have a better method
+	available. See the function comments for the details, but the TLDR is that it reads the user's GPO
+	to check for a group membership string that you specify, then creates a random key for that user
+	($vf19_SOC for an analyst, $vf19_DFIR for an incident response investigator). Your scripts can then
+	use these "keys" to validate user permissions on your scripts using the functions getHelp1() and
+	getHelp2().<br>
+<br>
+	<b>I.</b> collab() = This is the function that allows your scripts to talk to each other. It must be called with (1) the name of the script you
+	want to "collaborate" with in the nmods folder, and (2) the name of the script making the call, WITHOUT the file extension.
+	Your script should already be setting the global values for <i>$RESULTFILE</i> and <i>$PROTOCULTURE</i> as necessary, but this
+	function does allow for passing another value if necessary. It will be set as <i>$eNM</i> and passed along as a separate
+	param to the script you're calling.<br>
+<br>
+	If you are calling a python script, up to 9 values will be passed along as arguments that can be parsed using the sys.argv
+	library in your python script:<br>
+	1. the username<br>
+	2. the user's desktop<br>
+	3. the $vf19_MPOD hashtable that MACROSS uses to store default filepaths<br>
+	4. the $vf19_numchk integer for mathing<br>
+	5. the filepath to the MACROSS python library (ncore\pyclasses)<br>
+	6. the filepath to the MACROSS resources folder (you set this in extras.ps1)<br>
+	7. the name of the script making the call<br>
+	8. the $PROTOCULTURE value being evaluated<br>
+	9. (optional) the $eNM value being evaluated<br>
+<br>
+	<b>J.</b> availableMods() = When a user selects a script from the MACROSS menu, the chooseMods() function sends their selection to availableMods()
+	where the filepath to the script gets verified, along with the script version using the verChk() function (see the
+	updates.ps1 file). As with the collab() function, availableMods() will automatically send some arguments to python
+	scripts, but only the first 5 listed in collab() along with the string value of $PSScriptRoot so your python scripts
+	know where the local files are at.<br>
+<br>
+<br>
+<b>III. updates.ps1</b><br>
+	<b>A.</b> toolCount() = This function counts the number of scripts in the local nmods folder vs. the number in the master repository (you set this
+	this location in the extras.ps1 file).<br>
+	<b>B.</b> look4New() = If the local count is higher, the update functions will be disabled to avoid problems. If the master count is higher, the
+	dlNew() function will be used to automatically download the scripts that the user is missing.<br>
+	<b>C.</b> dlNew() = This function gets called when new scripts or newer versions are available, or if the user wants to pull fresh copies from
+	the master repo.<br>
+	<b>D.</b> verChk() = This function is used every time a script gets selected from the MACROSS menu. It compares the "#_ver" line in the local
+	script and in the master repo script. The master version is newer, it gets downloaded before the selected script executes.<br>
+<br>
+<br>
+<b>IV. extras.ps1</b><br>
+	<b>A.</b> runSomething() = Pauses the MACROSS console and loads a fresh powershell instance so that the user can perform a quick powershell task.
+	Typing "exit" returns the user to MACROSS.<br>
+	<b>B.</b> decodeSomething() = From the MACROSS menu, the user can call decodeSomething() to quickly decode a Base64 or Hex string they may
+	come across in an investigation.<br>
+	<b>C.</b> disVer() = A quick way to pull any script version. Call it with the name of your script without the file extension. The value gets
+	written to the global variable $VER.<br>
+	<b>D.</b> getFile() = Your script can use this to open a dialog box for users to select a file<br>
+	<b>E.</b> houseKeeping() = Call this function with a filepath to any reports or files created by your scripts. It offers users the option to delete
+	any or all of these files when they are no longer needed.<br>
+<br>
+<br>
+<b>V. mcdefs.py</b><br>
+	<b>A.</b> This is a python library that provides many of the same core functions used in the MACROSS powershell scripts. See the script comments for
+			  details.
+
+
+
