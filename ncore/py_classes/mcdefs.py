@@ -46,6 +46,8 @@ import array as arr
 from subprocess import run as srun
 from os import system as osys
 from time import sleep as t
+from tkinter import Tk
+from tkinter.filedialog import askopenfilename as open
 import sys
 import re
 
@@ -77,7 +79,14 @@ def psc(c,subf = None):
 def psp(p):
     """The psp function is simply 'subprocess.run()' made readily available to MACROSS python scripts.\n\nUsage:  mcdefs.psp('powershell.exe "filepath\\myscript.ps1" "argument 1"') << Will launch your powershell script with args"""
     srun(p)
+
     
+def getFile():
+    """The getFile function opens a dialog window for users to select a file.\n\nUsage:  VAR = getFile() """
+    Tk().withdraw()
+    chooser = open()
+    return chooser
+
 
 '''
     Same as MACROSS's "getThis" function
