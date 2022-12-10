@@ -8,6 +8,11 @@
 
     Run quick & dirty queries between MACROSS modules to gather
     info on usernames, files, processes, etc.
+    
+    Go to the findThese() function to see examples where I used my $CALLER
+    scripts to set specific queries. Add your own "if" statements to build
+    queries based on your own scripts if they want to use this to query
+    your Carbon Black deployment.
 
     ***************!!! AUTHENTICATION !!!***************
     You will need to develop a secure method for passing in your
