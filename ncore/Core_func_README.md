@@ -2,7 +2,7 @@
 
 
 <b><u>SETTING DEFAULT VARIABLES</u></b><br>
-TL;DR -- Run the DEMO option from the menu in MACROSS for a quick overview.
+TL;DR -- Run the DEMO options from the menu in MACROSS for a quick overview.
 
 Line 4 in the extras.ps1 file is reserved for a string of Base64-encoded lines delimited by '@@@'. Additional base64 strings can be
 inserted into this file's multi-line comment, as long as you prepend it with a three-letter identifier, and separate each base64
