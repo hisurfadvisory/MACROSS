@@ -82,8 +82,8 @@ def psp(p):
 
     
 # Same as MACROSS' getFile function; if you do not provide an initial directory,
-# it will will be set to the user's desktop (vf19_DEFAULTPATH)
-def getFile(opendir = vf19_DEFAULTPATH):
+# it will will be set to the Windows C: drive
+def getFile(opendir = 'C:\\Users'):
     """The getFile function opens a dialog window for users to select a file.\n\nUsage:  VAR = getFile('your\\directory\\to\\file') """
     Tk().withdraw()
     chooser = open(initialdir=opendir)
