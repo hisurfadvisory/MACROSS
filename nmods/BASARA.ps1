@@ -268,12 +268,7 @@ if($MONTY -and (Test-Path "$vf19_TOOLSDIR\MAX.py")){
     next
     cls
 
-
-    $global:vf19_TABLES = 'C:\Users\kamue\Documents\MACROSS\resources'  # delete when done
-
     collab 'MAX.py' $CALLER $PROTOCULTURE
-
- #python3 "$vf19_TOOLSDIR\MAX.py" $USR $vf19_DEFAULTPATH $vf19_PYOPT $vf19_numchk $vf19_pylib $vf19_TABLES $CALLER $PROTOCULTURE
     
     splashPage
     Write-Host -f GREEN "
