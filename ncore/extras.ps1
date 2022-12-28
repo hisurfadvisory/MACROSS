@@ -80,16 +80,16 @@ function disVer($1){
 ## Let user choose a file for whatever the script needs
 ##  Opens dialog to user's desktop where they can navigate to wherever their file is
 ##  Usage:    $var = getFile
-Function getFile($vf19_DEFAULTPATH)
+function getFile($vf19_DEFAULTPATH)
 {  
     [System.Reflection.Assembly]::LoadWithPartialName(“System.windows.forms”) |
         Out-Null
 
-    $chooser = New-Object System.Windows.Forms.OpenFileDialog
-    $chooser.initialDirectory = $vf19_DEFAULTPATH
-    $chooser.filter = “All files (*.*)| *.*”
-    $chooser.ShowDialog() | Out-Null
-    $chooser.filename
+    $c = New-Object System.Windows.Forms.OpenFileDialog
+    $c.initialDirectory = $vf19_DEFAULTPATH
+    $c.filter = “All files (*.*)| *.*”
+    $c.ShowDialog() | Out-Null
+    $c.filename
 }
 
 
