@@ -57,20 +57,23 @@ function splashPage (){
     cls
     Write-Host '
     '
-    $b = 'ICAgIOKWiOKWiOKWiOKWiOKWiOKWiOKVl+KWkeKWkeKWiOKWiOKWiOKWiOKWiOKVl+KWkeKWkeKWi
-    OKWiOKWiOKWiOKWiOKVl+KWkeKWkeKWiOKWiOKWiOKWiOKWiOKWiOKVlwogICAg4paI4paI4pWU4pWQ4pWQ
-    4paI4paI4pWX4paI4paI4pWU4pWQ4pWQ4paI4paI4pWX4paI4paI4pWU4pWQ4pWQ4paI4paI4pWX4paI4pa
-    I4pWU4pWQ4pWQ4pWQ4pWQ4pWdCiAgICDilojilojilojilojilojilojilZTilZ3ilojilojilojilojilo
-    jilojilojilZHilojilojilZHilpHilpHilZrilZDilZ3ilZrilojilojilojilojilojilZfilpEKICAgI
-    OKWiOKWiOKVlOKVkOKVkOKWiOKWiOKVl+KWiOKWiOKVlOKVkOKVkOKWiOKWiOKVkeKWiOKWiOKVkeKWkeKW
-    keKWiOKWiOKVl+KWkeKVmuKVkOKVkOKVkOKWiOKWiOKVlwogICAg4paI4paI4pWR4paR4paR4paI4paI4pW
-    R4paI4paI4pWR4paR4paR4paI4paI4pWR4pWa4paI4paI4paI4paI4paI4pWU4pWd4paI4paI4paI4paI4p
-    aI4paI4pWU4pWdCiAgICDilZrilZDilZ3ilpHilpHilZrilZDilZ3ilZrilZDilZ3ilpHilpHilZrilZDil
-    Z3ilpHilZrilZDilZDilZDilZDilZ3ilpHilZrilZDilZDilZDilZDilZDilZ3ilpE='
+    $b = 'ICAgICDilojilojilojilZcgICDilojilojilojilZfilojilojilZcgICDilojilojilZfilojilojilZcgI
+    CAgIOKWiOKWiOKWiOKWiOKWiOKWiOKWiOKVl+KWiOKWiOKWiOKVlyAgIOKWiOKWiOKVl+KWiOKWiOKWiOKWiOKWiOKW
+    iOKWiOKVlwogICAgIOKWiOKWiOKWiOKWiOKVlyDilojilojilojilojilZHilZrilojilojilZcg4paI4paI4pWU4pW
+    d4paI4paI4pWRICAgICDilojilojilZTilZDilZDilZDilZDilZ3ilojilojilojilojilZcgIOKWiOKWiOKVkeKWiO
+    KWiOKVlOKVkOKVkOKVkOKVkOKVnQogICAgIOKWiOKWiOKVlOKWiOKWiOKWiOKWiOKVlOKWiOKWiOKVkSDilZrilojil
+    ojilojilojilZTilZ0g4paI4paI4pWRICAgICDilojilojilojilojilojilZcgIOKWiOKWiOKVlOKWiOKWiOKVlyDi
+    lojilojilZHilojilojilojilojilojilZcgCiAgICAg4paI4paI4pWR4pWa4paI4paI4pWU4pWd4paI4paI4pWRICD
+    ilZrilojilojilZTilZ0gIOKWiOKWiOKVkSAgICAg4paI4paI4pWU4pWQ4pWQ4pWdICDilojilojilZHilZrilojilo
+    jilZfilojilojilZHilojilojilZTilZDilZDilZ0gCiAgICAg4paI4paI4pWRIOKVmuKVkOKVnSDilojilojilZEgI
+    CDilojilojilZEgICDilojilojilojilojilojilojilojilZfilojilojilojilojilojilojilojilZfilojiloji
+    lZEg4pWa4paI4paI4paI4paI4pWR4paI4paI4paI4paI4paI4paI4paI4pWXCiAgICAg4pWa4pWQ4pWdICAgICDilZr
+    ilZDilZ0gICDilZrilZDilZ0gICDilZrilZDilZDilZDilZDilZDilZDilZ3ilZrilZDilZDilZDilZDilZDilZDilZ
+    3ilZrilZDilZ0gIOKVmuKVkOKVkOKVkOKVneKVmuKVkOKVkOKVkOKVkOKVkOKVkOKVnQ=='
     getThis $b
     Write-Host $vf19_READ
     Write-Host ''
-    Write-Host " ==== Mylene's Recent Accounts Search ====
+    Write-Host "          ==== Mylene's Recent Accounts Search ====
     "
     if( $dyrl_myl_FCOUNT -ge 1 ){
         Write-Host -f YELLOW " You have $dyrl_myl_FCOUNT MYLENE reports on your desktop.
