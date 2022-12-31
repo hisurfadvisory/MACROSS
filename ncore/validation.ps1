@@ -468,10 +468,10 @@ function collab(){
         if( $vf19_NEWWINDOW ){  ## Launches script in new window if user desires; WILL NOT SHARE CORE MACROSS FUNCTIONS!
             $vf19_NEWWINDOW = $false
             if($py){
-                powershell.exe "python3 $mod $CALLER $eNM"
+                Start-Process powershell.exe "python3 $mod $CALLER $eNM"
             }
             else{
-                powershell.exe -File $mod $CALLER $eNM
+                Start-Process powershell.exe -File $mod $CALLER $eNM
             }
         }
         else{
