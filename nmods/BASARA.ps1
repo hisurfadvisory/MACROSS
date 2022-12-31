@@ -297,7 +297,7 @@ Write-Host -f GREEN '
         Write-Host -f YELLOW "        $RESULTFILE"
         Write-Host -f GREEN "    is your SDF1 report and " -NoNewline;
     }
-    Write-Host -f GREEN 'MAX gave you '
+    Write-Host -f GREEN 'SDF-1 gave you '
     Write-Host -f YELLOW "                    $HOWMANY"
     Write-Host -f GREEN '    successful hits.'
 
