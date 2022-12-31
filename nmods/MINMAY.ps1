@@ -1,4 +1,4 @@
-﻿#_wut Demo powershell launching MILIA.py functions
+#_wut Demo powershell launching MILIA.py functions
 #_ver 0
 
 
@@ -74,8 +74,8 @@ if($Z -eq 'q'){
     Exit
 }
 cls
-python3 "$vf19_TOOLSDIR\MILIA.py" $USR $vf19_DEFAULTPATH $vf19_PYOPT $vf19_numchk $vf19_pylib $vf19_TABLES 'MINMAY'
-
+collab 'MILIA.py' 'MINMAY'
+splashPage
 Write-Host -f GREEN "
   Aaaand now we're back in Powershell!
   
