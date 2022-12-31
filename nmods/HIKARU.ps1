@@ -86,7 +86,7 @@ if( $vf19_OPT1 ){
             Clear-Variable dyrl_hik_Z
         }
     }
-    Remove-Variable dyrl_legit*
+    Remove-Variable dyrl_hik*
     Return
 }
 if( $PROTOCULTURE ){
