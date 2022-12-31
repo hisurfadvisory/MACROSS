@@ -178,12 +178,16 @@ if npath:
         so that you can just import sys and mcdefs, which then makes libraries like subprocess,
         array and others available at the same time. So make sure to review the
         
-                nmods\\py_classes\\mcdefs.py
-        
-        file for all the notes! Hit ENTER to jump back to MACROSS.
+                nmods\\py_classes\\mcdefs.py""")
+    if CALLER == None:
+        print("""
 
+        file for all the notes! Hit ENTER to jump back to MACROSS.""")
+    else:
+        CALLERP = CALLER + '.'
+        print("""
 
-        """)
+        file for all the notes! Hit ENTER to jump back to""",CALLERP)
     input()
     
 else:
