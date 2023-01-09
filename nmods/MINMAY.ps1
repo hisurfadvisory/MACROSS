@@ -1,6 +1,7 @@
 #_wut Demo powershell launching MILIA.py functions
 #_ver 0
 
+transitionSplash 5
 
 function splashPage(){
     cls
