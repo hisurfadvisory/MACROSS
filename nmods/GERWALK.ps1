@@ -4,15 +4,16 @@
 <#
 
     GERWALK Carbon Black module for MACROSS
-    Designed and tested for VMWare Carbon Black EDR
+    Designed for VMWare Carbon Black EDR
 
     Run quick & dirty queries between MACROSS modules to gather
     info on usernames, files, processes, etc.
-    
+
     Go to the findThese() function to see examples where I used my $CALLER
     scripts to set specific queries. Add your own "if" statements to build
     queries based on your own scripts so they can use this to query
     your Carbon Black deployment.
+
 
     ***************!!! AUTHENTICATION !!!***************
     You will need to develop a secure method for passing in your
@@ -30,8 +31,7 @@
     Runs basic queries and accepts inputs from other MACROSS scripts
 
     TO DO:
-        Enable searching via local time windows. Current default is
-        1 week.
+        Enable searching via local time windows
 
 #>
 
@@ -39,6 +39,53 @@
 
 function splashPage(){
     cls
+    $i = 'ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgciAgICAgICAgI
+    CAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+    ICAgICAgICAgICDGkiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICA
+    gICAgICAgICAgICAgICAgICAgICDilZPilabilaYsICAgICAgICDilZIgICAgICAgICAgICAgICAgIC
+    AgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgzrQg4paT4paRI
+    iwgICws4pWTLCzOkyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAg
+    ICAgICAgICAgICAgICAgICAgLlUiauKWiOKWjOKVn+KWhOKWiOKWjCLigb/ilad0xpJkPSDDpyJe4pW
+    QfiwgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgIC
+    zDp+KWk+KWk+KWk+KWk+KWgOKWgOKWgOKWgOKWiOKWiOKWiF3Ok+KWkOKBvyAgICLijILiloTigb8iI
+    CAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgLGfiloTi
+    loTiloDiloDilojiloDiloAwUeKWhOKWhOKWhOKWiE0i4paA4paAXmAsLuKMkMKs4pWYICAiLSAgICA
+    gICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICzilZDDkeKWhOKWgOKWgO
+    KWkOKWiOKWk+KWiGDOpl3ijJDiloDilojiloggdzbilahq4paE4pWZIiAgICBdLOKVkywgLOKVkCIiX
+    l7ilZDilZDilZDCrH4uLiwsLCAgICAgICAgCiAgICAgICAgICAgICAgICAgICAuw4fiiJ7ilZ3ilZzD
+    heKWkuKVouKWk+KWiOKWgOKUlCAgwr/iloTiloTiloQ7IOKVmeKWgOKWgOKWgOKWgOKWgOKWgOKWiFw
+    g4oyQ4paA4paA4paA4paA4paA4paA4paA4paA4paA4paA4paAUFDiloDiloDiloDiloDilajilpPilp
+    PDkeKInuKInsOE4oieNMOF4pWdICAKICAgICAgICAgICAgICAgLOKWhOKWiOKWiOKWiOKWiOKWhOKWh
+    OKWiOKWgOKWgCnDsSLiloTiloTilogq4pSU4oG/4paA4paA4paA4paA4paA4paIIiAs4paE4oyQ4paA
+    IuKWiOKWkuKUlH7iiJp+4pWlw6p+fn4t4pSA4pWQ4pWQ4pWQ4pWQ4pSA4pSA4pWQ4pWQ4oG/Xl5eXl4
+    iIiIgIAogICAgICAgICAgICzilZBg4paA4paA4paA4paI4paA4paA4paA4paAICAs4paE4paEfuKWhO
+    KWk+KVoeKWgOKWiE3ilaXilZPDpiVNU+KWhCwswqzijJDilZBA4paAWyAgIEx34pWnICAgICAgLCAgI
+    CAgICAgICAgICAgICAgIAogICAgICAgLOKMkCIgICAgICBg4paAXOKWhOKWiOKWjOKWgOKWgOKVk+KM
+    kCriloA+cOKVpyJgIMKyXSAgTCDilojilojiloDilozilZAi4pWZd2Digb/Dh8KsXUjiloAg4pSA4pW
+    S4paI4paI4paMICAgICAgICAgICAgICAgICAgIAogICAs4oyQIiAgICAgICAgIOKVkCLilLQsbOKWgC
+    rijKDilJQgICAgICAgICBW4paE4paIICBd4pWTL+KWiOKMkOKWkCAgIMK64paI4paI4paAeinDpyzCv
+    OKVoz3ilpDilojiloQgICAgICAgICAgICAgICAgICAgCiBDIiAgICAgLC4u4oyQ4pWp4pWnwqrilZAi
+    YCAgICAgICAgICAgICAgICAi4paA4paIKuKVllwgLV0od+KWhOKWgMKq4paI4paEYCDilojiloAiLMK
+    yIOKWiOKWjOKWgOKWjCAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgIC
+    AgICAgICAgIMOGLOKVk2DiloDCv+KImuKWiOKWjC/iloAgICAgIMOFICDilIzilZsg4paE4paIICAgI
+    CAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIMK/YCDGkuKV
+    mOKBv+KVkOKWiOKWiOKWiOKWiOKUmCAgL+KVmyAo4pWT4paE4paE4paE4paE4paE4paIICDilJggICA
+    gICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgwqIgIMOc4paE4p
+    aE4paE4paI4paA4paA4paAYCAg4paQ4paMIOKWhOKWiOKWgCAgIOKUlOKWiOKMkCDilZIgICAgICAgI
+    CAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg4pWZ4pSUwqwgICAg
+    IOKMkCAg4pWS4paAIOKWhOKWgOKBvyzCvyAgIF3iloTiloTilojilojilojilojilojilojilojiloj
+    ilojilojilojilojilojilojilojilojiloDiloAgICAKICAgICAgICAgICAgICAgICAgICAgICAgIC
+    AgICAgICAgICAgICAgICDCv+KUlCLilZXiloAgKsKsw58i4oG/SCAg4paE4paI4paI4paI4paI4paI4
+    paI4paI4paI4paI4paI4paI4paI4paA4paA4paALSAgICAgICAgCiAgICAgICAgICAgICAgICAgICAg
+    ICAgICAgICAgICAgICAgICAgICDilZsgIC/ilpBb4paE4paE4pWT4paA4paI4paE4paI4paI4paI4pa
+    I4paI4paI4paI4paI4paI4paI4paI4paI4paALSAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgIC
+    AgICAgICAgICAgICAgICAgICAgICAgL+KUlOKBv1nDhMOnLOKWhOKWiOKWiOKWhOKWhOKWiOKWiOKWi
+    OKWiOKWiOKWiOKWiOKWiOKWiOKWiOKWgOKWgGAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAg
+    ICAgICAgICAgICAgICAgICAgICAgICAgYCAgKGAgIOKWiOKWiOKWiOKWiOKWiOKWiOKWgOKWgOKWgOK
+    WgOKWgOKUlGAiICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgIC
+    AgICAgICAgICDOpn4sz4bilKziloTiloTiloDiloDiloDiloAtICAgICAgICAgICAgICAgICAgICAgI
+    CAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgYOKMkCAg'
+
     $b = 'ICAgICAgICDilojilojilojilojilojilojilZcg4paI4paI4paI4paI4paI4paI4paI4pWX4
     paI4paI4paI4paI4paI4paI4pWXIOKWiOKWiOKVlyAgICDilojilojilZcg4paI4paI4paI4paI4paI
     4pWXIOKWiOKWiOKVlyAgICAg4paI4paI4pWXICDilojilojilZcKICAgICAgIOKWiOKWiOKVlOKVkOK
@@ -56,7 +103,12 @@ function splashPage(){
     4pWQ4pWQ4pWQ4pWQ4pWdIOKVmuKVkOKVkOKVkOKVkOKVkOKVkOKVneKVmuKVkOKVnSAg4pWa4pWQ4pW
     dIOKVmuKVkOKVkOKVneKVmuKVkOKVkOKVnSDilZrilZDilZ0gIOKVmuKVkOKVneKVmuKVkOKVkOKVkO
     KVkOKVkOKVkOKVneKVmuKVkOKVnSAg4pWa4pWQ4pWd'
-    getThis $b
+    if( $CALLER ){
+        getThis $b
+    }
+    else{
+        getThis $i
+    }
     Write-Host ''
     Write-Host -f YELLOW $vf19_READ
     Write-Host -f CYAN   '        =============================================================
@@ -356,7 +408,7 @@ function findThese($1,$2){
                 $qbuild = $qbuild + "username:$2 "
                 $oneuser = $true
             }
-            elseif($1 -eq 'ALTO'){          ## ALTO script passes filenames
+            elseif($1 -eq 'ELINT' -or $1 -eq 'ALTO'){  ## ALTO & ELINT scripts pass filenames
                 $qbuild = $qbuild + "(cmdline:*$2* OR fileless_scriptload_cmdline:*$2*) "
                 $skipsys = $true
                 $skipres = $true
@@ -365,7 +417,7 @@ function findThese($1,$2){
             }
             
             
-            # $skipsys gets set by other scripts that already specify usernames
+            # $skipsys is set by other scripts that already specify usernames
             if( ! $skipsys ){
                 Write-Host -f GREEN '        Omit SYSTEM accounts?  ' -NoNewline;
                 if($Z -Match "^y"){
@@ -398,7 +450,7 @@ function findThese($1,$2){
             ##  ONCE in any query, connected by "AND" operators.
         
         $qbuild = $qbuild + $startt
-        
+
         while($Z2 -notMatch "^n"){
 
         splashPage
@@ -560,8 +612,8 @@ function findThese($1,$2){
     ## Get input if analyst is querying manually; Helps narrow their searches if
     ##  they only care about user activity 
     if( ! $oneuser -and ! $skipsys ){
-        Write-Host ''
-        Write-Host -f GREEN "  Do you want to omit results for SYSTEM/ROOT accounts? (also ignores your username) " -NoNewline;
+        Write-Host -f GREEN "
+        Do you want to omit results for SYSTEM/ROOT accounts? (also ignores your username) " -NoNewline;
         $Z = Read-Host
         if($Z -Match "^y"){
             $qbuild = $qbuild + $onlyusers
@@ -600,7 +652,7 @@ function findThese($1,$2){
     '
     
     ## URL encode the query
-    $Script:qdisplay = $qbuild  ## Shows the user their search so they can modify later
+    $Script:qdisplay = $qbuild
     $qbuild = $qbuild -replace ' ','%20'
     $qbuild = $qbuild -replace ':','%3A'
     $qbuild = $qbuild -replace "[",'%5B'
@@ -688,14 +740,14 @@ while($r -Match "[0-9]"){
 
     ## Import args from other tools
     if( $CALLER ){
-        if( $CALLER -eq "MACROSS" ){
+        if( $CALLER -eq 'MACROSS' ){
             Write-Host -f GREEN '
             Hit ENTER to select a file for hash searches, or
             type in the filename for a general search: ' -NoNewline;
             $Z1 = Read-Host
 
             if( $Z1 -eq '' ){
-                $Z1 = getFile  ## open dialog for user to select a file; kill the script if they cancel file selection
+                $Z1 = getFile  ## open dialog for user to select a file; kill script if they cancel file selection
                 if( $Z1 -eq '' ){
                     Write-Host -f CYAN '  No file selected. Exiting...'
                     ss 2
