@@ -53,7 +53,7 @@ neKVmuKVkOKVkOKVkOKVkOKVkOKVkOKVnQ=='
 
 
 ## Set $1 to 1 for VF-19, 2 for SDF-1, 3 for VF-1S, 4 for Gubaba, 5 for Minmay
-## If these transition screens annoy you, just delete this entire function
+## If these transition screens annoy you, just comment/delete this entire function
 function transitionSplash($1){
     cls
     if($1 -eq 1){
@@ -369,29 +369,33 @@ function ss(){
 
 <######################################
 ## Set the default startup object
-    When you have resources like tables/arrays to be built from text
-    files, you can base64 encode the file path, add a 3-letter identifier
-    so that you can easily decode them when necessary, then add them to
-    line 5 in 'extras.ps1', separated by '@@@' as delimiters.
+    When you have resources like tables/arrays to be built from text or
+    JSON or whatever files, you can base64 encode the file path, add a
+    3-letter identifier so that you can easily decode them when necessary,
+    then add them to the opening comments starting at line 5 in 'extras.ps1'.
+    Make sure to separate your strings using '@@@' as delimiters.
 
-    This function reads line 5 from 'extras.ps1' and creates an array of
-    base64 values with the 3-letter identifier as its index. When you
+    This function reads the opening comment from 'extras.ps1' and creates an 
+    array of base64 values with the 3-letter identifier as its index. When you
     need to call your encoded filepath, you use the 'getThis' function,
     which returns $vf19_READ as your decoded filepath:
 
         getThis $vf19_MPOD['abc']
         $your_variable = $vf19_READ
 
+    Additionally, it reads the registry to look for the presence of Wireshark,
+    Nmap, and Python. You can add your own checks for programs your scripts
+    may need to function.
 
 ######################################>
 function startUp(){
-    ## Check if necessary progs are available; add as many as you need
+    ## Check if necessary programs are available; add as many as you need
     #$INST = Get-ChildItem 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall'
     $INST = Get-ChildItem 'HKLM:Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall'
     foreach($i in $INST){
         $prog = $i.GetValue('DisplayName')
         if($prog -match 'python'){
-            $Global:MONTY = $true
+            $Global:MONTY = $true    ## Confucious say: 'Python is less stressful than powershell'
             $Global:vf19_PYOPT = ''  ## Prep string values for passing to python scripts
             $p = @()
         }
@@ -403,7 +407,8 @@ function startUp(){
         }
     }
 
-    ## Build the options list
+    ## Arm the missile pod (although Basara's VF-19 only carried missiles once);
+    ## populate this global array with any Base64-encoded filepaths that you want shared with your scripts
     $Global:vf19_MPOD = @{}
     $aa = @()
     $x = 3
@@ -432,15 +437,31 @@ function startUp(){
 <################################
 ## Display tool menu to user
 
-    Planned improvement is to rewrite this function so it can
-    accomodate more than 20 scripts in the nmods folder. Right
-    now, for example, if you have 40 scripts in nmods, the
+    You will notice an 'if' statement in this chooseMod function:
+
+        if( $_ -Match 'GERWALK' )
+
+    This is setting a global variable that lets all MACROSS scripts
+    know that the Carbon Black API script is available to be queried
+    (and by extension, if you have GERWALK in the nmods folder, that
+    assumes you also have Carbon Black).
+
+    You can tweak this to set different global values that will let
+    your scripts know that other scripts they might want to interact
+    with are available for use... very helpful for any other APIs you
+    want to integrate into MACROSS.
+
+    The planned improvement is to rewrite this function so it can
+    accomodate more than 20 scripts in the /nmods folder. Right
+    now, for example, if you have 40 scripts in /nmods, the
     scrollPage function will show the first 9 tools in $FIRSTPAGE,
     but would show tools 10-40 in $NEXTPAGE because chooseMods
-    only generates two arrays based on the nmods folder file count.
+    only generates two hashtables based on the nmods folder file-count
+    (single-digit vs. double-digit).
 
-    Also need to truncate if filename is longer than 7 characters
-    to keep the menu uniform.
+    I also need to auto-truncate if filename is longer than 7 characters
+    to keep the menu uniform. Currently, it only adds whitespace to names
+    less than 7 characters long.
 
 ################################>
 function chooseMod(){
@@ -448,30 +469,33 @@ function chooseMod(){
     $Global:vf19_NEXTPAGE = @{}
     $Global:vf19_MODULENUM = @()
     if( $MONTY ){
-        $Global:vf19_pylib = "$vf19_TOOLSROOT\ncore\py_classes"
-        $ftypes = "*.p*" ## Integrate python scripts if Python3 is installed
+        $Global:vf19_pylib = "$vf19_TOOLSROOT\ncore\py_classes"  ## Filepath to the MACROSS py library
+        $ftypes = "*.p*"                                         ## Integrate python scripts if Python3 is installed
     }
     else{
-        $ftypes = "*.ps*"  ## Ignore py files if Python3 not installed
+        $ftypes = "*.ps*"                                        ## Ignore py files if Python3 not installed
     }
     $vf19_LISTDIR = Get-ChildItem "$vf19_TOOLSDIR\$ftypes" | Sort Name     ## Get the names of all the scripts in alpha-order
 
     # Enumerate the nmods\ folder to find all scripts; all of my scripts  
-    #     contain a descriptor on the first line beginning with '_wut'
+    # contain a descriptor on the first line beginning with '_wut'
     $vf19_LISTDIR |
     Select -First 9 | 
     ForEach-Object{
-        if( Get-Content $_.FullName | Select-String -Pattern "^#_wut.*" ){   # verify the script is meant for MACROSS
-            $d1 = Get-Content $_.FullName -First 1         # grab the first line of the script
-            $d1 = $d1 -replace("^#_wut[\S]* ",'')          # remove the 'wut'
-            $d2 = $_ -replace("\.p.+$",'')    # remove the file extension, only care about the name
-            $d2 = $d2 -replace("^.+\\",'')    # remove the filepath
-            $d3 = $d2.Length                  # count how many characters in the filename
+        if( $_ -Match 'GERWALK' ){
+            $Global:vf19_CB = $true   ## Tells other scripts Carbon-Black script is available for queries
+        }
+        if( Get-Content $_.FullName | Select-String -Pattern "^#_wut.*" ){   # Verify the script is meant for MACROSS
+            $d1 = Get-Content $_.FullName -First 1         # Grab the first line of the script
+            $d1 = $d1 -replace("^#_wut[\S]* ",'')          # Remove the 'wut'
+            $d2 = $_ -replace("\.p.+$",'')    # Remove the file extension, only care about the name
+            $d2 = $d2 -replace("^.+\\",'')    # Remove the filepath
+            $d3 = $d2.Length                  # Count how many characters in the filename
             if($d3 -lt 7){
                 $d4 = (7 - $d3)
                 while($d4 -gt 0){
-                    $d2 = $d2 + ' '      # format the name to append whitespaces so the length adds up to 7 characters; 
-                    $d4--                    #    this keeps the list uniform on the screen
+                    $d2 = $d2 + ' '      # Format the name to append whitespaces so the length adds up to 7 characters; 
+                    $d4--                # this keeps the list uniform on the screen
                 }
             }
             # Create an array containing each script name and its description
@@ -487,6 +511,9 @@ function chooseMod(){
         $vf19_LISTDIR |
         Select -Skip 9 | 
         ForEach-Object{
+            if( $_ -Match 'GERWALK' ){
+                $Global:vf19_CB = $true
+            }
             if( Get-Content $_.FullName | Select-String -Pattern "^#_wut.*" ){
                 $d5 = Get-Content $_.FullName -First 1
                 $d5 = $d5 -replace("^#_wut[\S]* ","")
@@ -510,7 +537,7 @@ function chooseMod(){
     $vf19_MODCT = 0
 
     ####################
-    # Use the arrays to generate the list of active modules for the user to choose from
+    # Use the arrays to generate the list of active scripts/modules for the user to choose from
     ####################
     if( $Global:vf19_PAGE -eq 'X' -or $Global:vf19_PAGE -eq $null ){
         $vf19_FIRSTTOOL = '1'
@@ -568,27 +595,27 @@ function chooseMod(){
 
     if( $vf19_MULTIPAGE ){
         Write-Host -f GREEN '   -There are more than 9 tools available. Hit ' -NoNewline;
-            Write-Host -f YELLOW 'p' -NoNewline;
-                Write-Host -f GREEN ' for the next Page.'
+        Write-Host -f YELLOW 'p' -NoNewline;
+        Write-Host -f GREEN ' for the next Page.'
     }
     Write-Host -f GREEN '   -Select the module for the tool you want (' -NoNewline;
-        Write-Host -f YELLOW "$vf19_FIRSTTOOL-$vf19_MODCT" -NoNewline;
-            Write-Host -f GREEN '). Add an ' -NoNewline;
-                Write-Host -f YELLOW 'h' -NoNewline;
-                    Write-Host -f GREEN ' to view'
+    Write-Host -f YELLOW "$vf19_FIRSTTOOL-$vf19_MODCT" -NoNewline;
+    Write-Host -f GREEN '). Add an ' -NoNewline;
+    Write-Host -f YELLOW 'h' -NoNewline;
+    Write-Host -f GREEN ' to view'
     Write-Host -f GREEN "      a help/description of the tool (ex. '1h')."
     Write-Host -f GREEN '   -Type ' -NoNewline;
-        Write-Host -f YELLOW 'shell' -NoNewline;
-            Write-Host -f GREEN ' to pause and run your own commands.'
+    Write-Host -f YELLOW 'shell' -NoNewline;
+    Write-Host -f GREEN ' to pause and run your own commands.'
     Write-Host -f GREEN '   -Type ' -NoNewline;
-        Write-Host -f YELLOW 'dec' -NoNewline;
-        Write-Host -f GREEN ' or ' -NoNewline;
-        Write-Host -f YELLOW 'enc' -NoNewline;
-            Write-Host -f GREEN ' to do Hex/B64 evals.'
+    Write-Host -f YELLOW 'dec' -NoNewline;
+    Write-Host -f GREEN ' or ' -NoNewline;
+    Write-Host -f YELLOW 'enc' -NoNewline;
+    Write-Host -f GREEN ' to do Hex/B64 evals.'
     Write-Host -f GREEN '   -Type ' -NoNewline;
-        Write-Host -f YELLOW 'q' -NoNewline;
-            Write-Host -f GREEN ' to quit.
-            '
+    Write-Host -f YELLOW 'q' -NoNewline;
+    Write-Host -f GREEN ' to quit.
+    '
     Write-Host -f GREEN '                               TROUBLESHOOTING:
    If the console is misbehaving, you can enter ' -NoNewline;
     Write-Host -f CYAN 'refresh' -NoNewline;
@@ -616,7 +643,7 @@ function chooseMod(){
     elseif( $vf19_Z -Match $vf19_CHOICE ){
         if( $vf19_Z -Match "[0-9]{1,2}h" ){
             $Global:vf19_Z = $vf19_Z -replace('h','')
-            $Global:HELP = $true   ## Launch the selected script's man page/help display
+            $Global:HELP = $true   ## Launch the selected script's man page/help menu
         }
         elseif( $vf19_Z -eq 'p' ){
             if( $vf19_MULTIPAGE ){
@@ -632,7 +659,7 @@ function chooseMod(){
         }
         elseif( $vf19_Z -Match "[0-9]{1,2}r" ){
             $Global:vf19_Z = $vf19_Z -replace('r','')
-            $Global:vf19_REF = $true      ## Triggers the dlNew function to download fresh copy of the selected script before executing it
+            $Global:vf19_REF = $true      ## Triggers the dlNew function (updates.ps1) to download fresh copy of the selected script before executing it
         }
         elseif( $vf19_Z -Match "[0-9]{1,2}s" ){
             $Global:vf19_Z = $vf19_Z -replace('s','')
@@ -649,8 +676,11 @@ function chooseMod(){
             $Global:HELP = $false
             $Global:vf19_OPT1 = $false
         }
+
+
+        ## availableMods (validation.ps1) checks to see if script exists, then launches with any selected options
         if( $vf19_Z -Match "[0-9]"){
-            availableMods $vf19_Z         ## availableMods checks to see if script exists, then launches with any selected options; see the validation.ps1 file
+            availableMods $vf19_Z
             Clear-Variable -Force vf19_Z
         }
     }
@@ -661,7 +691,7 @@ function chooseMod(){
 }
 
 ################################
-## If more than 9 tools available, split into two menus
+## If more than 9 tools are available, split into two menus
 ################################
 function scrollPage(){
     ##  X = 1st page, Y= 2nd page
