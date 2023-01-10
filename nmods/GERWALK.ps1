@@ -157,8 +157,8 @@ if( $HELP ){
 <#  UNCOMMENT TO USE RESTRICTED PERMISSION CHECKS
 try{
     adminChk 'deny'
-    getHelp1 $dash_UCT
-    getHelp2 $dash_UCT
+    getHelp1 $vf19_UCT
+    getHelp2 $vf19_UCT
 }
 catch{
     Exit
@@ -681,10 +681,10 @@ function craftQuery($1,$2,$3,$4){
     $ua = 'MACROSS'   ## Set this user-agent however you'd like, so this script's curl activity can be
                       ##  easily identified in logs and whitelisted if necessary
 
-    getThis $dash_TOOLSOPT['ger']    ## Encode your Carbon Black server's IP/URL in the extras.ps1 file (see the MACROSS README.md). There is already a 'ger' placeholder in that file.
-    $SRV1 = "$dash_READ"
+    getThis $vf19_TOOLSOPT['ger']    ## Encode your Carbon Black server's IP/URL in the extras.ps1 file (see the MACROSS README.md). There is already a 'ger' placeholder in that file.
+    $SRV1 = "$vf19_READ"
     getThis 'IC1IICdYLUF1dGgtVG9rZW46IA=='  ## This is " -H 'X-Auth-Token: ", it gets decoded into $SRV2. Your API key ($3) gets appended to the $SRV2 variable
-    $SRV2 = $dash_READ
+    $SRV2 = $vf19_READ
 
     $qopen = "curl.exe -k -A '$ua' $SRV1"  ## Recommend you configure your Carbon Black API to only accept encrypted connections
     $qmaxres = $4
