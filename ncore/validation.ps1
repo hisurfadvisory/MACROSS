@@ -271,7 +271,6 @@ function setUser(){
         $Global:vf19_GAVIL = $true
     }
     
-    $GLOBAL:USR = 'kamue'
     $Global:vf19_DEFAULTPATH = "C:\Users\$USR\Desktop"  ## You may need to change this desktop path in your environ;
                                                         ## This is used by the scripts to write reports/results to
                                                         ## text outputs when necessary.
