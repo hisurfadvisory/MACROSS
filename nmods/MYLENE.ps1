@@ -1,4 +1,4 @@
-﻿#_wut User lookup + audit new accounts
+#_superdimensionfortress Windows Event ID reference
 #_ver 2.0
 <#
     Target recently-created accounts for inspection; look up AD info
