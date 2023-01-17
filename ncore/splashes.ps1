@@ -5,7 +5,8 @@
    6 for Mylene, 7 for Basara, 8 for Hikaru Ichijo, or null for VF-1S
 
    If these transitions annoy you, just remove the function call "transitionSplash"
-   from any script.
+   from any script. If you delete this file, you must also delete its "if" statement
+   in MACROSS.ps1, otherwise the console will not load!
 #>
 function transitionSplash($1,$2){
     cls
