@@ -1,4 +1,4 @@
-#_wut CarbonBlack EDR quick queries
+#_superdimensionfortress CarbonBlack EDR quick queries
 #_ver 1.0
 
 <#
@@ -152,18 +152,6 @@ if( $HELP ){
     Exit
 }
 
-
-
-<#  UNCOMMENT TO USE RESTRICTED PERMISSION CHECKS
-try{
-    adminChk 'deny'
-    getHelp1 $vf19_UCT
-    getHelp2 $vf19_UCT
-}
-catch{
-    Exit
-}
-#>
 
 
 $C = @(
@@ -636,7 +624,7 @@ function findThese($1,$2){
                 Write-Host -f CYAN "    The limit is currently 50. Setting max results to 50.
                 "
                 $Z = 50
-                ss 2
+                slp 2
             }
             $Script:dyrl_ger_RES = $Z
             $res ="&rows=$Z"
@@ -750,7 +738,7 @@ while($r -Match "[0-9]"){
                 $Z1 = getFile  ## open dialog for user to select a file; kill script if they cancel file selection
                 if( $Z1 -eq '' ){
                     Write-Host -f CYAN '  No file selected. Exiting...'
-                    ss 2
+                    slp 2
                     Exit
                 }
                 while($Z2 -notMatch "^(md5|sha256)$"){
@@ -867,7 +855,7 @@ while($r -Match "[0-9]"){
             }
             elseif($dyrl_ger_Z -ne 'f'){
                 Write-Host "    $dyrl_ger_Z isn't one of the results..."
-                ss 1
+                slp 1
             }
         }
 
@@ -887,7 +875,7 @@ while($r -Match "[0-9]"){
         No results found...
         "
         if( $CALLER ){
-            ss 1
+            slp 1
             searchAgain 1
         }
         else{
