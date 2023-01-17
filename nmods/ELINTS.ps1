@@ -237,7 +237,7 @@ function msOffice($1,$2,$3){
                                         Return
                                     }
                                     else{
-                                        Write-Host -f YELLOW " $dyrl_eli_BOGEY block $L" -NoNewline;
+                                        Write-Host -f YELLOW " $dyrl_eli_BOGEY block $L"
                                         #Write-Host ":  $aabb
                                         #"
                                         slp 2
@@ -257,7 +257,7 @@ function msOffice($1,$2,$3){
                                         Return
                                     }
                                     else{
-                                        Write-Host -f YELLOW " $dyrl_eli_BOGEY block $L" -NoNewline;
+                                        Write-Host -f YELLOW " $dyrl_eli_BOGEY block $L"
                                         #Write-Host ":  $aabb
                                         #"
                                         slp 2
