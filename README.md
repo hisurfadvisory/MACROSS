@@ -19,25 +19,25 @@ See the full readme below for details, but the basic FAQ is that core functions 
 
 FRAMEWORK RULES (modify however works best for you):
 1. All core functions are kept in the "ncore" folder
-	1a. Default variables that are used by all the MACROSS tools are base-64 encoded and stored in the opening comments line within "utility.ps1" in the ncore folder. When MACROSS starts up, it grabs those comments and splits them into an array for quick decoding anytime you need them.
-	1b. The ncore folder also contains subfolder "py_classes". This folder contains the MACROSS python library "mcdefs.py", and a subfolder called "garbage_io". MACROSS powershell scripts should contain a function that will write values to plaintext "*.eod" files  in garbage_io, so that python scripts can read them. See the "pyCross" function in the utility.ps1 file. 
-
+	<br>1a. Default variables that are used by all the MACROSS tools are base-64 encoded and stored in the opening comments line within "utility.ps1" in the ncore folder. When MACROSS starts up, it grabs those comments and splits them into an array for quick decoding anytime you need them.
+	<br>1b. The ncore folder also contains subfolder "py_classes". This folder contains the MACROSS python library "mcdefs.py", and a subfolder called "garbage_io". MACROSS powershell scripts should contain a function that will write values to plaintext "*.eod" files  in garbage_io, so that python scripts can read them. See the "pyCross" function in the utility.ps1 file. 
+<br>
 2. Custom automation scripts are kept in the "nmods" folder
-	2a. Custom scripts must contain "#_superdimensionfortress" in the first line, and "#_ver " in the second line, or they will be ignored
-	2b. Custom python scripts are always passed 4 arguments by default (see the availableMods function in "validation.ps1"): the logged in user, their desktop location, the location of the "nmods" folder, and the array of base64-encoded defaults
-	2c. MACROSS ignores python scripts if Python3 isn't installed
-	
+	<br>2a. Custom scripts must contain "#_superdimensionfortress" in the first line, and "#_ver " in the second line, or they will be ignored
+	<br>2b. Custom python scripts are always passed 4 arguments by default (see the availableMods function in "validation.ps1"): the logged in user, their desktop location, the location of the "nmods" folder, and the array of base64-encoded defaults
+	<br>2c. MACROSS ignores python scripts if Python3 isn't installed
+<br>
 3. All core variables (when possible) are named beginning "$vf19_" to control cleanup
-	3a. For the same reason, custom variables (when possible) should be named beginning with "$dyrl_"
-	3b. Shared variables that get passed from one script to another for processing include:
+	<br>3a. For the same reason, custom variables (when possible) should be named beginning with "$dyrl_"
+	<br>3b. Shared variables that get passed from one script to another for processing include:
 		$PROTOCULTURE = the thing being investigated (A file, a value, a username, etc)
 		$CALLER = the name of the script calling functions in another
 		$HOWMANY = the number of successful results being tracked between scripts
-		
+<br>		
 4. Files used for enrichment across multiple scripts (xml, json, txt) are kept in the "resources" folder
-	4a. This folder is currently in the MACROSS root folder, but can be placed anywhere you want
-
+	<br>4a. This folder is currently in the MACROSS root folder, but can be placed anywhere you want
+<br>
 5. MACROSS handles many functions common to what your scripts will likely be doing. Some examples:
-
+<br>
 Do you output results to file? The "houseKeeping" function will remind you if old reports exist and delete them for you if you choose. Need your user to specify a document or file to analyze? The "getFile" function will open a dialog for them to quickly select it. Need to see if an odd string can decode from Base64 or hexadecimal, or maybe you want to grab the hash of a file? "getThis" can decode base64 and hex, while "getHash" will give you an md5 or sha256 signature for any file you want. Check out the docs for more --- and use MACROSS to automate your SOC automations!
 
