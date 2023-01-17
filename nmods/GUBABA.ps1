@@ -1,13 +1,22 @@
-﻿#_wut Windows Event ID reference
+#_superdimensionfortress Windows Event ID reference
 #_ver 1.0
 
 <# 
-    
-    Author: HiSurfAdvisory
-    
-    This script requires the file "gubaba.txt" located in the /resources folder.
-    That text file needs to be in whatever directory that gets set as $vf19_TABLES
-    during MACROSS's start up.
+    GUBABA is an offline index of Windows Event IDs. You can perform manual
+    lookups based on keywords or event IDs; however it is really meant to
+    accept input from other scripts (like text parsers) to return Event ID
+    definitions for quick lookups. 
+
+    NOTE 1:
+        This script requires the file "gubaba.txt" located in the /resources folder.
+        That text file needs to be in whatever directory that gets set as $vf19_TABLES
+        during MACROSS's start up.
+
+    NOTE 2:
+        GUBABA does not accept optional eval parameters, it will only lookup the
+        global $PROTOCULTURE value (or the third argument from a python script),
+        which can be an integer (an event ID) or a string.
+
 #>
 
 
@@ -18,15 +27,17 @@ param(
     [Parameter(position = 1)]
     [string]$dyrl_gub_TABLE,
     [Parameter(position = 2)]
-    [string]$PROTOCULTURE
+    $PROTOCULTURE
 )
 
 
+## Gubaba!
 if( ! $PYCALL -or ! $CALLER ){
     transitionSplash 4
 }
 
-function splashPage(){
+## ASCII splashes
+function splashPage1a(){
     cls
     if( ! $PYCALL ){
         disVer 'GUBABA'
@@ -55,6 +66,9 @@ function splashPage(){
 
     '
     }
+}
+function splashPage1b(){
+    ''
     Write-Host -f YELLOW '   ======================================================='
     Write-Host -f CYAN   "              Gubaba (Windows Event Lookups) $VER
     
@@ -63,14 +77,17 @@ function splashPage(){
 
 
 
+
+
 if( $HELP ){
-    splashPage
+    splashPage1a
+    splashPage1b
     disVer 'GUBABA'
     Write-Host -f YELLOW "
                                GUBABA v$VER
     
-    A quick offline reference for researching Windows Security Events by
-    description or ID numbers.
+    A quick offline reference for researching Windows Security Events.
+    You can search by keywords or ID numbers. 
 
     Hit ENTER to continue.
     "
@@ -100,16 +117,23 @@ function idLookup($1){
     elseif( $1 -Match $dyrl_gub_VALIDWD ){
         $a = $dyrl_gub_INDEX.GetEnumerator() | ? {$_.value -Match $1}
         if( $a ){
-            Write-Host -f GREEN "            Events with the keyword " -NoNewline;
-            Write-Host -f CYAN $1 -NoNewline;
-            Write-Host -f GREEN ':
-            '
+
+            ## External scripts likely won't need screen output, they can parse the return themselves.
+            if ( ! $CALLER ){
+                Write-Host -f GREEN "            Events with the keyword " -NoNewline;
+                Write-Host -f CYAN $1 -NoNewline;
+                Write-Host -f GREEN ':
+                '
+            }
+
+
             foreach($i in $a){
                 $eid = $i.Name
                 $eiv = $i.Value
                 Write-Host -f GREEN "    $eid" -NoNewline;
-                Write-Host -f CYAN " - $eiv"
+                Write-Host -f CYAN " ::: $eiv"
             }
+
         }
         else{
                 Write-Host -f YELLOW "      Couldn't find that event keyword!"
@@ -123,7 +147,6 @@ function idLookup($1){
 
 
 
-splashPage
 
 ## Input validation
 $dyrl_gub_VALIDID = [regex]"^[0-9]{1,4}$"
@@ -131,45 +154,64 @@ $dyrl_gub_VALIDWD = [regex]"^[a-zA-Z][a-zA-Z0-9 -]+"
 
 
 if( $PYCALL ){
-    $CALLER = $PYCALL
-    if( Test-Path "$dyrl_gub_TABLE" ){
-        Write-Host -f GREEN "    $CALLER -> GUBABA:"
+    if( ! (Test-Path "$dyrl_gub_TABLE") ){
+        Read-Host '  Error... you did not pass me a file location to build my reference table.'
+        Exit
     }
     else{
-        read-host 'nope'
+        $CALLER = $PYCALL
     }
 }
-elseif( Test-Path "$vf19_TABLES\gubaba.txt" ){
+elseif( Test-Path "$vf19_TABLES\gubaba.txt" ){  ## Check if there is an alternate path to the resources folder
     $dyrl_gub_TABLE = "$vf19_TABLES\gubaba.txt"
 }
-elseif( Test-Path "$vf19_TOOLSROOT\resources\gubaba.txt" ){
+elseif( Test-Path "$vf19_TOOLSROOT\resources\gubaba.txt" ){   ## Check if the resources folder is in MACROSS root
     $dyrl_gub_TABLE = "$vf19_TOOLSROOT\resources\gubaba.txt"
 }
 else{
-    Write-Host -f CYAN "
+    Write-Host -f CYAN '
     ERROR! Cannot find the required lookup table. Exiting...
-    "
-    ss 2
+    '
+    slp 2
     Exit
 }
 
-$dyrl_gub_INDEX = Get-Content -Raw "$dyrl_gub_TABLE" | ConvertFrom-StringData
 
-if( $PROTOCULTURE ){           ## Accept ID or descriptor from other tools to perform lookup
-    idLookup $PROTOCULTURE
-    Write-Host -f GREEN "
-    Hit ENTER to return to $CALLER.
-    "
-    Read-Host
-    Return
+
+if( ! $CALLER ){  ## GUBABA is running by itself, go ahead and throw the splashpage
+    splashPage1a
+    splashPage1b
 }
 
+
+## Collect the list of Event IDs into a lookup table
+$dyrl_gub_INDEX = Get-Content -Raw "$dyrl_gub_TABLE" | ConvertFrom-StringData
+
+
+## Accept ID or descriptor from other MACROSS tools to perform automatic lookups
+if( $PROTOCULTURE ){
+
+    $dyrl_gub_R = idLookup $PROTOCULTURE
+
+    ## Prep an output that the calling python script can parse; it can't natively use the value
+    ## sent back in the Return instruction below.
+    if( $PYCALL ){
+        $dyrl_gub_R | Out-File -Path "$vf19_GBIO\gubaba.eod" -Encoding UTF8 -Append
+    }
+
+    Return $dyrl_gub_R
+}
+
+
+## Perform manual lookups straight from MACROSS console
 while( $dyrl_gub_Z -ne 'q' ){
     $dyrl_gub_Z = $null
     Write-Host ''
-    Write-Host -f GREEN "  What Event ID or keywords are you looking up ("-NoNewline;
-        Write-Host -f YELLOW "q" -NoNewline;
-            Write-Host -f GREEN " to quit)?  " -NoNewline;
-                $dyrl_gub_Z = Read-Host
-    idLookup $dyrl_gub_Z
+    Write-Host -f GREEN '  What Event ID or keywords are you looking up ('-NoNewline;
+    Write-Host -f YELLOW 'q' -NoNewline;
+    Write-Host -f GREEN ' to quit)?  ' -NoNewline;
+    $dyrl_gub_Z = Read-Host
+    if($dyrl_gub_Z -ne 'q'){
+        idLookup $dyrl_gub_Z
+    }
 }
