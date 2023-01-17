@@ -222,8 +222,8 @@ else:
     while Z == '':
         Z = input('''
     Now let's get some input from you. Give me a keyword to search for filenames
-    with, preferably something you know can be found (and you can use '*'
-    wildcards:  ''')
+    with, preferably something you know can be found in your home folders (and you
+    can use '*' wildcards:  ''')
     Z1 = '\'' + Z + '\''
     print('''
                   konig = konig + ''',Z1,'''
