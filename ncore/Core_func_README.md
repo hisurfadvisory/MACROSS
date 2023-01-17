@@ -1,5 +1,6 @@
 ## CUSTOMIZING THE CORE FUNCTIONS FOR YOUR ENVIRONMENT
 
+!!! This document is outdated and being rewritten !!!
 
 <b><u>SETTING DEFAULT VARIABLES</u></b><br>
 TL;DR -- Run the DEMO options from the menu in MACROSS for a quick overview.
