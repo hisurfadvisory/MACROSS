@@ -1,4 +1,4 @@
-﻿## Functions for MACROSS input validations
+## Functions for MACROSS input validations
 
 
 
@@ -204,7 +204,7 @@ $Global:vf19_M = [int[]](($vf19_numchk -split '') -ne '')
 ##  Modify or add your own as necessary
 ################################
 function errMsg($1){
-    if( $1 -eq 1 ){  ## Error check for gethelp functions
+    if( $1 -eq 1 ){  ## Error check for any restrictions you write
         Write-Host ''
         Write-Host -f YELLOW '   You are not in the correct security group. Exiting...
         '
@@ -271,6 +271,7 @@ function setUser(){
         $Global:vf19_GAVIL = $true
     }
     
+    $GLOBAL:USR = 'kamue'
     $Global:vf19_DEFAULTPATH = "C:\Users\$USR\Desktop"  ## You may need to change this desktop path in your environ;
                                                         ## This is used by the scripts to write reports/results to
                                                         ## text outputs when necessary.
