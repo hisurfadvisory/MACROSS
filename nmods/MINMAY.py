@@ -22,7 +22,7 @@ if L > 2:
     MACROSS calls powershell and python tools inter-
     changeably.
 
-    Running MAX by itself will demonstrate reading
+    Running MINMAY by itself will demonstrate reading
     MACROSS' default values for use in your python
     automations & APIs.
 
