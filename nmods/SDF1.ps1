@@ -1,4 +1,4 @@
-﻿#_wut Basic port scanner if nmap is unavailable
+#_superdimensionfortress Basic port scanner if nmap is unavailable
 #_ver 1.8
 <#
     Author: HiSurfAdvisory
