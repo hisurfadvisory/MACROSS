@@ -1,10 +1,13 @@
-#_wut String-search documents
+#_superdimensionfortress String-search documents
 #_ver 3.0
 
 <#
     Author: HiSurfAdvisory
-    ELINT-SEEKER (Automated String Search): Part of the MACROSS blue-team automation framework
-     -- *REQUIRES* being launched from the MACROSS console! --
+    ELINT-SEEKER (Automated String Search): Part of the MACROSS blue-team
+    automation framework
+    
+    
+    -- *REQUIRES* being launched from the MACROSS console! --
 
     Uses Get-Content to search files for user-supplied keywords;
     automatically uncompresses MS Office documents to scan XML files.
@@ -36,13 +39,14 @@
 function splashPage($1){
     cls
     if($1 -eq 'text'){
-    $b = 'ICAgICDilojilojilojilojilojilojilojilZfilojilojilZcgICAgIOKWiOKWiOKVl+KWiOKWiOKWiOKVlyAgIOKWiOKWiOKVl+KWiOKWiOKWiOKW
-    iOKWiOKWiOKWiOKWiOKVlwogICAgIOKWiOKWiOKVlOKVkOKVkOKVkOKVkOKVneKWiOKWiOKVkSAgICAg4paI4paI4pWR4paI4paI4paI4paI4pWXICDilojilo
-    jilZHilZrilZDilZDilojilojilZTilZDilZDilZ0KICAgICDilojilojilojilojilojilZcgIOKWiOKWiOKVkSAgICAg4paI4paI4pWR4paI4paI4pWU4paI
-    4paI4pWXIOKWiOKWiOKVkSAgIOKWiOKWiOKVkSAgIAogICAgIOKWiOKWiOKVlOKVkOKVkOKVnSAg4paI4paI4pWRICAgICDilojilojilZHilojilojilZHilZ
-    rilojilojilZfilojilojilZEgICDilojilojilZEgICAKICAgICDilojilojilojilojilojilojilojilZfilojilojilojilojilojilojilojilZfiloji
-    lojilZHilojilojilZEg4pWa4paI4paI4paI4paI4pWRICAg4paI4paI4pWRICAgCiAgICAg4pWa4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWd4pWa4pWQ4pWQ4pWQ4p
-    WQ4pWQ4pWQ4pWd4pWa4pWQ4pWd4pWa4pWQ4pWdICDilZrilZDilZDilZDilZ0gICDilZrilZDilZ0='
+    $b = 'ICAgICAgICAgICAgICAg4paI4paI4paI4paI4paI4paI4paI4pWX4paI4paI4pWXICAgICDilojilojilZfilojilojilojilZcgICDil
+    ojilojilZfilojilojilojilojilojilojilojilojilZcKICAgICAgICAgICAgICAg4paI4paI4pWU4pWQ4pWQ4pWQ4pWQ4pWd4paI4paI4pWR
+    ICAgICDilojilojilZHilojilojilojilojilZcgIOKWiOKWiOKVkeKVmuKVkOKVkOKWiOKWiOKVlOKVkOKVkOKVnQogICAgICAgICAgICAgICD
+    ilojilojilojilojilojilZcgIOKWiOKWiOKVkSAgICAg4paI4paI4pWR4paI4paI4pWU4paI4paI4pWXIOKWiOKWiOKVkSAgIOKWiOKWiOKVkQ
+    ogICAgICAgICAgICAgICDilojilojilZTilZDilZDilZ0gIOKWiOKWiOKVkSAgICAg4paI4paI4pWR4paI4paI4pWR4pWa4paI4paI4pWX4paI4
+    paI4pWRICAg4paI4paI4pWRCiAgICAgICAgICAgICAgIOKWiOKWiOKWiOKWiOKWiOKWiOKWiOKVl+KWiOKWiOKWiOKWiOKWiOKWiOKWiOKVl+KW
+    iOKWiOKVkeKWiOKWiOKVkSDilZrilojilojilojilojilZEgICDilojilojilZEKICAgICAgICAgICAgICAg4pWa4pWQ4pWQ4pWQ4pWQ4pWQ4pW
+    Q4pWd4pWa4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWd4pWa4pWQ4pWd4pWa4pWQ4pWdICDilZrilZDilZDilZDilZ0gICDilZrilZDilZ0='
     }
     elseif($1 -eq 'img'){
     $b = 'ICAgICAgICAgICAgICAgICAgICAsLuKVkF4iYCAgICAgIOKWhOKWiOKWiOKWiOKWiOKVnCJgIuKVmSrilZDilZMsICAgICAgICAgICAgIC
@@ -82,8 +86,8 @@ function splashPage($1){
     '
     Write-Host -f YELLOW "$vf19_READ
     "
-    Write-Host -f YELLOW '   ============================================================================'
-    Write-Host -f YELLOW '                    ELINT-SEEKER automated string-search'
+    Write-Host -f YELLOW '   =========================================================='
+    Write-Host -f YELLOW '               ELINT-SEEKER automated string-search'
 
 
 }
@@ -150,7 +154,7 @@ function go($1){
 ####################################
 function completeMsg (){
     if( $dyrl_eli_norecord ){
-        Write-Host ''
+        ''
         Write-Host -f GREEN ' Hit ENTER to view ' -NoNewline;
         Write-Host -f YELLOW "$HOWMANY" -NoNewline;
         Write-Host -f GREEN ' string matches.'
@@ -159,7 +163,7 @@ function completeMsg (){
     }
     else{
         cls
-        Write-Host ''
+        ''
         Write-Host -f GREEN ' Search complete!'
         Write-Host -f YELLOW " $HOWMANY" -NoNewLine; 
         Write-Host -f GREEN  ' results for ' -NoNewLine; 
@@ -184,10 +188,11 @@ function completeMsg (){
 ####################################
 function msOffice($1,$2,$3){
     Add-Type -Assembly System.IO.Compression.FileSystem        ## Need to uncompress MSOffice stuff
-    Set-Variable -Name a,n -Option AllScope                    ## Let nested functions control these values
+    Set-Variable -Name a,n,nn -Option AllScope                    ## Let nested functions control these values
     $fn = $1 -replace "^.*\\",''                               ## Cut filepath for display
     $encode = "[^\x00-\x7F]"                                   ## Ignore non-ASCII blocks
     $n = 0                                                     ## Track number of matches PER FILE
+    $nn = 0
     $a = @('')                                                 ## Only care if matches get written to $a
 
     if( $3 -eq 2 ){
@@ -209,6 +214,7 @@ function msOffice($1,$2,$3){
     ## Scan the extracted plaintext for user's keywords
     function keyWordScan($pt){
         $L = 0                                                      ## Count number of lines scanned
+        $size = 0
         Write-Host -f CYAN "   SCANNING $fn"
         $pt |
             %{
@@ -218,20 +224,23 @@ function msOffice($1,$2,$3){
                     $L++
                     if( ! $quit ){
                         if( $_ -cMatch $encode ){                             ## Ignore non-ASCII strings
-                            Write-Host -f GREEN "    Searching line $L..."
+                            <#Write-Host -f GREEN "    Searching $dyrl_eli_BOGEY block $L..."
                         }
-                        else{
+                        else{#>
                             if( $dyrl_eli_CASE -eq 'y' ){   ## If the user specified case-sensitive
                                 if($_ -cMatch "$2"){
                                     $a += $_
+                                    $aabb = $_.Substring(0,25)
                                     $n++
+                                    $nn++
                                     if( $3 -eq 1){
                                         Return
                                     }
-                                    elseif($3 -eq 2){
-                                        Write-Host -f YELLOW " Line $L" -NoNewline;
-                                        Write-Host ":  $_
-                                        "
+                                    else{
+                                        Write-Host -f YELLOW " $dyrl_eli_BOGEY block $L" -NoNewline;
+                                        #Write-Host ":  $aabb
+                                        #"
+                                        slp 2
                                         $Z = go $type
                                         if( $Z -eq 'n' ){
                                             $quit = $true
@@ -241,14 +250,17 @@ function msOffice($1,$2,$3){
                             }
                             elseif($_ -Match "$2"){        ## If case doesn't matter
                                     $a += $_
+                                    $aabb = $_.Substring(0,25)
                                     $n++
+                                    $nn++
                                     if( $3 -eq 1){
                                         Return
                                     }
-                                    elseif($3 -eq 2){
-                                        Write-Host -f YELLOW " Line $L" -NoNewline;
-                                        Write-Host ":  $_
-                                        "
+                                    else{
+                                        Write-Host -f YELLOW " $dyrl_eli_BOGEY block $L" -NoNewline;
+                                        #Write-Host ":  $aabb
+                                        #"
+                                        slp 2
                                         $Z = go $type
                                         if( $Z -eq 'n' ){
                                             $quit = $true
@@ -264,9 +276,13 @@ function msOffice($1,$2,$3){
                     else{
                         Return
                     }
-                }  
+                    
+                } 
+                
             }
+            
         }
+        
 
     ##  Compressed office documents have multiple directories and files;
     ##  Only care about the XML containing document contents
@@ -297,10 +313,10 @@ function msOffice($1,$2,$3){
 
     cls
     if($a.length -gt 1){
-        $matches = $a | where{$_ -ne ''} | Select -Unique  ## Dedup results, remove the placeholder index
+        $strmatches = $a | where{$_ -ne ''} | Select -Unique  ## Dedup results, remove the placeholder index
     }
     Write-Host -f YELLOW "   $fn" -NoNewline;
-    Write-Host -f GREEN ": FOUND $n matches for '$2'
+    Write-Host -f GREEN ": FOUND $nn matches for '$2'
     "
     slp 2
 
@@ -310,9 +326,9 @@ function msOffice($1,$2,$3){
     Remove-Variable -Force a,n
 
 
-    if($matches){
+    if($strmatches){
         cls
-        Return $matches
+        Return $strmatches
     }
     else{
         Return $false
@@ -358,7 +374,7 @@ function fileCopy(){
         
         while( ! $probe ){
             if( $vf19_CB ){   ## Check if GERWALK is available; this gets set in display.ps1
-                Write-host ''
+                ''
                 Write-Host -f GREEN ' Select a file # to research in GERWALK, or Hit ENTER to continue: ' -NoNewline;
                 $mz = Read-Host
 
@@ -410,7 +426,7 @@ function fileCopy(){
     while( $COPYIT -notMatch "^(n|N).*" ){
         
         while( $WRITE ){
-            Write-Host ''
+            ''
             while( $Z -notMatch "[0-9n]{1,4}" ){
                 Write-Host -f GREEN " Enter the # of the file you want to copy, or 'n' to cancel:  " -NoNewline;
                 $Z = Read-Host
@@ -482,8 +498,8 @@ $dyrl_eli_SENSOR2 = @()
 ##   manually enter a filepath or list
 if( ! $RESULTFILE ){
     $dyrl_eli_C2f = $null
-    splashPage 'text'
-    Write-Host ''
+    splashPage 'img'
+    ''
     Write-Host -f GREEN ' ELINTS can search multiple files if you have a list of filepaths in a txt'
     Write-Host -f GREEN ' file. Do you have a txt? Type ' -NoNewLine;
     Write-Host -f YELLOW 'y' -NoNewLine;
@@ -545,14 +561,14 @@ elseif( $RESULTFILE ){
     $GOBACK = $true  ## Avoid issues with CALLER getting set
     $dyrl_eli_FLIST = $RESULTFILE
     $dyrl_eli_TRUNCATE = Split-Path -Path $RESULTFILE -Leaf -Resolve
-    splashPage 'img'
-    Write-Host ''
+    splashPage 'text'
+    ''
 }
 
 
 
 
-Write-Host ''
+''
 Write-Host -f CYAN ' DISCLAIMER: ' -NoNewLine;
 Write-Host -f GREEN 'Depending on your search, this might not be a quick task.
 '
@@ -569,7 +585,7 @@ do{
     # Set the output path and start a counter
     #==============================================================
         if( $dyrl_eli_FLIST ){
-            Write-Host ''
+            ''
             Write-Host -f CYAN " $USR/$CALLER " -NoNewLine;
             Write-Host -f GREEN 'needs to search thru ' -NoNewLine;
             Write-Host -f CYAN "$dyrl_eli_TRUNCATE" -NoNewLine;
@@ -582,10 +598,10 @@ do{
     }
 
     if( $CALLER ){
-        if( $CALLER -eq 'Example script' ){  ## Insert your script name here as needed
+        if( $CALLER -eq 'Example script' ){  ## Insert your script name here as needed to restrict copy/writing tasks
             $dyrl_eli_Z = 's'             ## Some scripts may only needs string-search without filecopy
-            $dyrl_eli_nocopy = $true      ## Do not allow copy for potential sensitive files
-            $dyrl_eli_norecord = $true    ## Do NOT write results to file!!!
+            $dyrl_eli_nocopy = $true      ## Do not allow copy for potential *sensitive* files
+            $dyrl_eli_norecord = $true    ## Do NOT write potentially *sensitive* results to file!!!
         }
         while( $dyrl_eli_Z -notMatch "^(c|s)$" ){
             Write-Host -f GREEN " Are you running a (" -NoNewline;
@@ -618,7 +634,7 @@ do{
 
         ## Keep user from exiting prematurely if they're hitting ENTER during slow actions
         while( $dyrl_eli_Z -ne 'c' ){
-            Write-Host ''
+            ''
             Write-Host -f GREEN " All done. Type 'c' to continue.  " -NoNewline;
             $dyrl_eli_Z = Read-Host
         }
@@ -652,7 +668,7 @@ do{
         Write-Host -f GREEN ')  ' -NoNewLine; 
         $dyrl_eli_CASE = Read-Host
 
-        Write-Host ''
+        ''
 
 
         ## Search queries change based on case-sensitivity
@@ -770,7 +786,7 @@ do{
         elseif( $dyrl_eli_SINGLE ){
             $Script:dyrl_eli_BOGEY = Split-Path -Path "$dyrl_eli_PATH" -Leaf -Resolve
             $dyrl_eli_Z1 = $null
-            Write-Host ''
+            ''
             if( $dyrl_eli_PATH -Match "(docx|xlsx|pptx)$" ){
                 $dyrl_eli_setCase = msOffice $dyrl_eli_PATH $dyrl_eli_TARGET 2
             }
@@ -799,7 +815,7 @@ do{
             }
         }
 
-        Write-Host ''
+        ''
         completeMsg
     
         ## Offer to copy files
@@ -813,6 +829,8 @@ do{
 
         ## Offer to perform new search on same files
         while( $dyrl_eli_YN -notMatch "^(y|n)" ){
+            Write-Host '
+            '
             Write-Host -f GREEN " Do you want to search the same file(s) for a different string?  " -NoNewLine;
                 $dyrl_eli_Z = Read-Host
 
@@ -840,7 +858,7 @@ do{
 
 
 if( $GOBACK ){
-    Write-Host ''
+    ''
     Write-Host -f GREEN " Hit ENTER to return to " -NoNewLine;
     Write-Host -f CYAN "$CALLER"
     Read-Host
