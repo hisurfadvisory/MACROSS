@@ -1,4 +1,4 @@
-<img src="https://raw.githubusercontent.com/hisurfadvisory/MACROSS/main/scr.PNG">
+<img src="https://raw.githubusercontent.com/hisurfadvisory/MACROSS/main/mscr.PNG">
 
 # MACROSS
 Powershell framework for interweaving Powershell and Python API automations for blueteams
