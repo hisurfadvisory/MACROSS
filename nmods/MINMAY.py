@@ -100,8 +100,10 @@ Z0gIOKVmuKVkOKVnSAgIOKVmuKVkOKVnSA='
 if USR == 'HELP':
     splashPage()
     print('''
-    This is a python script to help HIKARU show you how to integrate your python
-    automations into MACROSS.
+    This is a python demo that has you input a filename to
+    search for using the KONIG powershell script. It breaks
+    down how the MACROSS framework makes it easy to have
+    powershell and python tools work together seamlessly.
 
     Hit ENTER to return.
     ''')
