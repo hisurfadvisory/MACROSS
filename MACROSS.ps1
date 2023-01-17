@@ -206,6 +206,7 @@ getThis $vf19_TOOLSOPT['nre']
 $Global:vf19_REPO = $vf19_READ       ## This sets the main repo for MACROSS that users can pull updates from
 getThis $vf19_TOOLSOPT['tbl']
 $Global:vf19_TABLES = $vf19_READ     ## This sets the location of txt/xml files used for your custom scripts
+				     ## (currently points to 'resources' in the MACROSS root folder)
 
 
 $vf19_VERSION = Get-Content "$vf19_TOOLSROOT\MACROSS.ps1" | Select -Index 1
