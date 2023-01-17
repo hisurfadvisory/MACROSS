@@ -22,11 +22,9 @@ if L > 2:
     MACROSS calls powershell and python tools inter-
     changeably.
 
-    If you run the HIKARU script from MACROSS, it will
-    demonstrate using variables between the GUBABA script,
-    KÖNIG, and this one. Running MAX by itself will simply
-    demonstrate reading MACROSS' default values for
-    use in your python automations & APIs.
+    Running MAX by itself will demonstrate reading
+    MACROSS' default values for use in your python
+    automations & APIs.
 
     Hit ENTER to continue.""")
         input()
