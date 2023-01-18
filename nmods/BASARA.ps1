@@ -96,7 +96,7 @@ if( $vf19_OPT1 ){
     Return
 }
 if( $CALLER ){
-    if( $NOPROTO ){
+    if( $dyrl_hik_NOPROTO ){
         $dyrl_hik_v = $dyrl_hik_NOPROTO
     }
     elseif($PROTOCULTURE){
