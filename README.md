@@ -23,19 +23,19 @@ FRAMEWORK RULES (modify however works best for you):
 	<br>1b. The ncore folder also contains subfolder "py_classes". This folder contains the MACROSS python library "mcdefs.py", and a subfolder called "garbage_io". MACROSS powershell scripts should contain a function that will write values to plaintext "*.eod" files  in garbage_io, so that python scripts can read them. See the "pyCross" function in the utility.ps1 file. 
 <br>
 2. Custom automation scripts are kept in the "nmods" folder
-	<br>2a. Custom scripts must contain "#_superdimensionfortress" in the first line, and "#_ver " in the second line, or they will be ignored
-	<br>2b. Custom python scripts are always passed 4 arguments by default (see the availableMods function in "validation.ps1"): the logged in user, their desktop location, the location of the "nmods" folder, and the array of base64-encoded defaults
-	<br>2c. MACROSS ignores python scripts if Python3 isn't installed
+	&nbsp;&nbsp;<br>2a. Custom scripts must contain "#_superdimensionfortress" in the first line, "#_ver " in the second line, and "#_class " in the third line, or they will be ignored. Please review the \ncore\classes.ps1 file to see what kind of attributes need to be placed in the #_class line.
+	&nbsp;&nbsp;<br>2b. Custom python scripts are always passed 6 arguments by default (see the availableMods function in "validation.ps1") so that they can share MACROSS' default values.
+	&nbsp;&nbsp;<br>2c. MACROSS ignores python scripts if Python3 isn't installed
 <br>
 3. All core variables (when possible) are named beginning "$vf19_" to control cleanup
-	<br>3a. For the same reason, custom variables (when possible) should be named beginning with "$dyrl_"
-	<br>3b. Shared variables that get passed from one script to another for processing include:
-		$PROTOCULTURE = the thing being investigated (A file, a value, a username, etc)
-		$CALLER = the name of the script calling functions in another
-		$HOWMANY = the number of successful results being tracked between scripts
+	&nbsp;&nbsp;<br>3a. For the same reason, custom variables (when possible) should be named beginning with "$dyrl_"
+	&nbsp;&nbsp;<br>3b. Shared variables that get passed from one script to another for processing include:
+		&nbsp;&nbsp;&nbsp;&nbsp;$PROTOCULTURE = the thing being investigated (A file, a value, a username, etc)
+		&nbsp;&nbsp;&nbsp;&nbsp;$CALLER = the name of the script calling functions in another
+		&nbsp;&nbsp;&nbsp;&nbsp;$HOWMANY = the number of successful results being tracked between scripts
 <br>		
 4. Files used for enrichment across multiple scripts (xml, json, txt) are kept in the "resources" folder
-	<br>4a. This folder is currently in the MACROSS root folder, but can be placed anywhere you want
+	&nbsp;&nbsp;<br>4a. This folder is currently in the MACROSS root folder, but can be placed anywhere you want
 <br>
 5. MACROSS handles many functions common to what your scripts will likely be doing. Some examples:
 <br>
