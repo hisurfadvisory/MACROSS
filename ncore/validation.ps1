@@ -264,14 +264,30 @@ function setUser(){
     $Global:vf19_USRCHK = $USR                ## Set this check in case another script changes $USR
 
     try{
-        $priv = Get-ADUser -Filter "samAccountName -eq $USR"
-        Remove-Variable $priv
+        $priv = Get-ADUser -Filter * -Properties * | where{$_.samAccountName -eq $USR}
+
+        <# TWEAK & UNCOMMENT THIS SECTION TO FUTHER ID YOUR USERS FOR SPECIAL FUNCTIONS
+        if($priv | where{$_.member -like "*cyber**}){
+            
+            Global:vf19_tier1 = $true
+            ## Or... create randomly generated keys as identifiers for each session
+            #$Global:vf19_tier1 = $(Get-Random -min 999999999 -max 9999999999) 
+             
+        }
+        elseif($priv | where{$_.member -like "*sooper cyber**}){
+            $Global:vf19_tier1 = $true
+            #$Global:vf19_tier3 = $(Get-Random -min 999999999 -max 9999999999)
+        }
+        #>
+
+        Remove-Variable priv
     }
     catch{
-        $Global:vf19_GAVIL = $true
+        $Global:vf19_GAVIL = $true  ## Tag the user as a non-admin lesser being
     }
+
+
     
-    $GLOBAL:USR = 'kamue'
     $Global:vf19_DEFAULTPATH = "C:\Users\$USR\Desktop"  ## You may need to change this desktop path in your environ;
                                                         ## This is used by the scripts to write reports/results to
                                                         ## text outputs when necessary.
@@ -467,7 +483,7 @@ function availableMods($1){
                 if($MODULE -Match "py$"){  # MACROSS already checked for python install, ignores if $MONTY is $false
                     cls
                     if($HELP){
-                        python3 "$vf19_TOOLSDIR\$MODULE" 'HELP'
+                        python3 "$vf19_TOOLSDIR\$MODULE" 'HELP' '' '' '' $vf19_pylib
                     }
                     else{
                         ## Always send 6 default args for all python scripts to make use of:
