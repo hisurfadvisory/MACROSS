@@ -1,7 +1,7 @@
 <img src="https://raw.githubusercontent.com/hisurfadvisory/MACROSS/main/mscr.PNG">
 
 # MACROSS
-Powershell framework for interweaving Powershell and Python API automations for blueteams
+Powershell framework aimed at interweaving Powershell and Python API automations for blueteams
 
 TL;DR -- A "no-command-line-necessary" powershell menu to link multiple automation scripts together for blue-team investigators. When you run MACROSS for the first time, select the option for 'DEMO' to get a quick walkthru on configuring your defaults.
 
