@@ -251,7 +251,6 @@ function msOffice($1,$2,$3){
                                         Write-Host -f YELLOW " $dyrl_eli_BOGEY block $L"
                                         #Write-Host ":  $aabb
                                         #"
-                                        slp 2
                                         $Z = go $type
                                         if( $Z -eq 'n' ){
                                             $quit = $true
@@ -271,7 +270,6 @@ function msOffice($1,$2,$3){
                                         Write-Host -f YELLOW " $dyrl_eli_BOGEY block $L"
                                         #Write-Host ":  $aabb
                                         #"
-                                        slp 2
                                         $Z = go $type
                                         if( $Z -eq 'n' ){
                                             $quit = $true
@@ -783,7 +781,6 @@ do{
                     Write-Host -f YELLOW " $dyrl_eli_BOGEY" -NoNewline;
                     Write-Host ": $HOWMANY MATCHES FOUND ($dyrl_eli_CTR/$dyrl_eli_NUMF files)"
                     
-                    slp 2
 
                 }
                 else{
