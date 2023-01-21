@@ -30,9 +30,9 @@ FRAMEWORK RULES (modify however works best for you):
 3. All core variables (when possible) are named beginning "$vf19_" to control cleanup
 	&nbsp;&nbsp;<br>3a. For the same reason, custom variables (when possible) should be named beginning with "$dyrl_"
 	&nbsp;&nbsp;<br>3b. Shared variables that get passed from one script to another for processing include:
-		&nbsp;&nbsp;&nbsp;&nbsp;$PROTOCULTURE = the thing being investigated (A file, a value, a username, etc)
-		&nbsp;&nbsp;&nbsp;&nbsp;$CALLER = the name of the script calling functions in another
-		&nbsp;&nbsp;&nbsp;&nbsp;$HOWMANY = the number of successful results being tracked between scripts
+		&nbsp;&nbsp;&nbsp;&nbsp;<br>$PROTOCULTURE = the thing being investigated (A file, a value, a username, etc)
+		&nbsp;&nbsp;&nbsp;&nbsp;<br>$CALLER = the name of the script calling functions in another
+		&nbsp;&nbsp;&nbsp;&nbsp;<br>$HOWMANY = the number of successful results being tracked between scripts
 <br>		
 4. Files used for enrichment across multiple scripts (xml, json, txt) are kept in the "resources" folder
 	&nbsp;&nbsp;<br>4a. This folder is currently in the MACROSS root folder, but can be placed anywhere you want
