@@ -1,5 +1,5 @@
-﻿#_superdimensionfortress String-search documents
-#_ver 3.0
+#_superdimensionfortress String-search documents
+#_ver 3.1
 #_class User,File_string_search,Powershell,HiSurfAdvisory,1
 
 <#
@@ -121,8 +121,8 @@ if( $HELP ){
   script with sus' strings in it, or a pdf with sus' code? Copy it to your desktop and
   get forensicating! 
 
-  When you are scanning a single file from manual selection, ELINTS will display every instance
-  of a match --not just the first one-- so you can get some context.
+  When you are scanning a single file from manual selection, ELINTS will display every
+  instance of a match --not just the first one-- so you can get some context.
  
 
   Hit ENTER to return.
@@ -170,8 +170,12 @@ function completeMsg (){
         Write-Host -f YELLOW "$dyrl_eli_TARGET" -NoNewLine; 
         Write-Host -f GREEN ' have been appended to ' -NoNewLine; 
         Write-Host -f CYAN 'strings-found.txt' -NoNewLine; 
-        Write-Host -f GREEN ' on your Desktop.
-    
+        Write-Host -f GREEN ' on your Desktop.'
+        if($dyrl_eli_VBA -gt 0){
+            ''
+            Write-Host -f YELLOW ' VBA scriptnames were detected and also recorded to strings-found.txt'
+        }
+        Write-Host '
         '
     }
 }
@@ -194,6 +198,7 @@ function msOffice($1,$2,$3){
     $n = 0                                                     ## Track number of matches PER FILE
     $nn = 0
     $a = @('')                                                 ## Only care if matches get written to $a
+    $Script:dyrl_eli_VBA = 0                                   ## Count of any vba scripts found
 
     if( $3 -eq 2 ){
         Write-Host -f GREEN " Type 'p' if you want to pause after every match, otherwise hit ENTER: " -NoNewline;
@@ -212,25 +217,31 @@ function msOffice($1,$2,$3){
 
 
     ## Scan the extracted plaintext for user's keywords
-    function keyWordScan($pt){
+    function keyWordScan($pt,$macroname){
         $L = 0                                                      ## Count number of lines scanned
         $size = 0
         Write-Host -f CYAN "   SCANNING $fn"
         $pt |
-            %{
-                $b = $_ -replace "<.*?>","`n" -split("`n")          ## Remove office/xml tags, then ignore empty lines
+            %{  
+                if($macroname -eq 'notvba'){
+                    $b = $_ -replace "<.*?>","`n" -split("`n")          ## Remove office/xml tags, then ignore empty lines
+                }
+                else{
+                    $b = $_ -replace "<.*$macroname"                    ## Look for the line with the macro name
+                    $b >> $dyrl_eli_intelpkg
+                    '' >> $dyrl_eli_intelpkg
+                    '' >> $dyrl_eli_intelpkg
+                    Return
+                }
                 $b | where{ $_ -ne ''} |
                 %{
                     $L++
                     if( ! $quit ){
-                        if( $_ -cMatch $encode ){                             ## Ignore non-ASCII strings
-                            <#Write-Host -f GREEN "    Searching $dyrl_eli_BOGEY block $L..."
-                        }
-                        else{#>
+                        if( !($_ -cMatch $encode) ){                     ## Ignore non-ASCII strings
                             if( $dyrl_eli_CASE -eq 'y' ){   ## If the user specified case-sensitive
                                 if($_ -cMatch "$2"){
                                     $a += $_
-                                    $aabb = $_.Substring(0,25)
+                                    $aabb = $_.Substring(0,25)  ## Truncate the string to < 26 chars
                                     $n++
                                     $nn++
                                     if( $3 -eq 1){
@@ -289,25 +300,24 @@ function msOffice($1,$2,$3){
     $doc = [IO.Compression.ZipFile]::OpenRead("$1")
 
     ## Excel contents are *typically* in "xl\worksheets\Sheet[0-9].xml" and ".\sharedStrings.xml" paths,
-    ## but we'll search the whole thing anyway
-    if("$1" -Match "(xls|ppt)x$"){
+    ## and MSWord contents are in the Document.xml... but we'll search the whole thing anyway
+    if("$1" -Match "(doc|xls|ppt)(m|x)$"){
         $doc.Entries |
             Where-Object{
                 $_.Name -Match "\.xml$"
-            } |
-                %{
-                    $PLAINTEXT = grabXML $_
-                    keyWordScan $PLAINTEXT
+            } | %{
+                if($_.name -Match "^vba"){
+                    $Script:dyrl_eli_VBA++
+                    'VBA Script found: ' >> $dyrl_eli_intelpkg
+                    '' >> $dyrl_eli_intelpkg
+                    $PLAINTEXT = grabXML $_ 
+                    keyWordScan $PLAINTEXT 'wne:macroName=' ## uncompressed file has VBA info
                 }
-    }
-    ##  MS Word contents are in "word\Document.xml" path
-    elseif("$1" -Match "docx$"){
-        $CONTENTS = $doc.Entries |
-        Where-Object{
-            $_.Name -Match "Document\.xml$"
-        }
-        $PLAINTEXT = grabXML $CONTENTS
-        keyWordScan $PLAINTEXT
+                else{
+                    $PLAINTEXT = grabXML $_
+                    keyWordScan $PLAINTEXT 'notvba'
+                }
+            }
     }
 
 
@@ -441,7 +451,7 @@ function fileCopy(){
                 $COPYFROM = $dyrl_eli_SENSOR2[$Z]
                 $dyrl_eli_j = $COPYFROM -replace("^.*\\",'')
 
-                Write-Host -f GREEN " Clenching..."
+                Write-Host -f GREEN " Copy..."
                 slp 2
 
                 try{
@@ -718,7 +728,7 @@ do{
                 $dyrl_eli_FSIZE = [string]::Format("{0:n2} MB", ((Get-ChildItem -Path $dyrl_eli_RADARCONTACT).length) / 1MB)
 
                 ## Determine scan method
-                if( $dyrl_eli_RADARCONTACT -Match "(docx|xlsx|pptx)$" ){
+                if( $dyrl_eli_RADARCONTACT -Match "(doc|xls|ppt)(m|x)$" ){
                     $dyrl_eli_CONVSTR = msOffice $dyrl_eli_RADARCONTACT $dyrl_eli_TARGET 1
                 }
                 else{
@@ -737,8 +747,8 @@ do{
                     }
 
                     ## Keep the strings under 100 chars for the screen;
-                    ## the msOffice function returns array of strings so
-                    ## need to iterate each item excluding the first one
+                    ## the msOffice function returns an array of strings so
+                    ## we need to iterate each item excluding the first one
                     if( $dyrl_eli_CONVSTR.GetType().BaseType.Name -eq 'Array'){
                         $dyrl_eli_CONVSTR | %{
                             $Global:HOWMANY++                       ## track the no. search hits
@@ -787,7 +797,7 @@ do{
             $Script:dyrl_eli_BOGEY = Split-Path -Path "$dyrl_eli_PATH" -Leaf -Resolve
             $dyrl_eli_Z1 = $null
             ''
-            if( $dyrl_eli_PATH -Match "(docx|xlsx|pptx)$" ){
+            if( $dyrl_eli_PATH -Match "(doc|xls|ppt)(m|x)$" ){
                 $dyrl_eli_setCase = msOffice $dyrl_eli_PATH $dyrl_eli_TARGET 2
             }
             else{
@@ -802,7 +812,7 @@ do{
                     Write-Host -f CYAN '   MATCH: ' -NoNewline;
                     Write-Host "$dyrl_eli_i
                     "
-                    if( ! $dyrl_eli_norecord ){
+                    if( ! $dyrl_eli_norecord ){ ## Only write to file if $norecord isn't set
                         $dyrl_eli_PATH |  Out-File -FilePath $dyrl_eli_intelpkg -Append
                         $dyrl_eli_i | Out-File -FilePath $dyrl_eli_intelpkg -Append
                     }
