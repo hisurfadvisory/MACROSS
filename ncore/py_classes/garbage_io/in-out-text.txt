@@ -1,1 +1,2 @@
-## This directory is purely for passing powershell values into python when necessary. MACROSS scripts write values to *.eod files, and this directory gets cleaned out both at MACROSS's start time, and when it exits.
+## This directory is purely for passing powershell values into python when necessary. MACROSS scripts write values to *.eod files,
+and this directory gets cleaned out both at MACROSS's start time, and when it exits.
