@@ -38,9 +38,9 @@ your <i>$vf19_MPOD</i>['key']. The decoded string is written to <i>$vf19_READ</i
 <b><u>DECODING STORED VALUES</u></b><br>
 The <b>getThis</b> function doesn't disappear after startup, it can continue decoding Base64 and Hexadecimal for you as long as MACROSS is running. The decoded plaintext gets written to <i>$vf19_READ</i> which you must store as something else before using <b>getThis</b> again:<br><br>
 
-    getThis $b64_value<br>
-    $myVar = $vf19_READ<br>
-    
+    getThis $b64_value
+    $myVar = $vf19_READ
+<br>    
 Call it with '1' as a second parameter if you're decoding hex:<br><br>
 
     getThis $hex_value 1
