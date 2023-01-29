@@ -38,8 +38,10 @@ FRAMEWORK RULES (modify however works best for you):
 4. Files used for enrichment across multiple scripts (xml, json, txt) are kept in the "resources" folder
 	<br>&emsp;4a. This folder is currently in the MACROSS root folder, but can be placed anywhere you want
 <br>
-5. At the top of the utility.ps1 file, you'll find a block of base64 encoded strings. These are default values used for MACROSS and its scripts. Changing or adding your own defaults involves base64-encoding your value and adding a three-letter ID to the front of it, and separating each value with "@@@". At startup, MACROSS will strip the "@@@" delimiters, and create a hashtable ($vf19_MPOD) of your values using the three-letter ID as an index so that you can grab and decode them as needed.<br>
-<br>&emsp;&emsp;Example:  getThis $vf19MPOD['abc']  &emsp;## This will decode the value you've tagged as "abc" and store it as $vf19_READ
+5. At the top of the utility.ps1 file, you'll find a block of base64 encoded strings. These are default values used for MACROSS and its scripts. Changing or adding your own defaults involves base64-encoding your value and adding a three-letter ID to the front of it, and separating each value with "@@@". At startup, MACROSS will strip the "@@@" delimiters, and create a hashtable ($vf19_MPOD) of your values using the three-letter ID as an index so that you can grab and decode them as needed.  Example:<br><br>
+
+&emsp; `getThis $vf19MPOD['abc'] # This will decode the value you've tagged as "abc" and store it as $vf19_READ`
+
 <br>
 <br>
 6. MACROSS handles many functions common to what your scripts will likely be doing. Some examples:
