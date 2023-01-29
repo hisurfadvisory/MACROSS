@@ -143,9 +143,9 @@ To further customize and modify these core functions to your liking, see the com
 	&emsp;<b>A.</b> toolCount() = This function counts the number of scripts in the local nmods folder vs. the number in the master repository (you set this
 	this location in the utility.ps1 file). It then reads the first three lines of each script to get its attributes, and uses that info to create macross objects that get stored in the $vf19_ATTS hashtable, with the scriptnames as the index keys.<br>
 	The first three lines of your script MUST contain:<br>
-	&emsp;&emsp;#_superdimensionfortress &emsp;"This is a brief description of the tool"<br>
-	&emsp;&emsp;#_ver &emsp;1.0<br>
-	&emsp;&emsp;#_class &emsp;comma,separated,attributes,for,your,script (see the classes.ps1 file)<br>
+	&emsp;&emsp;#\_superdimensionfortress &emsp;"This is a brief description of the tool"<br>
+	&emsp;&emsp;#\_ver &emsp;1.0<br>
+	&emsp;&emsp;#\_class &emsp;comma,separated,attributes,for,your,script (see the classes.ps1 file)<br>
 	&emsp;<b>B.</b> look4New() = If the local count is higher, the update functions will be disabled to avoid problems. If the master count is higher, the dlNew() function will be used to automatically download the scripts that the user is missing.<br>
 	&emsp;<b>C.</b> dlNew() = This function gets called when new scripts or newer versions are available, or if the user wants to pull fresh copies from
 	the master repo.<br>
@@ -163,9 +163,9 @@ To further customize and modify these core functions to your liking, see the com
 	&emsp;<b>D.</b> getHash() = accepts a filepath and the hash method (md5 or sha256), and returns the hash for
 	you.<br>
 	    &emsp;&emsp;Usage:  &emsp;$var = getHash $filepath 'md5'<br>
-	&emsp;<b>E.</b> getFile() = Your script can use this to open a dialog box for users to select a file. Pass an optional arguemt to apply a type-filter to the dialog, e.g. "Microsoft Excel Worksheet (.xlsx) | *.xlsx"<br>
+	&emsp;<b>E.</b> getFile() = Your script can use this to open a dialog box for users to select a file. Pass an optional arguemt to apply a type-filter to the dialog, e.g. "Microsoft Excel Worksheet (.xlsx) | .xlsx" to only let users select Excel files.<br>
 	&emsp;<b>F.</b> houseKeeping() = If your scripts generate file outputs, call this function to offers users the option to delete any or all of these files when they are no longer needed.<br>
-	   &emsp;&emsp;Usage:  &nbsp;&nbsp;houseKeeping $filepath 'myscriptname'<br>
+	   &emsp;&emsp;Usage:  &emsp;houseKeeping $filepath 'myscriptname'<br>
 	&emsp;<b>G.</b> cleanGBIO() = The "garbage_io" folder inside of "py_classes" uses .eod files to share info from powershell to python. This function ensures the directory gets cleaned out before and after every session. This is a temp fix until the mcdefs library can read-in powershell outputs by default.<br>
 	&emsp;<b>H.</b> pyCross() = This is the function your powershell scripts need to call if passing info *back to* a calling python script. Outputs are written to .eod files.
 	<br><br>
