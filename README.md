@@ -11,7 +11,7 @@ The purpose of this framework is to make automation tasks available to everyone 
 
 DISCLAIMER: I'm a bash junkie, but Windows is what I work on in most corporate environments, and this project originally started as a way simplify my most common investigation queries. While I am experienced in a few scripting languages, I am NOT a powershell expert. I'm sure there's tons of optimizations that could be done to this framework.
 
-MACROSS came about because I realized that all of the scripts I was writing to gather information during investigations were usually related -- look up AD info in a host > find out who's logged in > what was that file they just downloaded? > Let's string search that docx file for some macros...
+MACROSS came about because I realized that all of the scripts I was writing to gather information during investigations were usually related -- look up AD info in a host > find out who's logged in > what was that file they just downloaded? > Let's string search that document file for some macros...
 
 Eventually I created a single front-end to handle doing all of these queries in whatever sequence I needed.
 
@@ -23,23 +23,23 @@ FRAMEWORK RULES (modify however works best for you):
 	<br>1b. The ncore folder also contains subfolder "py_classes". This folder contains the MACROSS python library "mcdefs.py", and a subfolder called "garbage_io". MACROSS powershell scripts should contain a function that will write values to plaintext "*.eod" files  in garbage_io, so that python scripts can read them. See the "pyCross" function in the utility.ps1 file. 
 <br>
 2. Custom automation scripts are kept in the "nmods" folder
-	<br>&nbsp;&nbsp;2a. Custom scripts must contain "#_superdimensionfortress" in the first line, "#_ver " in the second line, and "#_class " in the third line, or they will be ignored. The first line is where you'll write a brief description of your script, which gets displayed in the MACROSS menu. The second line is the version number. For the third line with "#_class", please review the \ncore\classes.ps1 file to see what kind of attributes need to be placed there. 
-	<br>&nbsp;&nbsp;2b. Custom python scripts are always passed 6 arguments by default (see the availableMods function in "validation.ps1") so that they can share MACROSS' default values.
-	<br>&nbsp;&nbsp;2c. MACROSS ignores python scripts if Python3 isn't installed
+	<br>&emsp;2a. Custom scripts must contain "#_superdimensionfortress" in the first line, "#_ver " in the second line, and "#_class " in the third line, or they will be ignored. The first line is where you'll write a brief description of your script, which gets displayed in the MACROSS menu. The second line is the version number. For the third line with "#_class", please review the \ncore\classes.ps1 file to see what kind of attributes need to be placed there. 
+	<br>&emsp;2b. Custom python scripts are always passed 6 arguments by default (see the availableMods function in "validation.ps1") so that they can share MACROSS' default values.
+	<br>&emsp;2c. MACROSS ignores python scripts if Python3 isn't installed
 <br>
 3. All core variables (when possible) are named beginning "$vf19_" to control cleanup
-	<br>&nbsp;&nbsp;3a. For the same reason, custom variables (when possible) should be named beginning with "$dyrl_"
-	<br>&nbsp;&nbsp;3b. Shared variables that get passed from one script to another for processing include:
-		<br>&nbsp;&nbsp;&nbsp;&nbsp;$PROTOCULTURE = the thing being investigated (A file, a value, a username, etc)
-		<br>&nbsp;&nbsp;&nbsp;&nbsp;$CALLER = the name of the script calling functions in another
-		<br>&nbsp;&nbsp;&nbsp;&nbsp;$HOWMANY = the number of successful results being tracked between scripts
-		<br>&nbsp;&nbsp;&nbsp;&nbsp;$RESULTFILE = the path to any output your script generates that can be processed by another script
+	<br>&emsp;3a. For the same reason, custom variables (when possible) should be named beginning with "$dyrl_"
+	<br>&emsp;3b. Shared variables that get passed from one script to another for processing include:
+		<br>&emsp;&emsp;$PROTOCULTURE = the thing being investigated (A file, a value, a username, etc)
+		<br>&emsp;&emsp;$CALLER = the name of the script calling functions in another
+		<br>&emsp;&emsp;$HOWMANY = the number of successful results being tracked between scripts
+		<br>&emsp;&emsp;$RESULTFILE = the path to any output your script generates that can be processed by another script
 <br>		
 4. Files used for enrichment across multiple scripts (xml, json, txt) are kept in the "resources" folder
-	<br>&nbsp;&nbsp;4a. This folder is currently in the MACROSS root folder, but can be placed anywhere you want
+	<br>&emsp;4a. This folder is currently in the MACROSS root folder, but can be placed anywhere you want
 <br>
 5. At the top of the utility.ps1 file, you'll find a block of base64 encoded strings. These are default values used for MACROSS and its scripts. Changing or adding your own defaults involves base64-encoding your value and adding a three-letter ID to the front of it, and separating each value with "@@@". At startup, MACROSS will strip the "@@@" delimiters, and create a hashtable ($vf19_MPOD) of your values using the three-letter ID as an index so that you can grab and decode them as needed.<br>
-<br>&nbsp;&nbsp;&nbsp;&nbsp;Example:  getThis $vf19MPOD['abc']  &nbsp;&nbsp;## This will decode the value you've tagged as "abc" and store it as $vf19_READ
+<br>&emsp;&emsp;Example:  getThis $vf19MPOD['abc']  &emsp;## This will decode the value you've tagged as "abc" and store it as $vf19_READ
 <br>
 <br>
 6. MACROSS handles many functions common to what your scripts will likely be doing. Some examples:
