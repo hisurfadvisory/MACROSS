@@ -92,21 +92,33 @@ To further customize and modify these core functions to your liking, see the com
 	Leave the second param empty if decoding base64; if you are decoding hexadecimal you must pass it a '1' as your
 	second param. The decoded value gets stored as <i>$vf19_READ</i>. Alternatively, if you pass a plaintext string as
 	your first parameter, with '0' as your second param, getThis() will write a Base64-encoded value to <i>$vf19_READ</i>.<br>
-	&emsp;&emsp;Usage:   <i>getThis $base64_string; write-host $vf19_READ</i><br>
-	&emsp;&emsp;OR<br>
-	&emsp;&emsp;Hex usage:   <i>getThis $hex_string 1; write-host $vf19_READ</i><br>
+	
+	getThis $base64_string
+	write-host $vf19_READ
+	
+	getThis $hex_string 1
+	write-host $vf19_READ
+	
 <br>
 	&emsp;<b>C.</b> SJW() = This function checks the user's privilege, which is determined in the setUser() function. Call it from your scripts to automatically alert MACROSS users that they may not have the required privilege to continue.<br>
 	&emsp;Usage:<br>
-	&emsp;&emsp;<i>SJW 'pass'</i>  &nbsp;&nbsp;## Notifies user some functions will not work<br>
-	&emsp;&emsp;<i>SJW 'deny</i>  &nbsp;&nbsp;## Notifies user they need elevated privileges, then kills the script<br>
+	
+	SJW 'pass'  # Notifies user some functions will not work
+	SJW 'deny  # Notifies user they need elevated privileges, then kills the script
+	
 <br>
 	&emsp;<b>D.</b> $vf19_M = This takes the $vf19_numchk value from MACROSS.ps1, and splits into 6 individual integers that can be used for mathing.<br>
-	&emsp;&emsp;Example usage:  <i>$var = $vf19_M[2] + $vf19_M[0]</i><br>
+	&emsp;&emsp;Example usage:
+	
+	$var = $vf19_M[2] + $vf19_M[0]
+	
 <br>
 	&emsp;<b>E.</b> errMsg() = This function contains various error messages that can be reused across scripts. Change or add new messages however you
 	need.<br>
-	&emsp;&emsp;Usage:  <i>errMsg 3</i>  &nbsp;&nbsp;## Displays whichever message is in the third slot<br>
+	&emsp;&emsp;Usage:
+	
+	errMsg 3 # Displays whichever message is in the third slot
+	
 <br>
 	&emsp;<b>F.</b> setUser() = Attempts two different methods to set the logged in user as global $USR. If the system or active-directory method fails, it will default to using "whoami" and also set the global value $vf19_GAVIL, which tells all the MACROSS scripts that the user does not have elevated privilege. This way you can write checks to avoid loading different functions unnecessarily.<br>
 <br>
@@ -128,7 +140,10 @@ To further customize and modify these core functions to your liking, see the com
 	&emsp;&emsp;8. the $PROTOCULTURE value being evaluated<br>
 	&emsp;&emsp;9. (optional) the $eNM value being evaluated<br>
 	<br>
-	&emsp;&emsp;Usage: <i>collab 'Otherscript.ps1' 'Myscript' $var0</i>  ## Calls Otherscript.ps1, tells it 'Myscript' is sending $var0 for evaluation<br>
+	&emsp;&emsp;Usage:
+	
+	collab 'Otherscript.ps1' 'Myscript' $var0 # Calls Otherscript.ps1, tells it 'Myscript' is sending $var0 for evaluation
+	
 <br>
 	&emsp;<b>J.</b> availableMods() = When a user selects a script from the MACROSS menu, the chooseMods() function sends their selection to availableMods()
 	where the filepath to the script gets verified, along with the script version using the verChk() function (see the
@@ -186,9 +201,15 @@ To further customize and modify these core functions to your liking, see the com
 This is used for:<br>
 	&emsp;&emsp;-controlling which scripts get pushed to your analysts when you are using a master repository to centrally store MACROSS<br>
 	&emsp;&emsp;-allowing you to write functions that automatically know what scripts can accept what types of values for auto-evaluating:<br>
-	&emsp;&emsp;(for example, <i><b>$vf19_ATTS | where{$_.valtype -eq 'json'}</b></i> might be used to autoquery scripts that work with JSON files).<br>
+	&emsp;&emsp;for example,
 	
-
+	$vf19_ATTS | where{$_.valtype -like '*json*'}
+	
+&emsp;&emsp;might be used to autoquery scripts that work with JSON files. The
+&emsp;&emsp;<b>toolInfo</b> method will show you all of a script's attributes:
+	
+	[macross]$scriptname.toolInfo()
+	
 <br>
 <br>
 <b>VII. py_classes\mcdefs.py</b><br>
