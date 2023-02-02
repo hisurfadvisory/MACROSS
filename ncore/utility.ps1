@@ -1,4 +1,4 @@
-﻿## MACROSS shared utilities
+## MACROSS shared utilities
 ## Do not modify or delete the checks below!
 <#  Add your own defaults below here (see the readme!)  9rkd4mv
 tblJFBTU2NyaXB0Um9vdFxyZXNvdXJjZXM=@@@exaaHR0cDovL3lvdXIud2ViLmZpbGUvZXhhbXBs
@@ -8,39 +8,62 @@ c2VydmVyLmxvY2Fs
 #>
 
 
-## Unlisted MACROSS menu option --
+<# Unlisted MACROSS menu option --
 ## Change the message output for errors so you can 
 ## troubleshoot scripts. Type 'debug' in the MACROSS
-## menu to call this function
-function debugMacross(){
+## menu to call this function; enter a command to test your scripts or
+## functions. Example:
+
+        debug getThis $dyrl_MYVARIABLE; $vf19_READ
+
+        ^^ This will decode some base64 value and display it onscreen for you
+
+        debug
+
+        ^^ This will just open the menu that lets you choose whether to show or
+            hide error messages
+#>
+function debugMacross($1){
     splashPage
-    $current = $ErrorActionPreference
-    $e = @('SilentlyContinue','Continue','Inquire')
-
-    while($z -notMatch "^(1|2|3)$"){
-        Write-Host -f CYAN '
-        ERROR DEBUGGING:
-        (select 1-3, default is 1, current is ' -NoNewline;
-        Write-Host -f YELLOW "$current" -NoNewline;
-        Write-Host -f CYAN ')
-            1. Suppress error messages
-            2. Display errors but continue execution
-            3. Display errors and ask whether to continue
-
-            > ' -NoNewline;
-
-        $z = Read-Host
+    if($1){
+        iex "$1"
+        Write-Host -f GREEN '
+        Type another command for testing, or hit ENTER to exit debugging:
+        '
+        $cmd = Read-Host
+        if($cmd -ne ''){
+            debugMacross $cmd
+        }
     }
+    else{
+        $current = $ErrorActionPreference
+        $e = @('SilentlyContinue','Continue','Inquire')
 
-    $z = $z - 1
-    $Script:ErrorActionPreference = $e[$z]
-    $new = $ErrorActionPreference
-    splashPage
-    Write-Host -f CYAN '
-    Error messaging is now set to ' -NoNewline;
-    Write-Host -f YELLOW "$new" -NoNewline;
-    Write-Host -f CYAN '.'
-    slp 2
+        while($z -notMatch "^(1|2|3)$"){
+            Write-Host -f CYAN '
+            ERROR DEBUGGING:
+            (select 1-3, default is 1, current is ' -NoNewline;
+            Write-Host -f YELLOW "$current" -NoNewline;
+            Write-Host -f CYAN ')
+                1. Suppress error messages
+                2. Display errors but continue execution
+                3. Display errors and ask whether to continue
+
+                > ' -NoNewline;
+
+            $z = Read-Host
+        }
+
+        $z = $z - 1
+        $Script:ErrorActionPreference = $e[$z]
+        $new = $ErrorActionPreference
+        splashPage
+        Write-Host -f CYAN '
+        Error messaging is now set to ' -NoNewline;
+        Write-Host -f YELLOW "$new" -NoNewline;
+        Write-Host -f CYAN '.'
+        slp 2
+    }
 }
 
 
