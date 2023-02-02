@@ -1,4 +1,4 @@
-﻿#_superdimensionfortress User lookup + audit new accounts
+#_superdimensionfortress User lookup + audit new accounts
 #_ver 2.0
 #_class User,User_lookups,Powershell,HiSurfAdvisory,1
 
@@ -118,7 +118,7 @@ function splashPage (){
     3ilZrilZDilZ0gIOKVmuKVkOKVkOKVkOKVneKVmuKVkOKVkOKVkOKVkOKVkOKVkOKVnQ=='
     getThis $b
     Write-Host $vf19_READ
-    Write-Host ''
+    ''
     Write-Host "          ==== Mylene's Recent Accounts Search ====
     "
     if( $dyrl_myl_FCOUNT -ge 1 ){
@@ -131,6 +131,27 @@ function noFind($1){
     Write-Host -f YELLOW " $1" -NoNewline;
     Write-Host -f GREEN " not found!
     "
+}
+
+
+## Load Carbon Black plugin if applicable
+if( $vf19_C8 ){
+    function epActivity($1){
+        Write-Host -f GREEN " Do you want to view Carbon Black info for $1? " -NoNewline;
+        $Z = Read-Host
+        if($Z -Match "^y"){
+            $Global:PROTOCULTURE = $1
+            collab 'GERWALK.ps1' 'MYLENE'
+        }
+    }
+}
+
+
+## Make the "memberOf" field readable
+function listGroups($1){
+    (Get-ADUser -Filter "samAccountName -eq '$1'" -Properties memberOf |
+    Select -ExpandProperty memberOf) |
+    %{Write-Host -f YELLOW $_}
 }
 
 ## Only load AD functions if user is admin -- see the setUser function in validation.ps1
@@ -150,7 +171,7 @@ function singleUser($1){
     $sU_QUERY = Get-ADUser -Filter $sU_FILTER -Properties *
 
     if( $sU_Q1 ){
-        Write-Host ''
+        ''
         if( $sU_QCT -gt 1 ){
             Write-Host -f GREEN " Found multiple users matching that search:
             "
@@ -158,7 +179,7 @@ function singleUser($1){
                 $n = $n -replace "^.+samAccountName=","" -replace "; displayName=",":  " -replace "}$",""
                 Write-Host -f YELLOW "  $n"
             }
-            Write-Host ''
+            ''
             Write-Host -f GREEN " Choose one of the usernames above, or ENTER for a new search:"
             Write-Host -f GREEN "  >  " -NoNewline; $Z = Read-Host
             if( $Z -Match "[a-z0-9]" ){
@@ -184,11 +205,11 @@ function singleUser($1){
                     emailAddress,`
                     info,`
                     Description,`
-                    memberOf,`
                     lastLogonDate,`
                     whenChanged
         
-            Write-Host ''
+            'GPO ASSIGNMENTS:'
+            listGroups $1
             if( $sU_SPECIFIC ){
                 Write-Host -f GREEN " Do you need extra detail for this user? (y/n)  " -NoNewline;
                     $Z = Read-Host
@@ -201,6 +222,10 @@ function singleUser($1){
                 }
                 $sU_SPECIFIC = $null
             }
+        }
+
+        if( $vf19_C8 ){
+            epActivity $1
         }
     }
     else{
@@ -415,7 +440,7 @@ else{
 
     while( $dyrl_myl_LOOP1 -ne 'forward' ){
         $dyrl_myl_LOOP1 = 'backward'
-        Write-Host ''
+        ''
         Write-Host -f GREEN ' Enter a username (you can wildcard ' -NoNewline;
         Write-Host -f YELLOW '*' -NoNewline;
         Write-Host -f GREEN " if you don't have the full name) OR"
@@ -539,7 +564,7 @@ else{
         $dyrl_myl_Z = $null
         Remove-Variable dyrl_myl_Z
         Remove-Variable dyrl_myl_GRPMEM
-        Write-Host ''
+        ''
         Write-Host -f GREEN "  Enter another group description if you would like to search again,"
         Write-Host -f GREEN "  or just hit ENTER to skip.  " -NoNewline;
         $dyrl_myl_Z = Read-Host
