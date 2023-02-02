@@ -1,4 +1,4 @@
-﻿## Functions controlling MACROSS's display
+## Functions controlling MACROSS's display
 
 
 ######################################
@@ -362,8 +362,13 @@ function chooseMod(){
         runSomething     ## pauses the console so user can run commands; see utility.ps1
     }
     elseif( $vf19_Z -Match "^debug" ){
-        $vf19_Z = $vf19_Z -replace "^debug "
-        debugMacross $vf19_Z      ## Enables setting error message display or suppression
+        if($vf19_Z -Match ' '){
+            $p = $vf19_Z -replace "^debug "
+        }
+        else{
+            $p = $null
+        }
+        debugMacross $p      ## Enables setting error message display or suppression
     }
     
     elseif( $vf19_Z -eq 'proto' ){
