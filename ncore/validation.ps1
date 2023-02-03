@@ -112,7 +112,7 @@ function yorn(){
 #################################>
 function getThis($1,$2){
     ## Start fresh
-    Remove-Variable vf19_READ -Scope Global
+    $Global:vf19_READ = $null
 
     if( $2 -eq 1 ){
         $a = $1 -replace "0x",''
@@ -126,7 +126,12 @@ function getThis($1,$2){
         $a = [Text.Encoding]::Utf8.GetString([Convert]::FromBase64String($1))
     }
     
-    $Global:vf19_READ = $a
+    if( $2 -eq 0 ){
+        Return $a
+    }
+    else{
+        $Global:vf19_READ = $a
+    }
 }
 
 
