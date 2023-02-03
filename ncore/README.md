@@ -1,32 +1,32 @@
 ## CUSTOMIZING THE CORE FUNCTIONS FOR YOUR ENVIRONMENT
 
 <b><u>SETTING DEFAULT VARIABLES</u></b><br>
-TL;DR -- To reiterate the main README -- MACROSS isn't so much a toolset as it is a standardized scheme (we'll call it a "Framework" because buzzwords) to help you connect unrelated scripts together in any way that seems natural or relevant to the everyday tasks in your SOC. Run the DEMO options from the menu in MACROSS (Hikaru and Minmay) to see a demonstration of how the scripts talk to each other to enrich gathered data.
+TL;DR -- To reiterate the main Macross README -- MACROSS isn't so much a toolset as it is a standardized scheme (we'll call it a "Framework" because buzzwords) to help you connect unrelated scripts together in any way that seems natural or relevant to the everyday tasks in your SOC. <u>Its primary goal is to speed up the gathering of common info from Active Directory and any tools that have command-line APIs you already make use of</u>. Look up a host, or a username, or a filename, then extract any related data that is relevant to your investigation. Run the DEMO options from the menu in MACROSS (Hikaru and Minmay) to see a demonstration of how the scripts talk to each other to enrich gathered data.
 
 
 HOW TO CONFIGURE GLOBAL DEFAULTS:
 To begin with, the opening comment lines in the utility.ps1 file are reserved for a string of Base64-encoded lines delimited by '@@@'. Additional base64 strings can be inserted into this file's multi-line comment, as long as you prepend it with a three-letter identifier, and separate each base64
 value with '@@@'.
 
-For example, let's say you have a security tool that you've written an automation API to run queries in your command line. If you want to modify your API to work in MACROSS, you could base64-encode the IP or URL to your security tool and add it to the lines in utility.ps1 so that everytime MACROSS loads, that URL/IP is ready to grab any time you need it.
+For example, let's say you have a security tool that you've written an automation API to run queries in your command line. If you want to modify your API to work in MACROSS, you could base64-encode the IP or URL to your security tool and add it to the lines in utility.ps1 so that everytime MACROSS loads, that URL/IP is ready to POST or QUERY to any time you need it.
 
-I have a couple of my custom scripts included in the github release --MYLENE and KONIG-- which query active directory in environments that use roaming profiles, and so instead of having the fileshare paths sitting in each script, I just keep them encoded in this comment block until they're needed.
+I have a couple of my custom scripts included in the github release --MYLENE and KONIG-- which query active directory in environments that use roaming profiles, and so instead of having the fileshare paths sitting in each script, I would just keep them encoded in this comment block until they're needed.
 
-I wrote this as a way to avoid hardcoding my commonly used values in plaintext. ***This should NOT be used to obscure sensitive details!***
+I included this as a way to avoid hardcoding my commonly used values in plaintext. ***This should NOT be used to obscure sensitive details!***
 (Also, the better method for this would be to have a restricted web or fileserver that contains a textfile with these base64 values,
 and use the utility.ps1 comments for the base64 encoded path to THAT protected file. But you'll need to modify the <b>startUp</b> function in
 display.ps1 to do this properly. Remember, obfuscation ATTRACTS everyone on both sides of the infosec yin-yang, Defenders and Attackers alike.)
 
 After encoding your info, which could be filenames/filepaths, GPO membership strings, etc., you add a three-letter identifier to the front
-of that string before inserting it into the commented section. I have examples already set in utility.ps1 that you can modify however you need to. I do have two identifiers that are <u>reserved</u> for MACROSS functions, so don't use them for anything else:
-	nre = location of the master MACROSS repo (it is currently set to the same location as your local MACROSS root)
-	tbl = location of the resources folder (this is also currently in the MACROSS root, though you might consider changing the location to something more accessed-controlled. It's up to you).<br>
+of that string before inserting it into the commented section. I have examples already set in utility.ps1 that you can modify however you need to. I do have two identifiers that are <u>reserved</u> for MACROSS functions, so don't use them for anything else:<br>
+	&emsp;&emsp;nre = location of the master MACROSS repo (it is currently set to the same location as your local MACROSS root)<br>
+	&emsp;&emsp;tbl = location of the resources folder, I typically stored common txt, xml or json files here. (this is also currently in the MACROSS root, though you might consider changing the location to something more accessed-controlled. It's up to you).<br>
 
-These commented Base64 lines get read into the <b>startUp</b> function in the display.ps1 file, which splits your encoded block into their individual
+These commented Base64 strings get read into the <b>startUp</b> function in the display.ps1 file, which splits your encoded block into their individual
 values by removing the '@@@' delimiters. <b>startUp</b> then reads your three-character identifier at the front of each Base64 value, and uses those characters as the index-key for a global array, <i>$vf19_MPOD</i>.
 
 Anytime one of your scripts needs to decode a specific value, you can call the <b>getThis</b> function (in the validation.ps1 file) with
-your <i>$vf19_MPOD</i>['key']. The decoded string is written to <i>$vf19_READ</i>, which gets overwritten every time the function is called. You may only need to use $dash_READ once, but if you need it persistently, you'll need to set it with another variable name:
+your <i>$vf19_MPOD</i>['key']. The plaintext result is written to <i>$vf19_READ</i>, which gets overwritten every time the function is called. You may only need to use $dash_READ once, but if you need it persistently, you'll need to set it with another variable name:
 
     getThis $vf19_MPOD['abc']
     $my_var = $vf19_READ
@@ -48,7 +48,7 @@ Call it with '1' as a second parameter if you're decoding hex:<br><br>
     
 Decoding is also offered as an option in the MACROSS menu for the occasional obfuscated string that doesn't require full-blown CyberChef to decode in your investigation of events.<br>
 
-There are several similar functions in the utility.ps1 file that is available to all your scripts to hopefully make life a little easier. (Details toward the end of this page)<br>
+There are several similar functions in the utility.ps1 file that are available to all your scripts to hopefully make life a little easier. (Details toward the end of this page)<br>
 
 <b>FINALLY...</b><br>
 To further customize and modify these core functions to your liking, see the comments in each .ps1/.py file and the README below.<br>
@@ -78,7 +78,7 @@ To further customize and modify these core functions to your liking, see the com
 	for scripts ending in ".ps1" or ".psm" and ignore any ".py".<br>
 <br>
 	&emsp;<b>E.</b> scrollPage() = If you have more than 9 scripts in your nmods folder, a second "page" will be created in chooseMods().
-	The scrollPage() function is then used to switch between them.<br>
+	The scrollPage() function is then used to switch between them when the user types 'p' into the main menu.<br>
 	
 <br>
 <br>
@@ -90,14 +90,17 @@ To further customize and modify these core functions to your liking, see the com
 <br>
 	&emsp;<b>B.</b> getThis() = This function will decode Base64 and Hexadecimal strings. Call it with your encoded string as the first param.
 	Leave the second param empty if decoding base64; if you are decoding hexadecimal you must pass it a '1' as your
-	second param. The decoded value gets stored as <i>$vf19_READ</i>. Alternatively, if you pass a plaintext string as
-	your first parameter, with '0' as your second param, getThis() will write a Base64-encoded value to <i>$vf19_READ</i>.<br>
+	second param. The decoded value gets stored as <i>$vf19_READ</i>.<br>
 	
 	getThis $base64_string
 	write-host $vf19_READ
 	
 	getThis $hex_string 1
 	write-host $vf19_READ
+	
+ Alternatively, if you pass a plaintext string as your first parameter, with '0' as your second param, getThis() will return a Base64-encoded value.<br>
+	
+	$encodedstr = getThis 'plaintext string of whatever' 0
 	
 <br>
 	&emsp;<b>C.</b> SJW() = This function checks the user's privilege, which is determined in the setUser() function. Call it from your scripts to automatically alert MACROSS users that they may not have the required privilege to continue.<br>
@@ -107,7 +110,7 @@ To further customize and modify these core functions to your liking, see the com
 	SJW 'deny  # Notifies user they need elevated privileges, then kills the script
 	
 <br>
-	&emsp;<b>D.</b> $vf19_M = This takes the $vf19_numchk value from MACROSS.ps1, and splits into 6 individual integers that can be used for mathing.<br>
+	&emsp;<b>D.</b> $vf19_M = This takes the $vf19_numchk value from MACROSS.ps1, and splits into 6 individual integers that can be used for mathing, like building an IP or hex value that you don't want resting in plaintext (again, not secure, don't use it as such).<br>
 	&emsp;&emsp;Example usage:
 	
 	$var = $vf19_M[2] + $vf19_M[0]
@@ -120,7 +123,7 @@ To further customize and modify these core functions to your liking, see the com
 	errMsg 3 # Displays whichever message is in the third slot
 	
 <br>
-	&emsp;<b>F.</b> setUser() = Attempts two different methods to set the logged in user as global $USR. If the system or active-directory method fails, it will default to using "whoami" and also set the global value $vf19_GAVIL, which tells all the MACROSS scripts that the user does not have elevated privilege. This way you can write checks to avoid loading different functions unnecessarily.<br>
+	&emsp;<b>F.</b> setUser() = Attempts two different methods to set the logged in user as global $USR. If the system or active-directory method fails, it will default to using "whoami" and also set the global value $vf19_GAVIL, which tells all the MACROSS scripts that the user does not have elevated privilege. (Of course, that assumes your IT managers don't allow standard users to run Get-AD cmdlets!) This way you can write checks to avoid loading different functions unnecessarily.<br>
 <br>
 	&emsp;<b>G.</b> collab() = This is the function that allows your scripts to talk to each other. It must be called with (1) the name of the script you
 	want to "collaborate" with in the nmods folder, and (2) the name of the script making the call, WITHOUT the file extension.
@@ -128,8 +131,7 @@ To further customize and modify these core functions to your liking, see the com
 	function does allow for passing another value if necessary. It will be set as <i>$eNM</i> and passed along as a separate
 	param to the script you're calling.<br>
 <br>
-	If you are calling a python script, up to 9 values will be passed along as arguments that can be parsed using the sys.argv
-	library in your python script:<br>
+	If you are calling a python script, up to 9 values (7 required defaults, 2 optional) will be passed along as arguments that can be parsed using the sys.argv library in your python script:<br>
 	&emsp;&emsp;1. the username<br>
 	&emsp;&emsp;2. the user's desktop<br>
 	&emsp;&emsp;3. the $vf19_MPOD hashtable that MACROSS uses to store default filepaths<br>
@@ -142,46 +144,63 @@ To further customize and modify these core functions to your liking, see the com
 	<br>
 	&emsp;&emsp;Usage:
 	
-	collab 'Otherscript.ps1' 'Myscript' $var0 # Calls Otherscript.ps1, tells it 'Myscript' is sending $var0 for evaluation
-	
+	collab 'Otherscript.ps1' 'Myscript' $var0
+
+^^ Calls Otherscript.ps1, tells it 'Myscript' is sending $var0 for evaluation. Otherscript.ps1 can then evaluate both $PROTOCULTURE and $var0, or just $var0.<br>
+
+	collab 'Anotherscript.py' 'Myscript'
+
+^^ Calls Anotherscript.py, tells it 'Myscript' is the caller. Because it's calling a python script, the <b>collab</b> function will automatically add the first seven args mentioned above.<br>
 <br>
 	&emsp;<b>J.</b> availableMods() = When a user selects a script from the MACROSS menu, the chooseMods() function sends their selection to availableMods()
 	where the filepath to the script gets verified, along with the script version using the verChk() function (see the
-	updates.ps1 file). As with the collab() function, availableMods() will automatically send some arguments to python
-	scripts, but only the first 5 listed in collab() along with the string value of $PSScriptRoot so your python scripts
-	know where the local files are at.<br>
+	updates.ps1 file). As with the collab() function, availableMods() will automatically send some default arguments to
+	python scripts.<br>
 	
 <br>
 <br>
 <b>III. updates.ps1</b><br>
-<i>*** To use verChk & dlNew, you must first set a central repo for your master copies, and set the location of your repo as a base64-encoded string prepended with "nre" in the utility.ps1 comment section***</i><br>
+<i>*** To use verChk & dlNew, you must first set a central repo for your master copies, either your gitlab or a fileshare or something, and set the location of your repo as a base64-encoded string prepended with "nre" in the utility.ps1 comment section***</i><br>
 	&emsp;<b>A.</b> toolCount() = This function counts the number of scripts in the local nmods folder vs. the number in the master repository (you set this
-	this location in the utility.ps1 file). It then reads the first three lines of each script to get its attributes, and uses that info to create macross objects that get stored in the $vf19_ATTS hashtable, with the scriptnames as the index keys.<br>
-	The first three lines of your script MUST contain:<br>
-	&emsp;&emsp;#\_superdimensionfortress &emsp;"This is a brief description of the tool"<br>
-	&emsp;&emsp;#\_ver &emsp;1.0<br>
-	&emsp;&emsp;#\_class &emsp;comma,separated,attributes,for,your,script (see the classes.ps1 file)<br>
-	&emsp;<b>B.</b> look4New() = If the local count is higher, the update functions will be disabled to avoid problems. If the master count is higher, the dlNew() function will be used to automatically download the scripts that the user is missing.<br>
+	this location in the utility.ps1 file). It then reads the first three lines of each script to get its attributes, and uses that info to create macross objects that get stored in the $vf19_ATTS hashtable, with the scriptnames as the index keys. See the included scripts in the nmods folder for examples of the magic lines described here; the first three lines of your script MUST contain:<br>
+	
+	#_superdimensionfortress "This is a brief description of the tool"
+	#_ver 1.0
+	#_class comma,separated,attributes,for,your,script  # See the classes.ps1 further down
+	
+&emsp;<b>B.</b> look4New() = This relies on the number of scripts <b>toolCount()</b> discovered. If the local count is higher, the update functions 
+	will be disabled to avoid problems. If the master count is higher, the dlNew() function will be used to automatically download the scripts that the 
+	user is missing.<br>
 	&emsp;<b>C.</b> dlNew() = This function gets called when new scripts or newer versions are available, or if the user wants to pull fresh copies from
 	the master repo.<br>
-	&emsp;<b>D.</b> verChk() = This function is used every time a script gets selected from the MACROSS menu. It compares the "#_ver" line in the local
-	script and in the master repo script. The master version is newer, it gets downloaded before the selected script executes.<br>
+&emsp;<b>D.</b> verChk() = This function is used every time a script gets selected from the MACROSS menu. It compares the "#\_ver" line in the local
+	script and in the master repo script. If the master version is newer, it gets downloaded before the selected script executes.<br>
 	
 <br>
 <br>
 <b>IV. utility.ps1</b><br>
-	*** The comments section of this file contains base64-encoded values that are used to populate the $vf19_MPOD hashtable; values can be decoded and used by referencing thier index, like &nbsp;&nbsp;&nbsp;&nbsp;getThis $vf19_MPOD["nre"]<br>
-	&emsp;<b>A.</b> debugMacross() = 'debug' is an unlisted option in the MACROSS menu. Use it to change whether errors are output to the screen or not
-	to troubleshoot scripts.<br>
+	*** The comments section of this file contains base64-encoded values that are used to populate the $vf19_MPOD hashtable; values can be decoded and used by referencing thier index, like
+	
+	getThis $vf19_MPOD["nre"]
+	
+&emsp;<b>A.</b> debugMacross() = 'debug' is an unlisted option in the MACROSS menu. Use it to change whether errors are output to the screen or not
+	to troubleshoot scripts. You can also use debug to test commands or variables in your scripts:<br>
+	
+	debug
+	debug $vf19_ATTS['KONIG'].toolInfo()
+	
+^^ Typing 'debug' in the main menu, you can either open the error message selector, or do things like check if KONIG's attributes were set correctly.<br>
 	&emsp;<b>B.</b> runSomething() = Pauses the MACROSS console and loads a fresh powershell instance so that the user can perform a quick powershell task; users can call this by typing 'shell' into the MACROSS menu. Typing "exit" returns the user to MACROSS.<br>
 	&emsp;<b>C.</b> decodeSomething() = From the MACROSS menu, the user can call this by typing 'dec' to quickly decode a Base64 or Hex string they may come across in an investigation.<br>
 	&emsp;<b>D.</b> getHash() = accepts a filepath and the hash method (md5 or sha256), and returns the hash for
 	you.<br>
 	    &emsp;&emsp;Usage:  &emsp;$var = getHash $filepath 'md5'<br>
 	&emsp;<b>E.</b> getFile() = Your script can use this to open a dialog box for users to select a file. Pass an optional arguemt to apply a type-filter to the dialog, e.g. "Microsoft Excel Worksheet (.xlsx) | .xlsx" to only let users select Excel files.<br>
-	&emsp;<b>F.</b> houseKeeping() = If your scripts generate file outputs, call this function to offers users the option to delete any or all of these files when they are no longer needed.<br>
-	   &emsp;&emsp;Usage:  &emsp;houseKeeping $filepath 'myscriptname'<br>
-	&emsp;<b>G.</b> cleanGBIO() = The "garbage_io" folder inside of "py_classes" uses .eod files to share info from powershell to python. This function ensures the directory gets cleaned out before and after every session. This is a temp fix until the mcdefs library can read-in powershell outputs by default.<br>
+	&emsp;<b>F.</b> houseKeeping() = If your scripts generate file outputs, call this function to offers users the option to delete any or all of these files when they are no longer needed. Usage:<br>
+	
+	houseKeeping $filepath 'myscriptname'
+	
+&emsp;<b>G.</b> cleanGBIO() = The "garbage_io" folder inside of "py_classes" uses .eod files to share info from powershell to python. This function ensures the directory gets cleaned out before and after every session. This is a temp fix until the mcdefs library can read-in powershell outputs by default.<br>
 	&emsp;<b>H.</b> pyCross() = This is the function your powershell scripts need to call if passing info *back to* a calling python script. Outputs are written to .eod files.
 	<br><br>
 	
@@ -205,11 +224,14 @@ This is used for:<br>
 	
 	$vf19_ATTS | where{$_.valtype -like '*json*'}
 	
-&emsp;&emsp;might be used to autoquery scripts that work with JSON files. The
+&emsp;&emsp;might be used to autoquery scripts that work with JSON files. The<br>
 &emsp;&emsp;<b>toolInfo</b> method will show you all of a script's attributes:
 	
 	[macross]$scriptname.toolInfo()
-	
+
+&emsp;&emsp;If you use the SKYNET debug command from the main menu, you can pull all this info at once:
+
+	debug $vf19_ATTS | %{$k = $_.Keys;$vf19_ATTS[$k].toolInfo()}
 <br>
 <br>
 <b>VII. py_classes\mcdefs.py</b><br>
