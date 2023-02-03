@@ -16,16 +16,20 @@ MACROSS came about because I realized that all of the scripts I was writing to g
 Eventually I created a single front-end to handle doing all of these queries in whatever sequence I needed.
 
 See the full readme below for details, but the basic FAQ is that core functions are kept in the 'ncore' folder within the same directory as MACROSS.ps1 (usually on the user's desktop), and all of your custom powershell scripts, when dropped into the 'nmods' folder, will automatically become options in the MACROSS menu. If you host a master repo for MACROSS on your network and modify the extras.ps1 file to include its encoded filepath, then any updates you make to your scripts in the 'nmods' folder will automatically get pushed out to your SOC users.
-
-FRAMEWORK RULES (modify however works best for you):
-1. All core functions are kept in the "ncore" folder
-	<br>1a. Default variables that are used by all the MACROSS tools are base-64 encoded and stored in the opening comments line within "utility.ps1" in the ncore folder. When MACROSS starts up, it grabs those comments and splits them into an array for quick decoding anytime you need them.
-	<br>1b. The ncore folder also contains subfolder "py_classes". This folder contains the MACROSS python library "mcdefs.py", and a subfolder called "garbage_io". MACROSS powershell scripts should contain a function that will write values to plaintext "*.eod" files  in garbage_io, so that python scripts can read them. See the "pyCross" function in the utility.ps1 file. 
 <br>
-2. Custom automation scripts are kept in the "nmods" folder
-	<br>&emsp;2a. Custom scripts must contain "#_superdimensionfortress" in the first line, "#_ver " in the second line, and "#_class " in the third line, or they will be ignored. The first line is where you'll write a brief description of your script, which gets displayed in the MACROSS menu. The second line is the version number. For the third line with "#_class", please review the \ncore\classes.ps1 file to see what kind of attributes need to be placed there. 
-	<br>&emsp;2b. Custom python scripts are always passed 6 arguments by default (see the availableMods function in "validation.ps1") so that they can share MACROSS' default values.
+<br>
+FRAMEWORK RULES (modify however works best for you):
+<br>1. All core functions are kept in the "ncore" folder<br>
+&emsp;1a. Default variables that are used by all the MACROSS tools are base-64 encoded and stored in the opening comments line within "utility.ps1" in the ncore folder. When MACROSS starts up, it grabs those comments and splits them into an array for quick decoding anytime you need them.<br>
+&emsp;1b. The ncore folder also contains subfolder "py_classes". This folder contains the MACROSS python library "mcdefs.py", and a subfolder called "garbage_io". MACROSS powershell scripts should contain a function that will write values to plaintext "\*.eod" files  in garbage_io, so that python scripts can read them. See the "pyCross" function in the utility.ps1 file. 
+<br>
+<br>
+2. Custom automation scripts are kept in the "nmods" folder<br>
+&emsp;2a. Custom scripts must contain "magic lines" at the beginning of the script, or they will be ignored. The first line is where you'll write a brief description of your script, which gets displayed in the MACROSS menu. The second line is the version number. For the third line, please review the \ncore\classes.ps1 file to see what kind of attributes need to be placed there. 
+<br>
+&emsp;2b. Custom python scripts are always passed 6 arguments by default (see the availableMods function in "validation.ps1") so that they can share MACROSS' default values.
 	<br>&emsp;2c. MACROSS ignores python scripts if Python3 isn't installed
+<br>
 <br>
 3. All core variables (when possible) are named beginning "$vf19_" to control cleanup
 	<br>&emsp;3a. For the same reason, custom variables (when possible) should be named beginning with "$dyrl_"
@@ -34,9 +38,11 @@ FRAMEWORK RULES (modify however works best for you):
 		<br>&emsp;&emsp;$CALLER = the name of the script calling functions in another
 		<br>&emsp;&emsp;$HOWMANY = the number of successful results being tracked between scripts
 		<br>&emsp;&emsp;$RESULTFILE = the path to any output your script generates that can be processed by another script
-<br>		
+<br>
+<br>
 4. Files used for enrichment across multiple scripts (xml, json, txt) are kept in the "resources" folder
 	<br>&emsp;4a. This folder is currently in the MACROSS root folder, but can be placed anywhere you want
+<br>
 <br>
 5. At the top of the utility.ps1 file, you'll find a block of base64 encoded strings. These are default values used for MACROSS and its scripts. Changing or adding your own defaults involves base64-encoding your value and adding a three-letter ID to the front of it, and separating each value with "@@@". At startup, MACROSS will strip the "@@@" delimiters, and create a hashtable ($vf19_MPOD) of your values using the three-letter ID as an index so that you can grab and decode them as needed.  Example:<br><br>
 
