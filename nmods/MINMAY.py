@@ -129,15 +129,7 @@ def theGoodStuff(Z1 = '',Z2 = None):
     So we'll have to build functions for our analysts to send your python values
     to powershell, and then somehow get the results back in a way we can use
     them.
-
-    Let's start with building a query to get KÖNIG on the launchpad:
-
-            konig = vf19_TOOLSROOT + '\\nmods\\KONIG.ps1'
-            konig = 'powershell.exe ' + konig
-
-    I've already set that "vf19_TOOLSROOT" value in the background. Remember all
-    those params/args that powershell sent over? This arg (the MACROSS root folder
-    location) was stored in sys.argv[6]. So now python knows how to find KÖNIG.''')
+''')
     elif Z1 == '':
         Z1 = input('''
     Now let's get some input from you. Give me a keyword to search for filenames
@@ -146,6 +138,16 @@ def theGoodStuff(Z1 = '',Z2 = None):
         Z1 = '\'' + Z1 + '\''
         
     print('''
+    Let's continue with building a query to get KÖNIG on the launchpad:
+
+            konig = vf19_TOOLSROOT + '\\nmods\\KONIG.ps1'
+            konig = 'powershell.exe ' + konig
+
+    I've already set that "vf19_TOOLSROOT" value in the background. Remember all
+    those params/args that powershell sends over by default? This arg (the MACROSS
+    root folder location) was stored in sys.argv[6]. So now python knows how to
+    find KÖNIG. Now we can add the input you gave me to search for:
+    
                     konig = konig + ''',Z1,'''
 
     If you read KÖNIG's documentation, you'll see it needs several parameters passed
@@ -254,9 +256,10 @@ def theGoodStuff(Z1 = '',Z2 = None):
     You can always launch KÖNIG on its own and play with its settings, but that pretty
     much wraps up this version 0.1 demo. If you already have APIs or automations in your
     SOC, it shouldn't take too much effort to modify them for use in the MACROSS frame-
-    work. It's no replacement for real security tools, but it can be a handy little
-    utility to bypass numerous web console logins, or supplementing a smaller network
-    with less resources available for cybersecurity.''')
+    work. It's no replacement for manually searching your security tools, but it can be a
+    handy little utility to grab quick one-offs when deciding whether an event warrants
+    deeper dives, or supplementing a smaller network that has less resources available for
+    cybersecurity beyond Active Directory and/or a few system logs.''')
     if Z2 != None:
         Z2 = Z2 + '!'
         print('''
@@ -386,23 +389,24 @@ else:
     print('''
 
     To begin this demo, we're going to launch a mission in the KÖNIG Monster powershell script.
-    If you're not a geek, the KÖNIG Monster is a massive space shuttle-type craft that transforms
-    into both a land-based rail-gun artillery monstrosity as well as a giant freaking robot(!!!)
-    I loved using KÖNIG Monster in the old playstion Macross games.
+    If you're not a geek, the KÖNIG Monster is a massive space shuttle-type craft that
+    transforms into both a land-based rail-gun artillery monstrosity as well as a giant freaking
+    robot(!!!) I loved using KÖNIG Monster in the old playstion Macross games.
     
-    Anyway, my KÖNIG is a filesearch tool. Feed it a location and a search filter, and it will scan
-    however much of your enterprise you give it access to (although its intended purpose is narrowly-
-    targeted searches, not full-network scans). If it finds anything matching your search filters, it
-    can automatically send those filepaths to the ELINTS script, which will scan each file for key-
-    words you specify!
+    Anyway, my KÖNIG is a filesearch tool. Feed it a location and a search filter, and it will
+    scan however much of your enterprise you give it access to (although its intended purpose is
+    narrowly-targeted searches, not full-network scans). If it finds anything matching your search
+    filters, it can automatically send those filepaths to the ELINTS script, which will scan each
+    file for keywords you specify!
 
     Being a cooperative part of MACROSS, KÖNIG can also accept requests from other scripts -- for
-    example, MYLENE.ps1 is a tool that looks up Active-Directory information, especially focusing on
-    newly-created accounts. Whenever MYLENE has a list of brand new user accounts, it forwards that
-    list to KÖNIG which will automatically report on any and all files in those users' roaming profiles.
+    example, MYLENE.ps1 is a tool that looks up Active-Directory information, especially focusing
+    on newly-created accounts. Whenever MYLENE has a list of brand new user accounts, it forwards
+    that list to KÖNIG which will automatically report on any and all files in those users' roaming
+    profiles.
 
-    This python script is going to simulate you running some automated tool that found a filename of
-    interest. Let's go!
+    This python script is going to simulate you running some automated tool that found a filename
+    of interest. Let's go!
 
     ''')
     next(1)
