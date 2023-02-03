@@ -25,6 +25,9 @@ c2VydmVyLmxvY2Fs
 #>
 function debugMacross($1){
     splashPage
+    Write-Host '
+
+    '
     if($1){
         iex "$1"
         Write-Host -f GREEN '
@@ -113,7 +116,7 @@ function decodeSomething($1){
         
         > " -NoNewline;
         $Z = Read-Host
-        getThis $Z 0
+        $enc = getThis $Z 0
     }
     else{
         Write-Host -f GREEN "
@@ -127,13 +130,20 @@ function decodeSomething($1){
             getThis $Z 1
         }
         else{
-            getThis $Z
+            $enc = getThis $Z 0
         }
     }
 
-    Write-Host -f YELLOW "
+    if($enc){
+        Write-Host -f YELLOW "
+    $enc
+    "
+    }
+    else{
+        Write-Host -f YELLOW "
     $vf19_READ
     "
+    }
     if($1 -eq 1){
         Write-Host -f GREEN '
         Encode another? ' -NoNewline; $Z = Read-Host
