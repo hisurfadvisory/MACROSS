@@ -62,7 +62,9 @@ To further customize and modify these core functions to your liking, see the com
 	&emsp;<b>A.</b> splashPage() = a cosmetic function for the MACROSS menu<br>
 <br>
 	&emsp;<b>B.</b> slp() = Sleep function; provide it the number of seconds you want your script to pause<br>
-	Usage:  <i> slp 2</i> &nbsp;&nbsp;## pauses your script for 2 seconds<br>
+	Usage:<br>
+	
+	slp 2   # This pauses your script for 2 seconds
 <br>
 	&emsp;<b>C.</b> startUp() = This is the first function to run when MACROSS loads. It sets many of the default variable values, and
 	checks to see if programs like wireshark are installed. It sets these values to $true for your scripts to be aware of (and you
@@ -128,7 +130,7 @@ To further customize and modify these core functions to your liking, see the com
 	&emsp;<b>G.</b> collab() = This is the function that allows your scripts to talk to each other. It must be called with (1) the name of the script you
 	want to "collaborate" with in the nmods folder, and (2) the name of the script making the call, WITHOUT the file extension.
 	Your script should already be setting the global values for <i>$RESULTFILE</i> and <i>$PROTOCULTURE</i> as necessary, but this
-	function does allow for passing another value if necessary. It will be set as <i>$eNM</i> and passed along as a separate
+	function does allow for passing another optional value if needed. That value will be set as <i>$eNM</i> and passed along as a separate
 	param to the script you're calling.<br>
 <br>
 	If you are calling a python script, up to 9 values (7 required defaults, 2 optional) will be passed along as arguments that can be parsed using the sys.argv library in your python script:<br>
@@ -150,7 +152,7 @@ To further customize and modify these core functions to your liking, see the com
 
 	collab 'Anotherscript.py' 'Myscript'
 
-^^ Calls Anotherscript.py, tells it 'Myscript' is the caller. Because it's calling a python script, the <b>collab</b> function will automatically add the first seven args mentioned above.<br>
+^^ Calls Anotherscript.py, tells it 'Myscript' is the caller. Because it's calling a python script, the <b>collab</b> function will automatically add the first seven args mentioned above. Assuming your script generated a global $PROTOCULTURE value, that will also be passed as an arg to python.<br>
 <br>
 	&emsp;<b>J.</b> availableMods() = When a user selects a script from the MACROSS menu, the chooseMods() function sends their selection to availableMods()
 	where the filepath to the script gets verified, along with the script version using the verChk() function (see the
@@ -193,10 +195,15 @@ To further customize and modify these core functions to your liking, see the com
 	&emsp;<b>B.</b> runSomething() = Pauses the MACROSS console and loads a fresh powershell instance so that the user can perform a quick powershell task; users can call this by typing 'shell' into the MACROSS menu. Typing "exit" returns the user to MACROSS.<br>
 	&emsp;<b>C.</b> decodeSomething() = From the MACROSS menu, the user can call this by typing 'dec' to quickly decode a Base64 or Hex string they may come across in an investigation.<br>
 	&emsp;<b>D.</b> getHash() = accepts a filepath and the hash method (md5 or sha256), and returns the hash for
-	you.<br>
-	    &emsp;&emsp;Usage:  &emsp;$var = getHash $filepath 'md5'<br>
-	&emsp;<b>E.</b> getFile() = Your script can use this to open a dialog box for users to select a file. Pass an optional arguemt to apply a type-filter to the dialog, e.g. "Microsoft Excel Worksheet (.xlsx) | .xlsx" to only let users select Excel files.<br>
-	&emsp;<b>F.</b> houseKeeping() = If your scripts generate file outputs, call this function to offers users the option to delete any or all of these files when they are no longer needed. Usage:<br>
+	you. Usage:<br>
+	
+	$var = getHash $filepath 'md5'
+	    
+&emsp;<b>E.</b> getFile() = Your script can use this to open a dialog box for users to select a file. Pass an optional argument to apply a type-filter to the dialog; it has to match <u>exactly</u> what Windows puts in its selection drop-downs for different file types.<br>
+
+	$file1 = getFile 'Microsoft Excel Worksheet (.xlsx) | .xlsx'   # Opens a window that only shows Excel files as choices
+
+&emsp;<b>F.</b> houseKeeping() = If your scripts generate file outputs, call this function to offer users the option to delete any or all of these files when they are no longer needed. Usage:<br>
 	
 	houseKeeping $filepath 'myscriptname'
 	
@@ -224,8 +231,7 @@ This is used for:<br>
 	
 	$vf19_ATTS | where{$_.valtype -like '*json*'}
 	
-&emsp;&emsp;might be used to autoquery scripts that work with JSON files. The<br>
-&emsp;&emsp;<b>toolInfo</b> method will show you all of a script's attributes:
+&emsp;&emsp;might be used to autoquery scripts that work with JSON files. The <b>toolInfo()</b> method will show you all of a script's attributes:
 	
 	[macross]$scriptname.toolInfo()
 
@@ -235,6 +241,6 @@ This is used for:<br>
 <br>
 <br>
 <b>VII. py_classes\mcdefs.py</b><br>
-	&emsp;<b>A.</b> This is a python library that provides many of the same core functions used in the MACROSS powershell scripts, as well a "getDefaults" function that will rebuild MACROSS' $vf19_MPOD hashtable in python. See the mcdefs file 	comments for more details.
+	&emsp;<b>A.</b> This is a python library that provides many of the same core functions used in the MACROSS powershell scripts, as well a "getDefaults" function that will convert MACROSS' $vf19_MPOD hashtable into a python dictionary. See the mcdefs file comments for more details.
 
 
