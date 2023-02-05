@@ -139,8 +139,10 @@ if( $HELP ){
         Write-Host -f YELLOW $_
     }
     Write-Host -f YELLOW "
- KÖNIG performs an automated search based on filenames or extensions. Any matching
- search results are written to file on your desktop in the '" -NoNewline;
+ KÖNIG performs an automated search based on filenames or extensions (for example,
+ if you need to see all documents in a share, you can have KÖNIG focus on just
+ docx, docm, rtfs and pdfs in a single search). Any matching search results are
+ written to file on your desktop in the '" -NoNewline;
     Write-Host -f CYAN "target-pkgs\" -NoNewline;
     Write-Host -f YELLOW "' directory.
 
