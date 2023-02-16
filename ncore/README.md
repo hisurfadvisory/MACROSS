@@ -163,8 +163,7 @@ To further customize and modify these core functions to your liking, see the com
 <br>
 <b>III. updates.ps1</b><br>
 <i>*** To use verChk & dlNew, you must first set a central repo for your master copies, either your gitlab or a fileshare or something, and set the location of your repo as a base64-encoded string prepended with "nre" in the utility.ps1 comment section***</i><br>
-	&emsp;<b>A.</b> toolCount() = This function counts the number of scripts in the local nmods folder vs. the number in the master repository (you set this
-	this location in the utility.ps1 file). It then reads the first three lines of each script to get its attributes, and uses that info to create macross objects that get stored in the $vf19_ATTS hashtable, with the scriptnames as the index keys. See the included scripts in the nmods folder for examples of the magic lines described here; the first three lines of your script MUST contain:<br>
+	&emsp;<b>A.</b> toolCount() = This function counts the number of scripts in the local nmods folder vs. the number in your master repository. It then reads the first three lines of each script to get its attributes, and uses that info to create macross objects that get stored in the $vf19_ATTS hashtable, with the scriptnames as the index keys. See the included scripts in the nmods folder for examples of the magic lines described here; the first three lines of your script MUST contain:<br>
 	
 	#_superdimensionfortress "This is a brief description of the tool"
 	#_ver 1.0
@@ -189,9 +188,9 @@ To further customize and modify these core functions to your liking, see the com
 	to troubleshoot scripts. You can also use debug to test commands or variables in your scripts:<br>
 	
 	debug
-	debug $vf19_ATTS['KONIG'].toolInfo()
+	debug myFunction $var1
 	
-^^ Typing 'debug' in the main menu, you can either open the error message selector, or do things like check if KONIG's attributes were set correctly.<br>
+^^ Typing 'debug' in the main menu, you can either open the error message selector, or do things like check if your script's "myFunction" parses $var1 correctly.<br>
 	&emsp;<b>B.</b> runSomething() = Pauses the MACROSS console and loads a fresh powershell instance so that the user can perform a quick powershell task; users can call this by typing 'shell' into the MACROSS menu. Typing "exit" returns the user to MACROSS.<br>
 	&emsp;<b>C.</b> decodeSomething() = From the MACROSS menu, the user can call this by typing 'dec' to quickly decode a Base64 or Hex string they may come across in an investigation.<br>
 	&emsp;<b>D.</b> getHash() = accepts a filepath and the hash method (md5 or sha256), and returns the hash for
