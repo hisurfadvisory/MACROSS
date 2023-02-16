@@ -133,13 +133,13 @@ To further customize and modify these core functions to your liking, see the com
 	function does allow for passing another optional value if needed. That value will be set as <i>$eNM</i> and passed along as a separate
 	param to the script you're calling.<br>
 <br>
-	If you are calling a python script, up to 9 values (7 required defaults, 2 optional) will be passed along as arguments that can be parsed using the sys.argv library in your python script:<br>
+	If you are calling a python script, up to 9 values (6 required defaults, 2 situational, 1 optional) will be passed along as arguments that can be parsed using the sys.argv library in your python script:<br>
 	&emsp;&emsp;1. the username<br>
-	&emsp;&emsp;2. the user's desktop<br>
+	&emsp;&emsp;2. the user's desktop path<br>
 	&emsp;&emsp;3. the $vf19_MPOD hashtable that MACROSS uses to store default filepaths<br>
 	&emsp;&emsp;4. the $vf19_numchk integer for mathing<br>
 	&emsp;&emsp;5. the filepath to the MACROSS python library (ncore\pyclasses)<br>
-	&emsp;&emsp;6. the filepath to the MACROSS resources folder (you set this in utility.ps1 with the "tbl" key)<br>
+	&emsp;&emsp;6. the path to the MACROSS root folder<br>
 	&emsp;&emsp;7. the name of the script making the call<br>
 	&emsp;&emsp;8. the $PROTOCULTURE value being evaluated<br>
 	&emsp;&emsp;9. (optional) the $eNM value being evaluated<br>
