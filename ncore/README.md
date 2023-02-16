@@ -209,7 +209,12 @@ To further customize and modify these core functions to your liking, see the com
 	
 &emsp;<b>G.</b> cleanGBIO() = The "garbage_io" folder inside of "py_classes" uses .eod files to share info from powershell to python. This function ensures the directory gets cleaned out before and after every session. This is a temp fix until the mcdefs library can read-in powershell outputs by default.<br>
 	&emsp;<b>H.</b> pyCross() = This is the function your powershell scripts need to call if passing info *back to* a calling python script. Outputs are written to .eod files.
-	<br><br>
+	
+&emsp;<b>H.</b> TL() = This function quickly displays all available scripts and their attributes. From the main MACROSS menu, you can use it in <i>debug</i> mode:<br>
+
+	debug TL
+
+<br>
 	
 <br>
 <br>
@@ -220,24 +225,50 @@ To further customize and modify these core functions to your liking, see the com
 	This file should be reserved for any custom classes your scripts need, especially if they could be useful for other scripts to make use of.<br>
 	&emsp;<b>A.</b> macross = A custom powershell class that tags every script in the \nmods folder with specific attributes that you MUST include on the third line of your scripts, tagged with "#\_class" so that MACROSS will parse it correctly. In this example:<br>
 	<br>
-	`#_class  User,syslogs,Python3,SuzyQ,1`<br>
+	`#_class  User,syslogs,Python3,SuzyQ,1`
 	<br>
-	The first value <b>User</b> is the .priv attribute, or the level of privilege required to run your script (will typically be User vs. Admin). Next, the <b>syslogs</b> value will be assigned to the .valtype attribute, describing what kind of data your script processes/returns, or what kind of actions it performs. The third value, <b>Python3</b>, is the .lang attribute while the fourth, <b>SuzyQ</b>, is the .author attribute. Finally, "<b>1</b>" is the .evalmax attribute, which is the maximum number of parameters that your script can accept for processing.<br>
-	<br>
+	The first value <b>User</b> is the .priv attribute, or the level of privilege required to run your script (will typically be User vs. Admin). Next, the <b>syslogs</b> value will be assigned to the .valtype attribute, describing what kind of data your script processes/returns, or what kind of actions it performs. The third value, <b>Python3</b>, is the .lang attribute while the fourth, <b>SuzyQ</b>, is the .author attribute. Finally, "<b>1</b>" is the .evalmax attribute, which is the maximum number of parameters that your script can accept for processing. The attributes tracked in this class are:<br>
+	
+	.name
+	.priv
+	.valtype
+	.lang
+	.author
+	.evalmax
+	
+<br>
 This is used for:<br>
-	&emsp;&emsp;-controlling which scripts get pushed to your analysts when you are using a master repository to centrally store MACROSS<br>
+	&emsp;&emsp;-controlling which scripts get pushed to your analysts when you are using a master repository to centrally maintain MACROSS<br>
 	&emsp;&emsp;-allowing you to write functions that automatically know what scripts can accept what types of values for auto-evaluating:<br>
 	&emsp;&emsp;for example,
 	
-	$vf19_ATTS | where{$_.valtype -like '*json*'}
+	$vf19_ATTS.keys | where{ $vf19_ATTS[$_].valtype -like '*json*' }
 	
-&emsp;&emsp;might be used to autoquery scripts that work with JSON files. The <b>toolInfo()</b> method will show you all of a script's attributes:
+&emsp;&emsp;might be used to autoquery scripts that parse or generate JSON files.<br><br>
+&emsp;&emsp;Calling the script name from the hashtable will give you all its attributes. The <b>toolInfo()</b> method will prettify the output, or you can just view it raw:<br>
 	
-	[macross]$scriptname.toolInfo()
+	$vf19_ATTS['MINMAY'].toolInfo()
+	  MACROSS: MINMAY
+	     Version:                     0.1
+	     Author:                      HiSurfAdvisory
+	     Evaluates:                   demo script
+	     Privilege required:          User
+	     Language:                    Python 3
+	     Max # of simultaneous evals: 2
+	
+	[macross]$vf19_ATTS['MINMAY']
+	name    : MINMAY
+	priv    : User
+	valtype : demo script
+	lang    : Python 3
+	author  : HiSurfAdvisory
+	evalmax : 2
+	ver     : 0.1
+	
+<br>
+&emsp;&emsp;If you use the SKYNET debug command from the main menu, you can pull all this info at once with the TL funtion:
 
-&emsp;&emsp;If you use the SKYNET debug command from the main menu, you can pull all this info at once:
-
-	debug $vf19_ATTS | %{$k = $_.Keys;$vf19_ATTS[$k].toolInfo()}
+	debug TL
 <br>
 <br>
 <b>VII. py_classes\mcdefs.py</b><br>
