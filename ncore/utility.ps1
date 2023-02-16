@@ -160,12 +160,12 @@ function decodeSomething($1){
     }
 }
 
-## Sometimes we just to hash something...
+## Sometimes we just need to hash something...
 ## $1 needs to be the file you're hashing, $2 is the method;
 ##    Usage:   $var = getHash 'filepath' 'md5 OR sha256'
 getHash($1,$2){
-    $hashm=@('md5','sha256')
-    if($2 -in $types){
+    $hashm = @('md5','sha256')
+    if($2 -in $hashm){
         $h = CertUtil -hashfile $1 $2
         Return $h
     }
