@@ -1,10 +1,10 @@
-﻿#_superdimensionfortress CarbonBlack EDR quick queries
+#_superdimensionfortress CarbonBlack EDR quick queries
 #_ver 1.0
-#_class Admin,endpoint_artifacts,Powershell,HiSurfAdvisory,1
+#_class Admin,IPs hostnames usernames processes filenames filehashes,Powershell,HiSurfAdvisory,1
 
 <#
 
-    GERWALK Carbon Black module for MACROSS
+    GERWALK Carbon Black API module for MACROSS
     Designed for VMWare Carbon Black EDR
 
     Run quick & dirty queries between MACROSS modules to gather
@@ -110,7 +110,7 @@ function splashPage(){
     else{
         getThis $i
     }
-    Write-Host ''
+    ''
     Write-Host -f YELLOW $vf19_READ
     Write-Host -f CYAN   '        =============================================================
                     Automated Carbon Black Response queries
@@ -276,10 +276,10 @@ function adjustTime($1,$2){
     
     ## If time is less or greater than the 24hr clock, shift the date +1 or -1
     if($2 -eq 0){
-        $zh = $1 -replace "^.+T",'' -replace ":.+$",''
-        $zmins = $1 -replace "^.+T[0-9]{2}:",'' -replace ":[0-9]{2}.+$",''
-        $zd = $1 -replace "T.+$",'' -replace "^.+-",''
-        $zm = $1 -replace "^[0-9]{4}-",'' -replace "-.+$",''
+        $zh = $1 -replace "^.+T" -replace ":.+$"
+        $zmins = $1 -replace "^.+T[0-9]{2}:" -replace ":[0-9]{2}.+$"
+        $zd = $1 -replace "T.+$" -replace "^.+-"
+        $zm = $1 -replace "^[0-9]{4}-" -replace "-.+$"
         $hour_diff = [int]$zh - $offset
         if($hour_diff -lt 0){
             $hour_diff = 24 - [math]::abs($hour_diff)
@@ -302,9 +302,9 @@ function adjustTime($1,$2){
 
     }
     elseif($2 -eq 1){
-        $lh = $1 -replace "^.+ ",'' -replace ":.+$",''
-        $ld = $1 -replace "^../",'' -replace " .+$",''
-        $lm = $1 -replace "/.+$",''
+        $lh = $1 -replace "^.+ " -replace ":.+$"
+        $ld = $1 -replace "^../" -replace " .+$"
+        $lm = $1 -replace "/.+$"
         $hour_diff = $lh + $offset
         if($hour_diff -gt 23){
             $day_max = $calendar[$lm]
@@ -337,45 +337,80 @@ function adjustTime($1,$2){
 
 
 
-<# Searches are done with the 'process' API by default. If another is needed, 2
+<#
+  By default, the $1 parameter is meant for the name of the $CALLER script
+  passed in by MACROSS' collab function. However, if GERWALK is being used
+  by itself (not called via collab), $1 and $2 will be null. You can modify
+  this script to tweak the query method:
+
+  Searches are done with the 'process' API by default. If another is needed, 2
   arguments need to be passed; the first is the opening for the API query...
 
                         'v1/process?'
 
   ...change 'process' to the required API, like 'binary'. The second argument is
   the actual query WITHOUT the preceding '&q='
+
+  See VMWare's Carbon Black documentation (or consult your support engineers).
 #>
 function findThese($1,$2){
     <# If needed, use vars to modify qsection with "facet.field=<FIELD>"
         ACCEPTED FIELDS:
-        process_md5: the top unique process_md5s for the processes matching the search
-        hostname: the top unique hostnames matching the search
-        group: the top unique host groups for hosts matching this search
-        path_full: the top unique paths for the processes matching this search
-        parent_name: the top unique parent process names for the processes matching this search
-        process_name: the top unique process names for the processes matching this search
-        host_type: the distribution of host types matching this search: one of workstation,
-            server, domain_controller
-        hour_of_day: the distribution of process start times by hour of day in computer local time
-        day_of_week: the distribution of process start times by day of week in computer local time
-        start: the distribution of process start times by day for the last 30 days
-        username_full: the username context associated with the process
+            process_md5: the top unique process_md5s for the processes matching the search
+            hostname: the top unique hostnames matching the search
+            group: the top unique host groups for hosts matching this search
+            path_full: the top unique paths for the processes matching this search
+            parent_name: the top unique parent process names for the processes matching this search
+            process_name: the top unique process names for the processes matching this search
+            host_type: the distribution of host types matching this search: one of workstation,
+                server, domain_controller
+            hour_of_day: the distribution of process start times by hour of day in computer local time
+            day_of_week: the distribution of process start times by day of week in computer local time
+            start: the distribution of process start times by day for the last 30 days
+            username_full: the username context associated with the process
     #>
-    $qbuild = '&q='
-    $qsection = 'v1/process?facet=true'  ## Default API call
-    $startt = 'start:-168h '             ## Default time window is 1 week
+
+    $defh = '168h'                       ## Default search window is 1 week
+    $qbuild = '&q='                      ## Start with an empty query string
+    $qsection = 'v1/process?facet=true'  ## Default API call is "process"
+    
+    ## This string will be added to the query to omit non-users from results if analyst chooses
     $onlyusers = '-(username:*SERVICE OR username:root OR username:*SYSTEM OR username:' + "$USR) "
 
+
+    ## Let the analyst pick a time window in hours
+    Write-Host -f GREEN '
+        
+        The default search window is 1 week (168 hours). You can specify a new
+        window by typing how many hours back you want to search, or hit ENTER
+        to keep the default, or type "q" to quit:  ' -NoNewline;
+    $Z = Read-Host
+    if($Z -eq 'q'){
+        Remove-Variable dyrl_ger*
+        Exit
+    }
+    elseif($Z -Match "^[0-9]+$"){
+        $defh = [string]$Z + 'h'
+    }
+    $startt = "start:-$defh "
+
+
+    ## Check if there are 2 parameters being passed in
     if($2 -ne $null){
-        if( $1 -ne $qsection ){
-            $qsection = $1               ## Use this API instead of default
-            $qbuild = $qbuild + $2       ## Use the second argument for query
+        if( $1 -Match "^v1" -and $1 -ne $qsection ){
+            $qsection = $1               ## Use this API $1 instead of the default
+            $qbuild = $qbuild + $2       ## Use $2 for the query
         }
         else{
+            ## Build query using $PROTOCULTURE from other tools based on the valtype
+            ## Get the calling script's valtype attribute:
+            $valtype = ($vf19_ATTS[$1]).valtype
             
-            ## Build query using $PROTOCULTURE from other tools
             $Z = $null
-            if($1 -eq 'ISAMU'){            ## ISAMU script passes IPs or hostnames for user lookups
+
+
+            ## For scripts sending IPs & hostnames:
+            if($valtype -Like "*IPs*" -or $valtype -Like "*hostname*"){      
                 if($2 -Match "^[0-9]+\."){
                     $qbuild = $qbuild + "ipaddr:$2 "
                 }
@@ -384,29 +419,32 @@ function findThese($1,$2){
                     $qbuild = $qbuild + $onlyusers
                     $skipsys = $true
                     $skipres = $true
-                    $Script:dyrl_ger_RES = 1
+                    #$Script:dyrl_ger_RES = 1
                     $res ="&rows=1"
                 }
             }
-            elseif($1 -eq 'SDF1'){         ## SDF1 script passes IPs
-                $qbuild = $qbuild + "ipaddr:$2 "
-            }
-            elseif($1 -eq 'MYLENE'){          ## MYLENE script passes usernames
+
+            ## MYLENE script passes usernames
+            elseif($valtype -Like "*username*"){
                 $qbuild = $qbuild + "username:$2 "
                 $oneuser = $true
-            }
-            elseif($1 -eq 'ELINT' -or $1 -eq 'ALTO'){  ## ALTO & ELINT scripts pass filenames
-                $qbuild = $qbuild + "(cmdline:*$2* OR fileless_scriptload_cmdline:*$2*) "
                 $skipsys = $true
+            }
+
+            ## For scripts that pass filenames
+            elseif($valtype -Like "*filename*"){
+                $qbuild = $qbuild + "(cmdline:*$2* OR fileless_scriptload_cmdline:*$2* OR filemod:$2) "
+                #$skipsys = $true
                 $skipres = $true
-                $Script:dyrl_ger_RES = 15
+                $Script:dyrl_ger_RES = 25
                 $res ="&rows=15"
             }
             
             
-            # $skipsys is set by other scripts that already specify usernames
+            # $skipsys gets set by above checks, forces results for non-system accounts only
             if( ! $skipsys ){
-                Write-Host -f GREEN '        Omit SYSTEM accounts?  ' -NoNewline;
+                Write-Host -f GREEN '        Omit SYSTEM accounts? (this also omits your username) ' -NoNewline;
+                $Z = Read-Host
                 if($Z -Match "^y"){
                     $skipsys = $true
                     $qbuild = $qbuild + $onlyusers
@@ -434,7 +472,8 @@ function findThese($1,$2){
     else{   ## Build CB queries manually with user input; best for quick lookups that don't
             ##  immediately need tons of details. For that reason "OR" operators aren't
             ##  allowed in this script; the filter terms specified below can each be used
-            ##  ONCE in any query, connected by "AND" operators.
+            ##  ONCE in any query, connected by "AND" operators. GERWALK isn't meant to
+            ##  completely replace logging in to Carbon Black to collect data.
         
         $qbuild = $qbuild + $startt
 
@@ -471,34 +510,34 @@ function findThese($1,$2){
             $Z1 = Read-Host
 
             if($Z1 -Match "^u"){
-                $c_username = $Z1 -replace "^u",''
+                $c_username = $Z1 -replace "^u"
             }
             elseif( $Z1 -Match "^[0-9]{1,5}$" ){
                 $c_ipport = $Z1
             }
             elseif($Z1 -Match "^[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}$") {
                 $c_ipaddr = $Z1
-                Write-Host ''
+                ''
                 Write-Host -f YELLOW '        Search results will be for hosts/users/processes that have connected'
                 Write-Host -f YELLOW "        to $Z1; the IP won't be visible in your results
                 "
             }
             elseif($Z1 -Match "^c"){
-                $c_cmdline = $Z1 -replace "^c",''
+                $c_cmdline = $Z1 -replace "^c"
                 $c_fsc = $c_cmdline
             }
             elseif($Z1 -Match "^p"){
-                $c_process_name = $Z1 -replace "^.",''
+                $c_process_name = $Z1 -replace "^."
             }
             elseif($Z1 -Match "^d"){
-                $c_domain = $Z1 -replace "^.",''
-                Write-Host ''
+                $c_domain = $Z1 -replace "^."
+                ''
                 Write-Host -f YELLOW '        Search results will be for hosts/users/processes that have connected'
                 Write-Host -f YELLOW "        to $Z1; the URL won't be visible in your results
                 "
             }
             elseif($Z1 -Match "^h"){
-                $c_hostname = $Z1 -replace "^.",''
+                $c_hostname = $Z1 -replace "^."
             }
             elseif($Z1 -eq 'e'){
                 wrapItUp 1
@@ -598,7 +637,7 @@ function findThese($1,$2){
     
     ## Get input if analyst is querying manually; Helps narrow their searches if
     ##  they only care about user activity 
-    if( ! $oneuser -and ! $skipsys ){
+    if( ! $oneuser -or ! $skipsys ){
         Write-Host -f GREEN "
         Do you want to omit results for SYSTEM/ROOT accounts? (also ignores your username) " -NoNewline;
         $Z = Read-Host
@@ -619,7 +658,7 @@ function findThese($1,$2){
 
         if($Z -Match "[0-9]{1,2}"){
             if($Z -gt 50){
-                Write-Host ''
+                ''
                 Write-Host -f CYAN "    The limit is currently 50. Setting max results to 50.
                 "
                 $Z = 50
@@ -668,7 +707,7 @@ function craftQuery($1,$2,$3,$4){
     $ua = 'MACROSS'   ## Set this user-agent however you'd like, so this script's curl activity can be
                       ##  easily identified in logs and whitelisted if necessary
 
-    getThis $vf19_TOOLSOPT['ger']    ## Encode your Carbon Black server's IP/URL in the extras.ps1 file (see the MACROSS README.md). There is already a 'ger' placeholder in that file.
+    getThis $vf19_TOOLSOPT['ger']    ## Encode your Carbon Black server's IP/URL in the utility.ps1 file (see the MACROSS README.md). There is already a 'ger' placeholder in that file.
     $SRV1 = "$vf19_READ"
     getThis 'IC1IICdYLUF1dGgtVG9rZW46IA=='  ## This is " -H 'X-Auth-Token: ", it gets decoded into $SRV2. Your API key ($3) gets appended to the $SRV2 variable
     $SRV2 = $vf19_READ
@@ -699,7 +738,7 @@ function craftQuery($1,$2,$3,$4){
 ## Loop until user quits
 ##  $1 is automatically passed if $CALLER has any value
 function searchAgain($1){
-    Write-Host ''
+    ''
     if( $1 -ne 1 ){
         Write-Host -f GREEN "    Hit ENTER to search again, or 'q' to quit: " -NoNewline;
         $Z = Read-Host
@@ -785,12 +824,12 @@ while($r -Match "[0-9]"){
             $dyrl_ger_WORKSPACE.results | Foreach-Object{  ## Prettify the results by picking & choosing elements to show onscreen
                 $r++
                 $Script:dyrl_ger_RESLIST.Add($r,$_)
-                $startt = $_.start #-replace 'T',' ' -replace "\.[0-9]+Z$",' ZULU'
+                $stime = $_.start #-replace 'T',' ' -replace "\.[0-9]+Z$",' ZULU'
                 $hname = $_.hostname
                 $uname = $_.username
                 $proc = $_.process_name
                 $dom = $_.domain
-                $fname = $_.observed_filename -replace "^.+\\",'' -replace "}$",''
+                $fname = $_.observed_filename -replace "^.+\\" -replace "}$"
                 $rname = $_.internal_name
                 $md5 = $_.md5
                 $fdesc = $_.file_desc
@@ -798,7 +837,7 @@ while($r -Match "[0-9]"){
                 $hnwithfn = $_.host_count
                 $filesrc = $_.product_name
 
-                adjustTime $startt 0  ## Get the local time from CB's GMT because you can't do it by default SMH
+                adjustTime $stime 0  ## Get the local time from CB's GMT because you can't do it by default SMH
 
                 ## Create menus dynamically based on API called; add more as needed
 
@@ -838,12 +877,12 @@ while($r -Match "[0-9]"){
             }
         }
 
-        Write-Host ''
+        ''
         $dyrl_ger_Z = ''
         while($dyrl_ger_Z -ne 'f'){
             showRES
             Clear-Variable -Force dyrl_ger_Z
-            Write-Host ''
+            ''
             Write-Host -f GREEN "    Select a result to drill down, or 'f' to finish:  " -NoNewline;
             $dyrl_ger_Z = Read-Host
             if($dyrl_ger_Z -in $dyrl_ger_RESLIST.Keys){
@@ -870,9 +909,9 @@ while($r -Match "[0-9]"){
     else{
         
         $dyrl_ger_Z = ''
-        Write-Host -f CYAN "
+        Write-Host -f CYAN '
         No results found...
-        "
+        '
         if( $CALLER ){
             slp 1
             searchAgain 1
