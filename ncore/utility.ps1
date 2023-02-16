@@ -167,7 +167,7 @@ function getHash($1,$2){
     $hashm = @('md5','sha256')
     if($2 -in $hashm){
         $h = CertUtil -hashfile $1 $2
-        Return $h
+        Return $h[1]  # Don't need all the other crap Windows spits out
     }
     else{
         errMsg 4
