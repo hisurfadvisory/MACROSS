@@ -299,7 +299,7 @@ function msOffice($1,$2,$3){
 
     ## Excel contents are *typically* in "xl\worksheets\Sheet[0-9].xml" and ".\sharedStrings.xml" paths,
     ## and MSWord contents are in the Document.xml... but we'll search the whole thing anyway
-    if("$1" -Match "(doc|xls|ppt)(m|x)$"){
+    if("$1" -Match "(doc|xls|ppt)(m|x)?$"){
         $doc.Entries |
             Where-Object{
                 $_.Name -Match "\.xml$"
