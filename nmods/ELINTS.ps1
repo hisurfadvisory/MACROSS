@@ -726,7 +726,7 @@ do{
                 $dyrl_eli_FSIZE = [string]::Format("{0:n2} MB", ((Get-ChildItem -Path $dyrl_eli_RADARCONTACT).length) / 1MB)
 
                 ## Determine scan method
-                if( $dyrl_eli_RADARCONTACT -Match "(doc|xls|ppt)(m|x)$" ){
+                if( $dyrl_eli_RADARCONTACT -Match "(doc|xls|ppt)(m|x)?$" ){
                     $dyrl_eli_CONVSTR = msOffice $dyrl_eli_RADARCONTACT $dyrl_eli_TARGET 1
                 }
                 else{
@@ -794,7 +794,7 @@ do{
             $Script:dyrl_eli_BOGEY = Split-Path -Path "$dyrl_eli_PATH" -Leaf -Resolve
             $dyrl_eli_Z1 = $null
             ''
-            if( $dyrl_eli_PATH -Match "(doc|xls|ppt)(m|x)$" ){
+            if( $dyrl_eli_PATH -Match "(doc|xls|ppt)(m|x)?$" ){
                 $dyrl_eli_setCase = msOffice $dyrl_eli_PATH $dyrl_eli_TARGET 2
             }
             else{
