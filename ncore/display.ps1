@@ -375,7 +375,7 @@ function chooseMod(){
         $sp = $(Get-Random -min 0 -max 9)
         transitionSplash $sp 1
         [string]$proto = $PROTOCULTURE
-        $proto = $proto.Substring(0,20)
+        $proto = $proto.Substring(0,75)
         Write-Host "
         PROTOCULTURE == $proto...
         Do you want to clear it?  " -NoNewline;
