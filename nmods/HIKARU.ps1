@@ -1,5 +1,5 @@
-﻿#_superdimensionfortress Demo - a basic config walkthru (7-10 mins)
-#_ver 0.1
+#_superdimensionfortress Demo - a basic config walkthru (7-10 mins)
+#_ver 0.2
 #_class User,demo script,Powershell,HiSurfAdvisory,0
 
 <#
@@ -58,11 +58,20 @@ if($HELP){
     Exit
 }
 
-function next(){
-    Write-Host -f GREEN "
+function next($1){
+    if($1 -eq 1){
+        while($Z -ne 'c'){
+            Write-Host -f GREEN "
+    Type 'c' to continue! " -NoNewline;
+            $Z = Read-Host
+        }
+    }
+    else{
+        Write-Host -f GREEN "
     Hit ENTER to continue!
-    "
-    Read-Host
+        "
+        Read-Host
+    }
 }
 
 
@@ -87,7 +96,7 @@ Write-Host -f GREEN "
     
     You need to read the documentation for all the details, but this demo will
     give you the basics of why this framework has worked well for me."
-next
+next 1
 splashPage
     
 Write-Host -f GREEN "    We'll start with the missile pod (MPOD):"
@@ -208,16 +217,17 @@ Write-Host -f GREEN ". Again, if you need to make use of that
 
 if( Test-Path "$vf19_TOOLSDIR\GUBABA.ps1" ){
 Write-Host -f GREEN "
-    Next, we'll do a quick demo on jumping between MACROSS scripts by introducing
-    you to GUBABA and explaining how MACROSS handles sharing info.
+    Next, I'll briefly explain script tagging, then we'll do a quick demo on jumping between
+    MACROSS scripts.
     "
 next
 cls
 
+
 while($dyrl_Z -notMatch "[\w]"){
 Write-Host -f GREEN "
-    Now, another part of the MACROSS framework is standardized tagging in your scripts. The
-    first three lines of each MACROSS script should contain identifying info:
+    Another part of the MACROSS framework is standardized tagging in your scripts. The first
+    three lines of _every_ MACROSS script should contain identifying info:
 
         first line = a brief description that gets written to the menu
         second line = the script version number
@@ -227,25 +237,60 @@ Write-Host -f GREEN "
     MACROSS to track key details of each script in another hashtable called " -NoNewline;
 Write-Host '$vf19_ATTS' -NoNewline;
 Write-Host -f GREEN ".
-    GUBABA is an offline Windows Event reference for when you're looking at some random
-    log and you see an Event ID but have no idea what it means, or you want to find out
-    what the event ID is for a specific kind of event.
+    
+    Let's explore this with GUBABA. It's powershell script that acts as an offline Windows Event
+    reference for when you're looking at some random log and you see an Event ID but have no
+    idea what it means, or you want to find out what the event ID is for a specific kind of event.
 
-    Let's take a look at GUBABA's attributes by reading the vf19_ATTS hashtable:
-    "
+    You can take a look at any MACROSS script's attributes by reading the " -NoNewline;
+    Write-Host -f GREEN '$vf19_ATTS' -NoNewline;
+    Write-Host -f GREEN " hashtable
+    and using the toolInfo method,  " -NoNewline;
+    Write-Host '$vf19_ATTS[$tool].toolInfo()
+    '
 
+$varc0 = [regex]"^\$.+\.tool[i|I]nfo..$"
+while($varc1 -notMatch $varc0){
+    Write-Host -f GREEN '
+    Type the above command, but replace $tool with "gubaba" (include quotes).
+    >  ' -NoNewline;
+    $varc1 = Read-Host
+    if($varc1 -Match "\s"){
+        $varc1 = ''
+    }
+    else{
+        $choice = $varc1 -replace "^.+\['" -replace "'\].*$"
+        $choice_eval = $vf19_ATTS[$choice].valtype
+    }
+}
 
-$vf19_ATTS['GUBABA'].toolInfo() | %{Write-Host -f YELLOW "      $_"}
-
+splashPage
+iex "$varc1" | %{Write-Host -f YELLOW "      $_"}
+Remove-Variable -Force varc*
 
 Write-Host -f GREEN "
-    The 'classes.ps1' file contains all the comments on what attributes need to get passed
-    and in what order. Now, back to GUBABA.
+    As you can see from the 'Evaluates:' field, $choice works with $choice_eval.
 
+    Play with this in MACROSS' debug menu to figure out how your script can quickly find
+    other scripts to interact with, via these class attributes. Just type"
+    Write-Host '
+    debug <any powershell command string>'
+    Write-Host -f GREEN "
+    This little snippet would find any MACROSS scripts that can accept IP addresses for
+    for blacklisting or searching:"
+    Write-Host '
+ debug $vf19_ATTS.keys | %{if($vf19_ATTS[$_].valtype -like "*ips*"){$vf19_ATTS[$_].name}}'
+    Write-Host -f GREEN "
+    The 'classes.ps1' file contains all the details on what attributes need to get passed
+    from your scripts, and in what order. Now, back to GUBABA."
+    next
+    cls
+    Write-Host -f GREEN "
     Give me an ID like '5157' or keywords like 'windows firewall', and we'll ask GUBABA
     if he can find it.
         > " -NoNewline;
 $dyrl_Z = Read-Host
+Remove-Variable -Force choice*
 }
 
 Write-Host -f GREEN "
@@ -412,6 +457,8 @@ else{
             of other scripts listed in $vf19_ATTS to quickly make collab calls
             to the ones most relevant
         -Standardized variable naming to avoid crossing the streams'
+    next
+    splashPage
     Write-Host '
              IMPORTANT VARS (available to all MACROSS tools):
     $vf19_TOOLSROOT - the directory MACROSS is run from
