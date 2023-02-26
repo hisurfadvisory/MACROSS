@@ -1,5 +1,5 @@
 #_superdimensionfortress Demo - Python integration
-#_ver 0.1
+#_ver 0.2
 #_class User,demo script,Python 3,HiSurfAdvisory,2
 
 # By default, MACROSS always passes these vars to any python scripts it loads from the menu:
@@ -114,27 +114,30 @@ def theGoodStuff(Z1 = '',Z2 = None):
     splashPage()
     print('''
 
-    Firstly, as of MACROSS version 3, the mcdefs python library (covered in a bit)
-    doesn't have a smart way to share goodies like the powershell "collab" function
-    does (because my creator is lazy and not too bright).''')
+    Now, as of MACROSS version 3, the mcdefs python library (covered in a bit) doesn't
+    have a smart way to share goodies like the powershell "collab" function (because my
+    creator is lazy and not too bright).''')
     if Z1 != '':
         print('''
     I got your value --
                                ''',Z1,'''
+
     -- easy as getting an email, and I can sort-of make requests back to MACROSS just
-    as easily, in fact I'm about to do just that by forwarding your stripped-value to
-    KÖNIG. But I will have to send my response to HIKARU's original query via snail-mail,
+    as easily, in fact I'm about to do just that by forwarding your filename to KÖNIG.
+    But I will have to send my response to HIKARU's original query via snail-mail,
     so-to-speak.''')
         print('''
     So we'll have to build functions for our analysts to send your python values
     to powershell, and then somehow get the results back in a way we can use
     them.
-''')
+    ''')
+        next(1)
+        mc.psc('cls')
     elif Z1 == '':
         Z1 = input('''
     Now let's get some input from you. Give me a keyword to search for filenames
-    with, preferably something you know can be found in your home folders (and you
-    can use '*' wildcards:  ''')
+    with, preferably something you know can be found in your home folders (and it
+    can just be a partial filename):  ''')
         Z1 = '\'' + Z1 + '\''
         
     print('''
@@ -152,8 +155,8 @@ def theGoodStuff(Z1 = '',Z2 = None):
 
     If you read KÖNIG's documentation, you'll see it needs several parameters passed
     to it if you try to call it without MACROSS, the first param being the value you
-    supplied. Next it needs the name of the script calling it, and if it's a python
-    script (I am!), the name needs to begin with "py" (this is important as you'll see):
+    supplied. Next it needs the name of the script calling it. If it's a python script
+    (I am!), the name needs to begin with "py" (this is important as you'll see):
 
                     konig = konig + 'pyMINMAY'
             
@@ -172,14 +175,15 @@ def theGoodStuff(Z1 = '',Z2 = None):
                 gbg = vf19_TOOLSROOT + '\\ncore\\py_classes\\garbage_io'
                 konig = konig + gbg
 
-    ...and the location that MACROSS knows as "$vf19_DEFAULTPATH", and sent to us as
+    ...and the location that MACROSS knows as "$vf19_DEFAULTPATH", and sent to me as
     sys.argv[2] (the current user's desktop, where KÖNIG writes its findings to):
 
                 konig = konig + vf19_DEFAULTPATH + '-ErrorAction SilentlyContinue'
 
     I also added the "ErrorAction" option at the end, because KÖNIG expects certain
     resources from MACROSS that it won't get from me, and we don't want to see all
-    those error messages.
+    those error messages. Adding "py" to my name forces KÖNIG to make some adjustments
+    to its functions. You can use another method in your scripts if you want.
 
     Now, previously I left notes saying "more on that later"-- one for the mcdefs library,
     and another for MACROSS' garbage_io folder. The provided python library, mcdefs, is
@@ -220,9 +224,10 @@ def theGoodStuff(Z1 = '',Z2 = None):
     send their results to MACROSS' pyCross function. This will write whatever data your script
     needed to get, into an "eod" file that will be put in garbage_io.
 
-    If KÖNIG found anything for you, it should have written the location of its results file
-    and how many results it got to "konig.eod". The garbage_io location should still be valid
-    as our variable "gbg" so, let's check using the mcdefs.dirfile() function...
+    If KÖNIG found anything for you, it should have written the location of its $RESULTFILE
+    report, along with the number of results it got, to "konig.eod". The garbage_io location
+    should still be valid as our variable "gbg" so, let's check using the mcdefs.dirfile()
+    function...
 
                 konfile = gbg + '\\konig.eod'
                 if mcdefs.dirfile(konfile,'isfile'):
@@ -330,8 +335,8 @@ if PROTOCULTURE:
     
     """,PROTOCULTURE,"""
 
-    as a demonstration of using tools written in powershell asking for data from python
-    and vice-versa. 
+    in any other directories, as a demonstration of using tools written in powershell asking
+    for data from python and vice-versa. 
 
     """)
 
@@ -344,13 +349,13 @@ if PROTOCULTURE:
     passed me is a commonly seen filename for some trojanized documents. My next step is
     going to be to remove any filepaths or URLS attached to the filename, then pass it
     to another automation that can scan for filenames. The MACROSS library contains a basic
-    regex function via the re lib, so let's take a look at that PROTOCULTURE value:
+    regex function via the "re" library, so let's take a look at that PROTOCULTURE value:
+    
+    """,PROTOCULTURE,"""
     """)
     Z1 = mc.rgx("^.*\\\\",PROTOCULTURE,'')
-    Z1 = '*' + Z1 +'*'
     Z2 = CALLER
-    print('''
-    ''')
+    print('')
     print("        I'll just take this, thank you:",Z1)
     next(1)
     mc.psc('cls')
