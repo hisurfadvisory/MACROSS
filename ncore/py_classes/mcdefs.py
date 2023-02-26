@@ -105,7 +105,6 @@ def delStuff(d):
 ## Since I needed to import re anyway, might as well make it available to other scripts.
 ## Pass in a replacement string as a third arg to do basic string edits
 def rgx(pattern,string,replace = None):
-    print(pattern,string,replace)
     if replace == None:
         r = re.search(pattern,string)
     else:
