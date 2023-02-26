@@ -386,7 +386,8 @@ function collab(){
     }
 
     ## Python check
-    if( $module -Match "py$" ){
+    $modname = $module -replace "\..+$"
+    if( $vf19_ATTS["$modname"].lang -Like 'python*' ){
         if( ! $MONTY ){
             Write-Host -f CYAN "
             ERROR! Python is not installed! Cannot load script...
