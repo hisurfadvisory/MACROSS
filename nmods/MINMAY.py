@@ -356,7 +356,7 @@ if PROTOCULTURE:
     Z1 = mc.rgx("^.*\\\\",PROTOCULTURE,'')
     Z2 = CALLER
     print('')
-    print("        I'll just take this, thank you:",Z1)
+    print(" I'll just use some regex magic to strip out the filepath:",Z1)
     next(1)
     mc.psc('cls')
     theGoodStuff(Z1,Z2)
