@@ -52,6 +52,107 @@ neKVmuKVkOKVkOKVkOKVkOKVkOKVkOKVnQ=='
 }
 
 
+
+## Format up to three rows of outputs to the screen; parameters you send will be
+## truncated to fit in the window.
+## Call this function a second time with a single parameter, "0", to add the final
+## separator $c after all your results have been displayed.
+## $1 is the name of your output/results.
+## $2 is the value of your output's name.
+## $3 is an optional value for whatever you need.
+##    Example usage for displaying an array of results:
+##
+##         foreach($i in $results.keys){ screenResults $i $results[$i] }
+##         screenResults 0
+##
+function screenResults($1,$2,$3){
+
+    ## Bar string to create rows between output lines:
+    $c = '‖≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡‖'
+    ## Separator character to create columns:
+    $r = '║'
+
+
+    if($2){
+        $NAME = ' ' + $1
+        $VAL1 = ' ' + $2
+        $wide1 = $1.length          ## Count the characters in each parameter passed;
+        $wide2 = $2.length          ## need to remove chars or add whitespace to make the output pretty
+        if($wide1 -gt 20){
+            $NAME = $NAME.Substring(0,17)
+            $NAME = $NAME + '...   '       ## Truncate superlong values with ellipses...
+        }
+        else{
+            while($wide1 -ne 23){
+                $NAME = $NAME + ' '        ## ...or add whitespace to shorter values until the length is 23
+                $wide1++
+            }
+        }
+                         ## Rinse & repeat for parameters $2 and $3 (if they exist)
+        if($3){
+            $VAL2 = ' ' + $3
+            $wide3 = $3.length
+            if($wide2 -gt 34){
+                $VAL1 = $VAL1.Substring(0,33)
+                $VAL1 = $VAL1 + '...'
+            }
+            else{
+                while($wide2 -ne 35){
+                    $VAL1 = $VAL1 + ' '
+                    $wide2++
+                }
+            }
+            if($wide3 -gt 28){
+                $VAL2 = $VAL2.Substring(0,25)
+                $VAL2 = $VAL2 + '...'
+            }
+            else{
+                while($wide3 -ne 28){
+                    $VAL2 = $VAL2 + ' '
+                    $wide3++
+                }
+            }
+        }
+        else{
+            if($wide2 -gt 64){
+                $VAL1 = $VAL1.Substring(0,62)
+                $VAL1 = $VAL1 + '...'
+            }
+            else{
+                while($wide2 -ne 64){
+                    $VAL1 = $VAL1 + ' '
+                    $wide2++
+                }
+            }
+        }
+
+        Write-Host -f GREEN $c                 ## Start with a top-bar
+        Write-Host -f GREEN $r -NoNewline;     ## Column 1 left wall
+        Write-Host -f YELLOW $NAME -NoNewline; ## Column 1 value
+        Write-Host -f GREEN $r -NoNewline;     ## Column 2 separator
+
+        ## Create one or two more separators based on whether one or
+        ## two parameters were passed into $2 and $3
+        if($VAL2){
+            Write-Host $VAL1 -NoNewline;
+            Write-Host -f GREEN $r -NoNewline;
+            Write-Host -f GREEN $VAL2 -NoNewline;
+        }
+        else{
+            Write-Host $VAL1 -NoNewline;
+        }
+        Write-Host -f GREEN $r                ## Column 2/3 right wall
+    }
+
+    ## If screenResults is called with just one parameter, the user wants to close off the 
+    ## list with a bottom-bar
+    else{
+        Write-Host -f GREEN $c
+    }
+}
+
+
+
 ## Function to pause your scripts for $1 seconds
 function slp(){
     param(
