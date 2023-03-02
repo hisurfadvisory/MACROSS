@@ -335,6 +335,10 @@ function msOffice($1,$2,$3){
                 }
             }
     }
+    
+    
+    ## If doc is old 97-2003 non-compressed format, can't use keyWordScan function
+    ## because it is for parsing extracted XML files.
     else{
         $findvba = Get-Content $1
         #$findstr = New-Object -TypeName System.IO.StreamReader -ArgumentList $1
