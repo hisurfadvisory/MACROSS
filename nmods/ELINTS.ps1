@@ -254,7 +254,7 @@ function msOffice($1,$2,$3){
                 %{
                     $L++
                     if( ! $quit ){
-                        if( !($_ -cMatch $encode) ){                     ## Ignore non-ASCII strings
+                        if( !($_ -cMatch $$dyrl_eli_encode) ){                     ## Ignore non-ASCII strings
                             if( $dyrl_eli_CASE -eq 'y' ){   ## If the user specified case-sensitive
                                 if($_ -cMatch "$2"){
                                     $a += $_
