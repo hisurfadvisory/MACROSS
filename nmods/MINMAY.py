@@ -80,14 +80,21 @@ else:
 
 
 def next(e):
-    if e == 1:
-        e = 'continue!'
+    k = ''
+    if e == 0:
+        while k != 'c':
+            print('''
+    Type "c" to continue!''')
+            k = input('    ')
     else:
-        e = 'exit!'
-        
-    print('''
+        if e == 1:
+            e = 'continue!'
+        else:
+            e = 'exit!'
+            
+        print('''
     Hit ENTER to''',e)
-    input()
+        input()
 
 def splashPage():
     b = 'ICAgICAgIOKWiOKWiOKWiOKVlyAgIOKWiOKWiOKWiOKVl+KWiOKWiOKVl+KWiOKWiOKWiOKVlyAgIOKWiO\
@@ -220,7 +227,7 @@ def theGoodStuff(Z1 = '',Z2 = None):
     Now, within the MACROSS root folder, inside the ncore subfolder, within the py_classes
     sub-sub-basement folder, there is a folder called garbage_io. It's not really for garbage,
     though. Its contents are very valuable! Part of the MACROSS framework is to build-in
-    functions for your powershell scripts so that if they get called by a python script, they
+    checks for your powershell scripts so that if they get called by a python script, they
     send their results to MACROSS' pyCross function. This will write whatever data your script
     needed to get, into an "eod" file that will be put in garbage_io.
 
@@ -340,7 +347,7 @@ if PROTOCULTURE:
 
     """)
 
-    next(1)
+    next(0)
     mc.psc('cls')
     
     splashPage()
@@ -355,8 +362,9 @@ if PROTOCULTURE:
     """)
     Z1 = mc.rgx("^.*\\\\",PROTOCULTURE,'')
     Z2 = CALLER
-    print('')
-    print(" I'll just use some regex magic to strip out the filepath:",Z1)
+    print("""
+    I'll just use some regex magic to strip out the filepath:
+                                            """,Z1)
     next(1)
     mc.psc('cls')
     theGoodStuff(Z1,Z2)
