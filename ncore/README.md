@@ -61,6 +61,25 @@ To further customize and modify these core functions to your liking, see the com
 <b>I. display.ps1</b><br>
 	&emsp;<b>A.</b> splashPage() = a cosmetic function for the MACROSS menu<br>
 <br>
+	&emsp;<b>B.</b> screenResults() = This is a cosmetic feature that lets you present your script's results in a pre-formatted manner
+	on screen. Call this function with 2 required parameters (plus 1 optional) to print a table:<br>
+	Usage:<br>
+	
+	# This displays your results in 3 columns like a spreadsheet
+	foreach($i in someFunction){ screenResults $result_name $result_value $optional_value }
+	screenResults 0
+	
+At the end of printing your results, call the function again with a single parameter (can be any value) to write a closing bar at the bottom of the table. Example output:<br>
+
+	‖≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡‖
+	║ HOST 1                 ║ Windows 11                ║ Patched                             ║
+	‖≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡‖
+	║ HOST 2                 ║ Windows 10                ║ Not patched                         ║
+	‖≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡‖
+	║ HOST 3                 ║ Windows 10                ║ Patched                             ║
+	‖≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡‖
+
+<br>
 	&emsp;<b>B.</b> slp() = Sleep function; provide it the number of seconds you want your script to pause<br>
 	Usage:<br>
 	
