@@ -65,6 +65,9 @@ neKVmuKVkOKVkOKVkOKVkOKVkOKVkOKVnQ=='
 ##         foreach($i in $results.keys){ screenResults $i $results[$i] }
 ##         screenResults 0
 ##
+## Note that the formatting can be broken if lots of non-ascii characters are in the values
+## being passed in
+##
 function screenResults($1,$2,$3){
 
     ## Bar string to create rows between output lines:
