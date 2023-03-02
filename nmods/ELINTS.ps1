@@ -1,6 +1,6 @@
 #_superdimensionfortress String-search documents
 #_ver 3.1
-#_class User,File_string_search,Powershell,HiSurfAdvisory,1
+#_class User,Strings,Powershell,HiSurfAdvisory,1
 
 <#
     Author: HiSurfAdvisory
@@ -10,11 +10,12 @@
     
     -- *REQUIRES* being launched from the MACROSS console! --
 
-    Uses Get-Content to search files for user-supplied keywords;
-    automatically uncompresses MS Office documents to scan XML files.
+    Uses Get-Content and/or .NET methods to search files for user-supplied
+    keywords; automatically uncompresses MS Office documents to scan XML files.
 
     Can work with single files, or a list of files from a .txt that
-    was generated beforehand.
+    was generated beforehand (this script was created alongside KONIG.ps1
+    for that purpose).
 
     This script does NOT incorporate iTextSharp for scanning PDF files
     (yet). Most customer networks I investigate do not have access to
@@ -22,12 +23,14 @@
     work with what's available.
 
     There are a few variables in this script that are not used by
-    default. You can tweak this script to set them based on inputs
-    from your own scripts:
+    default. They exist for infosec purposes. You can tweak this script
+    to set them based on inputs from your own scripts:
 
         $dyrl_eli_nocopy -- when this is set to true, all copy functions
         and dialogs are disabled, preventing the $CALLER script from being
-        able to copy files being investigated
+        able to copy files being investigated. If you've found a mistakenly
+        leaked document, for example, you don't want analysts to make it worse
+        by creating more copies of it.
 
         $dyrl_eli_norecord -- when this is set to true, the filenames and
         their string-matches (if any) will NOT be written to the
@@ -104,11 +107,13 @@ if( $HELP ){
   
   ELINT-SEEKER can perform a scan for words or phrases in files from any accesible
   location. This is like the 'strings' command in linux, and importantly doesn't
-  require OPENING the file and triggering any exploits.
+  require OPENING the file, which risks triggering any exploits.
   
   This script:
     -Can accept lists to search multiple files at once
     -Can accept manual input of a single file for string-searching
+    -Will notify you if macros are detected in MS Office documents & spreadsheets
+    -Can copy files you find onto your desktop for investigation
     -Can query Carbon Black* using GERWALK to find additional info on files you've scanned
         *(Requires that your organization uses Carbon Black, obviously)
  
@@ -116,10 +121,6 @@ if( $HELP ){
   grab the first instance of a match for you to view. All search results get saved into a
   file called 'strings-found.txt' on your desktop. You don't need to delete or rename this
   file, ELINTS will append your new findings without modifying any previous search results.
-
-  ELINTS can also copy any files that you find for further investigation. Found a python
-  script with sus' strings in it, or a pdf with sus' code? Copy it to your desktop and
-  get forensicating! 
 
   When you are scanning a single file from manual selection, ELINTS will display every
   instance of a match --not just the first one-- so you can get some context.
@@ -136,7 +137,7 @@ if( $HELP ){
 ####################################
 ## Let user choose whether to quit after each match
 ####################################
-function go($1){
+function reacquire($1){
     if( $1 -eq 'p' ){
         Write-Host -f GREEN '   Continue parsing this file (y/n)?  ' -NoNewline;
         $Z = Read-Host
@@ -164,18 +165,29 @@ function completeMsg (){
     else{
         cls
         ''
+        if($dyrl_eli_MATCHLISTI){
+            $dyrl_eli_MATCHLISTI.keys | Sort | %{ 
+                screenResults $_ $dyrl_eli_MATCHLISTI[$_]
+            }
+            screenResults 0    
+        }
         Write-Host -f GREEN ' Search complete!'
         Write-Host -f YELLOW " $HOWMANY" -NoNewLine; 
         Write-Host -f GREEN  ' results for ' -NoNewLine; 
         Write-Host -f YELLOW "$dyrl_eli_TARGET" -NoNewLine; 
         Write-Host -f GREEN ' have been appended to ' -NoNewLine; 
         Write-Host -f CYAN 'strings-found.txt' -NoNewLine; 
-        Write-Host -f GREEN ' on your Desktop.'
+        Write-Host -f GREEN ' on your Desktop' -NoNewline;
         if($dyrl_eli_VBA -gt 0){
-            ''
-            Write-Host -f YELLOW ' VBA scriptnames were detected and also recorded to strings-found.txt'
+            Write-Host -f GREEN ','
+            Write-Host -f GREEN ' as well as ' -NoNewline;
+            Write-Host -f YELLOW "$dyrl_eli_VBA" -NoNewline;
+            Write-Host -f GREEN ' macro name' -NoNewline;
+            if($dyrl_eli_VBA -gt 1){
+                Write-Host -f GREEN 's' -NoNewline;
+            }
         }
-        Write-Host '
+        Write-Host -f GREEN '.
         '
     }
 }
@@ -191,10 +203,15 @@ function completeMsg (){
 ## only one match.
 ####################################
 function msOffice($1,$2,$3){
-    Add-Type -Assembly System.IO.Compression.FileSystem        ## Need to uncompress MSOffice stuff
-    Set-Variable -Name a,n,nn -Option AllScope                    ## Let nested functions control these values
+    if($1 -Match "(doc|xls|ppt)(m|x)$"){
+        Add-Type -Assembly System.IO.Compression.FileSystem    ## Need to uncompress MSOffice stuff
+        ##  Compressed office documents have multiple directories and files;
+        ##  Only care about the XML containing document contents
+        $doc = [IO.Compression.ZipFile]::OpenRead("$1")
+    }
+
+    Set-Variable -Name a,n,nn -Option AllScope                 ## Let nested functions control these values
     $fn = $1 -replace "^.*\\",''                               ## Cut filepath for display
-    $encode = "[^\x00-\x7F]"                                   ## Ignore non-ASCII blocks
     $n = 0                                                     ## Track number of matches PER FILE
     $nn = 0
     $a = @('')                                                 ## Only care if matches get written to $a
@@ -216,7 +233,7 @@ function msOffice($1,$2,$3){
     }
 
 
-    ## Scan the extracted plaintext for user's keywords
+    ## Scan the extracted plaintext for user's keywords; alert on macros/vbs
     function keyWordScan($pt,$macroname){
         $L = 0                                                      ## Count number of lines scanned
         $size = 0
@@ -251,7 +268,7 @@ function msOffice($1,$2,$3){
                                         Write-Host -f YELLOW " $dyrl_eli_BOGEY block $L"
                                         #Write-Host ":  $aabb
                                         #"
-                                        $Z = go $type
+                                        $Z = reacquire $type
                                         if( $Z -eq 'n' ){
                                             $quit = $true
                                         }
@@ -270,7 +287,7 @@ function msOffice($1,$2,$3){
                                         Write-Host -f YELLOW " $dyrl_eli_BOGEY block $L"
                                         #Write-Host ":  $aabb
                                         #"
-                                        $Z = go $type
+                                        $Z = reacquire $type
                                         if( $Z -eq 'n' ){
                                             $quit = $true
                                         }
@@ -293,22 +310,23 @@ function msOffice($1,$2,$3){
         }
         
 
-    ##  Compressed office documents have multiple directories and files;
-    ##  Only care about the XML containing document contents
-    $doc = [IO.Compression.ZipFile]::OpenRead("$1")
+    
 
     ## Excel contents are *typically* in "xl\worksheets\Sheet[0-9].xml" and ".\sharedStrings.xml" paths,
     ## and MSWord contents are in the Document.xml... but we'll search the whole thing anyway
-    if("$1" -Match "(doc|xls|ppt)(m|x)?$"){
+    if( $doc ){
         $doc.Entries |
             Where-Object{
                 $_.Name -Match "\.xml$"
             } | %{
                 if($_.name -Match "^vba"){
+                    Write-Host -f YELLOW '   Document contains macros! Extracting...'
+                    slp 3
                     $Script:dyrl_eli_VBA++
                     'VBA Script found: ' >> $dyrl_eli_intelpkg
                     '' >> $dyrl_eli_intelpkg
                     $PLAINTEXT = grabXML $_ 
+                    Write-Host "     $PLAINTEXT"
                     keyWordScan $PLAINTEXT 'wne:macroName=' ## uncompressed file has VBA info
                 }
                 else{
@@ -317,6 +335,40 @@ function msOffice($1,$2,$3){
                 }
             }
     }
+    else{
+        $findvba = Get-Content $1
+        #$findstr = New-Object -TypeName System.IO.StreamReader -ArgumentList $1
+        $findstr = [IO.File]::ReadLines($1)
+
+        ## If 'VBA...DLL' and 'Sub ' are in the same doc, likely a macro
+        if( $findvba | Select-String -CaseSensitive 'VBA' | Select-String 'dll' ){
+            $mac = ($findvba | Select-String -Pattern "Sub .+\(\)") -replace $dyrl_eli_encode
+            $mac= $mac -replace "^Sub " -replace "\(\)"
+            Write-Host -f CYAN '  Possible macro found  : ' -NoNewline;
+            Write-Host -f YELLOW $mac
+            ''
+            slp 3
+            $Script:dyrl_eli_VBA++
+            "VBA Script found: $mac" | Out-File -Append $dyrl_eli_intelpkg
+            '' | Out-File -Append $dyrl_eli_intelpkg
+        }
+
+        $findstr | 
+            %{
+                if($dyrl_eli_CASE -eq 'y'){
+                    if($_ | Select-String -CaseSensitive $2){
+                        $a += $_ -replace $dyrl_eli_encode
+                        $n++
+                    }
+                }
+                elseif($_ | Select-String $2){
+                    $a += $_ -replace $dyrl_eli_encode
+                    $n++
+                }
+            }
+        Remove-Variable findstr,findvba,mac
+        }
+    #}
 
 
     cls
@@ -356,6 +408,7 @@ function setCase($1,$2){
         $a = Get-Content $1 | Select-String $2
     }
     if( $a ){
+        $a = $a -replace $dyrl_eli_encode  ## Remove non-ascii chars
         Return $a
     }
 }
@@ -371,8 +424,7 @@ function fileCopy(){
     foreach( $i in $dyrl_eli_SENSOR1 ){
         $TEMPARRAYINDEX++
         Write-Host -f YELLOW " $TEMPARRAYINDEX.  " -NoNewline;
-            Write-Host "$i
-            "
+            Write-Host "$i"
     }
 
 
@@ -494,6 +546,7 @@ function fileCopy(){
 ## DEFAULT VARS
 ####################################
 $dyrl_eli_DATE = date
+$Script:dyrl_eli_encode = "[^\x00-\x7F]"      ## Ignore non-ASCII blocks
 
 ## Hashtable/array for informing user of search hits
 $dyrl_eli_SENSOR1 = @()
@@ -503,7 +556,7 @@ $dyrl_eli_SENSOR2 = @()
 
 
 ## If running ELINTS script by itself, get the user to 
-##   manually enter a filepath or list
+## manually enter a filepath or list
 if( ! $RESULTFILE ){
     $dyrl_eli_C2f = $null
     splashPage 'img'
@@ -646,8 +699,7 @@ do{
             Write-Host -f GREEN " All done. Type 'c' to continue.  " -NoNewline;
             $dyrl_eli_Z = Read-Host
         }
-        Remove-Variable CALLER -Scope Global
-        Remove-Variable dyrl_eli* -Scope Global
+        Remove-Variable CALLER,dyrl_eli_* -Scope Global
         Return
     }
     <#================================================
@@ -666,29 +718,42 @@ do{
 
 
         # Get required vars and run the search
-        Write-Host -f GREEN ' What string are you searching for?  ' -NoNewLine; 
-
+        Write-Host -f GREEN ' Type "regex " (without quotes) followed by your search string to'
+        Write-Host -f GREEN ' match a pattern, otherwise just enter your keywords: '
+        Write-Host '  >  ' -NoNewLine; 
         $dyrl_eli_TARGET = Read-Host 
-        Write-Host -f GREEN ' Does case matter? (' -NoNewLine;
-        Write-Host -f YELLOW 'y' -NoNewLine;
-        Write-Host -f GREEN '/' -NoNewLine;
-        Write-Host -f YELLOW 'n' -NoNewLine;
-        Write-Host -f GREEN ')  ' -NoNewLine; 
-        $dyrl_eli_CASE = Read-Host
+
+        ## Process special chars as literals if user didn't specify 'regex'
+        if($dyrl_eli_TARGET -notMatch "^regex "){
+            $dyrl_eli_TARGET = $dyrl_eli_TARGET -replace '\\','\\' `
+                -replace '\.','\.' `
+                -replace '\*','\*' `
+                -replace '\$','\$' `
+                -replace '\^','\^' `
+                -replace '\?','\?' `
+                -replace '\(','\(' `
+                -replace '\)','\)' `
+                -replace '\[','\[' `
+                -replace '\]','\]' `
+                -replace '\{'.'\{' `
+                -replace '\}','\}'
+            while($dyrl_eli_CASE -notMatch "^(y|n)$"){
+                Write-Host -f GREEN ' Does case matter? (' -NoNewLine;
+                Write-Host -f YELLOW 'y' -NoNewLine;
+                Write-Host -f GREEN '/' -NoNewLine;
+                Write-Host -f YELLOW 'n' -NoNewLine;
+                Write-Host -f GREEN ')  ' -NoNewLine; 
+                $dyrl_eli_CASE = Read-Host
+            }
+        }
+        else{
+            $dyrl_eli_TARGET = $dyrl_eli_TARGET -replace "^regex "
+            $dyrl_eli_CASE = 'y'
+        }
+        
 
         ''
 
-
-        ## Search queries change based on case-sensitivity
-        if( $dyrl_eli_CASE -eq 'y' ){
-            Write-Host ' Enforcing case. Searching...
-            '
-        }
-        else{
-            Write-Host -f GREEN ' Defaulting to case-insensitive. Searching...
-            '
-            $dyrl_eli_CASE = 'n'
-        }
 
         slp 3  ## pause script for 3 seconds
 
@@ -697,18 +762,18 @@ do{
         #==============================================================
         # Prep the output file, append new results if file already exists
         #==============================================================
-        $dyrl_eli_BKMARK = "===== $dyrl_eli_TARGET found on $dyrl_eli_DATE ====="                   
-        $dyrl_eli_LINETOTAL = (Get-Content $dyrl_eli_intelpkg).count                                  ## Total sum of lines in intelpkg file
-        $dyrl_eli_LINESTART = Get-Content $dyrl_eli_intelpkg |                                        ## Line number of latest search string
-            Select-String "$dyrl_eli_BKMARK" | 
-            Select-Object -ExpandProperty lineNumber
-        $dyrl_eli_LINESUBTRACT = ($dyrl_eli_LINETOTAL - $dyrl_eli_LINESTART)                          ## Number of new lines containing search results
-
-
-        ## Append new search results to intelpkg file
         if( ! $dyrl_eli_norecord ){
-            ' ' >> $dyrl_eli_intelpkg
-            $dyrl_eli_BKMARK >> $dyrl_eli_intelpkg
+            $dyrl_eli_BKMARK = "===== $dyrl_eli_TARGET found on $dyrl_eli_DATE ====="                   
+            $dyrl_eli_LINETOTAL = (Get-Content $dyrl_eli_intelpkg).count        ## Total sum of lines in intelpkg file
+            $dyrl_eli_LINESTART = Get-Content $dyrl_eli_intelpkg |              ## Line number of latest search string
+                Select-String "$dyrl_eli_BKMARK" | 
+                Select-Object -ExpandProperty lineNumber
+            $dyrl_eli_LINESUBTRACT = ($dyrl_eli_LINETOTAL - $dyrl_eli_LINESTART)    ## Number of new lines containing search results
+
+
+            ## Append new search results to intelpkg file
+                ' ' >> $dyrl_eli_intelpkg
+                $dyrl_eli_BKMARK >> $dyrl_eli_intelpkg
         }
 
 
@@ -804,17 +869,20 @@ do{
             }
 
             if( $dyrl_eli_setCase ){
-
+                $dyrl_eli_MATCHLISTN = 0
+                $dyrl_eli_MATCHLISTI = @{}
                 foreach($dyrl_eli_i in $dyrl_eli_setCase){
                     Write-Host -f CYAN '   MATCH: ' -NoNewline;
                     Write-Host "$dyrl_eli_i
                     "
-                    if( ! $dyrl_eli_norecord ){ ## Only write to file if $norecord isn't set
+                    if( ! $dyrl_eli_norecord ){
                         $dyrl_eli_PATH |  Out-File -FilePath $dyrl_eli_intelpkg -Append
                         $dyrl_eli_i | Out-File -FilePath $dyrl_eli_intelpkg -Append
                     }
                     $Global:HOWMANY++
-                    $dyrl_eli_Z1 = go $type
+                    $dyrl_eli_MATCHLISTN++
+                    $dyrl_eli_MATCHLISTI.Add($dyrl_eli_MATCHLISTN,$dyrl_eli_i)
+                    $dyrl_eli_Z1 = reacquire $type
                     if( $dyrl_eli_Z1 -eq 'n'){
                         Break
                     }
