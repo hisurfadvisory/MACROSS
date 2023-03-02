@@ -80,12 +80,12 @@ At the end of printing your results, call the function again with a single param
 	‖≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡‖
 
 <br>
-	&emsp;<b>B.</b> slp() = Sleep function; provide it the number of seconds you want your script to pause<br>
+	&emsp;<b>C.</b> slp() = Sleep function; provide it the number of seconds you want your script to pause<br>
 	Usage:<br>
 	
 	slp 2   # This pauses your script for 2 seconds
 <br>
-	&emsp;<b>C.</b> startUp() = This is the first function to run when MACROSS loads. It sets many of the default variable values, and
+	&emsp;<b>D.</b> startUp() = This is the first function to run when MACROSS loads. It sets many of the default variable values, and
 	checks to see if programs like wireshark are installed. It sets these values to $true for your scripts to be aware of (and you
 	can add other checks as necessary for other installed software):<br>
 	&emsp;&emsp;$MONTY = python3 is installed<br>
@@ -93,12 +93,12 @@ At the end of printing your results, call the function again with a single param
 	&emsp;&emsp;$MAPPER = nmap is installed<br>
 <br>
 <br>
-	&emsp;<b>D.</b> chooseMod() = This function builds the main menu screen in MACROSS. It reads the contents of the nmods folder, strips
+	&emsp;<b>E.</b> chooseMod() = This function builds the main menu screen in MACROSS. It reads the contents of the nmods folder, strips
 	out file extensions, and creates hashtables using the script names and the descriptions found in the
 	first line of those scripts. If the startUp() function did not detect python, chooseMod() will only look
 	for scripts ending in ".ps1" or ".psm" and ignore any ".py".<br>
 <br>
-	&emsp;<b>E.</b> scrollPage() = If you have more than 9 scripts in your nmods folder, a second "page" will be created in chooseMods().
+	&emsp;<b>F.</b> scrollPage() = If you have more than 9 scripts in your nmods folder, a second "page" will be created in chooseMods().
 	The scrollPage() function is then used to switch between them when the user types 'p' into the main menu.<br>
 	
 <br>
