@@ -107,7 +107,8 @@ At the end of printing your results, call the function again with a single param
 	&emsp;<b>A.</b> varCleanup() = Everytime a script exits and returns to the MACROSS menu, this function clears out the shared variables*
 	to make sure they're ready to use with the next script<br>
 	&emsp;&emsp;<i>* the global $PROTOCULTURE value, which is the value all scripts look for as the IOC or element to investigate, does not get cleared
-	until you do it manually from the menu, or you exit MACROSS.</i><br>
+	until you do it manually from the menu, or you exit MACROSS. Be careful, as one of the framework's guidelines is to write your scripts so that they 
+	automatically act on, or at least are aware of, the existence of $PROTOCULTURE!</i><br>
 <br>
 	&emsp;<b>B.</b> getThis() = This function will decode Base64 and Hexadecimal strings. Call it with your encoded string as the first param.
 	Leave the second param empty if decoding base64; if you are decoding hexadecimal you must pass it a '1' as your
