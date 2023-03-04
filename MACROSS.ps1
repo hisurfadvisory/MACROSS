@@ -134,6 +134,7 @@
 ##################################
 ## Start fresh  &  >/dev/null all the expected errors
 ##################################
+[console]::WindowWidth = 120  ## We want to avoid line-wrapping in script outputs
 $Script:ErrorActionPreference = 'SilentlyContinue'
 Remove-Variable vf19_* -Scope Global
 cls
