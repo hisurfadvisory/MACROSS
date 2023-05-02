@@ -285,7 +285,7 @@ This is used for:<br>
 	ver     : 0.1
 	
 <br>
-&emsp;&emsp;If you use the SKYNET debug command from the main menu, you can pull all this info at once with the TL funtion:
+&emsp;&emsp;If you use the MACROSS debug command from the main menu, you can pull all this info at once with the TL funtion:
 
 	debug TL
 <br>
