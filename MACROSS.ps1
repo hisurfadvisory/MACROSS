@@ -35,7 +35,8 @@
         this as the FIRST line of your script, and put the script
         in the \nmods folder: 
 		
-			    #_superdimensionfortress <your brief description of the script>
+			#_superdimensionfortress <your brief description of the script>
+				
         The "#_superdimensionfortress " is necessary to identify scripts
         created for MACROSS (don't forget the whitespace). The description
         line is what gets written to the menu for users to see.
@@ -49,11 +50,19 @@
         If the master copy is a higher number, MACROSS will grab the updated 
         version.
 		
-	3. Keep the script name under 7 characters to preserve the menu's
+	3. The third line describes your script. MACROSS uses its own custom powershell
+		class 'macross' to identify what scripts do. Review the classes.ps1 file
+		for how this works in detail, but your third line should contain
+		
+			#_class
+			
+		followed by your [macross] class attributes.
+		
+	4. Keep the script name under 7 characters to preserve the menu's
 		uniformity (not including the '.ps1' file extension, MACROSS
 		automatically ignores it).
 		
-	4. Where possible, prepend your variables with 'nc_', for example $nc_var1.
+	5. Where possible, prepend your variables with 'nc_', for example $nc_var1.
 		MACROSS flushes all variables beginning with 'nc_' each time it
 		loads to make sure the tools function as expected. I also added
 		other identifiers for each script's variables to be able to handle
@@ -61,7 +70,7 @@
 		dependent on your scripts and what you want them to do and how you
 		want them to interact with other MACROSS functions.
 		
-	5. To jump back into MACROSS after your script is finished while
+	6. To jump back into MACROSS after your script is finished while
         retaining your script's variable values for further evals, add
         this line wherever appropriate:
 		
@@ -71,15 +80,15 @@
 		You only need use a 'Return' or 'Exit' now that MACROSS handles all
 		default behaviors, including default var management
 			
-	6a. Include a function that displays any help or extended description
+	7a. Include a function that displays any help or extended description
         of your scripts. Set the function to run FIRST if the variable
         $HELP is true, and automatically return to MACROSS after the
         function finishes. $HELP automatically gets reset by the console.
 		
-    6b. See the 'mcdefs.py' library file in the ncore\py_classes folder for
+    7b. See the 'mcdefs.py' library file in the ncore\py_classes folder for
         working python scripts into MACROSS.
 		
-    7. MACROSS was designed on a closed network that enforced digitally signed
+    8. MACROSS was designed on a closed network that enforced digitally signed
         code. This made it possible to semi-restrict it against non-security users
         being able to make use of the automation. See the \ncore\validation.ps1
         file for notes on how this is accomplished. The methods can still be
@@ -87,7 +96,7 @@
         could just comment out the permission checks. This feature is default-
         disabled (the functions are commented out).
 		
-	8. These variables are used GLOBALLY across all the tools:
+	9. These variables are used GLOBALLY across all the tools:
 		$USR is the local user
 		$PROTOCULTURE is the file/user/thing of interest that gets passed to
 			other scripts for evaluations. Example, I had a script that
@@ -117,8 +126,8 @@
 			any signed scripts or binaries.
 		$vf19_Z is the current user input.
 		
-    9.  If you want to set your default shared values in the utility.ps1 file (see
-        the readme), the following indexes are already reserved:
+    10.  If you want to set your default shared values in the utility.ps1 file (see
+         the readme), the following indexes are already reserved:
             "tbl" = the location of the resources folder
             "nre" = the location of the master MACROSS repository (you need to set this)
         
@@ -127,7 +136,7 @@
 ##################################
 ## Start fresh  &  >/dev/null all the expected errors
 ##################################
-[console]::WindowWidth = 120  ## We want to avoid line-wrapping in script outputs
+[console]::WindowWidth = 105  ## We want to avoid line-wrapping in script outputs
 $Script:ErrorActionPreference = 'SilentlyContinue'
 Remove-Variable vf19_* -Scope Global
 cls
