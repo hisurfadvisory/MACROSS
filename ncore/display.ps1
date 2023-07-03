@@ -53,130 +53,18 @@ neKVmuKVkOKVkOKVkOKVkOKVkOKVkOKVnQ=='
 
 
 
-## Format up to three rows of outputs to the screen; parameters you send will be
-## truncated to fit in the window.
-## Call this function a second time with a single parameter, "0", to add the final
-## separator $c after all your results have been displayed.
-## $1 is the name of your output/results.
-## $2 is the value of your output's name.
-## $3 is an optional value for whatever you need.
-##    Example usage for displaying an array of results:
-##
-##         foreach($i in $results.keys){ screenResults $i $results[$i] }
-##         screenResults 0
-##
-## Note that the formatting can be broken if lots of non-ascii characters are in the values
-## being passed in
-##
-function screenResults($1,$2,$3){
-
-    ## Bar string to create rows between output lines:
-    $c = '‖≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡‖'
-    ## Separator character to create columns:
-    $r = '║'
-
-
-    if($2){
-        $NAME = ' ' + $1
-        $VAL1 = ' ' + $2
-        $wide1 = $1.length          ## Count the characters in each parameter passed;
-        $wide2 = $2.length          ## need to remove chars or add whitespace to make the output pretty
-        if($wide1 -gt 20){
-            $NAME = $NAME.Substring(0,17)
-            $NAME = $NAME + '...   '       ## Truncate superlong values with ellipses...
-        }
-        else{
-            while($wide1 -ne 23){
-                $NAME = $NAME + ' '        ## ...or add whitespace to shorter values until the length is 23
-                $wide1++
-            }
-        }
-                         ## Rinse & repeat for parameters $2 and $3 (if they exist)
-        if($3){
-            $VAL2 = ' ' + $3
-            $wide3 = $3.length
-            if($wide2 -gt 34){
-                $VAL1 = $VAL1.Substring(0,33)
-                $VAL1 = $VAL1 + '...'
-            }
-            else{
-                while($wide2 -ne 35){
-                    $VAL1 = $VAL1 + ' '
-                    $wide2++
-                }
-            }
-            if($wide3 -gt 28){
-                $VAL2 = $VAL2.Substring(0,25)
-                $VAL2 = $VAL2 + '...'
-            }
-            else{
-                while($wide3 -ne 28){
-                    $VAL2 = $VAL2 + ' '
-                    $wide3++
-                }
-            }
-        }
-        else{
-            if($wide2 -gt 64){
-                $VAL1 = $VAL1.Substring(0,62)
-                $VAL1 = $VAL1 + '...'
-            }
-            else{
-                while($wide2 -ne 64){
-                    $VAL1 = $VAL1 + ' '
-                    $wide2++
-                }
-            }
-        }
-
-        Write-Host -f GREEN $c                 ## Start with a top-bar
-        Write-Host -f GREEN $r -NoNewline;     ## Column 1 left wall
-        Write-Host -f YELLOW $NAME -NoNewline; ## Column 1 value
-        Write-Host -f GREEN $r -NoNewline;     ## Column 2 separator
-
-        ## Create one or two more separators based on whether one or
-        ## two parameters were passed into $2 and $3
-        if($VAL2){
-            Write-Host $VAL1 -NoNewline;
-            Write-Host -f GREEN $r -NoNewline;
-            Write-Host -f GREEN $VAL2 -NoNewline;
-        }
-        else{
-            Write-Host $VAL1 -NoNewline;
-        }
-        Write-Host -f GREEN $r                ## Column 2/3 right wall
-    }
-
-    ## If screenResults is called with just one parameter, the user wants to close off the 
-    ## list with a bottom-bar
-    else{
-        Write-Host -f GREEN $c
-    }
-}
-
-
-
-## Function to pause your scripts for $1 seconds
-function slp(){
-    param(
-        [Parameter(Mandatory=$true)]
-        [int]$sec
-    )
-    Start-Sleep -Seconds $sec
-}
-
-
-
 <######################################
 ## Set the default startup object
     When you have resources like tables/arrays to be built from text or
     JSON or whatever files, you can base64 encode the file path, add a
     3-letter identifier so that you can easily decode them when necessary,
     then add them to the opening comments in 'utility.ps1'. Make sure to
-    separate your strings using '@@@' as delimiters.
+    separate your strings using '@@@' as delimiters. (or come up with a
+    better way to store your default values outside of MACROSS, see the
+    utility.ps1 readme).
 
-    This function reads the opening comment from 'utility.ps1' and creates an 
-    array of base64 values with the 3-letter identifier as its index. When you
+    The startUp function reads the opening comment from 'utility.ps1' and creates 
+    an array of base64 values with the 3-letter identifier as its index. When you
     need to call your encoded filepath, you use the 'getThis' function,
     which returns $vf19_READ as your decoded filepath:
 
@@ -185,8 +73,7 @@ function slp(){
 
     Additionally, it reads the registry to look for the presence of Wireshark,
     Nmap, and Python. You can add your own checks for programs your scripts
-    may need to function.
-
+    may require to function.
 ######################################>
 function startUp(){
     ## Check if necessary programs are available; add as many as you need
@@ -195,17 +82,20 @@ function startUp(){
     foreach($i in $INST){
         $prog = $i.GetValue('DisplayName')
         if($prog -match 'python'){
-            $Global:MONTY = $true              ## Confucious say: 'Python is less stressful than powershell'
-            #getThis $Global:vf19_MPOD['gbg']
-            #$Global:vf19_GBIO = $vf19_READ     ## Set the garbage-in-garbage-out directory for python scripts
-            $Global:vf19_PYOPT = ''            ## Prep string values for passing to python scripts
+            $Global:MONTY = $true               ## Confucious say: 'Python is less stressful than powershell'
+            getThis $Global:vf19_MPOD['gbg']
+            $Global:vf19_GBIO = $vf19_READ      ## Set the garbage-in-garbage-out directory for python scripts
+            $Global:vf19_PYPOD = ''             ## Prep string values for passing to python scripts
             $p = @()
         }
         if($prog -match 'nmap'){
-            $Global:MAPPER = $true  ## Can use nmap, yay!
+            $Global:MAPPER = $true      ## Can use nmap, yay!
         }
         if($prog -match 'wireshark'){
-            $Global:SHARK = $true  ## Can use wireshark, yay!
+            $Global:SHARK = $true       ## Can use wireshark, yay!
+        }
+        if($prog -Match 'excel'){
+            $Global:MSXL = $true        ## Can use excel for MACROSS' sheetResults function, yay!
         }
     }
 
@@ -229,11 +119,11 @@ function startUp(){
         $e = $c -replace "^...",''
         $Global:vf19_MPOD.Add($d,$e)
         if($MONTY){
-            $p += $c  ## Create a parallel options list that python can read
+            $p += $c  ## Create a parallel MPOD list that python can read
         }
     }
     if($p.length -gt 0){
-        $Global:vf19_PYOPT = $p -join(',')
+        $Global:vf19_PYPOD = $p -join(',')
     }
 
 }
@@ -241,24 +131,303 @@ function startUp(){
 
 
 
+<# 
+   Format up to three rows of outputs to the screen; parameters you send will be
+   truncated to fit in the window (up to 3 separate params, but $1 is required).
+
+   ***Call this function with "endr" as the only parameter to add the final row separator
+   "$r" after all your results have been displayed.***
+
+    $1 (REQUIRED) is the name of your output/results OR the row separator $r.
+    $2 is the value of your output's name.
+    $3 is an optional value for whatever you need.
+
+      Example usage for displaying an array of results:
+  
+           screenResults '                                     Items in my list'
+           foreach($i in $results.keys){ screenResults $i $results[$i] }
+           screenResults 'endr'
+
+        will write to screen:
+
+        ‖≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡‖
+        ‖                                     Items in my list                                     ‖
+        ‖≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡‖
+        ‖  Key 1 name        ║  The value of key 1                                                 ‖
+        ‖≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡‖
+        ‖  Key 2 name        ║  The value of key 2                                                 ‖
+        ‖≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡‖
+  
+   ...and so on. If you send a value that begins with "derpy", for example "derpyWindows PC", the
+   value "Windows PC" will be written to screen in red-colored text. This lets you highlight
+   values that meet thresholds you specify in your script so you can easily identify them.
+
+#>
+function screenResults(){
+    Param(
+        [Parameter(Mandatory=$true)]
+        $1,
+        $2,
+        $3
+    )
+
+    $r = '‖≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡‖' ## 92 char length
+    $c = '‖'                                                                                            ## Separate columns
+
+    if($1 -Match "^derpy"){
+        $NAMErd = $true
+        $1 = $1 -replace "^derpy"
+    }
+    
+    $NAME = ' ' + [string]$1
+    $wide1 = $NAME.length
+
+
+    if($2){
+
+        if($2 -Match "^derpy"){
+            $VAL1rd = $true
+            $2 = $2 -replace "^derpy"
+        }
+        $VAL1 = ' ' + [string]$2
+        $wide2 = $2.length
+        if($wide1 -gt 20){
+            $NAME = $NAME.Substring(0,19)
+            $NAME = $NAME + '... '
+        }
+        else{
+            while($wide1 -ne 24){
+                $NAME = $NAME + ' '
+                $wide1++
+            }
+        }
+    
+        if($3){
+            if($3 -Match "^derpy"){
+                $VAL2rd = $true
+                $3 = $3 -replace "^derpy"
+            }
+            $VAL2 = ' ' + [string]$3
+            $wide3 = $3.length
+            if($wide2 -gt 34){
+                $VAL1 = $VAL1.Substring(0,32)
+                $VAL1 = $VAL1 + '...'
+            }
+            else{
+                while($wide2 -ne 35){
+                    $VAL1 = $VAL1 + ' '
+                    $wide2++
+                }
+            }
+            if($wide3 -gt 28){
+                $VAL2 = $VAL2.Substring(0,25)
+                $VAL2 = $VAL2 + '...'
+            }
+            else{
+                while($wide3 -ne 27){
+                    $VAL2 = $VAL2 + ' '
+                    $wide3++
+                }
+            }
+        }
+        else{
+            if($wide2 -gt 64){
+                $VAL1 = $VAL1.Substring(0,62)
+                $VAL1 = $VAL1 + '...'
+            }
+            else{
+                while($wide2 -ne 64){
+                    $VAL1 = $VAL1 + ' '
+                    $wide2++
+                }
+            }
+        }
+
+        Write-Host -f GREEN $r
+        Write-Host -f GREEN $c -NoNewline;
+        if($NAMErd){
+            Write-Host -f RED $NAME -NoNewline;
+        }
+        else{
+            Write-Host -f YELLOW $NAME -NoNewline;
+        }
+        Write-Host -f GREEN $c -NoNewline;
+        if($VAL2){
+            if($VAL1rd){
+                Write-Host -f RED $VAL1 -NoNewline;
+            }
+            else{
+                Write-Host $VAL1 -NoNewline;
+            }
+            Write-Host -f GREEN $c -NoNewline;
+            if($VAL2rd){
+                Write-Host -f RED $VAL2 -NoNewline;
+            }
+            else{
+                Write-Host -f GREEN $VAL2 -NoNewline;
+            }
+        }
+        else{
+            if($VAL1rd){
+                Write-Host -f RED $VAL1 -NoNewline;
+            }
+            else{
+                Write-Host $VAL1 -NoNewline;
+            }
+        }
+        Write-Host -f GREEN $c
+    }
+    elseif( $1 -eq 'endr' ){
+        Write-Host -f GREEN $r
+    }
+    else{
+        if($wide1 -gt 89){
+            $NAME = $NAME.Substring(0,86)
+            $NAME = $NAME + '... '
+        }
+        else{
+            while($wide1 -ne 90){
+                $NAME = $NAME + ' '
+                $wide1++
+            }
+        }
+        Write-Host -f GREEN $r
+        Write-Host -f GREEN $c -NoNewline;
+        if($NAMErd){
+            Write-Host -f RED $NAME -NoNewline;
+        }
+        else{
+            Write-Host -f GREEN $NAME -NoNewline;
+        }
+        Write-Host -f GREEN $c
+    }
+}
+
+
+
+<# Alternate output format for MACROSS results
+    $1 can be a header for each item; make it an empty value if you want to
+    write additional values to the table without a row separator.
+    
+    $2 and $3 are written below the header.
+    $2 will get truncated if longer than 14 chars.
+
+    As with screenResults, send a single parameter, 'endr', to close out the table.
+
+    Example usage:
+
+        screenResultsAlt 'rundll32.exe' 'Parent' 'acrobat.exe'
+        screenResultsAlt '' 'ParentID' '2351'                   ## leave 1st param empty
+        screenResultsAlt 'endr'
+
+    The above will write to screen:
+
+        ║║║║║║ rundll32.exe
+        ============================================================================
+        Parent    ║  acrobat.exe
+        ParentID  ║  2351
+        ============================================================================
+
+    As with the original screenResults function, send values that begin with 'derpy'
+    to highlight them in red-colored text onscreen.
+
+#>
+function screenResultsAlt(){
+    Param(
+        [Parameter(Mandatory=$true)]
+        $1,
+        $2,
+        $3
+    )
+
+
+    $r = '  ============================================================================'
+    if($1 -eq 'endr'){
+        Write-Host -f GREEN $r
+    }
+    else{
+        if($1 -Like "derpy*"){
+            $1rd = $true
+            $1 = $1 -replace "^derpy"
+        }if($2 -Like "derpy*"){
+            $2rd = $true
+            $2 = $2 -replace "^derpy"
+        }if($3 -Like "derpy*"){
+            $3rd = $true
+            $3 = $3 -replace "^derpy"
+        }
+        [int]$2l = $($2.length)
+        [string]$2 = '  ' + $2
+        if($2l -gt 14){
+            $2 = $2.Substring(0,11)
+            $2 = $2 + '...'
+        }
+        else{
+            while($2l -ne 15){
+                $2 = $2 + ' '
+                $2l++
+            }
+        }
+        if($1 -ne ''){
+            Write-Host -f CYAN "  ║║║║║║ " -NoNewline;
+            if($1rd){
+                Write-Host -f RED $1
+            }
+            else{
+                Write-Host -f CYAN $1
+            }
+            Write-Host -f GREEN $r
+        }
+        if($2rd){
+            Write-Host -f RED "$2" -NoNewline;
+        }
+        else{
+            Write-Host -f GREEN "$2" -NoNewline;
+        }
+        if($3rd){
+            Write-Host -f RED "║  $3"
+        }
+        else{
+            Write-Host -f YELLOW "║  $3"
+        }
+        
+    }
+}
+
+
+
+
+
+## Function to pause your scripts for $1 seconds
+##  Send 'm' as a second parameter if you want to change the span to milliseconds
+function slp(){
+    param(
+        [Parameter(Mandatory=$true)]
+        [int]$sec,
+        [string]$span
+    )
+    if($span -eq 'm'){
+        Start-Sleep -Milliseconds $sec
+    }
+    else{
+        Start-Sleep -Seconds $sec
+    }
+}
+
+
 
 <################################
 ## Display tool menu to user
-
     You will notice an 'if' statement in this chooseMod function:
-
         if( $_ -Match 'GERWALK' )
-
     This is setting a global variable that lets all MACROSS scripts
     know that the Carbon Black API script is available to be queried
     (and by extension, if you have GERWALK in the nmods folder, that
     assumes you also have Carbon Black).
-
     You can tweak this to set different global values that will let
     your scripts know that other scripts they might want to interact
     with are available for use... very helpful for any other APIs you
     want to integrate into MACROSS.
-
     The planned improvement is to rewrite this function so it can
     accomodate more than 20 scripts in the /nmods folder. Right
     now, for example, if you have 40 scripts in /nmods, the
@@ -266,11 +435,8 @@ function startUp(){
     but would show tools 10-40 in $NEXTPAGE because chooseMods
     only generates two hashtables based on the nmods folder file-count
     (single-digit vs. double-digit).
-
-    I also need to auto-truncate if filename is longer than 7 characters
-    to keep the menu uniform. Currently, it only adds whitespace to names
-    less than 7 characters long.
-
+    I also need to standardize scripts' filename length to keep the menu uniform.
+    Currently, it only adds whitespace to names less than 7 characters long.
 ################################>
 function chooseMod(){
     $Global:vf19_FIRSTPAGE = @{}
@@ -406,7 +572,7 @@ function chooseMod(){
 
     SJW 'menu'     ## check user's privilege LOL
     if( $PROTOCULTURE ){
-        Write-Host -f RED "   PROTOCULTURE IS HOT (enter 'proto' to view & clear it)"
+        Write-Host -f RED "      PROTOCULTURE IS HOT (enter 'proto' to view & clear it)"
     }
     Write-Host ''
 
@@ -467,7 +633,7 @@ function chooseMod(){
     }
     elseif( $vf19_Z -Match "^debug" ){
         if($vf19_Z -Match ' '){
-            $p = $vf19_Z -replace "^debug "
+            $p = $($vf19_Z -replace "^debug ")
         }
         else{
             $p = $null
@@ -479,7 +645,7 @@ function chooseMod(){
         $sp = $(Get-Random -min 0 -max 9)
         transitionSplash $sp 1
         [string]$proto = $PROTOCULTURE
-        $proto = $proto.Substring(0,75)
+        $proto = $proto.Substring(0,200)
         Write-Host "
         PROTOCULTURE == $proto...
         Do you want to clear it?  " -NoNewline;
@@ -502,7 +668,7 @@ function chooseMod(){
     }
     elseif( $vf19_Z -Match $vf19_CHOICE ){
         if( $vf19_Z -Match "[0-9]{1,2}h" ){
-            $Global:vf19_Z = $vf19_Z -replace('h','')
+            $Global:vf19_Z = $vf19_Z -replace 'h'
             $Global:HELP = $true   ## Launch the selected script's man page/help menu
         }
         elseif( $vf19_Z -eq 'p' ){
@@ -516,15 +682,15 @@ function chooseMod(){
             Break                    ## User chose to quit MACROSS
         }
         elseif( $vf19_Z -Match "[0-9]{1,2}r" ){
-            $Global:vf19_Z = $vf19_Z -replace('r','')
+            $Global:vf19_Z = $vf19_Z -replace 'r'
             $Global:vf19_REF = $true      ## Triggers the dlNew function (updates.ps1) to download fresh copy of the selected script before executing it
         }
         elseif( $vf19_Z -Match "[0-9]{1,2}s" ){
-            $Global:vf19_Z = $vf19_Z -replace('s','')
+            $Global:vf19_Z = $vf19_Z -replace 's' 
             $Global:vf19_OPT1 = $true     ## Triggers the selected script to switch modes/enable added functions
         }
         elseif( $vf19_Z -Match "[0-9]{1,2}w" ){
-            $Global:vf19_Z = $vf19_Z -replace('w','')
+            $Global:vf19_Z = $vf19_Z -replace 'w'
             $Global:vf19_NEWWINDOW = $true   ## Triggers the availableMods function to launch the selected script in a new powershell window
         }
         elseif( $vf19_Z -eq 'refresh' ){
@@ -537,10 +703,11 @@ function chooseMod(){
 
 
         ## availableMods (validation.ps1) checks to see if script exists, then launches with any selected options
-        if( $vf19_Z -Match "[0-9]"){
-            availableMods $vf19_Z
+        if( $vf19_Z -Match "\d" ){
+            availableMods $([int]$vf19_Z)
         }
     }
+
     Clear-Variable -Force vf19_Z
 
 }
