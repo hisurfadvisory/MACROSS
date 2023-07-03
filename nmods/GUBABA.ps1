@@ -170,7 +170,12 @@ function idLookup($1){
 
         ## External scripts likely won't need screen output, they can parse the response themselves.
         if ( $CALLER ){
-            Return $c      ## Make sure your $CALLER script knows the response is a hashtable!
+            if( $PYCALL ){
+                pyCross 'gubaba' $c
+            }
+            else{
+                Return $c
+            }      
         }
         else{
             Write-Host -f GREEN "            Events with the keyword(s) " -NoNewline;
@@ -238,19 +243,10 @@ elseif($DECULTURE){
 
 ## Accept ID or descriptor from other MACROSS tools to perform automatic lookups
 if( $dyrl_gub_QUERY ){
-    $dyrl_idresult = idLookup $dyrl_gub_QUERY
-        if( $PYCALL ){
-            pyCross 'gubaba' $dyrl_idresult
-        }
-        elseif($dyrl_idresult -gt 0){
-            Return $dyrl_idresult
-        }
-    <#
-        idLookup $dyrl_gub_QUERY
-        Write-Host -f GREEN '
-        Hit ENTER to exit.'
-        Return
-    #>
+
+    ## Make sure your script knows it is getting back a hashtable result!
+    Return $(idLookup $dyrl_gub_QUERY)  
+        
 }
 else{
     if( ! $PYCALL ){  ## No python, go ahead and throw the ascii up
