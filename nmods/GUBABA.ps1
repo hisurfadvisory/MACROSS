@@ -1,4 +1,4 @@
-﻿#_superdimensionfortress Windows Event ID reference
+#_superdimensionfortress Windows Event ID reference
 #_ver 1.0
 #_class User,WinEventIDs,Powershell,HiSurfAdvisory,1
 
@@ -6,18 +6,19 @@
     GUBABA is an offline index of Windows Event IDs. You can perform manual
     lookups based on keywords or event IDs; however it is really meant to
     accept input from other scripts (like text parsers) to return Event ID
-    definitions for quick lookups. 
+    definitions for quick lookups.
 
     NOTE 1:
-        This script requires the file "gubaba.txt" located in the /resources folder.
-        That text file needs to be in whatever directory that gets set as $vf19_TABLES
-        during MACROSS's start up.
+        This script requires the file "gubaba.json" located in the resources/ folder.
+        That file needs to be in whatever directory that gets set as $vf19_TABLES
+        during MACROSS's start up, so if you've changed the default location of
+        resources/ from MACROSS' root to someplace else, make sure MACROSS knows
+        how to find it!
 
     NOTE 2:
         GUBABA does not accept optional eval parameters, it will only lookup the
         global $PROTOCULTURE value (or the third argument from a python script),
         which can be an integer (an event ID) or a string.
-
 #>
 
 
@@ -64,7 +65,6 @@ function splashPage1a(){
     }
     else{
     Write-Host '
-
     '
     }
 }
@@ -88,8 +88,15 @@ if( $HELP ){
     }
     Write-Host -f YELLOW "
     
-    A quick offline reference for researching Windows Security Events.
-    You can search by keywords or ID numbers. 
+    A quick offline reference for researching Windows Events.
+    It includes IDs for Windows, SQL server, Sysmon, Exchange,
+    and Sharepoint.
+
+    You can search by keywords or ID numbers. Example:
+    
+    Find an ID number for events that have to do with the user
+    account changes, then search your logs for that ID to begin
+    your threat-hunting.
 
     Hit ENTER to continue.
     "
@@ -99,49 +106,86 @@ if( $HELP ){
 
 
 
-
+## Pass in an ID number or string keyword(s), this function will search
+## the gubaba.json file and return any IDs that match
 function idLookup($1){
+    $types = @('Exchange','SQLServer','Sysmon','SharePoint','Windows')
     Write-Host ''
     if( $1 -eq 'q' ){
         Remove-Variable -Force dyrl_gub_*
         Exit
     }
     elseif( $1 -Match $dyrl_gub_VALIDID ){
-        if( $1 -in $dyrl_gub_INDEX.keys){
-            $a = $dyrl_gub_INDEX.Item($1)
-            Write-Host -f GREEN "      Event $1 :::" -NoNewline;
-                Write-Host -f CYAN " $a"
+        foreach($type in $types){
+            foreach($event in $dyrl_gub_INDEX.events.$type){
+                if( $1 -eq $event.id){
+                    $a = $event.desc
+                    $found = $true
+                    Write-Host -f GREEN "      $type Event $1 :::" -NoNewline;
+                    Write-Host -f CYAN " $a"
+                }
+            }
         }
-        else{
+        if( ! $found ){
             Write-Host -f YELLOW "      Couldn't find that ID!"
         }
     }
     elseif( $1 -Match $dyrl_gub_VALIDWD ){
-        $a = $dyrl_gub_INDEX.GetEnumerator() | ? {$_.value -Match $1}
-        if( $a ){
-
-            ## External scripts likely won't need screen output, they can parse the return themselves.
-            if ( ! $CALLER ){
-                Write-Host -f GREEN "            Events with the keyword " -NoNewline;
-                Write-Host -f CYAN $1 -NoNewline;
-                Write-Host -f GREEN ':
-                '
-            }
-
-
-            foreach($i in $a){
-                $eid = $i.Name
-                $eiv = $i.Value
-                Write-Host -f GREEN "    $eid" -NoNewline;
-                Write-Host -f CYAN " ::: $eiv"
-            }
-
+        if($1 -Match ", "){
+            $werdz = $1 -Split(', ')
+        }
+        elseif($1 -Match ","){
+            $werdz = $1 -Split(',')
         }
         else{
-                Write-Host -f YELLOW "      Couldn't find that event keyword!"
+            $werdz = $1 -Split(' ')
         }
-    }
+        $c = @{}
 
+        foreach($type in $types){
+            foreach($event in $dyrl_gub_INDEX.events.$type){
+                :inner
+                foreach($werd in $werdz){
+                    $match = $true
+                        ## Avoid grabbing all descriptions for MS Exchange IDs
+                        if($werd -like "*change*" -and $werd -notLike "*exchange*"){
+                            $werd =  ' ' + $werd
+                        }
+                        $a = $event.desc | Select-String "$werd"
+                        if( $a ){
+                            $b = [int]$($event.id -replace "\W")
+                        }
+                        else{
+                            $match = $false
+                            Break inner      ## Don't keep searching an event unless ALL the keywords match
+                        }
+                    
+                }
+                if($match){
+                    $matched_event = [string]$type + ' Event: ' + $a
+                    $c.Add($b,$matched_event)
+                }
+            }
+        }
+
+        ## External scripts likely won't need screen output, they can parse the response themselves.
+        if ( $CALLER ){
+            Return $c      ## Make sure your $CALLER script knows the response is a hashtable!
+        }
+        else{
+            Write-Host -f GREEN "            Events with the keyword(s) " -NoNewline;
+            Write-Host -f CYAN $1 -NoNewline;
+            Write-Host -f GREEN ':
+            '
+            $c.keys | Sort | %{
+                $eiv = $c[$_]
+                Write-Host -f GREEN "    $_" -NoNewline;
+                Write-Host -f CYAN " --- $eiv"
+            }
+        }
+
+
+    }
     else{
         Write-Host -f YELLOW "      That query is invalid."
     }
@@ -150,9 +194,9 @@ function idLookup($1){
 
 
 
-## Input validation
+## Input validation; enter a digit or a string of words, no non-alphanumerics except '-' and ','
 $dyrl_gub_VALIDID = [regex]"^[0-9]{1,4}$"
-$dyrl_gub_VALIDWD = [regex]"^[a-zA-Z][a-zA-Z0-9 -]+"
+$dyrl_gub_VALIDWD = [regex]"^[a-zA-Z][a-zA-Z0-9 ,-]+"
 
 
 if( $PYCALL ){
@@ -164,11 +208,11 @@ if( $PYCALL ){
         $CALLER = $PYCALL
     }
 }
-elseif( Test-Path "$vf19_TABLES\gubaba.txt" ){  ## Check if there is an alternate path to the resources folder
-    $dyrl_gub_TABLE = "$vf19_TABLES\gubaba.txt"
+elseif( Test-Path "$vf19_TABLES\gubaba.json" ){  ## Check if there is an alternate path to the resources folder
+    $dyrl_gub_TABLE = "$vf19_TABLES\gubaba.json"
 }
-elseif( Test-Path "$vf19_TOOLSROOT\resources\gubaba.txt" ){   ## Check if the resources folder is in MACROSS root
-    $dyrl_gub_TABLE = "$vf19_TOOLSROOT\resources\gubaba.txt"
+elseif( Test-Path "$vf19_TOOLSROOT\resources\gubaba.json" ){   ## Check if the resources folder is in MACROSS root
+    $dyrl_gub_TABLE = "$vf19_TOOLSROOT\resources\gubaba.json"
 }
 else{
     Write-Host -f CYAN '
@@ -178,52 +222,57 @@ else{
     Exit
 }
 
-if($DECULTURE -and ! ($Global:PROTOCULTURE)){
-    $dyrl_gub_QUERY = $DECULTURE
-}
-elseif($Global:PROTOCULTURE){
+
+if($PROTOCULTURE){
     $dyrl_gub_QUERY = $PROTOCULTURE
 }
-
-
-
-if( ! $PYCALL ){  ## No python, go ahead and throw the ascii up
-    splashPage1a
+elseif($DECULTURE){
+    $dyrl_gub_QUERY = $DECULTURE
 }
-splashPage1b
 
 
-## Collect the list of Event IDs into a lookup table
-$dyrl_gub_INDEX = Get-Content -Raw "$dyrl_gub_TABLE" | ConvertFrom-StringData
+    ## Collect the list of Event IDs into a lookup table
+    #$dyrl_gub_INDEX = Get-Content -Raw "$dyrl_gub_TABLE" | ConvertFrom-StringData
+    $dyrl_gub_INDEX = Get-Content -Raw "$dyrl_gub_TABLE" | ConvertFrom-Json
 
 
 ## Accept ID or descriptor from other MACROSS tools to perform automatic lookups
 if( $dyrl_gub_QUERY ){
-    idLookup $dyrl_gub_QUERY
-    Write-Host -f GREEN '
-    Hit ENTER to exit.'
-    Return
-    #$dyrl_gub_R = idLookup $PROTOCULTURE
-
-    ## Prep an output that the calling python script can parse; it can't natively use the value
-    ## sent back in the Return instruction below.
-    if( $PYCALL ){
-        $dyrl_gub_R | Out-File -Path "$vf19_GBIO\gubaba.eod" -Encoding UTF8 -Append
-    }
-
-    #Return $dyrl_gub_R
+    $dyrl_idresult = idLookup $dyrl_gub_QUERY
+        if( $PYCALL ){
+            pyCross 'gubaba' $dyrl_idresult
+        }
+        elseif($dyrl_idresult -gt 0){
+            Return $dyrl_idresult
+        }
+    <#
+        idLookup $dyrl_gub_QUERY
+        Write-Host -f GREEN '
+        Hit ENTER to exit.'
+        Return
+    #>
 }
+else{
+    if( ! $PYCALL ){  ## No python, go ahead and throw the ascii up
+        splashPage1a
+    }
+    splashPage1b
 
 
-## Perform manual lookups straight from MACROSS console
-while( $dyrl_gub_Z -ne 'q' ){
-    $dyrl_gub_Z = $null
-    Write-Host ''
-    Write-Host -f GREEN '  What Event ID or keywords are you looking up ('-NoNewline;
-    Write-Host -f YELLOW 'q' -NoNewline;
-    Write-Host -f GREEN ' to quit)?  ' -NoNewline;
-    $dyrl_gub_Z = Read-Host
-    if($dyrl_gub_Z -ne 'q'){
-        idLookup $dyrl_gub_Z
+    ## Perform manual lookups straight from MACROSS console
+    while( $dyrl_gub_Z -ne 'q' ){
+        $dyrl_gub_Z = $null
+        Write-Host ''
+        Write-Host -f GREEN '  What Event ID or keywords are you looking up? If you enter'
+        Write-Host -f GREEN "  more than one keyword, you'll only get results that contain ALL"
+        Write-Host -f GREEN '  of those words. Type "' -NoNewline;
+        Write-Host -f YELLOW 'q' -NoNewline;
+        Write-Host -f GREEN '" to quit.
+    
+        SEARCH:  ' -NoNewline;
+        $dyrl_gub_Z = Read-Host
+        if($dyrl_gub_Z -ne 'q'){
+            idLookup $dyrl_gub_Z
+        }
     }
 }
