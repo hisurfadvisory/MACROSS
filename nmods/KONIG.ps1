@@ -1,12 +1,10 @@
-﻿#_superdimensionfortress Network Fileshare Search tool
+#_superdimensionfortress Network Fileshare Search tool
 #_ver 1.0
 #_class User,File search,Powershell,HiSurfAdvisory,1
 
 <#
     KÖNIG fileshare search tool
     Author: HiSurfAdvisory
-
-
     This script is designed to perform quick file searches across your enterprise
     by offering multiple filters to the SOC analyst:
         -you can select which fileshare to search from
@@ -19,53 +17,49 @@
             that users may be trying to hide
         -you can search by filesize
         -and of course, you can search by full or partial filenames
-
     It is also designed to accept and auto-run queries from other MACROSS scripts.
-
-
+	
     v1.0
     Default share paths are *NOT* configured; you need to do this on your own.
-
+	
     NOTE 1:
         Unless you rewrite the search functions of this script, you *MUST* set
         your default share paths using the MACROSS framework's preferred method,
         i.e. encoding the paths, attaching an index, and adding the encoded path
-        with a delimiter to the extras.ps1 file. See the notes/comments in the
+        with a delimiter to the utility.ps1 file. See the notes/comments in the
         MACROSS.ps1 script, or the splitShares function further down this script.
     
     NOTE 2:
         This script is heavily dependent on MACROSS resources. Trying to run this
         outside of the MACROSS console will not work well, if at all.
-
+		
     NOTE 3:
         Search through this script for the text "MPOD ALERT!!" Wherever this
         comment appears, it's a place where you need to check and make sure
         your network share variables all match up as you need them to!
-
+		
     NOTE 4:
         KÖNIG drills down into *directories*, i.e. if you tell it to search
-
+		
             C:\Users\Bob\My Documents
-
+			
         it will not return results for any files in the "My Documents" folder; it
         will only look for *folders* inside \My Documents, and give you results from
         files within those folders. You would instead need to set your search
         location as
-
+		
             C:\Users\Bob
-
+			
         Which of course would also search inside all of Bob's other home folders in
         addition to "\My Documents". KÖNIG is set up this way because it is meant to
         search targeted network shares, local hosts or root directories.
-
-
-
 #>
 
 
-<## CALLER SCRIPTS THAT DON'T GO THROUGH 'collab' NEED TO SET THEIR SEARCH VALUES HERE
+<#
+	## CALLER SCRIPTS THAT DON'T GO THROUGH 'collab' (i.e. python scripts) NEED TO SET
+	## THEIR SEARCH VALUES HERE
     -$ORDERS = the filename string to search for
-
     -$COMMANDER = the calling script; if python, it should start with 'py', i.e. 'pyMYSCRIPT' to differentiate
         from the powershell callers, which *should be* set globally as $CALLER. When KÖNIG is called by a $COMMANDER
         beginning with "py", $COMMANDER is promoted to $GENERAL so that additional actions can be taken to
@@ -75,30 +69,24 @@
         because that is *not* a globally-set value. The likely scenario is that a powershell script ($CALLER)
         launched another script, which then launched KÖNIG to do a file search, while $CALLER didn't request
         anything from KÖNIG.
-
         If $GENERAL gets set, it will always take priority, because it only exists when a python script tasks
         KÖNIG.
-
         NOTE: The "collab" function in MACROSS can pass along an optional value from other powershell scripts,
         which would be read by KÖNIG as $ORDERS; *however*, if there is no $COMMANDER to go along with it,
         KÖNIG ignores this value and focuses on the global $CALLER and $external_NM values instead.
-
     -$AO = the area of operations, an optional directory path that can be set if you don't have KÖNIG set to
         automatically search a specific location. If that is the case, and no $AO value is passed, the user
         will be asked to supply a location manually.
-
     -$AAR = After-Action Report: This is the location of the $vf19_GBIO directory, where MACROSS powershell scripts
         write their results as a text value that your python script can pull into a dictionary if necessary. In
         KÖNIG's case, it will write the location of your $RESULTFILE and $HOWMANY succesful hits your search got.
         This is mainly done as an example for you -- it would be more useful if you're running scripts that return
         tons of information.
-
     -$HOMEBASE = the location you want results, if any, to be written to. This is needed because python scripts
         have to pass values that would normally be available through MACROSS, but since python and powershell
         can't share global variables, they need to be passed back and forth. If your python script doesn't pass
         something like your user's Desktop or a group shared drive as this 4th param, no result file will be
         written.
-
 ##>
 param(
     [Parameter(position = 0)]
@@ -145,15 +133,12 @@ if( $HELP ){
  written to file on your desktop in the '" -NoNewline;
     Write-Host -f CYAN "target-pkgs\" -NoNewline;
     Write-Host -f YELLOW "' directory.
-
  If your enterprise uses roaming profiles, KÖNIG can attempt to search based on
  user profiles, if you provide it a full or partial username.
-
  KÖNIG can interact with these MACROSS tools:
     -forward its target packages to ELINTS to perform string-searches
     -forward its target packages to GERWALK, querying your Carbon Black EDR for file info
     -accepts usernames from MYLENE to perform filesearches in their roaming profiles
-
  Hit ENTER to return.
  "
 
@@ -272,9 +257,22 @@ function getValidPath(){
         Remove-Variable dyrl_kon_* -Scope Global
         Exit
     }
-    else{
-        Return $z
+    elseif($z -eq ''){
+        ''
+        Write-Host -f GREEN '  Opening folder selection window:
+        '
+        $zz = getFile 'folder'
+        $zz
+        read-host
     }
+
+    if($zz -eq ''){
+        Remove-Variable dyrl_kon_* -Scope Global
+        Exit
+    }
+    
+    Return $zz
+    
 }
 
 
@@ -297,7 +295,7 @@ $dyrl_kon_STALE = "$vf19_DEFAULTPATH\target-pkgs\*.txt"
 ## Input validation
 $dyrl_kon_BROAD = [regex]"[a-z]*\-*[0-9]{1,2}"
 $dyrl_kon_SINGLE = [regex]"[a-z]*[0-9]*"
-$dyrl_kon_ADMINUSR = [regex]"^admin\.[a-z][a-z]*[0-9]*"  ## MPOD ALERT!! Your admin users may have a different designation than 'admin'
+$dyrl_kon_ADMINUSR = [regex]"^admin\-[a-z][a-z]*[0-9]*"  ## MPOD ALERT!! Your admin users may have a different designation than 'admin'
 $dyrl_kon_ONLYFC = [regex]"[a-z0-9._-]*"
 $dyrl_kon_ONLYLC = [regex]"[a-z,]*"
 $dyrl_kon_ERRMSG = "  ERROR! Unsupported character in your filename!"
@@ -313,28 +311,29 @@ $dyrl_kon_ERRMSG = "  ERROR! Unsupported character in your filename!"
     Encode them as base64 strings, and add a three-letter
     ID to the front of the encoded string (for example,
     'fdr' and 'nxd' below), and add them to the opening
-    comment in extras.ps1 separated by '@@@'.
+    comment in utility.ps1 separated by '@@@'. (or use whatever
+    method you created and changed in the display.ps1 script's
+    "startUp" function).
 
     The calls for "splitShares" are using the three-letter
     ID as the index for where your base64 string is located
     inside the $vf19_MPOD hashtable. 
 
     PROCESS:
-
-    MACROSS starts up, reads the opening comments from extras.ps1,
+    MACROSS starts up, reads the opening comments from utility.ps1,
     splits the comment up into separate strings using '@@@' as the
     delimiter, and stores each value in $vf19_MPOD, using the first
     three characters of each string as the index.
-
     YOUR script can decode those filepaths (or whatever value you
-    stored in extras.ps1) by using the getThis function:
+    stored in utility.ps1) by using the getThis function:
 
         getThis $vf19_MPOD['abc']
 
     where 'abc' is the index you added to your encoded string. The
-    plaintext value is returned as $vf19_READ, which you can then use
-    however you need to.
-
+    plaintext value is stored in $vf19_READ, which you can then use
+    however you need to. Be aware that $vf19_READ gets overwritten
+    every time the getThis function is used, so store that variable
+    in a new one if you want to keep it!
 
 #>
 #splitShares 'fdr'
@@ -413,7 +412,7 @@ while( $dyrl_kon_LOOP ){
 
 
         ## MPOD ALERT!!
-        ## The FPATH variable here gets set based on username. You need to configure MACROSS' extras.ps1 file so that
+        ## The FPATH variable here gets set based on username. You need to configure MACROSS' utility.ps1 file so that
         ## it knows where your roaming profile locations are at! (See the MACROSS readme about encoding and storing
         ## default filepaths)
 
@@ -457,12 +456,10 @@ while( $dyrl_kon_LOOP ){
             The below "if/else" statement is a placeholder!  You need to set these values based
             on your network share locations. See the section above where "splitShares"
             resides.
-
             In the example below, KONIG is setting the search location (a bogus value) based on whether
             the value passed in (DIRECT) looks like an adminsitrator's username, which probably
             means it should search a fileshare containing admin profiles. You need to modify this
             to suit your needs.
-
         #>
         ## Use the passed-in directory to search, if one was provided
         if( $dyrl_kon_AO ){
@@ -500,7 +497,7 @@ while( $dyrl_kon_LOOP ){
 
 
         ## MPOD ALERT!!
-        ## If you have not set default paths via the MACROSS method in extras.ps1, you can only
+        ## If you have not set default paths via the MACROSS method in utility.ps1, you can only
         ##  perform manually-entered filepath searches
         if( $dyrl_kon_FIRSTDRIVE -eq $false){
             $dyrl_kon_FPATH = getValidPath
@@ -579,7 +576,7 @@ while( $dyrl_kon_LOOP ){
 
             
             Write-Host -f GREEN " Enter " -NoNewLine;
-            Write-Host -f CYAN "admin.<letter> " -NoNewLine;        ## MPOD ALERT!!  Your admins may not use an 'admin.name' designation
+            Write-Host -f CYAN "admin-<letter> " -NoNewLine;        ## MPOD ALERT!!  Your admins may not use an 'admin-name' designation
             Write-Host -f GREEN "to search admin user shares.
             "
             Write-Host -f GREEN " If you only enter 'a', KÖNIG will search all 'a' users AND any admin users it finds.
@@ -878,7 +875,6 @@ while( $dyrl_kon_LOOP ){
                                 Check if other modules need to load
     ================================================================#>
     Write-Host '
-
     '
 
     #############
@@ -950,7 +946,6 @@ while( $dyrl_kon_LOOP ){
         
         function collaborate(){
             Write-Host '
-
             '
             if( $vf19_E1 ){
                 $choices = $true
@@ -1066,7 +1061,6 @@ while( $dyrl_kon_LOOP ){
         Write-Host ''
         splashPage1a
         Write-Host '
-
         '
 
         $dyrl_kon_Z = $null
