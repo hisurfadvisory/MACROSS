@@ -1,14 +1,12 @@
-#_superdimensionfortress Demo - a basic config walkthru (7-10 mins)
+#_superdimensionfortress Demo - a basic config walkthru (8-10 mins)
 #_ver 0.2
 #_class User,demo script,Powershell,HiSurfAdvisory,0
 
 <#
     Author: HiSurfAdvisory
-
     This script is a simple demonstration of collecting information
     from one script and passing it others that could add more detail
     or uncover more indicators related to your SOC investigations.
-
 #>
 
 function splashPage(){
@@ -50,7 +48,7 @@ if($HELP){
   quickly and easily as any crusty ol' command-line junkie -- on a budget!
   
   HIKARU explains the rules/guidelines of the framework that help automate your
-  automations.
+  automations. It takes about 8-10 minutes to go through the basics.
   
   Hit ENTER to exit.
   "
@@ -87,12 +85,11 @@ Write-Host -f GREEN '
 Write-Host -f GREEN "
     This is not a ready-to-go suite of tools (although the scripts included in
     the github library do work), but a framework with a 'front-end' to manage
-    however many scripts you regularly make use of. 
+    however many scripts you regularly make use of.
 
-    For instance, MACROSS is capable of version control(-ish) automatic updates.
-    If you have multiple APIs or automations that require an occasional change,
-    this lets you modify just the master copies, which MACROSS will then push out
-    to whoever is using the old versions.
+    For instance, MACROSS is capable of taking a value you're investigating,
+    and looking to see which of its tools might be able to add enrichment to
+    the investigation.
     
     You need to read the documentation for all the details, but this demo will
     give you the basics of why this framework has worked well for me."
@@ -101,9 +98,9 @@ splashPage
     
 Write-Host -f GREEN "    We'll start with the missile pod (MPOD):"
 Write-Host -f GREEN '
-    The default values I want to be common-use for *all* the tools are set in an
-    array called $vf19_MPOD. This is a critical component of MACROSS - and not just
-    for updates! Right now, its contents are:
+    $vf19_MPOD is a hashtable that contains all the default values that MACROSS
+    and its tools can access as needed. This is a critical component of how
+    MACROSS works! Right now, the contents of $vf19_MPOD are:
     '
 foreach($dyrl_i in $vf19_MPOD.Values){
     Write-Host -f YELLOW "        $dyrl_i"
@@ -174,7 +171,7 @@ Write-Host -f GREEN '. Your indexes will let your scripts pull
          as a new variable before the getThis function is executed again!'
 next
 splashPage
-Write-Host -f GREEN "    MACROSS then sets its *global* default filepaths:"
+Write-Host -f GREEN "    After reading utility.ps1, MACROSS sets its *global* default filepaths:"
 Write-Host -f GREEN '
         -$vf19_TOOLSDIR = the local \nmods folder, where your automation scripts will be
             located
@@ -185,7 +182,7 @@ Write-Host -f GREEN '        -$vf19_MPOD = an array/hashtable of string-indexed 
             the primary values stored in this array by default are URLs or IP addresses
             regularly accessed by your scripts (explained on the previous screen).
         -$vf19_TABLES = the filepath to the directory containing resources that can
-            enrich your scripts; GUBABA.ps1 demonstrates this by using a text file in
+            enrich your scripts; GUBABA.ps1 demonstrates this by using a json file in
             $vf19_TABLES to perform ID lookups
         -$vf19_REPO = the URL/filepath to where your master MACROSS files will be located
             (optional; this is meant to ensure up-to date copies get pushed to everyone)
@@ -196,22 +193,21 @@ Write-Host -f GREEN '        -$vf19_MPOD = an array/hashtable of string-indexed 
 Write-Host -f GREEN "
     If you need to decode a default value for your scripts from MPOD, use the " -NoNewline;
 Write-Host -f YELLOW "getThis"
-Write-Host -f GREEN '    function, like so:'
+Write-Host -f GREEN '    function, like so:
+'
 Write-Host -f YELLOW "
         getThis " -NoNewline;
-Write-Host -f CYAN '$vf19_MPOD["tbl"]'
-Write-Host -f GREEN "        ^^That command decoded the 'tbl' index to this value ˉ˥"
-Write-Host -f GREEN '                                                              |'
-Write-Host -f GREEN '                                                              ˅'
-getThis $vf19_MPOD['tbl']
-Write-Host "                                                       $vf19_READ"
+Write-Host -f CYAN '$vf19_MPOD["ger"]'
+Write-Host -f GREEN '        ^^That command decoded the "ger" index to this value:'
+getThis $vf19_MPOD['ger']
+Write-Host "                 $vf19_READ"
 
 Write-Host -f GREEN '
     ...which is stored in the variable ' -NoNewline;
     Write-Host '$vf19_READ' -NoNewline;
 Write-Host -f GREEN ". Again, if you need to make use of that
     value more than once, you'll need to store it in another variable because it gets
-    rewritten everytime " -NoNewline;
+    overwritten everytime " -NoNewline;
     Write-Host -f YELLOW "getThis" -NoNewline;
     Write-Host -f GREEN ' is called.'
 
@@ -227,7 +223,7 @@ cls
 while($dyrl_Z -notMatch "[\w]"){
 Write-Host -f GREEN "
     Another part of the MACROSS framework is standardized tagging in your scripts. The first
-    three lines of _every_ MACROSS script should contain identifying info:
+    three lines of ***every*** MACROSS script should contain identifying info:
 
         first line = a brief description that gets written to the menu
         second line = the script version number
@@ -240,12 +236,11 @@ Write-Host -f GREEN ".
     
     Let's explore this with GUBABA. GUBABA is a powershell script that acts as an offline Windows
     Event reference for when you're looking at some random log and you see an Event ID but have no
-    idea what it means, or you want to find out what the event ID is for a specific kind of event.
-
-    You can take a look at any MACROSS script's attributes by reading the " -NoNewline;
+    idea what it means, or you want to start a threat-hunt based on Event IDs for particular
+    activities. You can take a look at any MACROSS script's attributes by reading the " -NoNewline;
     Write-Host -f GREEN '$vf19_ATTS' -NoNewline;
-    Write-Host -f GREEN " hashtable
-    and using the toolInfo method,  " -NoNewline;
+    Write-Host -f GREEN "
+    hashtable and using the toolInfo method,  " -NoNewline;
     Write-Host '$vf19_ATTS[$tool].toolInfo()
     '
 
@@ -259,7 +254,7 @@ while($varc1 -notMatch $varc0){
         $varc1 = ''
     }
     else{
-        $choice = $varc1 -replace "^.+\['" -replace "'\].*$"
+        $choice = $varc1 -replace "^.+\[(`'|`")" -replace "(`'|`")\].*$"
         $choice_eval = $vf19_ATTS[$choice].valtype
     }
 }
@@ -277,13 +272,18 @@ Write-Host -f GREEN "
     Write-Host '
     debug <any powershell command string>'
     Write-Host -f GREEN "
+    ('debug' is not listed on the main menu, it's just for the script writers to use)
+
     This little snippet would find any MACROSS scripts that can accept IP addresses for
     for blacklisting or searching:"
     Write-Host '
  debug $vf19_ATTS.keys | %{if($vf19_ATTS[$_].valtype -like "*IPs*"){$vf19_ATTS[$_].name}}'
     Write-Host -f GREEN "
     The 'classes.ps1' file contains all the details on what attributes need to get passed
-    from your scripts, and in what order. Now, back to GUBABA."
+    from your scripts, and in what order. You can also look at all the scripts in the nmods
+    folder included in this github release to get a rough idea of how this all works.
+    
+    Now, back to GUBABA."
     next
     cls
     Write-Host -f GREEN "
@@ -300,29 +300,32 @@ Write-Host -f GREEN "
 Write-Host -f YELLOW "$dyrl_Z
     " -NoNewline;
 Write-Host -f GREEN 'as ' -NoNewline;
-Write-Host '$PROTOCULTURE' -NoNewline;
-Write-Host -f GREEN '. This is a *globally* set variable that all scripts can make use of
-    during investigations. Because $PROTOCULTURE is a global value, part of the MACROSS
-    framework dictates that when you write collaborative scripts, they need to be aware
-    and looking for it.
+Write-Host '$PROTOCULTURE.'
+Write-Host -f GREEN '
+    Part of the MACROSS framework dictates that when you write collaborative scripts,
+    they need to
+
+        1) Set their current result/IOC as the global variable $PROTOCULTURE, and
+        2) They need to have functions that act on $PROTOCULTURE whenever it
+            exists
     
-    All we need to do is specify the caller and the callee, which will happen when you hit
-    ENTER:
+    Now all we need to do is specify the caller and the callee, and GUBABA will respond
+    with any results he finds from your terms after you hit ENTER:
     '
-Write-Host '        collab "GUBABA.ps1" "HIKARU"'
+Write-Host '        $rrr = collab "GUBABA.ps1" "HIKARU"'
 Read-Host
 
 $Global:PROTOCULTURE = $dyrl_Z
 
-collab 'GUBABA.ps1' 'HIKARU'
-read-host
+$rrr = collab 'GUBABA.ps1' 'HIKARU'
 
 splashPage
 Write-Host -f GREEN "
-    So, did GUBABA find what you were looking for? In practice, I've just used GUBABA by
-    itself and never had a reason for my automations to pass queries to it. So let's do
-    something a little more useful (hopefully you have the MINMAY script in your tools...
-    if not, the demo will skip her)."
+                        $rrr
+    
+    In practice, I've just used GUBABA by itself and never had a reason for my automations
+    to pass queries to it. So let's do something a little more useful (hopefully you have
+    the MINMAY script in your tools; if not, the demo will skip her)."
 
 if($MONTY -and (Test-Path "$vf19_TOOLSDIR\MINMAY.py")){
     Write-Host -f GREEN "
@@ -366,7 +369,6 @@ if($MONTY -and (Test-Path "$vf19_TOOLSDIR\MINMAY.py")){
     
     Using the 'collab' function ensures MACROSS resources get shared with python tools,
     though you will need to do the work of importing the MACROSS python library.
-
     For this part of the demo, we'll have MINMAY explain what she does with stuff you pass
     into python (and she goes into a little more detail if you launch her by herself)."
     next
@@ -379,7 +381,6 @@ if($MONTY -and (Test-Path "$vf19_TOOLSDIR\MINMAY.py")){
     splashPage
     Write-Host -f GREEN "
     And now we're back with HIKARU... again!
-
     MACROSS' \ncore folder contains a subfolder called 'py_classes' where you can
     store any custom classes or libraries you want for your python scripts. Run MINMAY
     again later for a little more detail, or go read the notes inside mcdefs.py"
@@ -515,19 +516,18 @@ else{
 
     Also, don't overlook MACROSS' built-in utilities! Things like the " -NoNewline;
     Write-Host -f YELLOW 'houseKeeping' -NoNewline;
-    Write-Host -f GREEN ' function,
-    which checks for stale reports generated by your scripts so the user can delete
-    them, the ' -NoNewline;
+    Write-Host -f GREEN '
+    function, which checks for stale reports generated by your scripts so the user
+    can delete them, the ' -NoNewline;
     Write-Host -f YELLOW 'varCleanup' -NoNewline;
-    Write-Host -f GREEN " function which you can tweak to manage all the variables
-    that are shared by the various scripts within the console, or " -NoNewline;
+    Write-Host -f GREEN " function which you can tweak to manage all the
+    variables that are shared by the various scripts within the console, or
+    " -NoNewline;
     Write-Host -f YELLOW 'screenResults' -NoNewline;
-    Write-Host -f GREEN ",
-    which can prettify your outputs onscreen by formatting them into a colorized table.
-
-    And of course, if no scripts are active, the main menu will alert you when
-    PROTOCULTURE still contains an active value so you can choose to delete it if it's
-    no longer needed.
+    Write-Host -f GREEN ", which can prettify your outputs onscreen by formatting them into a
+    colorized table. And of course, if no scripts are active, the main menu will alert
+    you when PROTOCULTURE still contains an active value so you can choose to delete it
+    if it's no longer needed.
 
     Be sure to read the detailed notes provided to take full advantage of MACROSS. Get
     creative with linking your automations together to give your SOC a huge advantage
