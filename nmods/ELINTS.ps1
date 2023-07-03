@@ -466,7 +466,7 @@ function peeDeeEff($1,$2,$3){
     }
 
 
-    $f0 = (& $vf19_py "$ppp" -f --searchstream="$22" --regex $1)
+    $f0 = (& py "$ppp" -f --searchstream="$22" --regex $1)
         
     $Script:m = 0 ## Track the number of matches within the stream
         
