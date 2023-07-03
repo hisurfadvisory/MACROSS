@@ -29,7 +29,7 @@ function splashPage(){
     Write-Host '
     '
     Write-Host -f YELLOW $vf19_READ
-    Write-Host -f CYAN   '                  A demo of MACROSS automations
+    Write-Host -f CYAN   '             A demo of MACROSS automations
     
     '
     
