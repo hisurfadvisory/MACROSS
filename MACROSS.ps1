@@ -3,50 +3,44 @@
 <#
     Multi-API-Cross-Search (MACROSS) Console
     Automated powershell framework for blue teams
-
     With a little tweaking, you can link all your automation scripts
     together with MACROSS to give your team quick and easy access
     to any data that can help their investigations.
-
     
     Author: HiSurfAdvisory
     
     'Script' & 'Tool' are used interchangebly in my comments. Sorry.
-
+	
     v3.1
     :Modified the update functions to:
         -allow automatically refreshing scripts if they get borked
         -added obfuscation functions
     :Also made performance optimizations; scripts can now check for
-        $vf19_GAVIL to descriminate users vs. admins to restrict when
+        $vf19_ROBOTECH to descriminate users vs. admins to restrict when
         certain functions get loaded to save on resources.
     :Cleaned up the mcdefs python library
-
-
-
+	
     TO DO:
-    -Clean up and condense repeating instructions
-    -Automate the creation of multiple menu hashtables
-        to keep the screen from cluttering as more tools
-        get added. Currently using $FIRSTPAGE and $NEXTPAGE
-        to limit the menu to 10 tools at a time (max 20
-        until I can rework the "chooseMod" function to
-        handle more).
-    -Improve integration with python scripts
-
-
+		-Clean up and condense repeating instructions
+		-Automate the creation of multiple menu hashtables
+			to keep the screen from cluttering as more tools
+			get added. Currently using $FIRSTPAGE and $NEXTPAGE
+			to limit the menu to 10 tools at a time (max 20
+			until I can rework the "chooseMod" function to
+			handle more).
+		-Improve integration with python scripts
+	
 	ADDING NEW SCRIPTS:
     1. Any new ps or py tools you want added to MACROSS, just add
         this as the FIRST line of your script, and put the script
         in the \nmods folder: 
 		
 			    #_superdimensionfortress <your brief description of the script>
-
         The "#_superdimensionfortress " is necessary to identify scripts
         created for MACROSS (don't forget the whitespace). The description
         line is what gets written to the menu for users to see.
         Scripts without this line will be ignored.
-
+		
     2. The second line is used for version control. It should begin
         "#_ver 0.1" or whatever number you want to use. MACROSS
         strips out the "#_ver " to get the version number from the
@@ -54,7 +48,7 @@
         in the master copy (See the verChk function in updates.ps1).
         If the master copy is a higher number, MACROSS will grab the updated 
         version.
-
+		
 	3. Keep the script name under 7 characters to preserve the menu's
 		uniformity (not including the '.ps1' file extension, MACROSS
 		automatically ignores it).
@@ -81,10 +75,10 @@
         of your scripts. Set the function to run FIRST if the variable
         $HELP is true, and automatically return to MACROSS after the
         function finishes. $HELP automatically gets reset by the console.
-
+		
     6b. See the 'mcdefs.py' library file in the ncore\py_classes folder for
         working python scripts into MACROSS.
-
+		
     7. MACROSS was designed on a closed network that enforced digitally signed
         code. This made it possible to semi-restrict it against non-security users
         being able to make use of the automation. See the \ncore\validation.ps1
@@ -92,7 +86,7 @@
         used on networks without enforced digital signatures, but savvy users
         could just comment out the permission checks. This feature is default-
         disabled (the functions are commented out).
-
+		
 	8. These variables are used GLOBALLY across all the tools:
 		$USR is the local user
 		$PROTOCULTURE is the file/user/thing of interest that gets passed to
@@ -122,12 +116,11 @@
 			selected, it instead lets you inspect the digital signatures of
 			any signed scripts or binaries.
 		$vf19_Z is the current user input.
-
+		
     9.  If you want to set your default shared values in the utility.ps1 file (see
         the readme), the following indexes are already reserved:
             "tbl" = the location of the resources folder
             "nre" = the location of the master MACROSS repository (you need to set this)
-
         
 #>
 
@@ -167,7 +160,6 @@ if(Test-Path -Path "$dir\$d"){
 if(Test-Path -Path "$dir\$e"){
 if(Test-Path -Path "$dir\$u"){
 if(Test-Path -Path "$dir\$c"){
-if(Test-Path -Path "$dir\$s"){
     # load functions: varCleanup, setUser, setUserCt, availableMods, getHelp1,
     #  getHelp2, getThis, SJW, adminChk, errMsg
     . "$PSScriptRoot\ncore\$v"
@@ -187,16 +179,20 @@ if(Test-Path -Path "$dir\$s"){
     # load custom classes
     . "$PSScriptRoot\ncore\$c"
     Write-Host -f GREEN '  custom classes loaded...'
-    # load functions: transitionSplash
-    . "$PSScriptRoot\ncore\$s"
-    Write-Host -f GREEN '  ascii screens loaded...'
-    Start-Sleep -Seconds 1
-}else{$f=$s}}else{$f=$c}}else{$f=$u}}else{$f=$e}}else{$f=$d}}else{$f=$v}
+}else{$f=$c}}else{$f=$u}}else{$f=$e}}else{$f=$d}}else{$f=$v}
 
 if($f){
     Write-Host -f CYAN "
     ERROR -- Couldn't find required file $f"
     Exit
+}
+
+
+if(Test-Path -Path "$dir\$s"){
+    # load functions: transitionSplash
+    . "$PSScriptRoot\ncore\$s"
+    Write-Host -f GREEN '  ascii screens loaded...'
+    Start-Sleep -Seconds 1
 }
 
 Remove-Variable -Force dir,v,d,e,u,c,s
@@ -214,13 +210,13 @@ $vf19_TAG = '9rkd4mv'               ## This is necessary for the startUp functio
 ################################
 $Global:vf19_TOOLSROOT = $PSScriptRoot
 $Global:vf19_TOOLSDIR = "$vf19_TOOLSROOT\nmods\"
-$Global:vf19_REPO = $vf19_TOOLSROOT  ## Delete this after you've set a master repo location
-startUp                              ## see the display.ps1 file
-setUser                              ## see the validation.ps1 file
-#getThis $vf19_TOOLSOPT['nre']
-#$Global:vf19_REPO = $vf19_READ       ## This sets the main repo for MACROSS that users can pull updates from
-getThis $vf19_TOOLSOPT['tbl']
-$Global:vf19_TABLES = $vf19_READ     ## This sets the location of txt/xml files used for your custom scripts
+$Global:vf19_REPOTOOLS = $vf19_TOOLSDIR  ## Delete this after you've set a master repo location
+startUp                                  ## see the display.ps1 file
+setUser                                  ## see the validation.ps1 file
+#getThis $vf19_MPOD['nre']
+#$Global:vf19_REPOTOOLS = $vf19_READ       ## This sets the main repo for MACROSS that users can pull updates from
+getThis $vf19_MPOD['tbl']
+$Global:vf19_TABLES = $vf19_READ           ## This sets the location of txt/xml files used for your custom scripts
 
 
 $vf19_VERSION = Get-Content "$vf19_TOOLSROOT\MACROSS.ps1" | Select -Index 1
@@ -248,19 +244,19 @@ while( $Global:vf19_Z -ne 'q' ){
     toolCount  ## Menu changes based on the tool count. See the updates.ps1 file
 
     <#  UNCOMMENT TO USE CENTRAL SCRIPT DISTRIBUTION
-    #   MASTER REPO IS CURRENTLY SET TO SAME DIRECTORY AS YOUR LOCAL root MACROSS FOLDER
+    #   MASTER REPO IS CURRENTLY SET TO SAME DIRECTORY AS YOUR LOCAL MACROSS ROOT FOLDER
     ## Consult the updates.ps1 file for setting your default configs
     $vf19_VERSIONING = $true   ## Enables the verChk function to auto-update scripts
     ##  Verify toolsets; see the updates.ps1 file
     if( $vf19_MISMATCH ){
-        if( $vf19_FILECT -eq $vf19_REPOCT ){
+        if( $vf19_FILECT -eq $vf19_REPOTOOLSCT ){
             Remove-Variable vf19_MISMATCH -Scope Global
         }
     }
-    elseif( $vf19_FILECT -lt $vf19_REPOCT ){
+    elseif( $vf19_FILECT -lt $vf19_REPOTOOLSCT ){
         look4New
     }
-    elseif( $vf19_FILECT -gt $vf19_REPOCT ){
+    elseif( $vf19_FILECT -gt $vf19_REPOTOOLSCT ){
         $Global:vf19_MISMATCH = $true
         look4New
     }#>
@@ -271,7 +267,7 @@ while( $Global:vf19_Z -ne 'q' ){
     }
 
 
-    $CALLHOLD = 'MACROSS'  ## Holdover from original toolset, was originally meant to tell a script to return to the console without clearing vars
+    $CALLHOLD = 'MACROSS'   ## Holdover from original toolset, was originally meant to tell a script to return to the console without clearing vars
     $Global:vf19_PAGE = 'X'
 
     splashPage              ## load the MACROSS banner
