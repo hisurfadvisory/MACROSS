@@ -14,29 +14,22 @@ function varCleanup($1){
     Remove-Variable RESULTFILE -Scope Global
     Remove-Variable HOWMANY -Scope Global
     Remove-Variable CALLER -Scope Global
+    #Remove-Variable PROTOCULTURE -Scope Global  ## Uncomment this to always clear PROTOCULTURE automatically
 
 
     ## Erase everything when quitting MACROSS
     if( $1 -eq 1 ){
 
-        cleanGBIO  ## Don't leave eod files sitting, it might interfere with python tools
+        cleanGBIO  ## Don't leave eod files sitting around, it might interfere with python tools
 
-        Remove-Variable PROTOCULTURE -Scope Global
-        Remove-Variable MONTY -Scope Global
-        Remove-Variable SHARK -Scope Global
-        Remove-Variable USR -Scope Global
-        Remove-Variable vf19_* -Scope Global
+        Remove-Variable PROTOCULTURE,MONTY,SHARK,USR,vf19_* -Scope Global
     }
 }
-
-
  
 <#  Quickly get input from users on whether to continue a task.
     Opens a "Yes/No" window for the user to click on.
-
     You MUST provide the name of your script, AND the task in progress
     You can also provide an optional question
-
     ICONS:                   BUTTONS:
     Stop          16         OK               0
     Question      32         OKCancel         1
@@ -44,12 +37,9 @@ function varCleanup($1){
     Information   64         YesNoCancel      3
                              YesNo            4
                              RetryCancel      5
-
     Returns 'Yes' or 'No' so you can kill tasks or continue as the
     user chooses.
-
     Usage:  if($(yorn 'SCRIPTNAME' '$CURRENT_TASK') -eq 'No'){$STOP_DOING_TASK}
-
 #>
 function yorn(){
     param(
@@ -83,8 +73,7 @@ function yorn(){
 <#################################
     Deobfuscate your encoded value ($1), plaintext gets saved as $vf19_READ
             OR
-    Encode your plaintext value ($1) to base64 by making your second param '0'
-
+    Encode your plaintext value ($1) to base64 by making your second param 0 (zero)
     
     -DO NOT USE ENCODING TO HIDE USERNAMES/PASSWORDS/KEYS or other sensitive info! This
     is only intended to prevent regular users from seeing your filepaths/URLs, etc.,
@@ -92,22 +81,27 @@ function yorn(){
 
     -You MUST set your new variable to $vf19_READ **before** this function gets called again:
 
-        getThis $base64string      >     DECODE A VALUE
-        $new_variable = $vf19_READ
+        getThis $base64string
+        $plaintext = $vf19_READ
 
+    -To decode a hexadecimal string, call this function with '1' as a second parameter (and
+      your hex string can include spaces and/or '0x' tags, or neither):
+
+        getThis '0x746869732069 730x20 61 200x740x650x7374' 1
+        $plaintext = $vf19_READ
+
+    -If you want to ENCODE plaintext to Base64, call this function with your plaintext as
+        the first parameter, and 0 as the second parameter. This does NOT write to $vf19_READ!
         
-        getThis $plaintext 0       >     ENCODE A VALUE
-        $base64_var = $dash_READ
-
-    -To decode a hexadecimal string, call this function with '1' as a second parameter:
-
-        getThis $hexstring 1
-        $new_variable = $vf19_READ
-
-    -Your hex string can include spaces and/or '0x' tags.
+        $encoded_variable = getThis $plaintext 0     #  ENCODE A VALUE
+     
 
     This function can also be used by your scripts for normal decoding tasks, it isn't
-    limited to MACROSS's startup.
+    limited to MACROSS' startup.
+
+    The reason it always writes to $vf19_READ instead of just returning a value to your script
+    is to ensure that decoded plaintext gets wiped from memory every time the MACROSS menu loads.
+    Yes, I'm one of those paranoid types.
 
 #################################>
 function getThis($1,$2){
@@ -142,10 +136,8 @@ function getThis($1,$2){
 <################################
  Check for privileges LOL
  Some tools or APIs need admin-level access.
-
  Set $1 to 'deny' if your script requires elevated priv, or set
  it to 'pass' if it will kinda-sorta work in userland
-
  EXAMPLE: 
  
     SJW 'pass'
@@ -160,16 +152,16 @@ function getThis($1,$2){
 ################################>
 function SJW($1){
     if( $1 = 'menu' ){
-        if( $vf19_GAVIL ){
+        if( $vf19_ROBOTECH ){
             Write-Host -f YELLOW "                ****YOU ARE NOT LOGGED IN AS ADMIN**** "
-            Write-Host -f YELLOW "     Some of these tools will not work without elevated privilege.
+            Write-Host -f YELLOW "      Some of these tools will be nerf'd without elevated privilege.
             "
         }
     }
 
     ## Privilege check for scripts; only cares if user has been tagged as non-admin
     else{
-        if( $vf19_GAVIL ){
+        if( $vf19_ROBOTECH ){
             cls
             if( $1 -eq 'deny' ){
                 Write-Host -f YELLOW "
@@ -249,53 +241,101 @@ function errMsg($1){
     and set the global $USR value.
 
     Next, it makes an Active-Directory query for $USR. If that fails, 
-    setting $vf19_GAVIL to 'true' lets MACROSS scripts know the user
+    setting $vf19_ROBOTECH to 'true' lets MACROSS scripts know the user
     doesn't have admin privileges, so you can avoid loading tasks
     or functions that won't work for them.
+
+    You should change the very first "if" statement to match your
+    analyst's roles, if you want to use that level of access control.
+    The "$1" should match where the "Get-Random" statement generates
+    user keys down below. If you don't care about access control you
+    don't have to change anything.
 
     There are better ways to ID your users' access/permissions, but
     they will be unique to your environment. You can modify this
     function however works best for your domain.
-
 ################################>
-function setUser(){
-    if([System.Security.Principal.WindowsIdentity]::GetCurrent().Name){
-        $u = $([System.Security.Principal.WindowsIdentity]::GetCurrent().Name)
+function setUser($1){
+    if($1){
+        if(($1 + 53) -ne $vf19_check){
+        getThis '596f7520646f206e6f7420686176652061636365737320746f2074686973207363726970742e' 1
+            Write-Host -f CYAN '
+        $vf19_READ
+            '
+            slp 2
+            Exit
+        }
     }
     else{
-        $u = $(whoami)
-    }
-    $Global:USR = $u -replace("^(.+\\)?",'')  ## Set the logged-in user
-    $Global:vf19_USRCHK = $USR                ## Set this check in case another script changes $USR
 
-    try{
-        $priv = Get-ADUser -Filter * -Properties * | where{$_.samAccountName -eq $USR}
+        if([System.Security.Principal.WindowsIdentity]::GetCurrent().Name){
+            $u = $([System.Security.Principal.WindowsIdentity]::GetCurrent().Name)
+        }
+        else{
+            $u = $(whoami)
+        }
+        $Global:USR = $u -replace("^(.+\\)?",'')  ## Set the logged-in user
+        $Global:vf19_USRCHK = $USR                ## Set this check in case another script changes $USR
 
-        <# TWEAK & UNCOMMENT THIS SECTION TO FUTHER ID YOUR USERS FOR SPECIAL FUNCTIONS
-        if($priv | where{$_.member -like "*cyber**}){
+        ## Check Active Directory GPO first; I ***hope*** non-admins can't run Active Directory cmdlets!!!!
+        if(Get-ADUser -Filter * -Properties memberOf | where{$_.samAccountName -eq $USR}){
+            $priv = Get-ADUser -Filter * -Properties memberOf | where{$_.samAccountName -eq $USR}
+        }
+        ## Check local permissions next
+        if( ! $priv ){
+            if(Get-LocalGroupMember Administrators -Member $USR){
+                $priv = (Get-LocalGroupMember Administrators -Member $USR).Name -replace ".*\\"
+            }
+        }
+
+        try{
+            [void]$priv[0] ## Verify if anything got written during admin checks
+
+            <# TWEAK & UNCOMMENT THIS SECTION TO FURTHER ID YOUR USERS FOR SPECIAL FUNCTIONS
+            if($priv | Select -ExpandProperty memberOf | where{$_ -like "*cyber**}){
             
-            Global:vf19_tier1 = $true
-            ## Or... create randomly generated keys as identifiers for each session
-            #$Global:vf19_tier1 = $(Get-Random -min 999999999 -max 9999999999) 
-             
+                Global:vf19_tier1 = $true
+                ## Or... create randomly generated keys as identifiers for each session
+                ## Begin your "Tier 1 ONLY!" scripts with checks like 
+
+                ##    try{ setUser $vf19_tier3 } catch{ Exit }
+
+                ##  which checks if the "tier3" key and the "check" key match. There's not
+                ##  really a huge difference and isn't "security", just a basic access control.
+                #$Global:vf19_tier1 = $(Get-Random -min 10000000 -max 9999999999)
+                #$Global:vf19_check = $vf19_tier1 + 53
+            
+            }
+            elseif($priv | Select -ExpandProperty memberOf | where{$_ -like "*sooper cyber**}){
+                $Global:vf19_tier1 = $true
+                #$Global:vf19_tier3 = $(Get-Random -min 10000000 -max 9999999999)
+                #$Global:vf19_check = $vf19_tier1 + 53
+            }
+            #>
+
+            Remove-Variable priv
         }
-        elseif($priv | where{$_.member -like "*sooper cyber**}){
-            $Global:vf19_tier1 = $true
-            #$Global:vf19_tier3 = $(Get-Random -min 999999999 -max 9999999999)
+        catch{
+            $Global:vf19_ROBOTECH = $true  ## Tag the user as a non-admin lesser being if they can't read AD
         }
+
+
+        <#
+            You may need to change this desktop path in your environment if
+            roaming profiles are in use;
+            This global variable is used by the scripts to write reports/results
+            to file when necessary.
+
+            Example of writing outputs:
+
+            $some_output | Out-File "$vf19_DEFAULTPATH\workstations\report.txt"
+
+            I recommend you have your scripts create specific directories
+            on the desktop to output reports to, so that MACROSS' houseKeeping
+            function can neatly tidy them up when necessary.
         #>
-
-        Remove-Variable priv
+        $Global:vf19_DEFAULTPATH = "C:\Users\$USR\Desktop"
     }
-    catch{
-        $Global:vf19_GAVIL = $true  ## Tag the user as a non-admin lesser being
-    }
-
-
-    
-    $Global:vf19_DEFAULTPATH = "C:\Users\$USR\Desktop"  ## You may need to change this desktop path in your environ;
-                                                        ## This is used by the scripts to write reports/results to
-                                                        ## text outputs when necessary.
 }
 
 
@@ -308,13 +348,11 @@ function setUser(){
   The 1st param is the script filename you're calling, INCLUDING
   the extension, and is *required*. The script also needs be
   located in the nmods folder and recognized by MACROSS, i.e.
-  it has the magic words in the first two lines --
+  it has the magic words in the first three lines --
   
         #_superdimensionfortress
-
-        and
-        
         #_ver
+        #_class
 
   If you're calling a python script, all the default MACROSS values
   will be passed in the standard 6-argument sequence that is used in
@@ -327,26 +365,34 @@ function setUser(){
   Of course that only works if you make use of the var in your
   scripts.)
 
-  The 3rd param is the item you're passing for eval ($PROTOCULTURE)
+  The 3rd param is an ***optional*** item you're passing if you
+  want something other than $PROTOCULTURE to be eval'd, or if
+  the script being called requires 2 parameters.
 
   If you need the called script to launch in a new window, set
 
                 $Global:vf19_NEWWINDOW = $true
 
-  in the CALLER script. Be aware that the called script will NOT have
-  access to MACROSS resources if launched in a new window!
+  in the $CALLER script. Be aware that the called script will NOT have
+  access to MACROSS resources if launched in a new window, as it will be
+  its own entirely different session!
 
-  The $CALLER and $PROTOCULTURE variables should already be *globally*
-  set by your script. Passing them here is just an additional check
-  to give more flexibility on how you want your script to behave based
-  on these values. For instance, it could be that $PROTOCULTURE is
-  globally set, but you're calling a script that can accept more than
-  one item to evaluate. In this case, you can send a new value to this
-  function to be passed along in addition to $PROTOCULTURE, if the called
-  script is designed to recognize when both values exist. Remember that 
-  $PROTOCULTURE is meant to be available to all the scripts all the time
-  until *you* decide to overwrite or clear it, or you exit MACROSS cleanly
-  which will delete all related values.
+  The $PROTOCULTURE variable should already be globally set by ***your***
+  script. Passing another value in will either invalidate $PROTOCULTURE
+  or have it evaluated in addition to $PROTOCULTURE, depending on what
+  the called script is doing.
+  
+  For instance, it could be that $PROTOCULTURE is globally set, but you're
+  calling a script that can accept more than one item to evaluate. In this
+  case, you can send a new value to this function to be passed along in 
+  addition to $PROTOCULTURE, if the called script is designed to recognize 
+  when it is receiving a parameter while $PROTOCULTURE also contains a value.
+  
+  Remember that $PROTOCULTURE is meant to be available to all the scripts all
+  the time until *you* decide to overwrite or clear it, or you exit MACROSS
+  cleanly which will delete all related values. (you can force $PROTOCULTURE
+  to always clear when the MACROSS menu loads by modifying the varCleanup
+  function at the top of this script)
 
   (After the called script exits, $CALLER will be erased, but $PROTOCULTURE
   will remain globally available unless you explicitly remove it.)
@@ -355,31 +401,30 @@ function setUser(){
   to be global as well, *but* they get cleared every time you exit a script back
   to the MACROSS menu:
 
-    $RESULTFILE -- any files generated by your scripts that can be used
-    for further eval or formatting in other scripts
-
-    $HOWMANY -- the number of successful actions tracked between scripts
-
-
+    1. $RESULTFILE -- any files generated by your scripts that can be used for
+        further eval or formatting in other scripts
+    2. $HOWMANY -- the number of successful tasks tracked between scripts
 #>
 function collab(){
-    param(
+    Param(
         [Parameter(Mandatory=$true)]
         [string]$module,
         [Parameter(Mandatory=$true)]
         [string]$C,
-        $eNM
+        $extra
     )
 
     if(-not($module)){
-        Write-Host -f CYAN “
+        Read-Host -f CYAN “
         A script name wasn't supplied!
         ”
+        Return
     }
     if(-not($C)){
-        Write-Host -f CYAN “
+        Read-Host -f CYAN “
         A CALLER name wasn't supplied!
         ”
+        Return
     }
     else{
         $Global:CALLER = $C
@@ -405,23 +450,26 @@ function collab(){
         if( $vf19_NEWWINDOW ){  ## Launches script in new window if user desires; WILL NOT SHARE CORE MACROSS FUNCTIONS!
             $vf19_NEWWINDOW = $false
             if($py){
-                Start-Process powershell.exe "python3 $mod $CALLER $eNM"
+                #Start-Process powershell.exe "python3 $mod $CALLER $extra"
+                Start-Process powershell.exe "py $mod $CALLER $extra"
             }
             else{
-               Start-Process powershell.exe -File $mod $CALLER $eNM
+               Start-Process powershell.exe -File $mod $CALLER $extra
             }
         }
         else{
             if($py){
-                if( $eNM -ne $PROTOCULTURE ){  ## Pass both $eNM and $PROTOCULTURE to python if they are different values
-                    python3 $mod $USR $vf19_DEFAULTPATH $vf19_PYOPT $vf19_numchk $vf19_pylib $vf19_TOOLSROOT $CALLER $PROTOCULTURE $eNM
+                if( $extra -ne $PROTOCULTURE ){  ## Pass both $extra and $PROTOCULTURE to python if they are different values
+                    #python3 $mod $USR $vf19_DEFAULTPATH $vf19_PYPOD $vf19_numchk $vf19_pylib $vf19_TOOLSROOT $CALLER $PROTOCULTURE $extra
+                    py $mod $USR $vf19_DEFAULTPATH $vf19_PYPOD $vf19_numchk $vf19_pylib $vf19_TOOLSROOT $CALLER $PROTOCULTURE $extra
                 }
                 else{
-                    python3 $mod $USR $vf19_DEFAULTPATH $vf19_PYOPT $vf19_numchk $vf19_pylib $vf19_TOOLSROOT $CALLER $eNM
+                    #python3 $mod $USR $vf19_DEFAULTPATH $vf19_PYPOD $vf19_numchk $vf19_pylib $vf19_TOOLSROOT $CALLER $PROTOCULTURE
+                    py $mod $USR $vf19_DEFAULTPATH $vf19_PYPOD $vf19_numchk $vf19_pylib $vf19_TOOLSROOT $CALLER $PROTOCULTURE
                 }
             }
             else{
-                . $mod $eNM
+                . $mod $extra
                 Remove-Variable -Force CALLER -Scope Global
             }
         }
@@ -438,7 +486,6 @@ function collab(){
     The chooseMods function in display.ps1 generates the menu of tools
     for the user to choose from. When they make a selection, it is
     sent to this function which:
-
         1. Checks to see that the script is still in the nmods folder
         2. Forwards the selected script name to the function verChk, which
             compares version numbers in the user's folder vs. the same
@@ -472,6 +519,7 @@ function availableMods($1){
             if( $MODCHK ){
 
                 ## Check tool versions, but only if the tool count matches
+                ## Set this value in MACROSS.ps1
                 if( $vf19_VERSIONING ){
                     if( ! $vf19_MISMATCH ){
                         if( $vf19_REF ){
@@ -489,13 +537,13 @@ function availableMods($1){
                 if($MODULE -Match "py$"){  # MACROSS already checked for python install, ignores if $MONTY is $false
                     cls
                     if($HELP){
-                        python3 "$vf19_TOOLSDIR\$MODULE" 'HELP' '' '' '' $vf19_pylib
+                        py "$vf19_TOOLSDIR\$MODULE" 'HELP' '' '' '' $vf19_pylib
                     }
                     else{
                         ## Always send 6 default args for all python scripts to make use of:
                         ## The user; their desktop; the MPOD hashtable; the numchk integer; the filepath to the MACROSS py library;
                         ##  and the path to the \resources folder
-                        python3 "$vf19_TOOLSDIR\$MODULE" $USR $vf19_DEFAULTPATH $vf19_PYOPT $vf19_numchk $vf19_pylib $vf19_TOOLSROOT
+                        py "$vf19_TOOLSDIR\$MODULE" $USR $vf19_DEFAULTPATH $vf19_PYPOD $vf19_numchk $vf19_pylib $vf19_TOOLSROOT
 
                     }
                 }
