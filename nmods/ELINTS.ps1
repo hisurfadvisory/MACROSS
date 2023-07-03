@@ -7,36 +7,37 @@
     ELINT-SEEKER (Automated String Search): Part of the MACROSS blue-team
     automation framework
     
-    
     -- *REQUIRES* being launched from the MACROSS console! --
-
+	
     Uses Get-Content and/or .NET methods to search files for user-supplied
-    keywords; automatically uncompresses MS Office documents to scan XML files.
-
+    keywords; automatically uncompresses MS Office documents to scan XML files
+	and detect vbs macros.
+	
     Can work with single files, or a list of files from a .txt that
     was generated beforehand (this script was created alongside KONIG.ps1
     for that purpose).
-
+	
     This script does NOT incorporate iTextSharp for scanning PDF files
-    (yet). Most customer networks I investigate do not have access to
+    at this time, instead it uses Didier Stevens' pdf-parser (see the 
+	peeDeeEff function later in this script for details.)
+	
+	Many customer networks I investigate do not have access to
     whatever 3rd-party utils that make life easy, so MACROSS tries to
     work with what's available.
-
+	
     There are a few variables in this script that are not used by
     default. They exist for infosec purposes. You can tweak this script
     to set them based on inputs from your own scripts:
-
+	
         $dyrl_eli_nocopy -- when this is set to true, all copy functions
         and dialogs are disabled, preventing the $CALLER script from being
         able to copy files being investigated. If you've found a mistakenly
         leaked document, for example, you don't want analysts to make it worse
         by creating more copies of it.
-
+		
         $dyrl_eli_norecord -- when this is set to true, the filenames and
         their string-matches (if any) will NOT be written to the
         ~\Desktop\strings-found.txt file
-
-
 #>
 
 ## ASCII art for launching the script
@@ -121,11 +122,16 @@ if( $HELP ){
   grab the first instance of a match for you to view. All search results get saved into a
   file called 'strings-found.txt' on your desktop. You don't need to delete or rename this
   file, ELINTS will append your new findings without modifying any previous search results.
-
   When you are scanning a single file from manual selection, ELINTS will display every
   instance of a match --not just the first one-- so you can get some context.
- 
 
+  In order to scan through PDF files, you'll need python installed, and Didier Steven's pdf-parser
+  script copied into your local ncore folder.
+
+  hxxps://github.com/DidierStevens/DidierStevensSuite/blob/master/pdf-parser.py
+
+
+ 
   Hit ENTER to return.
   "
 
@@ -169,7 +175,7 @@ function completeMsg (){
             $dyrl_eli_MATCHLISTI.keys | Sort | %{ 
                 screenResults $_ $dyrl_eli_MATCHLISTI[$_]
             }
-            screenResults 0    
+            screenResults 'endr'    
         }
         Write-Host -f GREEN ' Search complete!'
         Write-Host -f YELLOW " $HOWMANY" -NoNewLine; 
@@ -192,6 +198,7 @@ function completeMsg (){
     }
 }
 
+
 ####################################
 ## Scan MS Office files for the user's keywords (requires uncompressing):
 ## $1 is the filepath, $2 is the keyword, $3 determines the scan mode,
@@ -203,19 +210,12 @@ function completeMsg (){
 ## only one match.
 ####################################
 function msOffice($1,$2,$3){
-    if($1 -Match "(doc|xls|ppt)(m|x)$"){
-        Add-Type -Assembly System.IO.Compression.FileSystem    ## Need to uncompress MSOffice stuff
-        ##  Compressed office documents have multiple directories and files;
-        ##  Only care about the XML containing document contents
-        $doc = [IO.Compression.ZipFile]::OpenRead("$1")
-    }
-
-    Set-Variable -Name a,n,nn -Option AllScope                 ## Let nested functions control these values
-    $fn = $1 -replace "^.*\\",''                               ## Cut filepath for display
-    $n = 0                                                     ## Track number of matches PER FILE
-    $nn = 0
-    $a = @('')                                                 ## Only care if matches get written to $a
-    $Script:dyrl_eli_VBA = 0                                   ## Count of any vba scripts found
+    Set-Variable -Name a,n -Option AllScope        ## Let nested functions control these values
+    $fn = $1 -replace "^.*\\"                      ## Cut filepath for display
+    #$encode = "[^\x00-\x7F]"                      ## Ignore non-ASCII blocks
+    $n = 0                                         ## Track number of matches PER FILE
+    $a = @('')                                     ## Only care if matches get written to $a
+    $Script:dyrl_eli_VBA = 0                       ## Count of any vba scripts found
 
     if( $3 -eq 2 ){
         Write-Host -f GREEN " Type 'p' if you want to pause after every match, otherwise hit ENTER: " -NoNewline;
@@ -233,42 +233,39 @@ function msOffice($1,$2,$3){
     }
 
 
-    ## Scan the extracted plaintext for user's keywords; alert on macros/vbs
+    ## Scan the extracted plaintext for user's keywords
     function keyWordScan($pt,$macroname){
         $L = 0                                                      ## Count number of lines scanned
-        $size = 0
         Write-Host -f CYAN "   SCANNING $fn"
         $pt |
-            %{  
+            %{
                 if($macroname -eq 'notvba'){
                     $b = $_ -replace "<.*?>","`n" -split("`n")          ## Remove office/xml tags, then ignore empty lines
                 }
                 else{
                     $b = $_ -replace "<.*$macroname"                    ## Look for the line with the macro name
-                    $b >> $dyrl_eli_intelpkg
-                    '' >> $dyrl_eli_intelpkg
-                    '' >> $dyrl_eli_intelpkg
+                    $b >> $dyrl_eli_POOP
+                    '' >> $dyrl_eli_POOP
+                    '' >> $dyrl_eli_POOP
                     Return
                 }
                 $b | where{ $_ -ne ''} |
                 %{
                     $L++
                     if( ! $quit ){
-                        if( !($_ -cMatch $dyrl_eli_encode) ){                     ## Ignore non-ASCII strings
+                        if( !($_ -cMatch $dyrl_eli_encode) ){
                             if( $dyrl_eli_CASE -eq 'y' ){   ## If the user specified case-sensitive
                                 if($_ -cMatch "$2"){
                                     $a += $_
-                                    $aabb = $_.Substring(0,25)  ## Truncate the string to < 26 chars
                                     $n++
-                                    $nn++
                                     if( $3 -eq 1){
-                                        Return
+                                        $quit = $true
                                     }
-                                    else{
-                                        Write-Host -f YELLOW " $dyrl_eli_BOGEY block $L"
-                                        #Write-Host ":  $aabb
-                                        #"
-                                        $Z = reacquire $type
+                                    elseif($3 -eq 2){
+                                        Write-Host -f YELLOW " Line $L" -NoNewline;
+                                        Write-Host ":  $_
+                                        "
+                                        $Z = go $type
                                         if( $Z -eq 'n' ){
                                             $quit = $true
                                         }
@@ -277,17 +274,15 @@ function msOffice($1,$2,$3){
                             }
                             elseif($_ -Match "$2"){        ## If case doesn't matter
                                     $a += $_
-                                    $aabb = $_.Substring(0,25)
                                     $n++
-                                    $nn++
                                     if( $3 -eq 1){
-                                        Return
+                                        $quit = $true
                                     }
-                                    else{
-                                        Write-Host -f YELLOW " $dyrl_eli_BOGEY block $L"
-                                        #Write-Host ":  $aabb
-                                        #"
-                                        $Z = reacquire $type
+                                    elseif($3 -eq 2){
+                                        Write-Host -f YELLOW " Line $L" -NoNewline;
+                                        Write-Host ":  $_
+                                        "
+                                        $Z = go $type
                                         if( $Z -eq 'n' ){
                                             $quit = $true
                                         }
@@ -302,31 +297,30 @@ function msOffice($1,$2,$3){
                     else{
                         Return
                     }
-                    
-                } 
-                
+                }  
             }
-            
         }
-        
 
-    
+    ##  Compressed office documents have multiple directories and files;
+    ##  Only care about the XMLs containing text or vbs contents
+    if( $1 -Match "(m|x)$"){
+        Add-Type -Assembly System.IO.Compression.FileSystem        ## Need to uncompress MSOffice stuff
+        $doc = [IO.Compression.ZipFile]::OpenRead("$1")
+    }
 
     ## Excel contents are *typically* in "xl\worksheets\Sheet[0-9].xml" and ".\sharedStrings.xml" paths,
-    ## and MSWord contents are in the Document.xml... but we'll search the whole thing anyway
+    ## and MSWord contents are in the Document.xml... but we'll search the whole thing anyway. If there is
+    ## noticeable lag we'll go back to just grabbing Document.xml from Word files
     if( $doc ){
         $doc.Entries |
             Where-Object{
                 $_.Name -Match "\.xml$"
             } | %{
                 if($_.name -Match "^vba"){
-                    Write-Host -f YELLOW '   Document contains macros! Extracting...'
-                    slp 3
                     $Script:dyrl_eli_VBA++
-                    'VBA Script found: ' >> $dyrl_eli_intelpkg
-                    '' >> $dyrl_eli_intelpkg
+                    'VBA Script found: ' >> $dyrl_eli_POOP
+                    '' >> $dyrl_eli_POOP
                     $PLAINTEXT = grabXML $_ 
-                    Write-Host "     $PLAINTEXT"
                     keyWordScan $PLAINTEXT 'wne:macroName=' ## uncompressed file has VBA info
                 }
                 else{
@@ -335,8 +329,7 @@ function msOffice($1,$2,$3){
                 }
             }
     }
-    
-    
+
     ## If doc is old 97-2003 non-compressed format, can't use keyWordScan function
     ## because it is for parsing extracted XML files.
     else{
@@ -353,34 +346,42 @@ function msOffice($1,$2,$3){
             ''
             slp 3
             $Script:dyrl_eli_VBA++
-            "VBA Script found: $mac" | Out-File -Append $dyrl_eli_intelpkg
-            '' | Out-File -Append $dyrl_eli_intelpkg
+            "VBA Script found: $mac" | Out-File -Append $dyrl_eli_POOP
+            '' | Out-File -Append $dyrl_eli_POOP
         }
 
-        $findstr | 
-            %{
-                if($dyrl_eli_CASE -eq 'y'){
-                    if($_ | Select-String -CaseSensitive $2){
-                        $a += $_ -replace $dyrl_eli_encode
-                        $n++
-                    }
-                }
-                elseif($_ | Select-String $2){
+        $findstr | %{
+            if($dyrl_eli_CASE -eq 'y'){
+                if($_ | Select-String -CaseSensitive $2){
                     $a += $_ -replace $dyrl_eli_encode
                     $n++
                 }
             }
-        Remove-Variable findstr,findvba,mac
+            elseif($_ | Select-String $2){
+                $a += $_ -replace $dyrl_eli_encode
+                $n++
+            }
         }
-    #}
-
+        Remove-Variable findstr,findvba,mac
+    }
 
     cls
-    if($a.length -gt 1){
-        $strmatches = $a | where{$_ -ne ''} | Select -Unique  ## Dedup results, remove the placeholder index
+    if( $n -gt 0 ){
+        $n2 = $true
+        if($a.length -eq 2){
+            ## If only 1 match was recorded, send it as a string instead of an array
+            [string]$stringsfound = $a[1]
+        }
+        elseif($a.length -gt 1){
+            ## Dedup results into new array, remove empty placeholder
+            $stringsfound = $a | where{$_ -ne ''} | Select -Unique
+        }
     }
-    Write-Host -f YELLOW "   $fn" -NoNewline;
-    Write-Host -f GREEN ": FOUND $nn matches for '$2'
+
+    Write-Host -f YELLOW "
+    
+    $fn" -NoNewline;
+    Write-Host -f GREEN ": FOUND $n matches for '$2'
     "
     slp 2
 
@@ -390,15 +391,170 @@ function msOffice($1,$2,$3){
     Remove-Variable -Force a,n
 
 
-    if($strmatches){
-        cls
-        Return $strmatches
+    if( $n2 ){
+        Return $stringsfound
     }
     else{
         Return $false
     }
 
 }
+
+
+## Import Didier Stevens' pdf-parser python script
+## $1 is the filepath, $2 is the search term(s)
+function peeDeeEff($1,$2,$3){
+
+    $ppp = "$vf19_TOOLSROOT\ncore\pdf-parser.py"
+    if( ! $ppp ){
+        Write-Host -f CYAN "
+    pdf-parser is not present! Grab it from 
+
+        hxxps://github.com/DidierStevens/DidierStevensSuite/blob/master/pdf-parser.py
+
+    and place it in MACROSS' ncore folder then run this search again. Hit ENTER to continue.
+        "
+        Read-Host
+        Return
+    }
+
+    $20 = @()  ## Use this to rewrite words with whitespace-regex
+    $22 = @()  ## This is the list of exact words + whitespace-regex to search on
+
+    
+    if($dyrl_eli_re){
+        $23 = $2  ## $23 value means user entered a specific regex pattern
+    }
+    ## User may separate exact words with either spaces or commas or both
+    ## $21 value means user is looking for exact words
+    elseif($2 -Match ', '){
+        $21 = $2 -Split(', ')
+    }
+    elseif($2 -Match ' '){
+        $21 = $2 -Split(' ')
+    }
+    else{
+        $21 = $2 -Split(',')
+    }
+
+
+    ## PDF streams often break words apart; take all of the user's search
+    ## keywords, split them into separate characters and add a regex for
+    ## "match even if there is whitespace between letters". Also add 
+    ## escapes for special characters
+    $21 | %{
+        foreach($char in ($_ -Split(''))){
+            if($char -Match "(\\|\$|\(|\)\|\[|\]|\{|\}|\.|\?|\*|\^|\&)"){
+                $char = '\' + $char
+            }
+            $sp = $char + '\s*'
+            $20 += $sp
+        }
+        $22 += $($20 -Join(''))
+        $20 = $null
+    }
+    
+    if($23){
+        [string]$22 = $23
+    }
+    elseif($22.count -gt 1){
+        $23 = $22 -Join('|')  ## Join all array items into 1 regex "or" string
+        [string]$22 = "($23)"
+    }
+    else{
+        [string]$22 = $22
+    }
+
+
+    $f0 = (& $vf19_py "$ppp" -f --searchstream="$22" --regex $1)
+        
+    $Script:m = 0 ## Track the number of matches within the stream
+        
+
+    #$obj = $f | Select-String -Pattern "^obj \d+ "  ## If we need to start tracking the object containing the match
+    
+    ## PDF streams aren't uniform; going to have to add multiple patterns based
+    ## on how plaintext gets split up for coordinates
+    if($f0 -Match "<<.*>>"){
+        $join = ($f0 -Split('<<') | %{$_ -replace ">>.*"}) -Join('  ')
+    }
+    elseif($f0 -Match "\\n\("){
+        $join = ($f0 -Split('\(') | %{$_ -replace "\).*"}) -Join('  ')
+    }
+
+
+    ## If match is found, write out the whole contents for now; will clean this up later
+    if($join){
+        function highlightMatches{
+            param(
+                [Parameter(Mandatory = $true,ValueFromPipeline = $true)]
+                [string]$textblk,
+                [Parameter(Mandatory = $true)]
+                [string]$pattern
+            )
+
+            begin{ 
+                $r = [regex]$pattern
+            }
+            process{
+                $matches = $r.Matches($textblk)
+                $Script:m = $matches.count
+                $startIndex = 0
+
+                foreach($match in $matches){
+                    $nonMatchLength = $match.Index - $startIndex
+                    Write-Host $textblk.Substring($startIndex, $nonMatchLength) -NoNew
+                    Write-Host -f YELLOW $match.Value -NoNew
+                    $startIndex = $match.Index + $match.Length
+                }
+
+                if($startIndex -lt $textblk.Length){
+                    Write-Host $textblk.Substring($startIndex) -NoNew
+                }
+
+                Write-Host
+            }
+            
+
+        }
+
+        highlightMatches $join $22
+        $mm = $m
+        Remove-Variable m -Scope Global
+        
+
+
+        if($mm -eq 0 -and $join -gt 0){
+            $mm = $($join.count)
+        }
+
+
+        if($3 -eq 'multi'){
+            Return "$mm matches"  ## Only report # of matches if parsing multiple files (don't write to screen)
+        }
+        else{
+            ''
+            ''
+            Write-Host -f YELLOW "   $mm" -NoNewline;
+            Write-Host -f GREEN ' matches found!' -NoNewline;
+            if($mm -gt 0){
+                Write-Host -f GREEN ' If no text was highlighted onscreen, your match may be buried'
+                Write-Host -f GREEN "   in another layer of encoding and couldn't be extracted.
+                "
+            }
+            else{
+                Write-Host '
+                '
+            }
+            while($z -ne 'c'){  ## Prevent user exiting before they can view the results
+                Write-Host -f GREEN '   Type "c" to continue: ' -NoNewline;
+                $z = Read-Host
+            }
+        }
+    }
+
+}
+
 
 ####################################
 ## Draft a Get-Content query based on case sensitivity
@@ -798,6 +954,12 @@ do{
                 if( $dyrl_eli_RADARCONTACT -Match "(doc|xls|ppt)(m|x)?$" ){
                     $dyrl_eli_CONVSTR = msOffice $dyrl_eli_RADARCONTACT $dyrl_eli_TARGET 1
                 }
+                elseif($dyrl_eli_DOCFOUND -Match "pdf$"){
+					## Use pdf-parser only if python is installed
+                    if($MONTY){
+                        $dyrl_eli_CONVSTR = peeDeeEff $dyrl_eli_DOCFOUND $dyrl_eli_TARGET 'multi'
+                    }
+                }
                 else{
                     $dyrl_eli_CONVSTR = setCase $dyrl_eli_RADARCONTACT $dyrl_eli_TARGET
                 }
@@ -865,6 +1027,15 @@ do{
             ''
             if( $dyrl_eli_PATH -Match "(doc|xls|ppt)(m|x)?$" ){
                 $dyrl_eli_setCase = msOffice $dyrl_eli_PATH $dyrl_eli_TARGET 2
+            }
+            elseif($dyrl_eli_PATH -Match "pdf$"){
+                if($MONTY){
+                    Write-Host -f YELLOW '
+        Matching plaintext within PDF streams is touch & go; your results may vary...
+        '
+                    slp 1
+                    peeDeeEff $dyrl_eli_PATH $dyrl_eli_TARGET
+                }
             }
             else{
                 $dyrl_eli_setCase = setCase $dyrl_eli_PATH $dyrl_eli_TARGET
