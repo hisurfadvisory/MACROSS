@@ -133,7 +133,7 @@ function startUp(){
 
 <# 
    Format up to three rows of outputs to the screen; parameters you send will be
-   truncated to fit in the window (up to 3 separate params, but $1 is required).
+   wrapped to fit in the columns (up to 3 separate params, but $1 is required).
 
    ***Call this function with "endr" as the only parameter to add the final row separator
    "$r" after all your results have been displayed.***
@@ -155,7 +155,8 @@ function startUp(){
         ‖≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡‖
         ‖  Key 1 name        ║  The value of key 1                                                 ‖
         ‖≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡‖
-        ‖  Key 2 name        ║  The value of key 2                                                 ‖
+        ‖  Key 2 name        ║  The value of key 2 is a longer string, so it gets wrapped onto the ‖
+        ‖                    ║  next line to keep it uniform onscreen.                             ‖
         ‖≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡‖
   
    ...and so on. If you send a value that begins with "derpy", for example "derpyWindows PC", the
@@ -166,141 +167,298 @@ function startUp(){
 function screenResults(){
     Param(
         [Parameter(Mandatory=$true)]
-        $1,
-        $2,
-        $3
+        [string]$1,
+        [string]$2,
+        [string]$3
     )
 
     $r = '‖≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡‖' ## 92 char length
-    $c = '‖'                                                                                            ## Separate columns
-
+    $c = '‖'
     if($1 -Match "^derpy"){
         $NAMErd = $true
         $1 = $1 -replace "^derpy"
+        slp 1
     }
-    
-    $NAME = ' ' + [string]$1
+    elseif($1 -eq 'endr'){
+        Write-Host -f GREEN $r
+        Return
+    }
+
+
+
+    function genBlocks($outputs,$max,$min){
+        $o1 = @()
+        $o2 = @()
+        $o3 = $outputs.length
+        if($o3 -gt $max){
+            if($outputs -Match ' '){
+                $outputs = $outputs -replace '(\s\s+|\t|`n)',' '
+                $p = $outputs -Split(' ')
+                $wide = 0
+            }
+            else{
+                $cut = $max - $o3
+                $o2 += $last.Substring(0,$max)
+                $o2 += $last.Substring($cut,-1)
+            }
+        }
+        else{
+            while($o3 -ne $max){
+                $outputs = $outputs + ' '
+                $o3++
+            }
+            $o2 += $outputs
+        }
+
+        if($p){
+            $p | ForEach-Object {
+                $l = $($_.length)
+                $wide = $wide + ($l + 1)
+                    
+                if($wide -lt $min){
+                    $o1 += $($_ + ' ')
+                }
+                else{
+                    $block = $o1 -Join(' ')
+                    $block = $block -replace "\s\s+",' '
+                    $bl = $($block.length)
+                    if($bl -gt $max){                   ## Cut extra long strings without whitespace
+                        $cut = $max - $bl
+                        $o2 += $last.Substring(0,$max)
+                        $o2 += $last.Substring($cut,-1)
+                    }
+                    else{
+                        if($bl -lt $max){
+                            while($bl -ne $max){
+                                $block = $block + ' '       ## Add space if the line is < $max
+                                $bl++
+                            }
+                        }                        
+                        $o2 += $block
+                    }
+                    Clear-Variable o1                   ## Reset the list
+                    $o1 += $($_ + ' ')                  ## Add the current word to the list
+                    $wide = ($l + 1)                    ## Reset the line length
+                    
+                }
+                    
+                ## If the current $o1 item is the last one from $outputs, add it to
+                ## the $o2 response
+                if($_ -eq $p[-1]){
+                        $last = $o1 -Join(' ')
+                        $l = $last.length
+                        if($l -gt $max){                   ## The last item might be > $max
+                            $cut = $max - $l
+                            $o2 += $last.Substring(0,$max)
+                            $o2 += $last.Substring($cut,-1)
+                        }
+                        else{
+                            if($l -lt $max){
+                                while($l -ne $max){
+                                    $last = $last + ' '    ## Add spaces if the line is < $max
+                                    $l++
+                                }
+                            }
+                            $o2 += $last
+                        }
+                }
+                    
+                    
+            }
+        }
+        Return $o2
+    }
+
+    $NAME = $1
     $wide1 = $NAME.length
 
-
     if($2){
-
         if($2 -Match "^derpy"){
             $VAL1rd = $true
             $2 = $2 -replace "^derpy"
+            slp 1
         }
-        $VAL1 = ' ' + [string]$2
+        $VAL1 = $2
         $wide2 = $2.length
-        if($wide1 -gt 20){
-            $NAME = $NAME.Substring(0,19)
-            $NAME = $NAME + '... '
-        }
-        else{
-            while($wide1 -ne 24){
-                $NAME = $NAME + ' '
-                $wide1++
-            }
-        }
+        
     
         if($3){
             if($3 -Match "^derpy"){
                 $VAL2rd = $true
                 $3 = $3 -replace "^derpy"
+                slp 1
             }
-            $VAL2 = ' ' + [string]$3
+            $VAL2 = $3
             $wide3 = $3.length
-            if($wide2 -gt 34){
-                $VAL1 = $VAL1.Substring(0,32)
-                $VAL1 = $VAL1 + '...'
+        }
+        
+        
+
+        [array]$BLOCK1 = genBlocks $NAME 23 22
+        $ct1 = $BLOCK1.count
+        if($VAL2){
+            [array]$BLOCK2 = genBlocks $VAL1 34 32
+            [array]$BLOCK3 = genBlocks $VAL2 28 25
+            $ct3 = $BLOCK3.count
+        }
+        else{
+            [array]$BLOCK2 = genBlocks $VAL1 64 62
+        }
+        $ct2 = $BLOCK2.count
+
+    }
+    else{
+        [array]$BLOCK1 = genBlocks $NAME 89 87
+    }
+
+    
+    ## Generate empty space to keep columns uniform
+    $empty1 = '                        '                   ## 23 char length 1st column
+    if($ct3){
+        $empty2 = '                                   '    ## 35 char length  2nd column with 3rd
+        $empty3 = '                             '          ## 28 char length  3rd column
+    }
+    elseif($ct2){                                          ## 64 char length 2nd column without 3rd
+        $empty2 = '                                                                 ' 
+    }
+
+
+    $index1 = 0
+    $index2 = 0
+    $index3 = 0
+    $linenum = 0
+    Write-Host -f GREEN $r
+
+    <#
+    Outputs will get formatted to screen based on:
+        -how many values got passed in (1, 2, or 3)
+        -how many words are in each output
+        -which outputs have the most words in them
+        -I hate math
+    #>
+    if($ct3){
+        $countdown = $ct1 + $ct2 + $ct3
+        while($countdown -ne 0){
+            Write-Host -f GREEN $c -NoNewline;
+            if($BLOCK1[$index1]){
+                Write-Host -f YELLOW " $($BLOCK1[$index1])" -NoNewline;
+                $index1++
+                $countdown = $countdown - 1
             }
             else{
-                while($wide2 -ne 35){
-                    $VAL1 = $VAL1 + ' '
-                    $wide2++
-                }
+                Write-Host $empty1 -NoNewline;
             }
-            if($wide3 -gt 28){
-                $VAL2 = $VAL2.Substring(0,25)
-                $VAL2 = $VAL2 + '...'
+            Write-Host -f GREEN $c -NoNewline;
+            if($BLOCK2[$index2]){
+                Write-Host " $($BLOCK2[$index2])" -NoNewline;
+                $index2++
+                $countdown = $countdown - 1
             }
             else{
-                while($wide3 -ne 27){
-                    $VAL2 = $VAL2 + ' '
-                    $wide3++
+                Write-Host $empty2 -NoNewline;
+            }
+            Write-Host -f GREEN $c -NoNewline;
+            if($BLOCK3[$index3]){
+                Write-Host -f GREEN " $($BLOCK3[$index3])" -NoNewline;
+                $index3++
+                $countdown = $countdown - 1
+            }
+            else{
+                Write-Host $empty3 -NoNewline;
+            }
+            Write-Host -f GREEN $c
+
+        }
+
+
+    }
+    elseif($ct2){
+        if($ct1 -gt $ct2){
+            if($ct2 -eq 1){
+                $middle = ([int][Math]::Ceiling($ct1/2) - 1)
+            }
+            else{
+                $middle = ([int][Math]::Ceiling($ct1/$ct2) - 1)
+            }
+
+            $BLOCK1 | %{
+                if($linenum -lt $middle){
+                    Write-Host -f GREEN "$c " -NoNewline;
+                    Write-Host -f YELLOW $_ -NoNewline;
+                    Write-Host -f GREEN $c -NoNewline;
+                    Write-Host $empty2 -NoNewline;
+                    Write-Host -f GREEN $c
+                    $linenum++
                 }
+                else{
+                    Write-Host -f GREEN "$c " -NoNewline;
+                    Write-Host -f YELLOW "$_" -NoNewline;
+                    Write-Host -f GREEN $c -NoNewline;
+                    if($BLOCK2[$index2]){
+                        Write-Host " $($BLOCK2[$index2])" -NoNewline;
+                        Write-Host -f GREEN $c
+                        $index2++
+                    }
+                    else{
+                        $linenum = -1
+                        Write-Host $empty2 -NoNewline;
+                        Write-Host -f GREEN $c
+                    }
+                }
+            }
+
+        }
+        elseif($ct2 -gt $ct1){
+            if($ct1 -eq 1){
+                $middle = ([int][Math]::Ceiling($ct2/2) - 1)
+            }
+            else{
+                $middle = ([int][Math]::Ceiling($ct2/$ct1) - 1)
+            }
+
+            $BLOCK2 | %{
+                Write-Host -f GREEN $c -NoNewline;
+                if($linenum -lt $middle){
+                    Write-Host $empty1 -NoNewline;
+                    $linenum++
+                }
+                else{
+                    if($BLOCK1[$index1]){
+                        Write-Host -f YELLOW " $($BLOCK1[$index1])" -NoNewline;
+                        $index1++
+                    }
+                    else{
+                        $linenum = -1
+                        Write-Host $empty1 -NoNewline;
+                    }
+                }
+                Write-Host -f GREEN $c -NoNewline;
+                Write-Host " $_" -NoNewline;
+                Write-Host -f GREEN $c
             }
         }
         else{
-            if($wide2 -gt 64){
-                $VAL1 = $VAL1.Substring(0,62)
-                $VAL1 = $VAL1 + '...'
-            }
-            else{
-                while($wide2 -ne 64){
-                    $VAL1 = $VAL1 + ' '
-                    $wide2++
-                }
+            $BLOCK2 | %{
+                Write-Host -f GREEN $c -NoNewline;
+                Write-Host -f YELLOW " $($BLOCK1[$index1])" -NoNewline;
+                $index1++
+                Write-Host -f GREEN $c -NoNewline;
+                Write-Host " $_" -NoNewline;
+                Write-Host -f GREEN $c
             }
         }
 
-        Write-Host -f GREEN $r
-        Write-Host -f GREEN $c -NoNewline;
-        if($NAMErd){
-            Write-Host -f RED $NAME -NoNewline;
-        }
-        else{
-            Write-Host -f YELLOW $NAME -NoNewline;
-        }
-        Write-Host -f GREEN $c -NoNewline;
-        if($VAL2){
-            if($VAL1rd){
-                Write-Host -f RED $VAL1 -NoNewline;
-            }
-            else{
-                Write-Host $VAL1 -NoNewline;
-            }
-            Write-Host -f GREEN $c -NoNewline;
-            if($VAL2rd){
-                Write-Host -f RED $VAL2 -NoNewline;
-            }
-            else{
-                Write-Host -f GREEN $VAL2 -NoNewline;
-            }
-        }
-        else{
-            if($VAL1rd){
-                Write-Host -f RED $VAL1 -NoNewline;
-            }
-            else{
-                Write-Host $VAL1 -NoNewline;
-            }
-        }
-        Write-Host -f GREEN $c
-    }
-    elseif( $1 -eq 'endr' ){
-        Write-Host -f GREEN $r
+            
+        
     }
     else{
-        if($wide1 -gt 89){
-            $NAME = $NAME.Substring(0,86)
-            $NAME = $NAME + '... '
+        $BLOCK1 | %{
+            Write-Host -f GREEN "$c " -NoNewline;
+            Write-Host -f YELLOW $_ -NoNewline;
+            Write-Host -f GREEN $c
         }
-        else{
-            while($wide1 -ne 90){
-                $NAME = $NAME + ' '
-                $wide1++
-            }
-        }
-        Write-Host -f GREEN $r
-        Write-Host -f GREEN $c -NoNewline;
-        if($NAMErd){
-            Write-Host -f RED $NAME -NoNewline;
-        }
-        else{
-            Write-Host -f GREEN $NAME -NoNewline;
-        }
-        Write-Host -f GREEN $c
     }
+
 }
 
 
