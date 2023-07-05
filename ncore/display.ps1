@@ -133,7 +133,7 @@ function startUp(){
 
 <# 
    Format up to three rows of outputs to the screen; parameters you send will be
-   wrapped to fit in the columns (up to 3 separate params, but $1 is required).
+   truncated to fit in the window (up to 3 separate params, but $1 is required).
 
    ***Call this function with "endr" as the only parameter to add the final row separator
    "$r" after all your results have been displayed.***
@@ -155,8 +155,7 @@ function startUp(){
         ‖≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡‖
         ‖  Key 1 name        ║  The value of key 1                                                 ‖
         ‖≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡‖
-        ‖  Key 2 name        ║  The value of key 2 is a longer string, so it gets wrapped onto the ‖
-        ‖                    ║  next line to keep it uniform onscreen.                             ‖
+        ‖  Key 2 name        ║  The value of key 2                                                 ‖
         ‖≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡‖
   
    ...and so on. If you send a value that begins with "derpy", for example "derpyWindows PC", the
@@ -308,7 +307,7 @@ function screenResults(){
 
     }
     else{
-        [array]$BLOCK1 = genBlocks $NAME 89 87
+        [array]$BLOCK1 = genBlocks $NAME 88 86
     }
 
     
@@ -341,7 +340,12 @@ function screenResults(){
         while($countdown -ne 0){
             Write-Host -f GREEN $c -NoNewline;
             if($BLOCK1[$index1]){
-                Write-Host -f YELLOW " $($BLOCK1[$index1])" -NoNewline;
+                if($NAMErd){
+                    Write-Host -f RED " $($BLOCK1[$index1])" -NoNewline;
+                }
+                else{
+                    Write-Host -f YELLOW " $($BLOCK1[$index1])" -NoNewline;
+                }
                 $index1++
                 $countdown = $countdown - 1
             }
@@ -350,7 +354,12 @@ function screenResults(){
             }
             Write-Host -f GREEN $c -NoNewline;
             if($BLOCK2[$index2]){
-                Write-Host " $($BLOCK2[$index2])" -NoNewline;
+                if($VAL1rd){
+                    Write-Host -f RED " $($BLOCK2[$index2])" -NoNewline;
+                }
+                else{
+                    Write-Host " $($BLOCK2[$index2])" -NoNewline;
+                }
                 $index2++
                 $countdown = $countdown - 1
             }
@@ -359,7 +368,12 @@ function screenResults(){
             }
             Write-Host -f GREEN $c -NoNewline;
             if($BLOCK3[$index3]){
-                Write-Host -f GREEN " $($BLOCK3[$index3])" -NoNewline;
+                if($VAL2rd){
+                    Write-Host -f RED " $($BLOCK3[$index3])" -NoNewline;
+                }
+                else{
+                    Write-Host -f GREEN " $($BLOCK3[$index3])" -NoNewline;
+                }
                 $index3++
                 $countdown = $countdown - 1
             }
@@ -384,7 +398,12 @@ function screenResults(){
             $BLOCK1 | %{
                 if($linenum -lt $middle){
                     Write-Host -f GREEN "$c " -NoNewline;
-                    Write-Host -f YELLOW $_ -NoNewline;
+                    if($NAMErd){
+                        Write-Host -f RED $_ -NoNewline;
+                    }
+                    else{
+                        Write-Host -f YELLOW $_ -NoNewline;
+                    }
                     Write-Host -f GREEN $c -NoNewline;
                     Write-Host $empty2 -NoNewline;
                     Write-Host -f GREEN $c
@@ -392,10 +411,20 @@ function screenResults(){
                 }
                 else{
                     Write-Host -f GREEN "$c " -NoNewline;
-                    Write-Host -f YELLOW "$_" -NoNewline;
+                    if($NAMErd){
+                        Write-Host -f RED "$_" -NoNewline;
+                    }
+                    else{
+                        Write-Host -f YELLOW "$_" -NoNewline;
+                    }
                     Write-Host -f GREEN $c -NoNewline;
                     if($BLOCK2[$index2]){
-                        Write-Host " $($BLOCK2[$index2])" -NoNewline;
+                        if($VAL1rd){
+                            Write-Host -f RED " $($BLOCK2[$index2])" -NoNewline;
+                        }
+                        else{
+                            Write-Host " $($BLOCK2[$index2])" -NoNewline;
+                        }
                         Write-Host -f GREEN $c
                         $index2++
                     }
@@ -424,7 +453,12 @@ function screenResults(){
                 }
                 else{
                     if($BLOCK1[$index1]){
-                        Write-Host -f YELLOW " $($BLOCK1[$index1])" -NoNewline;
+                        if($NAMErd){
+                            Write-Host -f RED " $($BLOCK1[$index1])" -NoNewline;
+                        }
+                        else{
+                            Write-Host -f YELLOW " $($BLOCK1[$index1])" -NoNewline;
+                        }
                         $index1++
                     }
                     else{
@@ -433,17 +467,32 @@ function screenResults(){
                     }
                 }
                 Write-Host -f GREEN $c -NoNewline;
-                Write-Host " $_" -NoNewline;
+                if($VAL1rd){
+                    Write-Host -f RED " $_" -NoNewline;
+                }
+                else{
+                    Write-Host " $_" -NoNewline;
+                }
                 Write-Host -f GREEN $c
             }
         }
         else{
             $BLOCK2 | %{
                 Write-Host -f GREEN $c -NoNewline;
-                Write-Host -f YELLOW " $($BLOCK1[$index1])" -NoNewline;
+                if($NAMErd){
+                    Write-Host -f RED " $($BLOCK1[$index1])" -NoNewline;
+                }
+                else{
+                    Write-Host -f YELLOW " $($BLOCK1[$index1])" -NoNewline;
+                }
                 $index1++
                 Write-Host -f GREEN $c -NoNewline;
-                Write-Host " $_" -NoNewline;
+                if($VAL1rd){
+                    Write-Host -f RED " $_" -NoNewline;
+                }
+                else{
+                    Write-Host " $_" -NoNewline;
+                }
                 Write-Host -f GREEN $c
             }
         }
@@ -454,7 +503,12 @@ function screenResults(){
     else{
         $BLOCK1 | %{
             Write-Host -f GREEN "$c " -NoNewline;
-            Write-Host -f YELLOW $_ -NoNewline;
+            if($NAMErd){
+                Write-Host -f RED " $_" -NoNewline;
+            }
+            else{
+                Write-Host -f YELLOW $_ -NoNewline;
+            }
             Write-Host -f GREEN $c
         }
     }
