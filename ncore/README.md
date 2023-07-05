@@ -62,24 +62,48 @@ To further customize and modify these core functions to your liking, see the com
 	&emsp;<b>A.</b> splashPage() = a cosmetic function for the MACROSS menu<br>
 <br>
 	&emsp;<b>B.</b> screenResults() = This is a cosmetic feature that lets you present your script's results in a pre-formatted manner
-	on screen. Call this function with 2 required parameters (plus 1 optional) to print a table:<br>
+	on screen. Call this function with 1 required parameter (plus 2 optional) to print a table:<br>
 	Usage:<br>
 	
 	# This displays your results in 3 columns like a spreadsheet
 	foreach($i in someFunction){ screenResults $result_name $result_value $optional_value }
-	screenResults 0
+	screenResults 'endr'
 	
-At the end of printing your results, call the function again with a single parameter (can be any value) to write a closing bar at the bottom of the table. Example output:<br>
+At the end of printing your results, call the function again with a single parameter 'endr', to write a closing "row" separator at the bottom of the table. Example output:<br>
 
 	‖≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡‖
 	║ HOST 1                 ║ Windows 11                ║ Patched                             ║
 	‖≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡‖
-	║ HOST 2                 ║ Windows 10                ║ Not patched                         ║
+	║                        ║                           ║ Not patched; your outputs can be    ║
+	║ HOST 2                 ║ Windows 10                ║ longer than the columns, they will  ║
+	║                        ║                           ║ automatically be wrapped to fit.    ║
 	‖≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡‖
 	║ HOST 3                 ║ Windows 10                ║ Patched                             ║
 	‖≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡‖
 
 <br>
+	&emsp;<b>B.</b> screenResultsAlt() = This is an alternate format to display your outputs, meant for simpler results.
+	Call this function with same parameters as screenResults to print a list (don't forget to use 'endr' to close your
+ list):<br>
+	Usage: with example output:<br>
+
+ 	foreach($i in someFunction){ screenResults $result_name $result_value $optional_value; screenResultsAlt 'endr' }
+
+	## Outputs to:
+	║║║║║║ HOST 1
+	============================================================================
+	Windows 11     ║  Patched
+	============================================================================
+	║║║║║║ Host 2
+	============================================================================
+	Windows 10     ║  Not Patched
+	============================================================================
+	║║║║║║ HOST 3
+	============================================================================
+	Windows 10     ║  Patched
+	============================================================================
+  
+ <br>
 	&emsp;<b>C.</b> slp() = Sleep function; provide it the number of seconds you want your script to pause<br>
 	Usage:<br>
 	
@@ -108,7 +132,7 @@ At the end of printing your results, call the function again with a single param
 	to make sure they're ready to use with the next script<br>
 	&emsp;&emsp;<i>* the global $PROTOCULTURE value, which is the value all scripts look for as the IOC or element to investigate, does not get cleared
 	until you do it manually from the menu, or you exit MACROSS. Be careful, as one of the framework's guidelines is to write your scripts so that they 
-	automatically act on, or at least are aware of, the existence of $PROTOCULTURE!</i><br>
+	automatically act on, or at least are aware of, the existence of $PROTOCULTURE!</i> You can also uncomment the PROTOCULTURE line in the varCleanup function 	to have it cleared every time the main menu loads, if you prefer.<br>
 <br>
 	&emsp;<b>B.</b> getThis() = This function will decode Base64 and Hexadecimal strings. Call it with your encoded string as the first param.
 	Leave the second param empty if decoding base64; if you are decoding hexadecimal you must pass it a '1' as your
@@ -120,7 +144,7 @@ At the end of printing your results, call the function again with a single param
 	getThis $hex_string 1
 	write-host $vf19_READ
 	
- Alternatively, if you pass a plaintext string as your first parameter, with '0' as your second param, getThis() will return a Base64-encoded value.<br>
+ Alternatively, if you pass a plaintext string as your first parameter, with '0' as your second param, getThis() will return a Base64-encoded value (it will NOT get stored in $vf19_READ!).<br>
 	
 	$encodedstr = getThis 'plaintext string of whatever' 0
 	
@@ -145,7 +169,7 @@ At the end of printing your results, call the function again with a single param
 	errMsg 3 # Displays whichever message is in the third slot
 	
 <br>
-	&emsp;<b>F.</b> setUser() = Attempts two different methods to set the logged in user as global $USR. If the system or active-directory method fails, it will default to using "whoami" and also set the global value $vf19_GAVIL, which tells all the MACROSS scripts that the user does not have elevated privilege. (Of course, that assumes your IT managers don't allow standard users to run Get-AD cmdlets!) This way you can write checks to avoid loading different functions unnecessarily.<br>
+	&emsp;<b>F.</b> setUser() = Attempts two different methods to set the logged in user as global $USR. If the system or active-directory method fails, it will default to using "whoami" and also set the global value $vf19_ROBOTECH, which tells all the MACROSS scripts that the user does not have elevated privilege. (Of course, that assumes your IT managers don't allow standard users to run Get-AD cmdlets!) This way you can write checks to avoid loading different functions unnecessarily.<br>
 <br>
 	&emsp;<b>G.</b> collab() = This is the function that allows your scripts to talk to each other. It must be called with (1) the name of the script you
 	want to "collaborate" with in the nmods folder, and (2) the name of the script making the call, WITHOUT the file extension.
@@ -172,7 +196,7 @@ At the end of printing your results, call the function again with a single param
 
 	collab 'Anotherscript.py' 'Myscript'
 
-^^ Calls Anotherscript.py, tells it 'Myscript' is the caller. Because it's calling a python script, the <b>collab</b> function will automatically add the first seven args mentioned above. Assuming your script generated a global $PROTOCULTURE value, that will also be passed as an arg to python.<br>
+^^ Calls Anotherscript.py, tells it 'Myscript' is the caller. Because it's calling a python script, the <b>collab</b> function will automatically add the first seven args mentioned above. Assuming your script generated a global $PROTOCULTURE value, that will also be passed as an arg to python. See also the 'pyCross' and 'cleanGBIO' functions down below in the utility.ps1 section for further python integration info.<br>
 <br>
 	&emsp;<b>J.</b> availableMods() = When a user selects a script from the MACROSS menu, the chooseMods() function sends their selection to availableMods()
 	where the filepath to the script gets verified, along with the script version using the verChk() function (see the
@@ -205,31 +229,32 @@ At the end of printing your results, call the function again with a single param
 	getThis $vf19_MPOD["nre"]
 	
 &emsp;<b>A.</b> debugMacross() = 'debug' is an unlisted option in the MACROSS menu. Use it to change whether errors are output to the screen or not
-	to troubleshoot scripts. You can also use debug to test commands or variables in your scripts:<br>
+	to troubleshoot scripts (the default is 'SilentlyContinue' to suppress errors). You can also use 'debug' to test commands or variables in your scripts:<br>
 	
 	debug
-	debug myFunction $var1
+	debug screenResults 'Item 1' 'Value 1' 'Optional Value 1'
 	
-^^ Typing 'debug' in the main menu, you can either open the error message selector, or do things like check if your script's "myFunction" parses $var1 correctly.<br>
+^^ Typing 'debug' in the main menu, you can either open the error message selector, or do things like check what your script's outputs might look like after being sent to the screenResults function.<br>
 	&emsp;<b>B.</b> runSomething() = Pauses the MACROSS console and loads a fresh powershell instance so that the user can perform a quick powershell task; users can call this by typing 'shell' into the MACROSS menu. Typing "exit" returns the user to MACROSS.<br>
-	&emsp;<b>C.</b> decodeSomething() = From the MACROSS menu, the user can call this by typing 'dec' to quickly decode a Base64 or Hex string they may come across in an investigation.<br>
+	&emsp;<b>C.</b> decodeSomething() = From the MACROSS menu, the user can call this by typing 'dec' to quickly decode a simple Base64 or Hex string they may come across in an investigation.<br>
 	&emsp;<b>D.</b> getHash() = accepts a filepath and the hash method (md5 or sha256), and returns the hash for
 	you. Usage:<br>
 	
 	$var = getHash $filepath 'md5'
 	    
-&emsp;<b>E.</b> getFile() = Your script can use this to open a dialog box for users to select a file. Pass an optional argument to apply a type-filter to the dialog; it has to match <u>exactly</u> what Windows puts in its selection drop-downs for different file types.<br>
+&emsp;<b>E.</b> getFile() = Your script can use this to open a dialog box for users to select a file or directory. Pass an optional argument to <b>1)</b> apply a type-filter to the dialog (it has to match <u>exactly</u> what Windows puts in its selection drop-downs for different file types), or <b>2)</b> send 'folder' to have the user select a folder instead of a file.<br>
 
 	$file1 = getFile 'Microsoft Excel Worksheet (.xlsx) | .xlsx'   # Opens a window that only shows Excel files as choices
+ 	$folder1 = getFile 'folder'                                    # Opens a window that only shows folders as choices
 
 &emsp;<b>F.</b> houseKeeping() = If your scripts generate file outputs, call this function to offer users the option to delete any or all of these files when they are no longer needed. Usage:<br>
 	
-	houseKeeping $filepath 'myscriptname'
+	houseKeeping $filepath 'myscriptname' 
 	
-&emsp;<b>G.</b> cleanGBIO() = The "garbage_io" folder inside of "py_classes" uses .eod files to share info from powershell to python. This function ensures the directory gets cleaned out before and after every session. This is a temp fix until the mcdefs library can read-in powershell outputs by default.<br>
-	&emsp;<b>H.</b> pyCross() = This is the function your powershell scripts need to call if passing info *back to* a calling python script. Outputs are written to .eod files.
+&emsp;<b>G.</b> cleanGBIO() = The "garbage_io" folder inside of "py_classes" uses .eod files to share outputs from powershell to python. This function ensures the directory gets cleaned out before and after every session. This is a temp fix until the mcdefs library can read-in powershell outputs by default.<br>
+	&emsp;<b>H.</b> pyCross() = This is the function your powershell scripts need to call if passing info *back to* a calling python script. Outputs are written to .eod files.  The 'MINMAY' demo script goes into detail on using .eod files<br>
 	
-&emsp;<b>H.</b> TL() = This function quickly displays all available scripts and their attributes. From the main MACROSS menu, you can use it in <i>debug</i> mode:<br>
+&emsp;<b>I.</b> TL() = This function quickly displays all available scripts and their attributes. From the main MACROSS menu, you can use it in <i>debug</i> mode:<br>
 
 	debug TL
 
@@ -238,7 +263,7 @@ At the end of printing your results, call the function again with a single param
 <br>
 <br>
 <b>V. splashes.ps1</b><br>
-	&emsp;<b>A.</b> transitionSplash() = This function is purely cosmetic, and allows you to briefly throw some anime ASCII art on screen before launching a script.<br><br>
+	&emsp;<b>A.</b> transitionSplash() = This function is purely cosmetic, and allows you to briefly throw some anime ASCII art on screen before launching a script. Type 'splash' in the main menu to cycle through a slideshow of available images.<br><br>
 
 <b>VI. classes.ps1</b><br>
 	This file should be reserved for any custom classes your scripts need, especially if they could be useful for other scripts to make use of.<br>
