@@ -125,8 +125,8 @@ if( $HELP ){
   When you are scanning a single file from manual selection, ELINTS will display every
   instance of a match --not just the first one-- so you can get some context.
 
-  In order to scan through PDF files, you'll need python installed, and Didier Steven's pdf-parser
-  script copied into your local ncore folder.
+  In order to scan through PDF files, you'll need python installed, and Didier Steven's
+  pdf-parser script copied into your local ncore folder.
 
   hxxps://github.com/DidierStevens/DidierStevensSuite/blob/master/pdf-parser.py
 
