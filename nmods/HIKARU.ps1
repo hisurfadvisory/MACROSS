@@ -364,9 +364,9 @@ if($MONTY -and (Test-Path "$vf19_TOOLSDIR\MINMAY.py")){
     "
     Write-Host -f YELLOW "      $PROTOCULTURE"
     Write-Host -f GREEN "
-    ...to MACROSS' collab function:"
+    ...to MACROSS' collab function (PROTOCULTURE gets sent automatically):"
     Write-Host '
-                  collab  "MINMAY.py"  "HIKARU"  $PROTOCULTURE
+                  collab  "MINMAY.py"  "HIKARU"
     '
     Write-Host -f GREEN "
     
