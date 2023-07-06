@@ -199,7 +199,7 @@ function idLookup($1){
 
 
 ## Input validation; enter a digit or a string of words, no non-alphanumerics except '-' and ','
-$dyrl_gub_VALIDID = [regex]"^[0-9]{1,4}$"
+$dyrl_gub_VALIDID = [regex]"^[0-9]+$"
 $dyrl_gub_VALIDWD = [regex]"^[a-zA-Z][a-zA-Z0-9 ,-]+"
 
 
