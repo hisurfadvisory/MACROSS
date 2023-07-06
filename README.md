@@ -1,9 +1,10 @@
+
+TL;DR -- A "no-command-line-necessary" powershell menu to link multiple automation scripts together for blue-team investigators. When you run MACROSS for the first time, select the HIKARU demo to get a quick walkthru on configuring your defaults.<br><br>
+
 <img src="https://raw.githubusercontent.com/hisurfadvisory/MACROSS/main/mscr.PNG">
 
 # MACROSS
 Powershell framework aimed at interweaving Powershell and Python API automations for blueteams
-
-TL;DR -- A "no-command-line-necessary" powershell menu to link multiple automation scripts together for blue-team investigators. When you run MACROSS for the first time, select the option for 'DEMO' to get a quick walkthru on configuring your defaults.
 
 Multi-API-Cross-Search Console (MACROSS) tool interface is a very simple powershell framework to connect multiple automation scripts together. I've included a few of my own scripts here, but the key to MACROSS is adding scripts specific to your environment, and letting the console seamlessly link them together.
 
@@ -11,7 +12,7 @@ The purpose of this framework is to make automation tasks available to everyone 
 
 DISCLAIMER: I'm a bash junkie, but Windows is what I work on in most corporate environments, and this project originally started as a way simplify my most common investigation queries. While I am experienced in a few scripting languages, I am NOT a powershell expert. I'm sure there's tons of optimizations that could be done to this framework.
 
-MACROSS came about because I realized that all of the scripts I was writing to gather information during investigations were usually related -- look up AD info in a host > find out who's logged in > what was that file they just downloaded? > Let's string search that document file for some macros...
+MACROSS came about because I realized that all of the scripts I was writing to gather information during investigations were usually related -- look up AD info in a host > find out who's logged in > what was that file they just downloaded? > Let's string search that document file for some macros > Does the EDR have info on other copies of that file?...
 
 Eventually I created a single front-end to handle doing all of these queries in whatever sequence I needed.
 
@@ -21,7 +22,7 @@ See the full README inside the ncore folder for function details, but the basic 
 FRAMEWORK RULES (modify however works best for you):
 <br>1. All core functions are kept in the "ncore" folder<br>
 &emsp;1a. Default variables that are used by all the MACROSS tools are base-64 encoded and stored in the opening comments line within "utility.ps1" in the ncore folder. When MACROSS starts up, it grabs those comments and splits them into an array for quick decoding anytime you need them.<br>
-&emsp;1b. The ncore folder also contains subfolder "py_classes". This folder contains the MACROSS python library "mcdefs.py", and a subfolder called "garbage_io". MACROSS powershell scripts should contain a function that will write values to plaintext "\*.eod" files  in garbage_io, so that python scripts can read them. See the "pyCross" function in the utility.ps1 file. 
+&emsp;1b. The ncore folder also contains subfolder "py_classes". This folder contains the MACROSS python library "mcdefs.py", and a subfolder called "garbage_io". MACROSS uses a function called "pyCross" that can write outputs from your powershell scripts to plaintext "\*.eod" files  in garbage_io, so that python scripts can call powershell scripts to perform tasks and then read the output from the .eod file. See the "pyCross" function in the utility.ps1 file. 
 <br>
 <br>
 2. Custom automation scripts are kept in the "nmods" folder<br>
@@ -54,5 +55,5 @@ FRAMEWORK RULES (modify however works best for you):
 <br>
 6. MACROSS handles many functions common to what your scripts will likely be doing. Some examples:
 <br>
-	Do you output results to file? The "houseKeeping" function will remind you if old reports exist and delete them for you if you choose. Need your user to specify a document or file to analyze? The "getFile" function will open a dialog for them to quickly select it. Need to see if an odd string can decode from Base64 or hexadecimal, or maybe you want to grab the hash of a file? "getThis" can decode base64 and hex, while "getHash" will give you an md5 or sha256 signature for any file you want. Check out the docs for more --- and use MACROSS to automate your SOC automations!
+	Do you output results to file? The "houseKeeping" function will remind you if old reports exist and delete them for you if you choose. Need your user to specify a document or file to analyze? The "getFile" function will open a dialog for them to quickly select it. Need to see if an odd string can decode from Base64 or hexadecimal, or maybe you want to grab the hash of a file? "getThis" can decode base64 and hex, while "getHash" will give you an md5 or sha256 signature for any file you want. Do you want a professional looking screen output? Send your script's outputs to the screenResults or screenResultsAlt functions. Check out the docs for more --- and use MACROSS to automate your SOC automations!
 
