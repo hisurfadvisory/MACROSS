@@ -34,7 +34,7 @@ FRAMEWORK RULES (modify however works best for you):
 <br>
 3. All core variables (when possible) are named beginning "$vf19_" to control cleanup
 	<br>&emsp;3a. For the same reason, custom variables (when possible) should be named beginning with "$dyrl_"
-	<br>&emsp;3b. Shared variables that get passed from one script to another for processing include:
+	<br>&emsp;3b. Common globally-assigned variables that get passed from one script to another for processing include:
 		<br>&emsp;&emsp;$PROTOCULTURE = the thing being investigated (A file, a value, a username, etc)
 		<br>&emsp;&emsp;$CALLER = the name of the script calling functions in another
 		<br>&emsp;&emsp;$HOWMANY = the number of successful results being tracked between scripts
@@ -55,5 +55,5 @@ FRAMEWORK RULES (modify however works best for you):
 <br>
 6. MACROSS handles many functions common to what your scripts will likely be doing. Some examples:
 <br>
-	Do you output results to file? The "houseKeeping" function will remind you if old reports exist and delete them for you if you choose. Need your user to specify a document or file to analyze? The "getFile" function will open a dialog for them to quickly select it. Need to see if an odd string can decode from Base64 or hexadecimal, or maybe you want to grab the hash of a file? "getThis" can decode base64 and hex, while "getHash" will give you an md5 or sha256 signature for any file you want. Do you want a professional looking screen output? Send your script's outputs to the screenResults or screenResultsAlt functions. Check out the docs for more --- and use MACROSS to automate your SOC automations!
+	Do you output results to file? The "houseKeeping" function will remind you if old reports exist and delete them for you if you choose. Need your user to specify a document or file to analyze? The "getFile" function will open a dialog for them to quickly select it. Need to see if an odd string can decode from Base64 or hexadecimal, or maybe you want to grab the hash of a file? "getThis" can decode base64 and hex, while "getHash" will give you an md5 or sha256 signature for any file you want. Do you want a professional looking screen output? Send your script's outputs to the screenResults or screenResultsAlt functions. Check out the README in the ncore folder for more --- and use MACROSS to automate your SOC automations!
 
