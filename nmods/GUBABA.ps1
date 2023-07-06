@@ -121,8 +121,10 @@ function idLookup($1){
                 if( $1 -eq $event.id){
                     $a = $event.desc
                     $found = $true
-                    Write-Host -f GREEN "      $type Event $1 :::" -NoNewline;
-                    Write-Host -f CYAN " $a"
+                    <#Write-Host -f GREEN "      $type Event $1 :::" -NoNewline;
+                    Write-Host -f CYAN " $a"#>
+                    screenResults $type "Event $1" $a
+                    screenResults 'endr'
                 }
             }
         }
@@ -178,15 +180,12 @@ function idLookup($1){
             }      
         }
         else{
-            Write-Host -f GREEN "            Events with the keyword(s) " -NoNewline;
-            Write-Host -f CYAN $1 -NoNewline;
-            Write-Host -f GREEN ':
-            '
+            screenResults "            Events with the keyword(s) $1"
             $c.keys | Sort | %{
                 $eiv = $c[$_]
-                Write-Host -f GREEN "    $_" -NoNewline;
-                Write-Host -f CYAN " --- $eiv"
+                screenResults $_ $eiv
             }
+            screenResults 'endr'
         }
 
 
