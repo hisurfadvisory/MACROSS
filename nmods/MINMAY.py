@@ -232,9 +232,12 @@ def theGoodStuff(Z1 = '',Z2 = None):
     needed to get, into an "eod" file that will be put in garbage_io.
     
     If KÖNIG found anything for you, it should have written the location of its $RESULTFILE
-    report, along with the number of results it got, to "konig.eod". The garbage_io location
-    should still be valid as our variable "gbg" so, let's check using the mcdefs.dirfile()
-    function...
+    report, along with the number of results it got, to "konig.eod". MACROSS has a function
+    called 'pyCross' that can write all that automatically for you. See the utility.ps1 and
+    KONIG.ps1 scripts to see how it works.
+    
+    The garbage_io location should still be valid as our variable "gbg" so, let's check using
+    the mcdefs.dirfile() function...
     
                 konfile = gbg + '\\konig.eod'
                 if mcdefs.dirfile(konfile,'isfile'):
