@@ -19,11 +19,12 @@
 	
     This script does NOT incorporate iTextSharp for scanning PDF files
     at this time, instead it uses Didier Stevens' pdf-parser (see the 
-	peeDeeEff function later in this script for details.)
+    peeDeeEff function later in this script for details.)
 	
-	Many customer networks I investigate do not have access to
+    Many customer networks I investigate do not have access to
     whatever 3rd-party utils that make life easy, so MACROSS tries to
-    work with what's available.
+    work with what's available. Also, integratrating that dll into
+    MACROSS is more work than I have time for right now.
 	
     There are a few variables in this script that are not used by
     default. They exist for infosec purposes. You can tweak this script
