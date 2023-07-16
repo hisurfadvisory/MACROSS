@@ -104,7 +104,7 @@ At the end of printing your results, call the function again with a single param
 	============================================================================
   
  <br>
-	&emsp;<b>C.</b> slp() = Sleep function; provide it the number of seconds you want your script to pause<br>
+	&emsp;<b>C.</b> slp() = Sleep function; provide it the number of seconds you want your script to pause; pass 'm' as a second param to use milliseconds.<br>
 	Usage:<br>
 	
 	slp 2   # This pauses your script for 2 seconds
