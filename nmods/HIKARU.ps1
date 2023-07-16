@@ -292,6 +292,9 @@ if($Z -eq 1){
     "ncore/py_classes/gbio/" if the response cannot or should not be contained in a
     simple variable.
 
+    -MACROSS uses a custom python library called "mcdefs", located in the
+    "ncore\py_classes" folder. It replicates many of the functions in utility.ps1.
+
     -While not necessary, you should write a man/help page that will load if the
     user selects your script from the menu with the "h" option, which temporarily
     sets the global variable $HELP to "true".
