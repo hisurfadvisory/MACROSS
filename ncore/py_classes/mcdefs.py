@@ -459,11 +459,11 @@ def getThisPy(d,e,ee = 'utf8'):
 
 ##    MACROSS calls all python scripts with at least 7 args (8, if you count
 ##    the script itself being called via python). The fourth arg is always
-##    $dash_PYOPT, a string that the getDefaults function can use to create a
+##    $vf19_PYPOD, a string that the getDefaults function can use to create a
 ##    dictionary that lets your python scripts share the same default
 ##    directories/values as MACROSS' $vf19_MPOD hashtable.
 ##    
-##    Declare a new dictionary by calling this function with sys.argv[3] as
+##    Declare a new dictionary by calling this function with sys.argv[4] as
 ##    your first argument (x), and 0 as your second argument (y). After you have
 ##    your dictionary, you can decode its indexes at any time by calling
 ##    this function again with a specific index, and (1) as the second arg.
@@ -471,9 +471,9 @@ def getThisPy(d,e,ee = 'utf8'):
 ##    EXAMPLES:
 ##
 ##
-##        vf19_PYOPT = mcdefs.getDefaults(sys.argv[3],0)
+##        vf19_PYOPT = mcdefs.getDefaults(sys.argv[4],0)
 ##        ^^ This is your dictionary, containing any indexed values you supplied in the
-##        extras.ps1 file as described in the README files.
+##        utility.ps1 file as described in the README files.
 ##        
 ##        repo = mcdefs.getDefaults(vf19_PYOPT['nre'],1)
 ##        ^^If you set your master repo location with 'nre' as its index, then calling
