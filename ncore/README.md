@@ -87,7 +87,7 @@ At the end of printing your results, call the function again with a single param
  list):<br>
 	Usage: with example output:<br>
 
- 	foreach($i in someFunction){ screenResults $result_name $result_value $optional_value; screenResultsAlt 'endr' }
+ 	foreach($i in someFunction){ screenResultsAlt $result_name $result_value $optional_value; screenResultsAlt 'endr' }
 
 	## Outputs to:
 	║║║║║║ HOST 1
