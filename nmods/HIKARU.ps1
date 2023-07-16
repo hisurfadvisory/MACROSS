@@ -72,9 +72,238 @@ function next($1){
     }
 }
 
-
+$Z = $null
 transitionSplash 8
 splashPage
+
+while($Z -notMatch "(1|2)"){
+    Write-Host -f GREEN '
+        Choose a walk-thru:
+
+        1. Quick & dirty (3-4 mins)
+        2. Detailed (8-10 mins)
+    
+        > ' -NoNewline;
+
+        $Z = Read-Host
+}
+
+if($Z -eq 1){
+    splashPage
+    Write-Host -f GREEN '
+
+    Core breakdown:
+    The "ncore" folder contains all of the core MACROSS functions.
+        
+        -utility.ps1
+        Any functions that add capabilities to your automations go in this file. For example,
+        the "getThis" function can perform Base64 and hexadecimal decoding, the "getFile"
+        function can open dialog windows for your scripts to let users select files/folders,
+        and the "sheetResults" function can write your outputs to an excel spreadsheet. Make
+        sure to familiarize yourself with all the functions in here!
+
+        -display.ps1
+        The functions in this file control how things get displayed on screen. The "screenResults"
+        and "screenResultsAlt" functions can receive inputs from your scripts and format them in
+        different ways to prettify how outputs are written to screen.
+
+        From the MACROSS main menu, type these commands to preview outputs ("debug" is only
+        necessary the first time):
+
+            debug screenResults "items" "Thing 1" "Thing 2"; screenResults "endr"
+            screenResultsAlt "items" "Thing 1" "Thing 2"; screenResultsAlt "endr"
+
+        -updates.ps1
+        These functions are used if you are maintaining your automations in a central repository
+        like gitlab or a fileshare. They allow MACROSS to look for new or updated scripts and 
+        automatically download them.
+
+        -validation.ps1
+        This file contains functions specific to making sure scripts chosen by the user are 
+        valid, and (if configured) that only valid users can use certain scripts. It also contains
+        one of the primary reasons for MACROSS, the "collab" function, which passes values from
+        one script to another and back.
+
+        -splashes.ps1
+        The function "transitionSplash" can be called to briefly display some Macross-related
+        ASCII art. You can add your own art here as well.
+
+        -classes.ps1
+        The custom "macross" powershell class will be explained in a bit.
+
+        -py_classes\mcdefs.py
+        This is a generic python library that converts functionality in "utility.ps1" into
+        python. It can sometimes help with minimizing imports in your python scripts by just
+        importing this library.
+
+        Hit ENTER to continue.
+    '
+    Read-Host
+    splashPage
+    Write-Host -f GREEN '
+    The primary purpose of MACROSS is to let automations talk to each other and share info/
+    resources. The "utility.ps1" file contains Base64 lines in its opening comments,
+    separated by "@@@". These are values that can be commonly shared by all the MACROSS tools,
+    and they get stored in a hashtable called "$vf19_MPOD". The first three letters of each
+    Base64 string are index keys for this hashtable, so your script can quickly grab and
+    decode them whenever necessary by using MACROSS decoding function, "getThis":
+
+        getThis $vf19_MPOD["abc"]  ## Writes the decoded value to $vf19_READ for you to use.
+    
+    Just as importantly, the MACROSS framework revolves around another global variable,
+    "$PROTOCULTURE", which all your automations should be aware of and looking for. If a script
+    is called via the "collab" function, it should contain a check that evaluates the
+    $PROTOCULTURE value if it exists.
+
+    The collab function also supports sending an additional value to scripts that can evaluate
+    $PROTOCULTURE + an optional value. See the notes for "collab" in the validation.ps1 file.
+
+    Hit ENTER to continue.
+    '
+    Read-Host
+    splashPage
+    Write-Host -f GREEN '
+
+    ADDING YOUR CUSTOM SCRIPTS TO MACROSS'
+    Write-Host -f GREEN '
+    Your custom scripts go in the "nmods" folder. These are the scripts that are
+    selectable from the main menu.
+
+    The first three lines of your powershell/python scripts must be reserved for
+    MACROSS attributes. For example, the first three lines in this HIKARU script are:'
+    Write-Host -f YELLOW '
+        #_superdimensionfortress Demo - a basic config walkthru (8-10 mins)
+        #_ver 0.2
+        #_class User,demo script,Powershell,HiSurfAdvisory,0'
+    Write-Host -f GREEN "
+    MACROSS ignores any scripts in the nmods folder that don't contain these lines.
+
+    The first line contains a BRIEF description of the script -- this is the text that
+    gets written to MACROSS' main menu.
+
+    MACROSS uses the #_ver line to track versioning. And the final line, #_class, is
+    what is used to create custom macross objects. From left to right, these are the
+    attributes you need to assign to your script:
+        -level of privilege required                               (.priv)
+        -what kind of data your script evaluates                   (.valtype)
+        -what language your script is in                           (.lang)
+        -the script author                                         (.author)
+        -the maximum number of values it can process per session   (.evalmax)
+
+    The script's filename and version also get collected as a macross object attributes
+    (.ver and .name).
+
+    When this demo finishes and the main menu loads again, try typing"
+    Write-Host -f YELLOW '
+        debug $vf19_ATTS["KONIG"]
+
+        or
+
+        debug $vf19_ATTS["KONIG"].toolInfo()
+    '
+    Write-Host -f GREEN "
+    To view that script's attributes.
+
+    Hit ENTER to continue."
+    Read-Host
+    splashPage
+    Write-Host -f GREEN '
+
+    The purpose of [macross] class is to make your script easily searchable within MACROSS.
+    Each script and its attributes is tracked in an array called ' -NoNewline;
+    Write-Host -f YELLOW '"$vf19_ATTS"' -NoNewline;
+    Write-Host -f GREEN '. If your
+    script performs Active Directory audits, and you want it to collect enrichment on
+    certain artifacts automatically as it scans, you can write a simple command that
+    will find relevant scripts and send values to them via the "collab" function:
+    '
+    Write-Host -f YELLOW '
+        # Send usernames found in your active directory script to MACROSS scripts
+        # that can search usernames in a database, or an EDR, or whatever, and
+        # collect all the results to enrich whatever your "ADScript" is reporting on,
+        # in this example "Bob" which is set as $PROTOCULTURE, the global value/IOC
+        # that every MACROSS script should be coded to automatically act on.
+
+        $Global:PROTOCULTURE = "Bob"
+        $collection = @{}
+        foreach ($key in $vf19_ATTS.keys) { 
+
+            # "collab" requires the file extension in the first param
+            if($MONTY -and $vf19_ATTS[$key].lang -eq "Python"){
+                $script = $key + ".py"
+            }
+            else{
+                $script = $key + ".ps1"
+            }  
+
+            if ($vf19_ATTS[$key].valtype -eq "usernames") { 
+                $enrich = $( collab  $script  "ADScript" ) 
+                $collection.Add("$key ENRICHMENT", $enrich)
+            }
+        }
+    '
+    Write-Host -f GREEN '    The $MONTY variable is set during startup, and is used to tell MACROSS tools
+    whether or not python3 is installed. If it is not, MACROSS will not bother
+    with any python scripts in the "nmods" folder. (MACROSS came about in part while
+    I worked on a network that prevented python use, because that was easier 
+    "security" than creating group-policies or something).
+
+    Hit ENTER to continue.
+    '
+    Read-Host
+    splashPage
+    Write-Host -f GREEN "
+    Lastly, if your automations are written in python, MACROSS contains a library
+    called 'mcdefs.py', located in the 'ncore/py_classes' folder. I recommend you 
+    take a quick look at that file, it is meant to replicate most of the same
+    functions in 'utility.ps1' for python. MACROSS handles sending all the required
+    values to your python automations; the main requirement for you is to use
+    python's sys.argv to parse those values. The MINMAY demo script touches on how
+    this is supposed to work.
+
+    MACROSS uses a function called 'pyCross'; when one of the powershell scripts
+    is called by a python script, pyCross should be used to write your powershell
+    outputs to an '.eod' file that your python script can then parse as needed.
+    It's not ideal, but it works until I have time to improve the method.
+
+    Hit ENTER to wrap this up!
+    "
+    Read-Host
+    splashPage
+    Write-Host -f GREEN '
+    As we wrap up this infodump, here are the key takeaways:
+
+    -Make your life easier by using the functions within utility.ps1
+
+    -$PROTOCULTURE is a global variable that all MACROSS tools should be coded to
+    look for and act on if it contains a value. That way multiple scripts can all
+    gather data on the same artifact for you.
+
+    -The "collab" function requires two parameters: The full name of the script
+    you are calling (including its extension!), and the name of your script (no
+    extension). The called script should be able to look up your script in $vf19_ATTS
+    to see what kind of value it is likely to be passing (IP, username, etc.). You
+    can also send a third optional value which, depending on context, will get
+    evaluated with or in place of $PROTOCULTURE.
+
+    -Python integration is a little clunky; sorry! Review the "collab" function
+    in validation.ps1 to see what values and in what order they get passed to
+    python. Powershell outputs for python get written to plaintext ".eod" files in
+    "ncore/py_classes/gbio/" if the response cannot or should not be contained in a
+    simple variable.
+
+    -While not necessary, you should write a man/help page that will load if the
+    user selects your script from the menu with the "h" option, which temporarily
+    sets the global variable $HELP to "true".
+
+
+    Thanks for taking MACROSS for a spin! Hit ENTER to exit.
+    '
+    Read-Host
+    Exit
+}
+elseif($Z -eq 2){
+    Clear-Variable -Force Z
 
 Write-Host -f GREEN '
     Welcome to MACROSS! This quick guide should get you started on combining
@@ -539,4 +768,5 @@ else{
     Hit ENTER to exit this demo.
     "
 Read-Host
+}
 Exit
