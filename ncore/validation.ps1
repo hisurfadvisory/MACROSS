@@ -14,6 +14,7 @@ function varCleanup($1){
     Remove-Variable RESULTFILE -Scope Global
     Remove-Variable HOWMANY -Scope Global
     Remove-Variable CALLER -Scope Global
+    Remove-Variable vf19_READ -Scope Global
     #Remove-Variable PROTOCULTURE -Scope Global  ## Uncomment this to always clear PROTOCULTURE automatically
 
 
@@ -134,10 +135,11 @@ function getThis($1,$2){
 
 
 <################################
- Check for privileges LOL
+ Check your privilege LOL
  Some tools or APIs need admin-level access.
  Set $1 to 'deny' if your script requires elevated priv, or set
  it to 'pass' if it will kinda-sorta work in userland
+
  EXAMPLE: 
  
     SJW 'pass'
@@ -231,6 +233,24 @@ function errMsg($1){
         '
         $Global:vf19_Z = ''
         slp 1
+    }
+}
+
+
+## Convert the hashtable of macross objects for python
+## Don't want this to be a static global value in case scripts
+## get modified while MACROSS is active
+if($MONTY){
+    function pyATTS(){
+        $p = @()
+        foreach($k in $vf19_ATTS.keys){
+            $n = $vf19_ATTS[$k].name
+            $v = $vf19_ATTS[$k].valtype
+            $atts = $n + '=' + $v
+            $p += $atts
+        }
+        $s = $p -Join(',')
+        Return $s
     }
 }
 
@@ -361,13 +381,11 @@ function setUser($1){
   
   The 2nd param is the name of the script calling this function
   ($CALLER) and is required. (I set this to be required so that
-  users always know which scripts they're jumping to and from.
-  Of course that only works if you make use of the var in your
-  scripts.)
+  all the scripts can lookup attributes from the $vf19_ATTS array.)
 
   The 3rd param is an ***optional*** item you're passing if you
   want something other than $PROTOCULTURE to be eval'd, or if
-  the script being called requires 2 parameters.
+  the script being called requires 2 eval parameters.
 
   If you need the called script to launch in a new window, set
 
@@ -390,12 +408,12 @@ function setUser($1){
   
   Remember that $PROTOCULTURE is meant to be available to all the scripts all
   the time until *you* decide to overwrite or clear it, or you exit MACROSS
-  cleanly which will delete all related values. (you can force $PROTOCULTURE
-  to always clear when the MACROSS menu loads by modifying the varCleanup
-  function at the top of this script)
+  cleanly which will delete all related values.
 
   (After the called script exits, $CALLER will be erased, but $PROTOCULTURE
-  will remain globally available unless you explicitly remove it.)
+  will remain globally available unless you explicitly remove it; you can force
+  $PROTOCULTURE to always clear when the MACROSS menu loads by modifying the
+  varCleanup function at the top of this script)
 
   Also remember that the MACROSS framework intends for the following variables
   to be global as well, *but* they get cleared every time you exit a script back
@@ -441,13 +459,14 @@ function collab(){
             Return
         }
         else{
+            $pyATTS = pyATTS
             $py = $true
         }
     }
     $mod = "$vf19_TOOLSDIR\$module"
 
     if( Test-Path -Path $mod ){
-        if( $vf19_NEWWINDOW ){  ## Launches script in new window if user desires; WILL NOT SHARE CORE MACROSS FUNCTIONS!
+        if( $vf19_NEWWINDOW ){  ## Launches script in new window if user desires; WILL NOT SHARE CORE MACROSS VALUES OR FUNCTIONS!
             $vf19_NEWWINDOW = $false
             if($py){
                 #Start-Process powershell.exe "python3 $mod $CALLER $extra"
@@ -459,13 +478,14 @@ function collab(){
         }
         else{
             if($py){
+                $pyATTS = pyATTS
                 if( $extra -ne $PROTOCULTURE ){  ## Pass both $extra and $PROTOCULTURE to python if they are different values
                     #python3 $mod $USR $vf19_DEFAULTPATH $vf19_PYPOD $vf19_numchk $vf19_pylib $vf19_TOOLSROOT $CALLER $PROTOCULTURE $extra
-                    py $mod $USR $vf19_DEFAULTPATH $vf19_PYPOD $vf19_numchk $vf19_pylib $vf19_TOOLSROOT $CALLER $PROTOCULTURE $extra
+                    py $mod $USR $pyATTS $vf19_DEFAULTPATH $vf19_PYPOD $vf19_numchk $vf19_pylib $vf19_TOOLSROOT $CALLER $PROTOCULTURE $extra
                 }
                 else{
                     #python3 $mod $USR $vf19_DEFAULTPATH $vf19_PYPOD $vf19_numchk $vf19_pylib $vf19_TOOLSROOT $CALLER $PROTOCULTURE
-                    py $mod $USR $vf19_DEFAULTPATH $vf19_PYPOD $vf19_numchk $vf19_pylib $vf19_TOOLSROOT $CALLER $PROTOCULTURE
+                    py $mod $USR $pyATTS $vf19_DEFAULTPATH $vf19_PYPOD $vf19_numchk $vf19_pylib $vf19_TOOLSROOT $CALLER $PROTOCULTURE
                 }
             }
             else{
@@ -494,13 +514,14 @@ function collab(){
             before launching the script.
         3. Checks if the selected script is in python; if so, it launches
             the script with a default sequence of arguments that contain
-            MACROSS' default variables and hashtables
+            MACROSS' core variables and hashtables
      
 ################################>
 function availableMods($1){
     if( $1 -Match $vf19_CHOICE ){
         # The array starts with '0', so need to adjust the user's input; the menu
-        # only accomodates 20 tools right now; after that they'll ALL populate the second page  
+        # only accomodates 20 tools right now; after that they'll ALL populate the second page
+        # I'll fix this eventually...
         if( $1 -Match "[0-9]{1,2}" ){
             if( $1 -Match "[0-9]{2}" ){
                 $1 = ($1 - 10)
@@ -540,10 +561,15 @@ function availableMods($1){
                         py "$vf19_TOOLSDIR\$MODULE" 'HELP' '' '' '' $vf19_pylib
                     }
                     else{
+
+                        ## Convert [macross] objects for python; python will be able to see each script's
+                        ## .name and .valtype from the $vf19_ATTS hashtable
+                        $pyATTS = pyATTS
+
                         ## Always send 6 default args for all python scripts to make use of:
                         ## The user; their desktop; the MPOD hashtable; the numchk integer; the filepath to the MACROSS py library;
                         ##  and the path to the \resources folder
-                        py "$vf19_TOOLSDIR\$MODULE" $USR $vf19_DEFAULTPATH $vf19_PYPOD $vf19_numchk $vf19_pylib $vf19_TOOLSROOT
+                        py "$vf19_TOOLSDIR\$MODULE" $USR $pyATTS $vf19_DEFAULTPATH $vf19_PYPOD $vf19_numchk $vf19_pylib $vf19_TOOLSROOT
 
                     }
                 }
