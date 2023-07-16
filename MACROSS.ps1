@@ -14,7 +14,6 @@
     v3.1
     :Modified the update functions to:
         -allow automatically refreshing scripts if they get borked
-        -added obfuscation functions
     :Also made performance optimizations; scripts can now check for
         $vf19_ROBOTECH to descriminate users vs. admins to restrict when
         certain functions get loaded to save on resources.
@@ -62,8 +61,10 @@
 		uniformity (not including the '.ps1' file extension, MACROSS
 		automatically ignores it).
 		
-	5. Where possible, prepend your variables with 'nc_', for example $nc_var1.
-		MACROSS flushes all variables beginning with 'nc_' each time it
+	5. Where possible, begin your variables (especially global ones) with 'dyrl_',
+        for example $dyrl_var1.
+
+		MACROSS flushes all variables beginning with 'dyrl_' each time it
 		loads to make sure the tools function as expected. I also added
 		other identifiers for each script's variables to be able to handle
 		clearing and keeping them when necessary, but this is entirely
