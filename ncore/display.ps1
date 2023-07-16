@@ -244,22 +244,22 @@ function screenResults(){
                 ## If the current $o1 item is the last one from $outputs, add it to
                 ## the $o2 response
                 if($_ -eq $p[-1]){
-                        $last = $o1 -Join(' ')
-                        $l = $last.length
-                        if($l -gt $max){                   ## The last item might be > $max
-                            $cut = $max - $l
-                            $o2 += $last.Substring(0,$max)
-                            $o2 += $last.Substring($cut,-1)
-                        }
-                        else{
-                            if($l -lt $max){
-                                while($l -ne $max){
-                                    $last = $last + ' '    ## Add spaces if the line is < $max
-                                    $l++
-                                }
+                    $last = $o1 -Join(' ')
+                    $l = $last.length
+                    if($l -gt $max){                   ## The last item might be > $max
+                        $cut = $max - $l
+                        $o2 += $last.Substring(0,$max)
+                        $o2 += $last.Substring($cut,-1)
+                    }
+                    else{
+                        if($l -lt $max){
+                            while($l -ne $max){
+                                $last = $last + ' '    ## Add spaces if the line is < $max
+                                $l++
                             }
-                            $o2 += $last
                         }
+                        $o2 += $last
+                    }
                 }
                     
                     
