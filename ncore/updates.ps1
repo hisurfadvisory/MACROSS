@@ -153,13 +153,28 @@ function look4New(){
         Hit ENTER to continue.'
         Read-Host
     }
+
+    ## If you're using a central repo separate from MACROSS that may contain non-MACROSS scripts,
+    ## your analysts should be given an empty "nmods" folder at first-use. This check will automatically
+    ## search your repo for the appropriate MACROSS tools and download them.
     elseif($tool_diff){
         Foreach($t0 in $tool_diff){
+            $t00 = $t0 -replace "\..*"
             if($vf19_FILECT -eq 0){
-                copyScript $t0
+                if($MONTY -and $vf19_ATTS[$t00].lang -eq 'Python'){
+                    copyScript $t0
+                }
+                elseif($vf19_ATTS[$t00].lang -eq 'Powershell'){
+                    copyScript $t0
+                }
             }
             if($t0.SideIndicator -eq '<='){
-                copyScript $($t0.InputObject)
+                if($MONTY -and $vf19_ATTS[$t00].lang -eq 'Python'){
+                    copyScript $($t0.InputObject)
+                }
+                elseif($vf19_ATTS[$t00].lang -eq 'Powershell'){
+                    copyScript $($t0.InputObject)
+                }
             }
         }
     }
@@ -190,14 +205,6 @@ function dlNew($1,$2){
             $NC_CHK = $true
             $dir = $Global:vf19_REPOCORE
         }
-        elseif( $3 -eq 'C2EFFD' ){  ## Make sure to grab C2EFFD's NTRCEPT functions
-            if( $vf19_IR ){
-                $NC_XTRA = $true
-            }
-        }
-        elseif( $3 -eq 'URLBLK' ){  ## Make sure all the required Tipper files get updated
-            $tipr = $true
-        }
 
         splashPage
 
@@ -212,21 +219,8 @@ function dlNew($1,$2){
                     Copy-Item -Recurse -Force -Path "$dir\ncore\$_" "$vf19_TOOLSROOT\ncore\"
                 }
         }
-        ## Install powercat & bloodhound for NTRCEPT
-        elseif( $NC_XTRA ){
-            Copy-Item -Force -Path "$Global:vf19_REPOTOOLS\core_addons\powercat.ps1" "$vf19_TOOLSROOT\ncore\powercat.ps1"
-            Copy-Item -Force -Path "$Global:vf19_REPOTOOLS\core_addons\sharphound.ps1" "$vf19_TOOLSROOT\ncore\sharphound.ps1"
-        }
         else{
             Copy-Item -Force -Path "$dir\$1" "$vf19_TOOLSDIR\$1"
-        }
-        ## Update all the Tipperer files when necessary
-        if( $tipr ){
-            Get-ChildItem -Path "$dir\Tipperer" | 
-                ForEach-Object{
-                    Copy-Item -Force -Recurse -Path "$dir\Tipperer\$_" "$vf19_TOOLSROOT\Tipperer\"
-                }
-            Remove-Variable tipr
         }
         toolCount           ## Refresh the list of tool versions
         verChk $4 'verify'  ## Make sure the new version downloaded correctly
