@@ -592,9 +592,9 @@ function fileCopy(){
     ## Scripts that can't copy may need more info from Carbon Black, or whatever
     ## other API you want to throw in here
     if( $dyrl_eli_nocopy ){
-        
+
+    if( $vf19_CB ){   ## Check if GERWALK is available; this gets set in display.ps1
         while( ! $probe ){
-            if( $vf19_CB ){   ## Check if GERWALK is available; this gets set in display.ps1
                 ''
                 Write-Host -f GREEN ' Select a file # to research in GERWALK, or Hit ENTER to continue: ' -NoNewline;
                 $mz = Read-Host
@@ -604,12 +604,29 @@ function fileCopy(){
                     if( $dyrl_eli_SENSOR2[$mz] ){
                         $probe = $dyrl_eli_SENSOR2[$mz] -replace("^.*\\",'')
                         $Global:PROTOCULTURE = $probe
-                        ## Don't lose the original caller, if any
+			
+                        ## Don't lose the original caller, if any; ELINTS will become the new $CALLER in the next command set
                         if( $CALLER ){
                             $dyrl_eli_callerhold = $CALLER
                         }
                     
-                        collab 'GERWALK.ps1' 'ELINTS' ## Carbon Black needs to know how to eval the $PROTOCULTURE
+                        $file_info = collab 'GERWALK.ps1' 'ELINTS' 'greedy'
+
+			## GERWALK's response SHOULD be a hashtable with 2 values; but it sometimes
+   			## responds with a random header in the [0] position that we don't care about.
+      			## The second value received in $file_info is a list of the noisiest processes 
+	 		## in most Carbon Black events, which you can use to filter out here if needed.
+			if($file_info.count -eq 3){
+				$fi = $file_info[1] | ConvertFrom-Json
+   			}
+      			else{
+	 			$fi = $file_info[0] | ConvertFrom-Json
+     			}
+
+ 			screenResults 'derpUSERNAMES' 'derpHOSTNAMES'
+    			screenResulsts "$($fi.facets.username.name)" "$($fi.facets.hostname.name)"
+       			screenResults 'endr'
+   
                         Write-Host '
                         '
                         while($mz -notMatch "^(y|n)"){
@@ -620,8 +637,8 @@ function fileCopy(){
                             Clear-Variable -Force mz,probe
                             fileCopy
                         }
-                        else{
-                            $Global:CALLER = $dyrl_eli_callerhold  ## Reinstate the original caller
+                        elseif($dyrl_eli_callerhold){
+                            $Global:CALLER = $dyrl_eli_callerhold      ## Reinstate the original caller
                         }
                     
                     }
@@ -637,9 +654,10 @@ function fileCopy(){
         }
     }
     else{
+    
     ##  Skip this notice if string search wasn't needed
     if( ! $dyrl_eli_JUSTCOPY ){
-        Write-Host -f GREEN " Large strings are truncated for readability, so you may not see your exact match above."
+        Write-Host -f GREEN " Large strings *may* be truncated for readability, so you might not see your exact match above."
         Write-Host -f GREEN " Do you want to copy any of these files to your desktop for further investigation (y/n)?  " -NoNewline;
         $COPYIT = Read-Host
     }
@@ -656,7 +674,7 @@ function fileCopy(){
                 Return
             }
 
-            $Z = ($Z - 1)  ## Arrays start at index 0
+            $Z = ($Z - 1)  ## Arrays start at index 0, but menu choices start at 1. Do the correction here.
 
             if( $dyrl_eli_SENSOR2[$Z] ){
                 $COPYFROM = $dyrl_eli_SENSOR2[$Z]
@@ -744,12 +762,15 @@ if( ! $RESULTFILE ){
         while( $dyrl_eli_ULIST -notMatch ".*\.txt" ){
             Write-Host -f GREEN ' Please select your text file:'
             slp 2
-            $dyrl_eli_ULIST = getFile
+            $dyrl_eli_ULIST = getFile 'Text Document (.txt)|*.txt'  ## This should force only txt files to be available.
 
+	    ## But just in case...
             if( $dyrl_eli_ULIST -notMatch ".*\.txt" ){
                 Write-Host -f CYAN ' ERROR! You have to use a ".txt" file.
                 '
             }
+
+     	    ## User clicked "Cancel" in the selection window, does not want to continue.
             elseif( $dyrl_eli_ULIST -eq '' ){
                 Write-Host -f CYAN ' Action cancelled. Exiting...'
                 slp 2
@@ -761,7 +782,7 @@ if( ! $RESULTFILE ){
         Write-Host -f GREEN " Okay, I'll open a window for you to select your document:
         "
         slp 2
-        $Script:dyrl_eli_PATH = getFile
+        $Script:dyrl_eli_PATH = getFile 'Text Document (.txt)|*.txt'
         if( $dyrl_eli_path -eq '' ){
             Write-Host -f CYAN '
             Action cancelled. Exiting...'
