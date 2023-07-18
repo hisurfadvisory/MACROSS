@@ -762,7 +762,7 @@ if( ! $RESULTFILE ){
         while( $dyrl_eli_ULIST -notMatch ".*\.txt" ){
             Write-Host -f GREEN ' Please select your text file:'
             slp 2
-            $dyrl_eli_ULIST = getFile 'Text Document (.txt)|*.txt'  ## This should force only txt files to be available.
+            $dyrl_eli_ULIST = getFile 'Text Document (.txt) | *.txt'   ## This should force only txt files to be available...
 
 	    ## But just in case...
             if( $dyrl_eli_ULIST -notMatch ".*\.txt" ){
@@ -782,7 +782,7 @@ if( ! $RESULTFILE ){
         Write-Host -f GREEN " Okay, I'll open a window for you to select your document:
         "
         slp 2
-        $Script:dyrl_eli_PATH = getFile 'Text Document (.txt)|*.txt'
+        $Script:dyrl_eli_PATH = getFile 'Text Document (.txt) | *.txt'
         if( $dyrl_eli_path -eq '' ){
             Write-Host -f CYAN '
             Action cancelled. Exiting...'
