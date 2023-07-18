@@ -41,7 +41,7 @@ else:
 
     
 # MACROSS sends 7 args by default; the 6th is always the filepath to the mcdefs library
-if L >= 8:
+if L >= 7:
     if 'py_classes' in sys.argv[6]:
         npath = sys.argv[6]
         sys.path.insert(0,npath)  ## modify the sys path to include the py_classes folder
@@ -58,7 +58,7 @@ if L >= 8:
         vf19_numchk = sys.argv[5]       ## The integer MACROSS uses for common math functions in all the scripts
         vf19_M = mc.makeM(vf19_numchk)  ## This function splits the numchk value into 6 digits you can use for mathing
         vf19_TOOLSROOT = sys.argv[7]    ## The path to the MACROSS folder
-        GBG = sys.argv[6] + '\\garbage_io'  ## Path to the garbage I/O folder
+        gbg = sys.argv[6] + '\\garbage_io'  ## Path to the garbage I/O folder
         
         ## The psc function will pipe system commands into your powershell session
         mc.psc('cls')
@@ -67,9 +67,9 @@ if L >= 8:
 # dictates allows scripts to share resources/values across python and powershell. I also
 # add 2 more arguments here -- the name of any scripts that call this one (CALLER), and the thing
 # they want evaluated (PROTOCULTURE).
-if L == 10:
-    CALLER = sys.argv[9]
-    PROTOCULTURE = sys.argv[10]
+if L >= 9:
+    CALLER = sys.argv[8]
+    PROTOCULTURE = sys.argv[9]
 else:
     PROTOCULTURE = None
     CALLER = None
