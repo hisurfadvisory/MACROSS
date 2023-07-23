@@ -368,7 +368,7 @@ function setUser($1){
   located in the nmods folder and recognized by MACROSS, i.e.
   it has the magic words in the first three lines --
   
-        #_superdimensionfortress
+        #_sdf1
         #_ver
         #_class
 
