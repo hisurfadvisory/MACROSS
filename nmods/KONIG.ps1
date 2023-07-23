@@ -1,5 +1,5 @@
 #_sdf1 Network Fileshare Search tool
-#_ver 1.0
+#_ver 1.1
 #_class User,File search,Powershell,HiSurfAdvisory,1
 
 <#
@@ -250,7 +250,7 @@ function splashPage1b(){
 
 ## If no default paths have been configured for MACROSS, get it manually
 function getValidPath(){
-    Write-Host -f GREEN ' Enter a valid filepath to recursively search, or "c" to cancel:'
+    Write-Host -f GREEN ' Type a valid filepath to recursively search, hit ENTER to select a folder, or "c" to cancel:'
     Write-Host -f GREEN '  > ' -NoNewline;
     $z = Read-Host
     if($z -eq 'c'){
@@ -261,17 +261,16 @@ function getValidPath(){
         ''
         Write-Host -f GREEN '  Opening folder selection window:
         '
-        $zz = getFile 'folder'
-        $zz
-        read-host
+        $z = getFile 'folder'
     }
 
-    if($zz -eq ''){
+    if(Test-Path $z){
+        Return $z
+    }
+    else{
         Remove-Variable dyrl_kon_* -Scope Global
         Exit
     }
-    
-    Return $zz
     
 }
 
@@ -676,7 +675,7 @@ while( $dyrl_kon_LOOP ){
         # create an array to store each item then add the wildcards
         #############
         if( $dyrl_kon_FEXT0 -Match $dyrl_kon_ONLYLC ){
-            $dyrl_kon_FEXT0 = $dyrl_kon_FEXT0.Split(",")
+            $dyrl_kon_FEXT0 = $dyrl_kon_FEXT0.Split(',')
             $dyrl_kon_CT = $dyrl_kon_FEXT0.count
 
             if( $dyrl_kon_CT -ge 1 ){
