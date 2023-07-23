@@ -11,7 +11,7 @@
         When you write a custom script for use in MACROSS, the first three lines are reserved for
         MACROSS tags:
 
-            #_superdimensionfortress <description of your script>
+            #_sdf1 <description of your script>
             #_ver <your script version number>
             #_class <your script's attributes> 
     
