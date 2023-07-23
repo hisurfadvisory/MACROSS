@@ -185,6 +185,7 @@ def getFile(opendir = 'C:\\',filter = (('All files', '*.*'),('All files', '*.*')
     return chooser
  
 
+
 ## Same as MACROSS' screenResults function, but without color options
 ## Too bad colorama isn't part of the standard lib... but feel free to
 ## install it and modify this function if your org allows it.
@@ -192,6 +193,9 @@ def getFile(opendir = 'C:\\',filter = (('All files', '*.*'),('All files', '*.*')
 ## Pass in up to three values, each of which will be type-wrapped into its
 ## own column on screen. Call this function without any values to write
 ## the closing row of "≡≡≡" characters.
+##
+## Your mileage may vary depending on the strings that get passed in; I sometimes
+## get a display with broken columns. It usually works pretty well, though.
 def screenResults(A = 'endr',B = None,C = None):
     '''Usage: screenResults(value1,value2,value3)\nEach value is optional, and will be written to screen in separate rows & columns. To finish your outputs,\ncall the function again without any values to write the closing row boundary.'''
     RC = '4oCW4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4oCW'
