@@ -194,8 +194,10 @@ def getFile(opendir = 'C:\\',filter = (('All files', '*.*'),('All files', '*.*')
 ## the closing row of "≡≡≡" characters.
 def screenResults(A = 'endr',B = None,C = None):
     '''Usage: screenResults(value1,value2,value3)\nEach value is optional, and will be written to screen in separate rows & columns. To finish your outputs,\ncall the function again without any values to write the closing row boundary.'''
-    r = '‖≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡‖' ## 98 char length
-    c = '‖'
+    RC = '4oCW4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4oCW'
+    CR = '4oCW'
+    r = getThisPy(RC,0)  ## 98 char length
+    c = getThisPy(CR,0)
 
     if A == 'endr':
         print(r)
@@ -206,7 +208,8 @@ def screenResults(A = 'endr',B = None,C = None):
         def csep(text):
             print(text, end = ' ')
 
-            
+        ## Take the input and wrap it to fit within the specified column width, OR
+        ## if the input is smaller, add whitespace to increase its length.
         def genBlocks(outputs,min,max):
             o1 = []
             o2 = []
@@ -215,8 +218,9 @@ def screenResults(A = 'endr',B = None,C = None):
             if o3 > MAX:
                 SPACE = outputs.count(' ')
                 if SPACE > 0:
-                    outputs = rgx('(\s\s+|\t|`n)',outputs,' ')
-                    P = outputs.split(' ')
+                    outputs = rgx('(\s\s+|\t|`n)',outputs,' ')  ## Remove tabs/newlines from string
+                    #outputs = rgx('\\',outputs,'\\\\')          ## Escape backslash chars
+                    P = outputs.split(' ')                      ## Create an array with each word as a value
                     WIDE = 0
                 else:
                     P = None
@@ -224,12 +228,16 @@ def screenResults(A = 'endr',B = None,C = None):
                     o2.append(outputs[0:MAX])
                     o2.append(outputs[MAX:])
 
-            else:
+            elif o3 < min:
                 P = None
-                while o3 != max:
+                while o3 != min:
                     outputs = outputs + ' '
                     o3 += 1
                 o2.append(outputs)
+            else:
+                P = None
+
+
 
             if P != None:
                 for WORD in P:
@@ -294,7 +302,7 @@ def screenResults(A = 'endr',B = None,C = None):
                 CT3 = len(BLOCK3)
             else:
                 CT3 = None
-                BLOCK2 = genBlocks(B,69,67)
+                BLOCK2 = genBlocks(B,66,64)
                 
             CT2 = len(BLOCK2)
 
@@ -305,6 +313,7 @@ def screenResults(A = 'endr',B = None,C = None):
 
         CT1 = len(BLOCK1)
 
+        ## Generate empty lines based on how many columns are needed
         EMPTY1 = '                      '                     ## 22 char length 1st column
         if CT3 != None:
             EMPTY2 = '                                 '      ## 33 char length  2nd column with 3rd
@@ -361,7 +370,7 @@ def screenResults(A = 'endr',B = None,C = None):
                 print(c)
     
         elif CT2 != None:
-            if CT1 > CT2:
+            if CT1 > CT2 and CT2 != 0:
                 if CT2 == 1:
                     MIDDLE = math.ceil((CT1/2) - 1)
                 else:
@@ -388,7 +397,7 @@ def screenResults(A = 'endr',B = None,C = None):
                             LINENUM = -1
                             csep(EMPTY2)
                             print(c)
-            elif CT2 > CT1:
+            elif CT2 > CT1 and CT1 != 0:
                 if CT1 == 1:
                     MIDDLE = math.ceil((CT2/2) - 1)
                 else:
@@ -400,7 +409,7 @@ def screenResults(A = 'endr',B = None,C = None):
                         csep(EMPTY1)
                         LINENUM += 1
                     else:
-                        if CT1 != 0:
+                        if CT1 != 0 and INDEX1 < CT1:
                             csep(BLOCK1[INDEX1])
                             csep(c)
                             INDEX1 += 1
@@ -414,9 +423,10 @@ def screenResults(A = 'endr',B = None,C = None):
             else:
                 for Block in BLOCK2:
                     csep(c)
-                    csep(BLOCK1[INDEX1])
-                    INDEX1 += 1
-                    csep(c)
+                    if INDEX1 < CT1:
+                        csep(BLOCK1[INDEX1])
+                        INDEX1 += 1
+                        csep(c)
                     if CT2 != 0:
                         csep(Block)
                     print(c)
@@ -429,10 +439,11 @@ def screenResults(A = 'endr',B = None,C = None):
 
 
 
-## Same as MACROSS's "getThis" function
+## Same as MACROSS's "getThis" function, decodes B64 and hex values.
+## !!! However, it returns the decoded value to your call, it does NOT write to "vf19_READ" !!!
 ## 'd' is the value to decode;
-## 'e' is the encoding -- call with 0 to decode base64, or
-##  1 to decode hex. Your hex can contain whitespace and/
+## 'e' is the encoding
+## Call with 0 to decode base64, or 1 to decode hex. Your hex can contain whitespace and/
 ##  or '0x', this function will strip them out.
 ##
 ##  You can pass an optional 3rd arg to specify the out-encoding
@@ -459,11 +470,11 @@ def getThisPy(d,e,ee = 'utf8'):
 
 ##    MACROSS calls all python scripts with at least 7 args (8, if you count
 ##    the script itself being called via python). The fourth arg is always
-##    $vf19_PYPOD, a string that the getDefaults function can use to create a
+##    $dash_PYOPT, a string that the getDefaults function can use to create a
 ##    dictionary that lets your python scripts share the same default
 ##    directories/values as MACROSS' $vf19_MPOD hashtable.
 ##    
-##    Declare a new dictionary by calling this function with sys.argv[4] as
+##    Declare a new dictionary by calling this function with sys.argv[3] as
 ##    your first argument (x), and 0 as your second argument (y). After you have
 ##    your dictionary, you can decode its indexes at any time by calling
 ##    this function again with a specific index, and (1) as the second arg.
@@ -471,9 +482,9 @@ def getThisPy(d,e,ee = 'utf8'):
 ##    EXAMPLES:
 ##
 ##
-##        vf19_PYOPT = mcdefs.getDefaults(sys.argv[4],0)
+##        vf19_PYOPT = mcdefs.getDefaults(sys.argv[3],0)
 ##        ^^ This is your dictionary, containing any indexed values you supplied in the
-##        utility.ps1 file as described in the README files.
+##        extras.ps1 file as described in the README files.
 ##        
 ##        repo = mcdefs.getDefaults(vf19_PYOPT['nre'],1)
 ##        ^^If you set your master repo location with 'nre' as its index, then calling
