@@ -1,4 +1,4 @@
-﻿#_superdimensionfortress Code-signing & Cert inspection
+﻿#_sdf1 Code-signing & Cert inspection
 #_ver 1.5
 #_class User,Digital_Certs,Powershell,HiSurfAdvisory,0
 
