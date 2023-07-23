@@ -1,4 +1,4 @@
-#_superdimensionfortress Front end for investigation toolset
+#_sdf1 Front end for investigation toolset
 #_ver 3.1
 <#
     Multi-API-Cross-Search (MACROSS) Console
@@ -34,9 +34,9 @@
         this as the FIRST line of your script, and put the script
         in the \nmods folder: 
 		
-			#_superdimensionfortress <your brief description of the script>
+			#_sdf1 <your brief description of the script>
 				
-        The "#_superdimensionfortress " is necessary to identify scripts
+        The "#_sdf1 " is necessary to identify scripts
         created for MACROSS (don't forget the whitespace). The description
         line is what gets written to the menu for users to see.
         Scripts without this line will be ignored.
