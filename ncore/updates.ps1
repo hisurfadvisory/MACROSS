@@ -24,14 +24,14 @@ function toolCount(){
         $ext = "*.ps*" ## ignore python tools if python not installed
     }
     foreach( $fc in (Get-ChildItem -File "$vf19_TOOLSDIR\$ext" | Sort)){
-        if( Get-Content $fc | Select -Index 0 | Select-String 'superdimensionfortress' ){
+        if( Get-Content $fc | Select -Index 0 | Select-String 'sdf1' ){
             $Global:vf19_FILECT++
             $v = $(gc $fc | Select -Index 1) -replace '#_ver '
             $Global:vf19_LIST0.Add($fc.Name,$v)
         }
     }
     foreach( $rc in (Get-ChildItem -File "$vf19_REPOTOOLS\$ext" | Sort)){
-        if( Get-Content $rc | Select -Index 0 | Select-String 'superdimensionfortress' ){
+        if( Get-Content $rc | Select -Index 0 | Select-String 'sdf1' ){
             $n = $rc -replace "^.*\\" -replace "\.p.*$"                   ## Get the script name, strip the extension
             $v = (gc $rc | Select -Index 1) -replace "^#_ver "            ## Get the script version
             $c1 = (gc $rc | Select -Index 2) -replace "^#_class ","$n,"   ## Get the class/attribute line
