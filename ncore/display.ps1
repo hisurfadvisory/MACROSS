@@ -664,11 +664,11 @@ function chooseMod(){
     $vf19_LISTDIR = Get-ChildItem "$vf19_TOOLSDIR\$ftypes" | Sort Name     ## Get the names of all the scripts in alpha-order
 
     # Enumerate the nmods\ folder to find all scripts; all of my scripts  
-    # contain a descriptor on the first line beginning with '_superdimensionfortress'
+    # contain a descriptor on the first line beginning with '_sdf1'
     $vf19_LISTDIR |
     Select -First 9 | 
     ForEach-Object{
-        if( Get-Content $_.FullName | Select-String -Pattern "^#_superdimensionfortress.*" ){   # Verify the script is meant for MACROSS
+        if( Get-Content $_.FullName | Select-String -Pattern "^#_sdf1.*" ){   # Verify the script is meant for MACROSS
             if( $_ -Match 'GERWALK' ){
                 $Global:vf19_G1 = $true   ## Tells other scripts Carbon-Black script is available for queries
             }
@@ -676,7 +676,7 @@ function chooseMod(){
                 $Global:vf19_E1 = $true   ## Tells other scripts String-Search script is available for queries
             }
             $d1 = Get-Content $_.FullName -First 1         # Grab the first line of the script
-            $d1 = $d1 -replace("^#_superdimensionfortress[\S]* ",'')          # Remove the 'superdimensionfortress'
+            $d1 = $d1 -replace("^#_sdf1[\S]* ",'')          # Remove the 'sdf1'
             $d2 = $_ -replace("\.p.+$",'')    # Remove the file extension, only care about the name
             $d2 = $d2 -replace("^.+\\",'')    # Remove the filepath
             $d3 = $d2.Length                  # Count how many characters in the filename
@@ -700,7 +700,7 @@ function chooseMod(){
         $vf19_LISTDIR |
         Select -Skip 9 | 
         ForEach-Object{
-            if( Get-Content $_.FullName | Select-String -Pattern "^#_superdimensionfortress.*" ){
+            if( Get-Content $_.FullName | Select-String -Pattern "^#_sdf1.*" ){
                 if( $_ -Match 'GERWALK' ){
                     $Global:vf19_G1 = $true   ## Tells other scripts Carbon-Black script is available for queries
                 }
@@ -708,7 +708,7 @@ function chooseMod(){
                     $Global:vf19_E1 = $true   ## Tells other scripts String-Search script is available for queries
                 }
                 $d5 = Get-Content $_.FullName -First 1
-                $d5 = $d5 -replace("^#_superdimensionfortress[\S]* ","")
+                $d5 = $d5 -replace("^#_sdf1[\S]* ","")
                 $d6 = $_ -replace("\.p.+$",'')
                 $d6 = $d6 -replace("^.+\\",'')
                 $d7 = $d6.Length
