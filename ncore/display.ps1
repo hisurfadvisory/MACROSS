@@ -171,12 +171,25 @@ function screenResults(){
         [string]$3
     )
 
-    $r = '‖≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡‖' ## 92 char length
-    $c = '‖'
+    $NAMEc = 'YELLOW'
+    $VAL1c = 'WHITE'
+    $VAL2c = 'GREEN'
+    $r = '4oCW4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh
+    4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh
+    4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh
+    4omh4omh4omh4omh4omh4omh4omh4omh4omh4oCW' 
+    $c = '4oCW'
+    getThis $r    ## 92 char length
+    $r = $vf19_READ
+    getThis $c
+    $c = $vf19_READ
     if($1 -Match "^derpy"){
-        $NAMErd = $true
+        $NAMEc = 'RED'
         $1 = $1 -replace "^derpy"
-        slp 1
+    }
+    elseif($1 -Match "^derp"){
+        $NAMEc = 'CYAN'
+        $1 = $1 -replace "^derp"
     }
     elseif($1 -eq 'endr'){
         Write-Host -f GREEN $r
@@ -273,9 +286,12 @@ function screenResults(){
 
     if($2){
         if($2 -Match "^derpy"){
-            $VAL1rd = $true
+            $VAL1c = 'RED'
             $2 = $2 -replace "^derpy"
-            slp 1
+        }
+        elseif($2 -Match "^derp"){
+            $VAL1c = 'CYAN'
+            $2 = $2 -replace "^derp"
         }
         $VAL1 = $2
         $wide2 = $2.length
@@ -283,9 +299,12 @@ function screenResults(){
     
         if($3){
             if($3 -Match "^derpy"){
-                $VAL2rd = $true
+                $VAL2c = 'RED'
                 $3 = $3 -replace "^derpy"
-                slp 1
+            }
+            elseif($3 -Match "^derp"){
+                $VAL2c = 'CYAN'
+                $3 = $3 -replace "^derp"
             }
             $VAL2 = $3
             $wide3 = $3.length
@@ -340,12 +359,7 @@ function screenResults(){
         while($countdown -ne 0){
             Write-Host -f GREEN $c -NoNewline;
             if($BLOCK1[$index1]){
-                if($NAMErd){
-                    Write-Host -f RED " $($BLOCK1[$index1])" -NoNewline;
-                }
-                else{
-                    Write-Host -f YELLOW " $($BLOCK1[$index1])" -NoNewline;
-                }
+                Write-Host -f $NAMEc " $($BLOCK1[$index1])" -NoNewline;
                 $index1++
                 $countdown = $countdown - 1
             }
@@ -354,12 +368,7 @@ function screenResults(){
             }
             Write-Host -f GREEN $c -NoNewline;
             if($BLOCK2[$index2]){
-                if($VAL1rd){
-                    Write-Host -f RED " $($BLOCK2[$index2])" -NoNewline;
-                }
-                else{
-                    Write-Host " $($BLOCK2[$index2])" -NoNewline;
-                }
+                Write-Host -f $VAL1c " $($BLOCK2[$index2])" -NoNewline;
                 $index2++
                 $countdown = $countdown - 1
             }
@@ -368,12 +377,7 @@ function screenResults(){
             }
             Write-Host -f GREEN $c -NoNewline;
             if($BLOCK3[$index3]){
-                if($VAL2rd){
-                    Write-Host -f RED " $($BLOCK3[$index3])" -NoNewline;
-                }
-                else{
-                    Write-Host -f GREEN " $($BLOCK3[$index3])" -NoNewline;
-                }
+                Write-Host -f $VAL2c " $($BLOCK3[$index3])" -NoNewline;
                 $index3++
                 $countdown = $countdown - 1
             }
@@ -398,12 +402,7 @@ function screenResults(){
             $BLOCK1 | %{
                 if($linenum -lt $middle){
                     Write-Host -f GREEN "$c " -NoNewline;
-                    if($NAMErd){
-                        Write-Host -f RED $_ -NoNewline;
-                    }
-                    else{
-                        Write-Host -f YELLOW $_ -NoNewline;
-                    }
+                    Write-Host -f $NAMEc $_ -NoNewline;
                     Write-Host -f GREEN $c -NoNewline;
                     Write-Host $empty2 -NoNewline;
                     Write-Host -f GREEN $c
@@ -411,20 +410,10 @@ function screenResults(){
                 }
                 else{
                     Write-Host -f GREEN "$c " -NoNewline;
-                    if($NAMErd){
-                        Write-Host -f RED "$_" -NoNewline;
-                    }
-                    else{
-                        Write-Host -f YELLOW "$_" -NoNewline;
-                    }
+                    Write-Host -f $NAMEc "$_" -NoNewline;
                     Write-Host -f GREEN $c -NoNewline;
                     if($BLOCK2[$index2]){
-                        if($VAL1rd){
-                            Write-Host -f RED " $($BLOCK2[$index2])" -NoNewline;
-                        }
-                        else{
-                            Write-Host " $($BLOCK2[$index2])" -NoNewline;
-                        }
+                        Write-Host -f $VAL1c " $($BLOCK2[$index2])" -NoNewline;
                         Write-Host -f GREEN $c
                         $index2++
                     }
@@ -453,12 +442,7 @@ function screenResults(){
                 }
                 else{
                     if($BLOCK1[$index1]){
-                        if($NAMErd){
-                            Write-Host -f RED " $($BLOCK1[$index1])" -NoNewline;
-                        }
-                        else{
-                            Write-Host -f YELLOW " $($BLOCK1[$index1])" -NoNewline;
-                        }
+                        Write-Host -f $NAMEc " $($BLOCK1[$index1])" -NoNewline;
                         $index1++
                     }
                     else{
@@ -467,32 +451,17 @@ function screenResults(){
                     }
                 }
                 Write-Host -f GREEN $c -NoNewline;
-                if($VAL1rd){
-                    Write-Host -f RED " $_" -NoNewline;
-                }
-                else{
-                    Write-Host " $_" -NoNewline;
-                }
+                Write-Host -f $VAL1c " $_" -NoNewline;
                 Write-Host -f GREEN $c
             }
         }
         else{
             $BLOCK2 | %{
                 Write-Host -f GREEN $c -NoNewline;
-                if($NAMErd){
-                    Write-Host -f RED " $($BLOCK1[$index1])" -NoNewline;
-                }
-                else{
-                    Write-Host -f YELLOW " $($BLOCK1[$index1])" -NoNewline;
-                }
+                Write-Host -f $NAMEc " $($BLOCK1[$index1])" -NoNewline;
                 $index1++
                 Write-Host -f GREEN $c -NoNewline;
-                if($VAL1rd){
-                    Write-Host -f RED " $_" -NoNewline;
-                }
-                else{
-                    Write-Host " $_" -NoNewline;
-                }
+                Write-Host -f $VAL1c " $_" -NoNewline;
                 Write-Host -f GREEN $c
             }
         }
@@ -503,12 +472,7 @@ function screenResults(){
     else{
         $BLOCK1 | %{
             Write-Host -f GREEN "$c " -NoNewline;
-            if($NAMErd){
-                Write-Host -f RED " $_" -NoNewline;
-            }
-            else{
-                Write-Host -f YELLOW $_ -NoNewline;
-            }
+            Write-Host -f $NAMEc " $_" -NoNewline;
             Write-Host -f GREEN $c
         }
     }
@@ -655,8 +619,8 @@ function chooseMod(){
     $Global:vf19_NEXTPAGE = @{}
     $Global:vf19_MODULENUM = @()
     if( $MONTY ){
-        $Global:vf19_pylib = "$vf19_TOOLSROOT\ncore\py_classes"  ## Filepath to the MACROSS py library
-        $ftypes = "*.p*"                                         ## Integrate python scripts if Python3 is installed
+        $Global:vf19_pylib = "$vf19_TOOLSROOT" + '\ncore\py_classes'  ## Filepath to the MACROSS python library
+        $ftypes = "*.p*"                                          ## Integrate python scripts if Python3 is installed
     }
     else{
         $ftypes = "*.ps*"                                        ## Ignore py files if Python3 not installed
