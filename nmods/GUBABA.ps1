@@ -1,4 +1,4 @@
-#_superdimensionfortress Windows Event ID reference
+#_sdf1 Windows Event ID reference
 #_ver 1.0
 #_class User,WinEventIDs,Powershell,HiSurfAdvisory,1
 
