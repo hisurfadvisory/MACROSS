@@ -1,4 +1,4 @@
-#_superdimensionfortress Network Fileshare Search tool
+#_sfd1 Network Fileshare Search tool
 #_ver 1.0
 #_class User,File search,Powershell,HiSurfAdvisory,1
 
