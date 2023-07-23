@@ -12,7 +12,6 @@ import sys
 L = len(sys.argv)
 
 
-
 # If the user selected this script with the "h" option set, MACROSS sets the sys.argv[1] value
 # as "HELP" because they want to view the help-description page.
 if L > 2:
@@ -42,46 +41,50 @@ else:
     
 # MACROSS sends 7 args by default; the 6th is always the filepath to the mcdefs library
 if L >= 7:
-    if 'py_classes' in sys.argv[6]:
-        npath = sys.argv[6]
-        sys.path.insert(0,npath)  ## modify the sys path to include the py_classes folder
-        import mcdefs as mc
+    mpath = sys.argv[6]
+    sys.path.insert(0,mpath)  ## modify the sys path to include the py_classes folder
+    import mcdefs as mc
 
-        ## The other 5 args can be used or ignored as you like. For this demo I'll assign
-        ##  each of the arguments for you, named the same way that MACROSS names them.
-        ##  In order, they are:
-        USR = sys.argv[1]               ## The logged-in user
-        atts = sys.argv[2]              ## The $vf19_ATTS hashtable attributes .name and .valtype for each script
-        vf19_ATTS = mc.getATTS(atts)    ## mcdefs.getATTS() can automatically create the dictionary for you   
-        vf19_DEFAULTPATH = sys.argv[3]  ## USR's desktop filepath
-        vf19_PYPOD = sys.argv[4]        ## The encoded array of filepaths/URLs generated from extras.ps1
-        vf19_numchk = sys.argv[5]       ## The integer MACROSS uses for common math functions in all the scripts
-        vf19_M = mc.makeM(vf19_numchk)  ## This function splits the numchk value into 6 digits you can use for mathing
-        vf19_TOOLSROOT = sys.argv[7]    ## The path to the MACROSS folder
-        gbg = sys.argv[6] + '\\garbage_io'  ## Path to the garbage I/O folder
+    ## The other 5 args can be used or ignored as you like. For this demo I'll assign
+    ##  each of the arguments for you, named the same way that MACROSS names them.
+    ##  In order, they are:
+    USR = sys.argv[1]               ## The logged-in user
+    atts = sys.argv[2]              ## The $vf19_ATTS hashtable attributes .name and .valtype for each script
+    vf19_ATTS = mc.getATTS(atts)    ## mcdefs.getATTS() can automatically create the dictionary for you   
+    vf19_DEFAULTPATH = sys.argv[3]  ## USR's desktop filepath
+    vf19_PYPOD = sys.argv[4]        ## The encoded array of filepaths/URLs generated from extras.ps1
+    vf19_numchk = sys.argv[5]       ## The integer MACROSS uses for common math functions in all the scripts
+    vf19_M = mc.makeM(vf19_numchk)  ## This function splits the numchk value into 6 digits you can use for mathing
+    vf19_TOOLSROOT = sys.argv[7]    ## The path to the MACROSS folder
+    GBG = sys.argv[6] + '\\garbage_io'  ## Path to the garbage I/O folder
         
-        ## The psc function will pipe system commands into your powershell session
-        mc.psc('cls')
+    ## The psc function will pipe system commands into your powershell session
+    mc.psc('cls')
 
 # Scripts can call each other with any arguments you like; but passing them as the framework
 # dictates allows scripts to share resources/values across python and powershell. I also
 # add 2 more arguments here -- the name of any scripts that call this one (CALLER), and the thing
-# they want evaluated (PROTOCULTURE).
-if L >= 9:
-    CALLER = sys.argv[8]
-    PROTOCULTURE = sys.argv[9]
-else:
+# they want evaluated (PROTOCULTURE). In MACROSS' "availableMods" and "collab" functions, if the
+# optional value you pass in does not match the $PROTOCULTURE value, both values get sent
+# as argv[9] and argv[10].
+if L < 9:
     PROTOCULTURE = None
     CALLER = None
+else:
+    if L >= 9:
+        CALLER = sys.argv[8]
+        PROTOCULTURE = sys.argv[9]
+    if L > 10:
+        eNM = sys.argv[10]
+
 
 
 def next(e):
     k = ''
     if e == 0:
         while k != 'c':
-            print('''
-    Type "c" to continue!''')
-            k = input('    ')
+            k = input('''
+    Type "c" to continue!  ''')
     else:
         if e == 1:
             e = 'continue!'
@@ -122,7 +125,8 @@ def theGoodStuff(Z1 = '',Z2 = None):
     if Z1 != '':
         print('''
     I got your value --
-                               ''',Z1,'''
+    
+            ''',Z1,'''
                                
     -- as easy as getting an email, and I can sort-of make requests back to MACROSS just
     as easily; in fact I'm about to do just that by forwarding your filename to KÖNIG.
@@ -152,7 +156,7 @@ def theGoodStuff(Z1 = '',Z2 = None):
             konig = 'powershell.exe ' + konig
             
     I've already set that "vf19_TOOLSROOT" value in the background. Remember all
-    those params/args that powershell sends over by default? This arg (the MACROSS
+    those params/args that MACROSS sends over by default? This arg (the MACROSS
     root folder location) was stored in sys.argv[7]. So now python knows how to
     find KÖNIG. Now we can add the input you gave me to search for:
     
@@ -374,10 +378,12 @@ if PROTOCULTURE:
     Z2 = CALLER
     print("""
     I'll just use some regex magic to strip out the filepath  via "mcdefs.rgx":
-                                            """,Z1)
+    
+                """,Z1)
     next(1)
     mc.psc('cls')
     theGoodStuff(Z1,Z2)
+    
 else:
     Z1 = ''
     Z2 = None
@@ -433,4 +439,3 @@ else:
     next(1)
     mc.psc('cls')
     theGoodStuff()
-
