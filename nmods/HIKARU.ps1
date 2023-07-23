@@ -1,5 +1,5 @@
 #_sdf1 Demo - a basic config walkthru (8-10 mins)
-#_ver 0.2
+#_ver 0.3
 #_class User,demo script,Powershell,HiSurfAdvisory,0
 
 <#
@@ -340,9 +340,10 @@ Write-Host -f GREEN "
     You need to read the documentation for all the details, but this demo will
     give you the basics of why this framework has worked well for me."
 next 1
-splashPage
+splashPage 1
     
-Write-Host -f GREEN "    We'll start with the missile pod (MPOD):"
+Write-Host -f GREEN "
+    We'll start with the missile pod (MPOD):"
 Write-Host -f GREEN '
     $vf19_MPOD is a hashtable that contains all the default values that MACROSS
     and its tools can access as needed. This is a critical component of how
@@ -368,7 +369,7 @@ Write-Host -f GREEN "
     that you control, for instance (see the startUp function in ncore\display.ps1)."
 
 next
-splashPage
+splashPage 1
 
 Write-Host -f GREEN "    How to set your own default values:
       1. Take any filepaths or URLs (or anything else) you might need MACROSS or your
@@ -416,7 +417,7 @@ Write-Host -f GREEN '. Your indexes will let your scripts pull
          decoded value once, but if you need it persistently, make sure to store it
          as a new variable before the getThis function is executed again!'
 next
-splashPage
+splashPage 1
 Write-Host -f GREEN "    After reading utility.ps1, MACROSS sets its *global* default filepaths:"
 Write-Host -f GREEN '
         -$vf19_TOOLSDIR = the local \nmods folder, where your automation scripts will be
@@ -463,7 +464,7 @@ Write-Host -f GREEN "
     MACROSS scripts.
     "
 next
-cls
+splashPage 1
 
 
 while($dyrl_Z -notMatch "[\w]"){
@@ -499,19 +500,22 @@ while($varc1 -notMatch $varc0){
     if($varc1 -Match "\s"){
         $varc1 = ''
     }
+    if($varc1 -eq ''){
+        Break
+    }
     else{
         $choice = $varc1 -replace "^.+\[(`'|`")" -replace "(`'|`")\].*$"
         $choice_eval = $vf19_ATTS[$choice].valtype
+        iex "$varc1" | %{Write-Host -f YELLOW "      $_"}
+        Write-Host -f GREEN "
+    As you can see from the 'Evaluates:' field, $choice works with $choice_eval."
     }
 }
 
-iex "$varc1" | %{Write-Host -f YELLOW "      $_"}
-Remove-Variable -Force varc*
+    Remove-Variable -Force varc*
 
-Write-Host -f GREEN "
-    As you can see from the 'Evaluates:' field, $choice works with $choice_eval."
     next
-    splashPage
+    splashPage 1
     Write-Host -f GREEN "
     Play with this in MACROSS' debug menu to figure out how your script can quickly find
     other scripts to interact with, via these class attributes. Just type"
@@ -531,7 +535,7 @@ Write-Host -f GREEN "
     
     Now, back to GUBABA."
     next
-    cls
+    splashPage 1
     Write-Host -f GREEN "
     Give me an ID like '5157' or keywords like 'windows firewall', and we'll ask GUBABA
     if he can find it.
@@ -566,9 +570,17 @@ $Global:PROTOCULTURE = $dyrl_Z
 $searchID = collab 'GUBABA.ps1' 'HIKARU'
 
 
-splashPage
-$searchID.keys | %{
-    screenResults $_ $searchID[$_]
+splashPage 1
+''
+''
+if($searchID.count -gt 0){
+    screenResults "derp                       GUBABA RESULTS FOR $dyrl_Z"
+    $searchID.keys | %{
+        screenResults $_ $searchID[$_]
+    }
+}
+else{
+    screenResults "derpy               Nothing found for $dyrl_Z"
 }
 screenResults 'endr'
 Write-Host -f GREEN "
@@ -599,7 +611,7 @@ if($MONTY -and (Test-Path "$vf19_TOOLSDIR\MINMAY.py")){
             }
         }
     }
-    splashPage
+    splashPage 1
     Write-Host -f GREEN "
     MACROSS handles setting up many of its resources in python for you. All you need to
     do is supply the filename of the script you need to call, the name of your running
@@ -626,7 +638,7 @@ if($MONTY -and (Test-Path "$vf19_TOOLSDIR\MINMAY.py")){
 
     collab 'MINMAY.py' 'HIKARU' $PROTOCULTURE
 
-    
+    read-host '...'
     splashPage
     Write-Host -f GREEN "
     And now we're back with HIKARU... again!
@@ -657,7 +669,7 @@ Write-Host -f GREEN '
 }
 else{
     next
-    splashPage
+    splashPage 1
     Write-Host -f GREEN '    The key to making MACROSS valuable is writing your scripts to be able
     to interact with each other. ' -NoNewline;
     Write-Host '$HOWMANY' -NoNewline;
@@ -692,10 +704,10 @@ else{
     Write-Host -f YELLOW 'setUser ' -NoNewline;
     Write-Host -f GREEN 'function in the validation.ps1 file.'
     next
-    splashPage
+    splashPage 1
 
     Write-Host -f GREEN '
-    This demo is about done, but first a quick breakdown of the MACROSS framework:
+    The demo is about done, but first a quick breakdown of the MACROSS framework:
         -Shared utilities, most of which are in the utility.ps1 file -- make
             sure to read its documentation!
         -Global investigation values -- your scripts should be able to
@@ -710,7 +722,7 @@ else{
             to the ones most relevant
         -Standardized variable naming to avoid crossing the streams'
     next
-    splashPage
+    splashPage 1
     Write-Host '
              IMPORTANT VARS (available to all MACROSS tools):
     $vf19_TOOLSROOT - the directory MACROSS is run from
@@ -739,7 +751,7 @@ else{
         '
 
     next
-    splashPage
+    splashPage 1
 
     Write-Host -f GREEN '    My uses for this framework involved sharing the ' -NoNewline;
     Write-Host '$PROTOCULTURE' -NoNewline;
@@ -754,8 +766,16 @@ else{
     searches using the information they found. And by using the 'collab' function,
     an additional value can be sent along to any script for added evals, if you
     include instructions to look for parameters that are not equal to PROTOCULTURE's
-    value.
-
+    value."
+    Write-Host -f GREEN '
+    Your existing automations can easily be plugged into MACROSS with a few modifications:
+        1. Add the "magic comments" to the first three lines of your script
+        2. If you want to interact with other scripts in the framework, add checks to
+           look for $PROTOCULTURE, and to generate $PROTOCULTURE that you can send to the
+           "collab" function
+        3. If your automation is written in python, use sys.argv to read the default values
+           MACROSS always sends to python scripts.'
+    Write-Host -f GREEN "
     Even if you don't have many security tools/APIs on your network, what you probably
     DO have is Active Directory. MACROSS can provide an immediate key-press for your
     security team to quickly collect data, if you don't mind putting in the work to
