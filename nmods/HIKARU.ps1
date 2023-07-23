@@ -9,8 +9,14 @@
     or uncover more indicators related to your SOC investigations.
 #>
 
-function splashPage(){
+function splashPage($1){
     cls
+    if($1 -eq 1){
+        screenResults '[macross] Attributes' '.name | .ver | .priv | .valtype | .lang | .author | .evalmax'
+        screenResults 'Variables to remember' '$PROTOCULTURE, $CALLER, $RESULTFILE, $vf19_MPOD, $vf19_ATTS'
+        screenResults 'endr'
+    }
+    else{
     $b = 'ICAgICAgIOKWiOKWiOKVlyAg4paI4paI4pWX4paI4paI4pWX4paI4paI4pWXICDilojiloj
     ilZcg4paI4paI4paI4paI4paI4pWXIOKWiOKWiOKWiOKWiOKWiOKWiOKVlyDilojilojilZcgICDi
     lojilojilZcKICAgICAgIOKWiOKWiOKVkSAg4paI4paI4pWR4paI4paI4pWR4paI4paI4pWRIOKWi
@@ -32,6 +38,7 @@ function splashPage(){
     Write-Host -f CYAN   '              A demo of MACROSS automations
     
     '
+    }
     
 }
 
@@ -86,6 +93,9 @@ while($Z -notMatch "(1|2)"){
         > ' -NoNewline;
 
         $Z = Read-Host
+        if($Z -eq ''){
+            Exit
+        }
 }
 
 if($Z -eq 1){
@@ -139,7 +149,7 @@ if($Z -eq 1){
         Hit ENTER to continue.
     '
     Read-Host
-    splashPage
+    splashPage 1
     Write-Host -f GREEN '
     The primary purpose of MACROSS is to let automations talk to each other and share info/
     resources. The "utility.ps1" file contains Base64 lines in its opening comments,
@@ -161,7 +171,7 @@ if($Z -eq 1){
     Hit ENTER to continue.
     '
     Read-Host
-    splashPage
+    splashPage 1
     Write-Host -f GREEN '
 
     ADDING YOUR CUSTOM SCRIPTS TO MACROSS'
@@ -184,13 +194,14 @@ if($Z -eq 1){
     MACROSS uses the #_ver line to track versioning. And the final line, #_class, is
     what is used to create custom macross objects. From left to right, these are the
     attributes you need to assign to your script:
-        -level of privilege required                               (.priv)
+
+        -the LOWEST level of privilege required (user vs. admin)   (.priv)
         -what kind of data your script evaluates                   (.valtype)
         -what language your script is in                           (.lang)
         -the script author                                         (.author)
         -the maximum number of values it can process per session   (.evalmax)
 
-    The script's filename and version also get collected as a macross object attributes
+    The script's filename and version also get collected as macross object attributes
     (.ver and .name).
 
     When this demo finishes and the main menu loads again, try typing"
@@ -206,7 +217,7 @@ if($Z -eq 1){
 
     Hit ENTER to continue."
     Read-Host
-    splashPage
+    splashPage 1
     Write-Host -f GREEN '
 
     The purpose of [macross] class is to make your script easily searchable within MACROSS.
@@ -216,20 +227,20 @@ if($Z -eq 1){
     script performs Active Directory audits, and you want it to collect enrichment on
     certain artifacts automatically as it scans, you can write a simple command that
     will find relevant scripts and send values to them via the "collab" function:
-    '
-    Write-Host -f YELLOW '
+    
         # Send usernames found in your active directory script to MACROSS scripts
         # that can search usernames in a database, or an EDR, or whatever, and
-        # collect all the results to enrich whatever your "ADScript" is reporting on,
-        # in this example "Bob" which is set as $PROTOCULTURE, the global value/IOC
-        # that every MACROSS script should be coded to automatically act on.
-
+        # collect all the results to enrich whatever your "ADScript" is reporting on.
+        # In this example "Bob" is set as $PROTOCULTURE, the global value/IOC that
+        # every MACROSS script should be coded to automatically act on.'
+    Write-Host -f YELLOW '
         $Global:PROTOCULTURE = "Bob"
         $collection = @{}
-        foreach ($key in $vf19_ATTS.keys) { 
-
-            # "collab" requires the file extension in the first param
-            if($MONTY -and $vf19_ATTS[$key].lang -eq "Python"){
+        foreach ($key in $vf19_ATTS.keys) {
+        '
+    Write-Host -f GREEN '            # "collab" requires the file extension in the first param
+            # This check will append the correct extension based on .lang attribute'
+    Write-Host -f YELLOW '            if($MONTY -and $vf19_ATTS[$key].lang -eq "Python"){
                 $script = $key + ".py"
             }
             else{
@@ -251,7 +262,7 @@ if($Z -eq 1){
     Hit ENTER to continue.
     '
     Read-Host
-    splashPage
+    splashPage 1
     Write-Host -f GREEN "
     Lastly, if your automations are written in python, MACROSS contains a library
     called 'mcdefs.py', located in the 'ncore/py_classes' folder. I recommend you 
@@ -263,15 +274,16 @@ if($Z -eq 1){
 
     MACROSS uses a function called 'pyCross'; when one of the powershell scripts
     is called by a python script, pyCross should be used to write your powershell
-    outputs to an '.eod' file that your python script can then parse as needed.
-    It's not ideal, but it works until I have time to improve the method.
+    outputs to an '.eod' file that your python script can then parse as needed if
+    that output can't be returned in a variable. It's not ideal, but it works until
+    I have time to improve the method.
 
     Hit ENTER to wrap this up!
     "
     Read-Host
-    splashPage
+    splashPage 1
     Write-Host -f GREEN '
-    As we wrap up this infodump, here are the key takeaways:
+    As we conclude this infodump, here are the key takeaways:
 
     -Make your life easier by using the functions within utility.ps1
 
@@ -290,10 +302,12 @@ if($Z -eq 1){
     in validation.ps1 to see what values and in what order they get passed to
     python. Powershell outputs for python get written to plaintext ".eod" files in
     "ncore/py_classes/gbio/" if the response cannot or should not be contained in a
-    simple variable.
+    simple variable. (For example, maybe the output will need to be stored so that
+    other automations can make use of it later).
 
     -MACROSS uses a custom python library called "mcdefs", located in the
-    "ncore\py_classes" folder. It replicates many of the functions in utility.ps1.
+    "ncore\py_classes" folder. It replicates many of the functions in utility.ps1
+    for use in python.
 
     -While not necessary, you should write a man/help page that will load if the
     user selects your script from the menu with the "h" option, which temporarily
