@@ -240,18 +240,16 @@ function errMsg($1){
 ## Convert the hashtable of macross objects for python
 ## Don't want this to be a static global value in case scripts
 ## get modified while MACROSS is active
-if($MONTY){
-    function pyATTS(){
-        $p = @()
-        foreach($k in $vf19_ATTS.keys){
-            $n = $vf19_ATTS[$k].name
-            $v = $vf19_ATTS[$k].valtype
-            $atts = $n + '=' + $v
-            $p += $atts
-        }
-        $s = $p -Join(',')
-        Return $s
+function pyATTS(){
+    $p = @()
+    foreach($k in $vf19_ATTS.keys){
+        $n = $vf19_ATTS[$k].name
+        $v = $vf19_ATTS[$k].valtype
+        $atts = $n + '=' + $v
+        $p += $atts
     }
+    [string]$str = $p -Join(',')
+    Return $str
 }
 
 
