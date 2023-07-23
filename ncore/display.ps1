@@ -518,6 +518,9 @@ function screenResultsAlt(){
 
 
     $r = '  ============================================================================'
+    $c = '4oCW'
+    getThis $c
+    $c = $vf19_READ
     if($1 -eq 'endr'){
         Write-Host -f GREEN $r
     }
@@ -545,7 +548,7 @@ function screenResultsAlt(){
             }
         }
         if($1 -ne ''){
-            Write-Host -f CYAN "  ║║║║║║ " -NoNewline;
+            Write-Host -f CYAN "  $c$c$c$c$c$c " -NoNewline;
             if($1rd){
                 Write-Host -f RED $1
             }
@@ -558,13 +561,13 @@ function screenResultsAlt(){
             Write-Host -f RED "$2" -NoNewline;
         }
         else{
-            Write-Host -f GREEN "$2" -NoNewline;
+            Write-Host -f GREEN "$2 $c" -NoNewline;
         }
         if($3rd){
-            Write-Host -f RED "║  $3"
+            Write-Host -f RED "  $3"
         }
         else{
-            Write-Host -f YELLOW "║  $3"
+            Write-Host -f YELLOW "  $3"
         }
         
     }
