@@ -1,4 +1,4 @@
-#_superdimensionfortress Demo - a basic config walkthru (8-10 mins)
+#_sdf1 Demo - a basic config walkthru (8-10 mins)
 #_ver 0.2
 #_class User,demo script,Powershell,HiSurfAdvisory,0
 
@@ -172,7 +172,7 @@ if($Z -eq 1){
     The first three lines of your powershell/python scripts must be reserved for
     MACROSS attributes. For example, the first three lines in this HIKARU script are:'
     Write-Host -f YELLOW '
-        #_superdimensionfortress Demo - a basic config walkthru (8-10 mins)
+        #_sdf1 Demo - a basic config walkthru (8-10 mins)
         #_ver 0.2
         #_class User,demo script,Powershell,HiSurfAdvisory,0'
     Write-Host -f GREEN "
