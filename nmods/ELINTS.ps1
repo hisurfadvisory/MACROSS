@@ -1,4 +1,4 @@
-#_superdimensionfortress String-search documents
+#_sdf1 String-search documents
 #_ver 3.1
 #_class User,Strings,Powershell,HiSurfAdvisory,1
 
