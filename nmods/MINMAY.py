@@ -1,4 +1,4 @@
-#_superdimensionfortress Demo - Python integration
+#_sdf1 Demo - Python integration
 #_ver 0.2
 #_class User,demo script,Python 3,HiSurfAdvisory,2
 
