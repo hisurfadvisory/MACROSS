@@ -1,4 +1,4 @@
-#_superdimensionfortress Carbon Black EDR Integration
+#_sdf1 Carbon Black EDR Integration
 #_ver 2.1
 #_class User,Carbon Black EDR,Powershell,HiSurfAdvisory,1
 
