@@ -209,7 +209,7 @@ At the end of printing your results, call the function again with a single param
 <i>*** To use verChk & dlNew, you must first set a central repo for your master copies, either your gitlab or a fileshare or something, and set the location of your repo as a base64-encoded string prepended with "nre" in the utility.ps1 comment section***</i><br>
 	&emsp;<b>A.</b> toolCount() = This function counts the number of scripts in the local nmods folder vs. the number in your master repository. It then reads the first three lines of each script to get its attributes, and uses that info to create macross objects that get stored in the $vf19_ATTS hashtable, with the scriptnames as the index keys. See the included scripts in the nmods folder for examples of the magic lines described here; the first three lines of your script MUST contain:<br>
 	
-	#_superdimensionfortress "This is a brief description of the tool"
+	#_sdf1 "This is a brief description of the tool"
 	#_ver 1.0
 	#_class comma,separated,attributes,for,your,script  # See the classes.ps1 further down
 	
