@@ -23,7 +23,7 @@
         -keywords to match against Group-Policy names
 
     2) Anomalous attributes can be highlighted by modifying the function "cleanList".
-        Look for line 725, or the section labeled
+        Look for line 718, or the section labeled
         "Add other values here to highlight deviations from standard account attributes"
 
     3) Results will output to screen and to your Desktop in a folder called
@@ -126,13 +126,6 @@ if( $HELP ){
 
  Read-Host
  Return
-}
-try{
-    gethelp1 $vf19_UCT
-}
-catch{
-    Remove-Variable dyrl_* -Scope Global
-    Return
 }
 
 getThis '4pWR'
