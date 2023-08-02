@@ -12,7 +12,26 @@
 
     MYLENE is part of the MACROSS framework, so many tasks or functions may
     not be available to a user if they've been ID'd as not having admin-
-    level privilege to perform these lookups.
+    level privilege to perform these lookups. This is determined at startup
+    in the "validation.ps1" file's function "setUser".
+
+    If MYLENE is run with admin- or Active Directory read-permissions:
+    1) AD Objects will be collected based on:
+        -usernames
+        -hostnames
+        -creation dates
+        -keywords to match against Group-Policy names
+
+    2) Anomalous attributes can be highlighted by modifying the function "cleanList".
+        Look for line 670, or the section labeled
+        "Add other values here to highlight deviations from standard account attributes"
+
+    3) Results will output to screen and to your Desktop in a folder called
+        "NewUserSearches" when searching for newly-created accounts.
+
+    4) Standard user searches will have summaries printed to screen, with
+        options to display more info as needed. Future updates will have
+        improved outputs for $CALLER scripts.
     
 
     ---------------------------------------------------
