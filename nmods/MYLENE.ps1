@@ -23,7 +23,7 @@
 
 
     v2.1
-    Improved data collection from GERWALK and C2EFF
+    Improved data collection from GERWALK
 
 #>
 
