@@ -23,7 +23,7 @@
         -keywords to match against Group-Policy names
 
     2) Anomalous attributes can be highlighted by modifying the function "cleanList".
-        Look for line 670, or the section labeled
+        Look for line 725, or the section labeled
         "Add other values here to highlight deviations from standard account attributes"
 
     3) Results will output to screen and to your Desktop in a folder called
@@ -89,16 +89,20 @@ if( $HELP ){
  version $($vf19_LIST0['MYLENE.ps1'])
  
  
- Recent ACcount Search lets you perform user lookups by name or creation date.
+ MYLENE's Recent Acct Search lets you perform user lookups by name or creation date.
  As an admin, you can query Active Directory for partial name matches. If you 
  don't know the entire username, you can search with wildcards (*), but it might 
  return several results. If you wildcard the front  of your searches, you must 
  wildard the end (ex. *partname will not work, but *partname* and partname* will).
  
- When searching for recently created users, your search results can be rolled into
- the KONIG tool to perform a filesearch on those profiles.
+ When searching for recently created users, you can:
+    -forward search results to the KONIG tool to perform a filesearch on those profiles.
+    -do a quick keyword search on all of the new accounts' GPO assignments
+    -get a quickview of all the GPO assignments for specific new accounts
+    -get a quick alert for non-standard attributes on any new accounts (i.e. things like
+        "null password" will be highlighted in red)
  
- MYLENE also lets you search for new laptops/tablets recently added to the network.
+ MYLENE also lets you search for new hosts recently added to the network.
 
  If you are NOT admin, your search will be performed with the " -NoNewline;
  Write-Host -f GREEN 'net' -NoNewline;
@@ -109,11 +113,12 @@ if( $HELP ){
  MYLENE interacts with these SKYNET tools:
     -KONIG can scan new user accounts for the presence of *any* files
     -GERWALK can lookup history of usernames or hostnames being evaluated by MYLENE
+        (requires Carbon Black EDR deployed and configured on your network)
 
 
  If you are logged in as admin and select MYLENE with the "s" option (example "12s" 
- from the main menu), you can search for keywords and creation dates in Active-
- Directory GPO instead of usernames.
+ from the main menu), you can search for keywords and creation dates instead of usernames
+ in Active-Directory GPO.
 
  
  Hit ENTER to return.
@@ -712,9 +717,16 @@ if( ! $vf19_NOPE ){
         dv $dyrl_myl_0lastlogon
         Write-Host -f YELLOW '  EMAIL        ' -NoNewline;
         dv $dyrl_myl_0email
+
+
+        ####################################################################################################
+        ## Add other values here to highlight deviations from standard account attributes
+        ####################################################################################################
         if($dyrl_myl_0passwX -eq $true -or $dyrl_myl_0passwN -eq $true){
             Write-Host -f RED '  PASSWORD NULL OR NEVER EXPIRES'
         }
+
+        
         Write-Host -f GREEN '  ============================================================================'
 
 
