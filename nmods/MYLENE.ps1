@@ -1,1096 +1,1478 @@
-#_sfd1 Network Fileshare Search tool
-#_ver 1.0
-#_class User,File search,Powershell,HiSurfAdvisory,1
+#_sdf1 User lookup + audit new accounts
+#_ver 2.1
+#_class User,Common,Usernames,Powershell,HiSurfAdvisory,1
 
 <#
-    KÖNIG fileshare search tool
-    Author: HiSurfAdvisory
+    MYLENE: Target recently-created accounts for inspection; look up AD info
+    on users of interest
 
+    This script uses the "net" utility and Active-Directory cmdlets to gather
+    data on enterprise users and hosts -- primarily accounts and devices
+    that are newly-joined to your domain.
 
-    This script is designed to perform quick file searches across your enterprise
-    by offering multiple filters to the SOC analyst:
-        -you can select which fileshare to search from
-        -you can select which user profile to search in (Active-Directory
-            roaming profiles only!)
-        -you can search based on one or more extensions, example "search for
-            all docx,pdf,txt,rtf,xlsx,pptx,md" to find all documents of those
-            filetypes.
-        -you can search specifically for alternate data streams to find files
-            that users may be trying to hide
-        -you can search by filesize
-        -and of course, you can search by full or partial filenames
-
-    It is also designed to accept and auto-run queries from other MACROSS scripts.
-
-
-    v1.0
-    Default share paths are *NOT* configured; you need to do this on your own.
-
-    NOTE 1:
-        Unless you rewrite the search functions of this script, you *MUST* set
-        your default share paths using the MACROSS framework's preferred method,
-        i.e. encoding the paths, attaching an index, and adding the encoded path
-        with a delimiter to the extras.ps1 file. See the notes/comments in the
-        MACROSS.ps1 script, or the splitShares function further down this script.
+    MYLENE is part of the MACROSS framework, so many tasks or functions may
+    not be available to a user if they've been ID'd as not having admin-
+    level privilege to perform these lookups.
     
-    NOTE 2:
-        This script is heavily dependent on MACROSS resources. Trying to run this
-        outside of the MACROSS console will not work well, if at all.
 
-    NOTE 3:
-        Search through this script for the text "MPOD ALERT!!" Wherever this
-        comment appears, it's a place where you need to check and make sure
-        your network share variables all match up as you need them to!
-
-    NOTE 4:
-        KÖNIG drills down into *directories*, i.e. if you tell it to search
-
-            C:\Users\Bob\My Documents
-
-        it will not return results for any files in the "My Documents" folder; it
-        will only look for *folders* inside \My Documents, and give you results from
-        files within those folders. You would instead need to set your search
-        location as
-
-            C:\Users\Bob
-
-        Which of course would also search inside all of Bob's other home folders in
-        addition to "\My Documents". KÖNIG is set up this way because it is meant to
-        search targeted network shares, local hosts or root directories.
+    ---------------------------------------------------
+    If calling MYLENE from your script via the "collab" function, MYLENE
+    does not return any values. It writes all of its search results
+    for $PROTOCULTURE to the screen, then exits back to your script.
+    ---------------------------------------------------
 
 
+    v2.1
+    Improved data collection from GERWALK and C2EFF
 
 #>
 
 
-<## CALLER SCRIPTS THAT DON'T GO THROUGH 'collab' NEED TO SET THEIR SEARCH VALUES HERE
-    -$ORDERS = the filename string to search for
-
-    -$COMMANDER = the calling script; if python, it should start with 'py', i.e. 'pyMYSCRIPT' to differentiate
-        from the powershell callers, which *should be* set globally as $CALLER. When KÖNIG is called by a $COMMANDER
-        beginning with "py", $COMMANDER is promoted to $GENERAL so that additional actions can be taken to
-        communicate back to python.
-        
-        If both $CALLER and $COMMANDER have unique values assigned to them, KÖNIG will give preference to COMMANDER
-        because that is *not* a globally-set value. The likely scenario is that a powershell script ($CALLER)
-        launched another script, which then launched KÖNIG to do a file search, while $CALLER didn't request
-        anything from KÖNIG.
-
-        If $GENERAL gets set, it will always take priority, because it only exists when a python script tasks
-        KÖNIG.
-
-        NOTE: The "collab" function in MACROSS can pass along an optional value from other powershell scripts,
-        which would be read by KÖNIG as $ORDERS; *however*, if there is no $COMMANDER to go along with it,
-        KÖNIG ignores this value and focuses on the global $CALLER and $external_NM values instead.
-
-    -$AO = the area of operations, an optional directory path that can be set if you don't have KÖNIG set to
-        automatically search a specific location. If that is the case, and no $AO value is passed, the user
-        will be asked to supply a location manually.
-
-    -$AAR = After-Action Report: This is the location of the $vf19_GBIO directory, where MACROSS powershell scripts
-        write their results as a text value that your python script can pull into a dictionary if necessary. In
-        KÖNIG's case, it will write the location of your $RESULTFILE and $HOWMANY succesful hits your search got.
-        This is mainly done as an example for you -- it would be more useful if you're running scripts that return
-        tons of information.
-
-    -$HOMEBASE = the location you want results, if any, to be written to. This is needed because python scripts
-        have to pass values that would normally be available through MACROSS, but since python and powershell
-        can't share global variables, they need to be passed back and forth. If your python script doesn't pass
-        something like your user's Desktop or a group shared drive as this 4th param, no result file will be
-        written.
-
-##>
+## Watch for python scripts making queries:
+## First param needs to be your script's name, prefixed with "py"
 param(
     [Parameter(position = 0)]
-    [string[]]$dyrl_kon_ORDERS,
+    [string[]]$dyrl_mypy_CALLER,  ## The calling script
     [Parameter(position = 1)]
-    [string[]]$dyrl_kon_COMMANDER,
+    [string[]]$dyrl_mypy_QNAME,   ## The username being queried
     [Parameter(position = 2)]
-    [string[]]$dyrl_kon_AO,
+    [string[]]$dyrl_mypy_DESKTOP, ## The user's desktop path
     [Parameter(position = 3)]
-    [string]$dyrl_kon_AAR,
-    [Parameter(position = 4)]
-    [string]$dyrl_kon_HOMEBASE
+    [string]$dyrl_mypy_GBIO       ## The garbage_io folder path
 )
 
-##########  PYTHON PREP SECTION  ######################
-if( $dyrl_kon_COMMANDER -Match "^py" ){
-    $dyrl_kon_GENERAL = $dyrl_kon_COMMANDER -replace "^py"
-    Remove-Variable -Force dyrl_kon_COMMANDER
-}
-if( $dyrl_kon_AAR ){
-    $vf19_GBIO = $dyrl_kon_AAR
-    Remove-Variable -Force dyrl_kon_AAR
-}
-## Don't let invalid filepaths continue
-if( ! (Test-Path -Path "$dyrl_kon_AO") ){
-    Remove-Variable -Force dyrl_kon_AO
-}
-######################################################
-
-
-
-
-
-## Display help file
-if( $HELP ){
-    cls
-    $vf19_ATTS['KONIG'].toolInfo() | %{
-        Write-Host -f YELLOW $_
+## Python scripts must call MYLENE with all 4 params.
+if($dyrl_myl_CALLER){
+    if($dyrl_myl_CALLER -Match "^py"){
+    if($dyrl_mypy_QNAME){
+    if($dyrl_mypy_DESKTOP){
+    if($dyrl_mypy_GBIO){
+        $CALLER = $dyrl_mypy_CALLER
+        $PROTOCULTURE = $dyrl_mypy_QNAME
+        $vf19_DEFAULTPATH = $dyrl_mypy_DESKTOP
+        $vf19_GBIO = $dyrl_mypy_GBIO
+    }}}}
+    else{
+        Read-Host " 
+        You are missing arguments, I can't perform the query. Hit ENTER to quit."
+        Exit
     }
-    Write-Host -f YELLOW "
- KÖNIG performs an automated search based on filenames or extensions. Any matching
- search results are written to file on your desktop in the '" -NoNewline;
-    Write-Host -f CYAN "target-pkgs\" -NoNewline;
-    Write-Host -f YELLOW "' directory.
+    Remove-Variable -Force dyrl_mypy_*
+}
 
- If your enterprise uses roaming profiles, KÖNIG can attempt to search based on
- user profiles, if you provide it a full or partial username.
 
- KÖNIG can interact with these MACROSS tools:
-    -forward its target packages to ELINTS to perform string-searches
-    -forward its target packages to GERWALK, querying your Carbon Black EDR for file info
-    -accepts usernames from MYLENE to perform filesearches in their roaming profiles
 
+## Display help/description
+if( $HELP ){
+ cls
+ Write-Host -f YELLOW "
+ Author: $($vf19_ATTS['MYLENE'].author)
+ version $($vf19_LIST0['MYLENE.ps1'])
+ 
+ 
+ Recent ACcount Search lets you perform user lookups by name or creation date.
+ As an admin, you can query Active Directory for partial name matches. If you 
+ don't know the entire username, you can search with wildcards (*), but it might 
+ return several results. If you wildcard the front  of your searches, you must 
+ wildard the end (ex. *partname will not work, but *partname* and partname* will).
+ 
+ When searching for recently created users, your search results can be rolled into
+ the KONIG tool to perform a filesearch on those profiles.
+ 
+ MYLENE also lets you search for new laptops/tablets recently added to the network.
+
+ If you are NOT admin, your search will be performed with the " -NoNewline;
+ Write-Host -f GREEN 'net' -NoNewline;
+ Write-Host -f YELLOW ' utility, and
+ you cannot wildcard. You must search for exact names.
+ 
+
+ MYLENE interacts with these SKYNET tools:
+    -KONIG can scan new user accounts for the presence of *any* files
+    -GERWALK can lookup history of usernames or hostnames being evaluated by MYLENE
+
+
+ If you are logged in as admin and select MYLENE with the "s" option (example "12s" 
+ from the main menu), you can search for keywords and creation dates in Active-
+ Directory GPO instead of usernames.
+
+ 
  Hit ENTER to return.
- "
+ '
 
-    Read-Host
+ Read-Host
+ Return
+}
+try{
+    gethelp1 $vf19_UCT
+}
+catch{
+    Remove-Variable dyrl_* -Scope Global
     Return
 }
 
+getThis '4pWR'
+$c = $vf19_READ
 
-## Uncomment if this script will be used where not all your default share paths will be available
-## SJW displays a notice to users that their privilege is limited and lets them choose whether to continue
-#SJW 'pass'
-
-
-
-# Run check
-$dyrl_kon_LOOP = $true
-
-# Give the analyst something to stare at
-$dyrl_kon_CTR = 0
-
-
-
-function splashPage1a(){
+############################################
+##  BEGIN FUNCTIONS
+############################################
+## Display tool banner
+function splashPage(){
     cls
-    $b = 'CsKgwqDCoMKgwqDCoMKgwqDCoMKgLMKgwqDCoOKVkuKWk+KWiMOWIuKVkOKVpOKWhOKWhOKVkOKInizCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoM
-    KgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoM
-    KgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgCsKgwqDCoMKgwqDCoMKgwqDilZTilojilojilozCoMKg4pWZ4paA4paAKipI4pWi4paI4paIVn4swq
-    DCoGAi4pWQfi7CoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoArCoMKgwqDCoMKgwqDCoMKgwqDiloDiloBMImAqKuKIqT3ijJ
-    BKXn7ijJBgXi0uLMKgwqDilIDCoMKgLsKgwqAiXn4uwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoArCoMKgwqDCoMKgwq
-    DilazilojilownIuKBv+KVkOKInuKWhEkq4pWQ4oieTCwiIuKUgOKUgCwuYF7CrC474pSAwqwuwqDCoMKgwqDCrCzCoMKgIl5+LizCoMKgwqDCoMKgwqDCoM
-    KgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoArCoMKgwqDCoMKgwqDilZniloDiloTijKAiwrJe4pSA4pSALiwsIiJZ4pWQd+KWhFQq4pWQLixgwqBgLc
-    KgwqBg4pSAwqxgO+KUgMKsLGAn4pSA4pSAwqwsJ+KVmeKVmeKVpybiloTiloTiloQs4pWZ4pWZwrLilaTilZfCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoM
-    KgwqDCoMKgCsKgwqDCoMKgwqDCoMKgwqDCoMKgwqAnIirilZDiiJ53TCzCoGBg4pSA4pSALizijKBUVFnilZDiloRaXn7CrCzCoGDCoC3CoCxe4pSA4omISu
-    KUgH4uwqAiIuKUgC7CoOKWgOKVkeKWgOKVmuKVrOKWjOKVrOKWhOKMoWAqdyzCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoM
-    KgwqDCoMKgwqDCoMKgwqDCoArCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg4oygIiIq4pWQdywswqDilJQnLeKUgH534oygIirilZ
-    DDhVoq4pWQd2wq4paE4paT4paEd+KVqeKWgOKWgFfCqiTilpPilaxILeKVmeKVkeKVnOKVouKVqy7CoMKgwqAiPizCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwq
-    DCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoArCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoM
-    KgwqAnIirilZDiiJ4uLCwiYOKUgC4s4pWZ4paMQDfilZnilabilZPDh+KVk+KVlyXiloDilZrilavilaziloDiloziloTiloTilarilZPilZ/ilaZZwqDCoM
-    KgwqDCoCIl4pWQLCzCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqAKwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoM
-    KgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgJyciKuKWk+KWk0AnLOKWgOKWgOKVo+KVo07iloTiloTiloTiloTilpPilpLiloDiloDilpPilpPilpPilazilo
-    TiloB3XeKUmMKgwqDCoMKgwqDCoMKg4pWjUnfCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgCsKgwqDCoMKgICAgICAgICAgICAgIC
-    AgICAgICAgIMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgJyfilZrilpPilpPiloTilpPiloziloTilozDheKVqeKVkOKVnOKVluKWk+
-    KWk+KWjOKMoOKWkuKVmnfijJDilpLilpDiloTiloTiloTilZXCoMKgwqDCoOKVneKWksKgWcKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoA
-    rCoMKgwqDCoMKgwqAgICDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgLOKMkO
-    KVkCLijKDilZnilpLilpLilaVn4pWTwqDCoOKWkOKVoCfCoMKg4paQ4paMwqBg4paMwqDiloTiloziloR3wqDiloTCoMKgYMKgXuKVoSLCoMKgwqDCoMKgwq
-    DCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoArCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoM
-    KgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg4paMxpJqXeKVl8KgXMKg4pWRZ+KVmmDCoMKg4paMwqAuwqDCoOKWk0zCoOKVkeKWkDjiloDiloDiloDilpPilp
-    FewqDCoMKgwqDilIBewqDCoMKgwqDCoMKgLCzCv+KVkCJXwqDCoMKgwqDCoMKgwqAKwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoM
-    KgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoOKWjMOHwqDCoOKWkXbCoOKUlMKgwqDCoMKgwqDCoMKg4pWZ4pWd4paS4p
-    aE4paA4pSA4pSs4pWr4pWRwqBE4paS4paE4pWQ4pWp4pWcwqrilabilozilZvCoMKgwqDCoMKgwqDiiJoiJ17ilIDilZPilZtNwqDCoMKgwqDCoMKgwqAKwq
-    DCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoOKWkO
-    KWkMKgwqBdwqDilJDCoMKgLCwswqDCoMKgwqDCoMKg4pWZ4pWQz4bilpDiloTilpNA4pWs4paTw5Es4pSALCPilZ3ilaniloTiloTCoMKgLOKVm8KgwqDCoO
-    KIqVvCoFvCoE3CoMKgwqDCoMKgwqDCoArCoMKgwqDCoMKgwqDCoMKgICAgICAgICAgIMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwq
-    DCoMKgwqDCoMKgwqAsa+KWhMKgwqBgLC3iloRRKn7DpizCoMKg4pWZ4paA4paA4paT4paT4pWj4pWp4pWs4paA4pWs4paT4paM4pWr4pWr4paTV8Kg4pSM4p
-    WmcOKVrOKWgOKVqcOf4paEQMKgwqBbwqDilZnilpDCoMKgwqDCoMKgwqDCoMKgCsKgwqDCoMKgwqDCoMKgICAgICAgICAgIMKgwqDCoMKgwqDCoMKgwqDCoM
-    KgwqDCoMKgwqDCoMKgwqDCoMKgwqAs4oyQcM6p4pWnKmziloTiloQ54pWszqniloDilZniloDilpHilpDiloDilozilaZn4paSJeKWgOKWgOKWk+KWk+KVrO
-    KWkuKVkFzCoCYqz4PiloDilazilazilpPiloziloDDkeKWkOKWhOKInuKVpeKVo+KWkOKWjMKgwqDilZsuwqBNwqDCoMKgwqDCoMKgwqDCoArCoMKgwqDCoM
-    KgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqAs4pWTz4bOqeKInuKVnCLijKB3z4Ql4pWc4paS4pWiLOKVnOKVo+
-    KWjOKWk+KWjOKWk+KWgOKWgOKWk1TilZlUIuKVqOKVrOKWgOKWk+KWk+KWk+KWk00uzpPCoMKg4pWZ4pWQVy4swqDilZkkwqDiloDiloDiloDOkyJN4paTLy
-    xXIsKgwqDCoMKgwqDCoMKgwqDCoMKgCsKgwqDCoMKgwqDCoMKgwqDCoCAgICAgICAgICAgIMKgwqAs4pWT4pWkJMOR4pWiIuKWgHfilZBTUOKVqEnilZNn4p
-    aE4pWj4pWs4paA4pWs4pWgXuKVmOKWgOKWjOKVnFddwqDilZriloDilpDijKDiloTCoF0iJ13iloxgdMKgwqDCoMKgwqDilJDCoOKVmeKWjOKVp+KWhOKWjC
-    TilpPilojilpPOk8Kg4paE4pWpL8KgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgCsKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoM
-    Kg4pWp4pWs4paA4pWXcMOi4pWjKmDCoMKgwqAnYOKVqOKWgOKWhOKVrOKVo+KVouKVmuKVouKVoOKVneKVqeKMoD3ilZDilozCoMKgwqDilZnilpPiloTilp
-    LGkuKWhOKVk+KWhOKWk+KWhOKWgOKWkE7CoMKgwqDCoMKgLMOFZ2filoDilazilZ3iloTiloDijKBVQ+KWkFTCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoM
-    KgCsKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg4pWp4paI4paM4pWs4pWTKiLCoMKgwqDCoMKgwqA84omI4paSMuKVmyLijK
-    B34pWQXmAs4oyQXiIiV8KgwqDCoF7ilZTilazilpPiloziloTilozilozilpLCoMKgwqDilZnilZbilZM9a+KVo+KWk8OR4pWm4pWgUeKVrOKWiOKWiOKImu
-    KVkUDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoArCoMKgwqAgICAgICAgIMKgwqDCoMKgwqDCoMKgwqDCoMKg4paQVeKWk+KWiOKVoOKVoioqXi
-    ws4oyQ4pSAIiwu4pWQXmAsd+KVkCJgwqDCoMKgwqDCoMKgIuKVpk3ilalQIuKVmuKWjOKWgCTilaniloTiloTiloTilJDiiJ7CoMKgwqDCoOKVk+KVo14s4p
-    WR4paI4paITSziloTiloTiloAiwqDCoMKgwqDCoMKgwqAKwqDCoMKgICAgICAgICAgwqDCoMKgwqDCoMKgwqDCoMKgwqAqV+KVkeKWiOKWhMOxw4csd8KyQ2
-    DilZPilZQmKiJgwqDCoMKgwqAu4pSAJ2AswqDCoMKgwqDCoH7ilanilpPilown4oyg4paQ4oipwqDilpDiloTilafilZDCoMKgwqDilZjiloTilpPiloDilo
-    DilZPiladU4pWdwqDilaxV4paEwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqAKwqDCoMKgICAgICAgICAgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoM
-    Kg4pWZ4pWpL+KWgOKWjCTijJDilZAiYMKgwqDCoMKgwqDCq+KUgCzilZbilZNe4pSUwqDCoMKgwqDCoMKgwqDiloziloTilabCoMKgXCzilaXijJDijJDCoE
-    7CoMKgwqDCoMKgwqDCoMKg4paQ4paAIuKWgOKWgMKgJ+KWgOKVmMKg4pWfwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgCsKgwqDCoMKgwqDCoMKgwqDCoMKgwq
-    DCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqAs4pWbwqDCoMKgwq
-    DCoOKVk+KWhMKgwqDilaDCoH7CoMKgwqDCoMKgwqDCoMKg4paE4paMwqDCoMKgwqDCoOKVo+KVn+KVo8On4paQwqDCoMKgCsKgwqDCoMKgwqDCoMKgwqDCoM
-    KgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqAu4pWTL8KgLMKgwqDCoCzilZRUYMKgwqDCoCzilZPilo
-    TilpPilpPijKDOk+KVmeKVrOKVmeKVpcaSwqDCoMKgwqDCoMKg4pWU4paTwqDCoMKgwqDCoGvilZzilanilojilozilozCoMKgwqDCoMKgwqDCoArCoMKgwq
-    DCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoOKUgM6T4pWcImDCoCzCoMKgwqAsNOKWgOKVo1
-    zCoMKg4pWT4paT4paT4paA4pWc4oygYMKgwqDCoMKg4paEYEXCoMKgwqDCoMKgwqDilojiloziloTiloDiloziloTCoEBd4paI4paTJy53wqDCoMKgwqDCoM
-    KgwqDCoMKgwqDCoMKgwqDCoMKgCsKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwq
-    DCoMKgwqDCoMKgwqAs4oyQKuKVneKVo+KWkeKWjOKWgCIi4paQ4paA4oyQwqAswqDCoMKgwqDiiKnCoOKWjMKg4pWdwqDCoMKgwqDCoF1N4paQ4paMJiXila
-    LilazDh+KVmeKUlMKgwr8i4pWRwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgCsKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwq
-    DCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgLOKVkCLCoMKgwqDCoMKgwqBV4paQW8Kg4pScwqDCoMKgwqzCoFfCoMKgwqDilZNn4paQ4paMKs
-    KsLsKgwqDCoCLCoMOGwqDCoMKgIuKWgF3ilZlgwqDCoMKg4pWZV8KgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqAKwqDCoMKgwqDCoMKgwqDCoMKgwqDCoM
-    KgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoEDijJDCoMKgcsKgwqDCoOKUjFzCoF3ilaviloziloTilazilZfilZPilZ
-    DDh+KVmeKVomDCoMKgwqDCoGDCoOKVmeKWk+KWiOKWiOKWhOKWhOKVm+KWhMKgwqDCoMKgwqDilaBVwqDCoMKgXV1b4paMwqDCoMKgwqDCoMKgwqDCoMKgwq
-    DCoMKgwqDCoArCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg4paM4paTUH7Cqk
-    tgwqDCoOKVmcKg4paE4paI4paMwqDilZDCoOKWkOKWhOKWhOKWhOKWhOKWhOKWhOKWhOKWhOKWk+KWiOKWiOKWiOKWiOKWiOKWiOKWgOKVoOKVo+KVnyRNwq
-    BdW2rilaPilZHilZXCoEDDqcOR4pWc4pWoIl7ijIJMTExMLEzCoMKgwqDCoArCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoM
-    KgwqDCoMKgwqDCoMKgwqBU4pWZ4paA4paA4paA4paA4paAVFRUVFQiIiLilZniloDiloDiloDiiJ4sd+KWgOKWgOKWgOKWgOKWgOKWgOKVmeKVmeKVmeKVme
-    KVmeKVmeKMoOKWk+KWk+KVkCLilanilazilpPilZnDkSJR4paQw4cqwqDilZrilpLilIBgKuKVpuKWhOKWhOKWiOKWiOKWiOKWiOKWiOKWiOKWgOKMoMKgwq
-    DCoMKgCsKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoM
-    KgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoCzilZPiloTiloTiloTiloTiloRR4paQ4paT4paMLCzilZPiloTiloTiloTilpPilp
-    PiloDiloDiloDiloDiloDiloDijKDijKDijKDCoMKg'
+    Write-Host '
+    '
+    $b = 'ICAgICDilojilojilojilZcgICDilojilojilojilZfilojilojilZcgICDilojilojilZfilojilojilZcgI
+    CAgIOKWiOKWiOKWiOKWiOKWiOKWiOKWiOKVl+KWiOKWiOKWiOKVlyAgIOKWiOKWiOKVl+KWiOKWiOKWiOKWiOKWiOKW
+    iOKWiOKVlwogICAgIOKWiOKWiOKWiOKWiOKVlyDilojilojilojilojilZHilZrilojilojilZcg4paI4paI4pWU4pW
+    d4paI4paI4pWRICAgICDilojilojilZTilZDilZDilZDilZDilZ3ilojilojilojilojilZcgIOKWiOKWiOKVkeKWiO
+    KWiOKVlOKVkOKVkOKVkOKVkOKVnQogICAgIOKWiOKWiOKVlOKWiOKWiOKWiOKWiOKVlOKWiOKWiOKVkSDilZrilojil
+    ojilojilojilZTilZ0g4paI4paI4pWRICAgICDilojilojilojilojilojilZcgIOKWiOKWiOKVlOKWiOKWiOKVlyDi
+    lojilojilZHilojilojilojilojilojilZcgCiAgICAg4paI4paI4pWR4pWa4paI4paI4pWU4pWd4paI4paI4pWRICD
+    ilZrilojilojilZTilZ0gIOKWiOKWiOKVkSAgICAg4paI4paI4pWU4pWQ4pWQ4pWdICDilojilojilZHilZrilojilo
+    jilZfilojilojilZHilojilojilZTilZDilZDilZ0gCiAgICAg4paI4paI4pWRIOKVmuKVkOKVnSDilojilojilZEgI
+    CDilojilojilZEgICDilojilojilojilojilojilojilojilZfilojilojilojilojilojilojilojilZfilojiloji
+    lZEg4pWa4paI4paI4paI4paI4pWR4paI4paI4paI4paI4paI4paI4paI4pWXCiAgICAg4pWa4pWQ4pWdICAgICDilZr
+    ilZDilZ0gICDilZrilZDilZ0gICDilZrilZDilZDilZDilZDilZDilZDilZ3ilZrilZDilZDilZDilZDilZDilZDilZ
+    3ilZrilZDilZ0gIOKVmuKVkOKVkOKVkOKVneKVmuKVkOKVkOKVkOKVkOKVkOKVkOKVnQ=='
     getThis $b
-    ''
     Write-Host $vf19_READ
-    Write-Host -f YELLOW "    ==============================================================================="
-}
-
-function splashPage1b(){
-    Write-Host -f YELLOW "               VB-6  KÖNIG MONSTER (Macross VFX-2/Macross Frontier)"
-    Write-Host -f YELLOW "     Scans accessible shares to generate a list of filepaths for investigation/hunting"
-    Write-Host -f YELLOW "    ===============================================================================
+    ''
+    Write-Host "          ==== Mylene's Recent Accounts Search ====
     "
 }
 
-
-
-## If no default paths have been configured for MACROSS, get it manually
-function getValidPath(){
-    Write-Host -f GREEN ' Enter a valid filepath to recursively search, or "c" to cancel:'
-    Write-Host -f GREEN '  > ' -NoNewline;
-    $z = Read-Host
-    if($z -eq 'c'){
-        Remove-Variable dyrl_kon_* -Scope Global
-        Exit
-    }
-    else{
-        Return $z
-    }
-}
-
-
-## Set the fileshare locations
-function splitShares($1){
-    if(getThis $vf19_MPOD[$1]){
-        Return $Global:vf19_READ
-    }
-    else{
-        Return $false
-    }
-}
-
-
-
-
-## Stale reports
-$dyrl_kon_STALE = "$vf19_DEFAULTPATH\target-pkgs\*.txt"
-
-## Input validation
-$dyrl_kon_BROAD = [regex]"[a-z]*\-*[0-9]{1,2}"
-$dyrl_kon_SINGLE = [regex]"[a-z]*[0-9]*"
-$dyrl_kon_ADMINUSR = [regex]"^admin\.[a-z][a-z]*[0-9]*"  ## MPOD ALERT!! Your admin users may have a different designation than 'admin'
-$dyrl_kon_ONLYFC = [regex]"[a-z0-9._-]*"
-$dyrl_kon_ONLYLC = [regex]"[a-z,]*"
-$dyrl_kon_ERRMSG = "  ERROR! Unsupported character in your filename!"
-
-
-
-
-<#
-    
-    MPOD ALERT!!
-    The below "splitShares" instructions are placeholders:
-    You can have as many or as few filepaths as you need.
-    Encode them as base64 strings, and add a three-letter
-    ID to the front of the encoded string (for example,
-    'fdr' and 'nxd' below), and add them to the opening
-    comment in extras.ps1 separated by '@@@'.
-
-    The calls for "splitShares" are using the three-letter
-    ID as the index for where your base64 string is located
-    inside the $vf19_MPOD hashtable. 
-
-    PROCESS:
-
-    MACROSS starts up, reads the opening comments from extras.ps1,
-    splits the comment up into separate strings using '@@@' as the
-    delimiter, and stores each value in $vf19_MPOD, using the first
-    three characters of each string as the index.
-
-    YOUR script can decode those filepaths (or whatever value you
-    stored in extras.ps1) by using the getThis function:
-
-        getThis $vf19_MPOD['abc']
-
-    where 'abc' is the index you added to your encoded string. The
-    plaintext value is returned as $vf19_READ, which you can then use
-    however you need to.
-
-
-#>
-#splitShares 'fdr'
-$dyrl_kon_FIRSTDRIVE = splitShares 'fdr'
-#splitShares 'nxd'
-$dyrl_kon_NEXTDRIVE = splitShares 'nxd'
-#splitShares 'thd'
-$dyrl_kon_THIRDDRIVE = splitShares 'thd'
-#splitShares 'fth'
-$dyrl_kon_FOURTHDRIVE = splitShares 'fth'
-
-## Enables the main "While" loop
-$dyrl_kon_LOOP = $true
-
-###################
-##  MAIN
-###################
-while( $dyrl_kon_LOOP ){
-    
-    # Tables/Arrays
-    $dyrl_kon_FEXT0 = @()          ## Collects multiple extensions entered by user
-    $dyrl_kon_FEXT1 = @()          ## FEXT0 contents formatted with wildcards
-    [int[]]$dyrl_kon_CT = $null    ## number of items in FEXT1
-
-
-    # Start clean when user chooses to perform multiple searches
-    $Global:RESULTFILE = $null     ## write results to this file
-    $dyrl_kon_NORE = $null         ## user's search type -- filename vs. extension vs. alt data stream
-    $dyrl_kon_WILD = $null         ## user's search query with wildcard
-    $dyrl_kon_i = $null            ## for-loop variables
-    $dyrl_kon_UNAME = $null        ## username OR name of top-level dir
-    $dyrl_kon_Z = $null            ## user response, typically 'y' or 'n'
-
-    $dyrl_kon_ADS = $false         ## default alt-data stream choice, forces user to switch to 'true'
-
-
-
-
-    #############
-    # Check if KÖNIG is being auto-queried by another tool:
-    #############
-    if( $CALLER -or $dyrl_kon_COMMANDER -or $dyrl_kon_GENERAL ){
-
-        $dyrl_kon_CLIENT = $CALLER         ## $CALLER gets replaced below if necessary
-        $dyrl_kon_WILD = $PROTOCULTURE     ## This is the default search term; will change below if necessary
-        $dyrl_kon_LOOP = $false            ## Only perform one search
-
-
-        ## Account for python callers
-        if( $dyrl_kon_GENERAL ){
-            $dyrl_kon_CLIENT = $dyrl_kon_GENERAL
-            $dyrl_kon_WILD = '*' + $dyrl_kon_ORDERS + '*'
-        }
-        elseif( $dyrl_kon_COMMANDER ){
-            if( $CALLER ){
-
-                if($dyrl_kon_COMMANDER -ne $CALLER){
-
-                    ## $external_NM may already be in use by another script; use pyCALLER's search words instead
-                    if( $dyrl_kon_ORDERS -and ($dyrl_kon_ORDERS -ne $external_NM) ){
-                        $dyrl_kon_WILD = $dyrl_kon_ORDERS
-                    }
-
-                    ## Ignore $CALLER, KÖNIG is being queried by $pyCALLER
-                    $dyrl_kon_CLIENT = $dyrl_kon_COMMANDER
-
-                }
-
-            }
-            else{
-                $dyrl_kon_CLIENT = $dyrl_kon_COMMANDER
-                $dyrl_kon_WILD = '*' + $dyrl_kon_ORDERS + '*'
-            }
-
-        }
-
-
-        ## MPOD ALERT!!
-        ## The FPATH variable here gets set based on username. You need to configure MACROSS' extras.ps1 file so that
-        ## it knows where your roaming profile locations are at! (See the MACROSS readme about encoding and storing
-        ## default filepaths)
-
-        elseif( $CALLER -eq 'MYLENE' ){         ## MYLENE will forward lists of usernames to search their profiles
-            ''
-            $dyrl_kon_UNAME = $PROTOCULTURE
-            $dyrl_kon_WILD = '*'                ## MYLENE wants to see ALL files in newly-created user accounts
-            if( $dyrl_kon_UNAME -Match $dyrl_kon_ADMINUSR ){
-                $dyrl_kon_FPATH = $dyrl_kon_FOURTHDRIVE
-            }
-            else{
-                while( ! (Test-Path -Path $dyrl_kon_FPATH)){
-                    $dyrl_kon_FPATH = getValidPath
-                }
-            }
-        }
-
-
-        cls
-        splashPage1b
-        Write-Host -f GREEN " $dyrl_kon_CLIENT is tasking KÖNIG to target " -NoNewLine;
-        Write-Host -f YELLOW "$dyrl_kon_WILD"
-        $GOBACK = $true
-        #$dyrl_kon_WILD = "*"
-        $dyrl_kon_SM = "1KB"
-        $dyrl_kon_LG = "100GB"
-        $dyrl_kon_FDESC = "0_to_100GB"
-
-        ## Name the output file same as the search term, but add "-search"
-        ## -Python scripts must pass a write-location as a fourth param if they want a text file output.
-        ## -MACROSS powershell scripts already use $vf_19_DEFAULTPATH, so they're good to go.
-        if( $dyrl_kon_HOMEBASE ){
-            $vf19_DEFAULTPATH = $dyrl_kon_HOMEBASE
-        }
-        if( $vf19_DEFAULTPATH ){
-            $dyrl_kon_NEWOUT = $dyrl_kon_WILD -replace "\*" -replace " .*$" -replace "$",'-search'
-        }
-
-        <#
-            MPOD ALERT!!
-            The below "if/else" statement is a placeholder!  You need to set these values based
-            on your network share locations. See the section above where "splitShares"
-            resides.
-
-            In the example below, KONIG is setting the search location (a bogus value) based on whether
-            the value passed in (DIRECT) looks like an adminsitrator's username, which probably
-            means it should search a fileshare containing admin profiles. You need to modify this
-            to suit your needs.
-
-        #>
-        ## Use the passed-in directory to search, if one was provided
-        if( $dyrl_kon_AO ){
-            if( $dyrl_kon_AO -Match $dyrl_kon_ADMINUSR ){
-                $dyrl_kon_FPATH = "$dyrl_kon_FOURTHDRIVE\$dyrl_kon_AO"
-            }
-            else{
-                $dyrl_kon_FPATH = $dyrl_kon_AO
-            }
-        }
-        ## Ask the user to specify the search location
-        else{
-            while( ! $dyrl_kon_FPATH ){
-                $dyrl_kon_FPATH = getValidPath
-            }
-        }
-        
-        slp 2
-        
-    }
-
-
-    ########################
-    ## If KÖNIG was launched by itself, it needs user input
-    ########################
-    while( ! $dyrl_kon_FPATH ){
-
-        if( (Get-ChildItem -Path $dyrl_kon_STALE).count -gt 0 ){
-            cls
-            houseKeeping $dyrl_kon_STALE 'KONIG'
-        }
-
-        splashPage1a
-        splashPage1b
-
-
-        ## MPOD ALERT!!
-        ## If you have not set default paths via the MACROSS method in extras.ps1, you can only
-        ##  perform manually-entered filepath searches
-        if( $dyrl_kon_FIRSTDRIVE -eq $false){
-            $dyrl_kon_FPATH = getValidPath
-        }
-        else{
-
-        <#
-            MPOD ALERT!!  Modify the below text to match the network shares you are searching.
-                          Until set those values, you will be stuck manually entering filepaths!!
-        #>
-
-        ''
-        Write-Host '    1 ' -NoNewline;
-            Write-Host -f GREEN '- Search by usernames'
-        Write-Host '    2 ' -NoNewline;
-            Write-Host -f GREEN '- Second share'
-        Write-Host '    3 ' -NoNewline;
-            Write-Host -f GREEN '- First share'
-        Write-Host '
+function noFind($1){
+    Write-Host -f YELLOW " $1" -NoNewline;
+        Write-Host -f GREEN ' not found! Hit ENTER.
         '
+    Read-Host
+}
 
-        while($dyrl_kon_Z -notMatch "([0-9]|q)"){
-            Write-Host -f GREEN ' Please choose one of the options above, or ' -NoNewline;
-            Write-Host -f YELLOW 'q' -NoNewline;
-            Write-Host -f GREEN ' to quit:  ' -NoNewline;
-            $dyrl_kon_Z = Read-Host
+
+## GERWALK plugin function
+if( $vf19_C8 ){
+    function uActivity($1){  ## Send a username to Carbon Black
+        $Global:PROTOCULTURE = $1
+        $activityu = collab 'GERWALK.ps1' 'MYLENE' 'usrlkup'
+
+
+        ## GERWALK randomly sends a useless header with the max results,
+        ## need to ignore when it does this
+        if(($activityu).count -gt 2){
+            $r = $($activityu[1] | ConvertFrom-Json).results
+        }
+        else{
+            $r = $($activityu[0] | ConvertFrom-Json).results
         }
 
-        if( $dyrl_kon_Z -eq 'q' ){
-            Remove-Variable vf19_OPT1
-            Remove-Variable dyrl_kon* -Scope Global
+
+        $ct = 0
+        $total = ($r).count
+
+        screenResults "   Recent activity for user $1 (unsorted; system processes omitted)"
+        screenResults 'derpHOSTNAME' 'derpACTIVITY' 'derpDATE'
+
+        while($ct -lt $total){
+            if("$(($r.process_name[$ct]))" -notIn $l){
+                [string]$cmdl = $($r.cmdline[$ct])
+                screenResults "$(($r.hostname[$ct]))" "$(($r.process_name[$ct]))" "$(($r.start[$ct]))"
+            }
+            $ct++
+        }
+
+        screenResults 'endr'
+        Write-Host -f GREEN '
+        Hit ENTER to continue.
+        '
+        Read-Host
+        Remove-Variable -Force activityu
+    }
+
+    function hActivity($1){  ## Send a hostname to Carbon Black
+        $Global:PROTOCULTURE = $1
+
+        if( ! $activityh ){
+            $activityh = collab 'GERWALK.ps1' 'MYLENE' 'hlkup'
+        }
+
+        ## GERWALK randomly sends a useless header with the max results,
+        ## need to ignore when it does this
+        if(($activityh).count -gt 2){
+            $f = $($activityh[1] | ConvertFrom-Json).facets   # CB results
+            $l = $activityh[2]                                # Noisy proc lists
+        }
+        else{
+            $f = $($activityh[0] | ConvertFrom-Json).facets
+            $l = $activityh[1]
+        }
+
+
+        while( $z -ne '' ){
+            screenResults "           Activity on host $1 ($type)"
+            screenResults 'derpACCOUNTS' 'derpRUNNING PROCESSES' 'derpCB GROUP'
+            screenResults "$($f.username_full.name)" "$($f.process_name.name)" "$($f.group.name)"
+            screenResults "Last seen: $(($f.start.name | Sort -Descending)[0])"
+            screenResults 'endr'
+            ''
+            Write-Host -f GREEN ' Type a username to view their recent activity, or hit ENTER to continue.'
+            Write-Host -f GREEN ' Username: ' -NoNewline;
+            $z = Read-Host
+            if( $z -ne ''){
+                if($z -notLike '*\*'){
+                    $z = 'ENT\' + $z  ## try to be helpful
+                }
+                if($z -in $($f.username_full.name)){
+                    $z = $z -replace "^.*\\"
+                    uActivity $z
+                }
+                elseif($z -Match "\w"){   ## Might be another domain other than "ENT"
+                    ''
+                    Write-Host -f CYAN " That name isn't listed. Try adding the domain.
+                    "
+                }
+            }
+        }
+    }
+
+}
+
+
+## Make the "memberOf" field actually readable
+## $1 is the GPO object (memberOf), $2 is the user's search string (optional)
+function listGroups($1,$2){
+    if($2){
+        $1  | 
+            Select-String -Pattern $2 | 
+            Sort -Unique | 
+            %{
+                $cat = detailGroups $_
+                $grp = $($_ -replace "..=" -replace ",.*$") + ' (' + $cat + ')'
+                Write-Host -f YELLOW "   $grp"
+            }
+    }
+    else{
+        $1 | 
+            Sort -Unique |
+            %{
+                $cat = detailGroups $_
+                $grp = $($_ -replace "..=" -replace ",.*$") + ' (' + $cat + ')'
+                Write-Host -f YELLOW "   $grp"
+            }
+    }
+}
+
+
+
+## Select description of the security group
+## right now only looking at category, can grab other
+## objects later.
+## $1 is the Group name (must be exact)
+function detailGroups($1){
+    $a = $(Get-ADGroup -Filter * -Properties * | 
+        where{$_.name -eq "$1"} |
+        Select groupCategory)
+
+    Return $a
+}
+
+
+
+## Write results to text file on user's desktop
+## If $2 is sent, it will be written to file first (should usually be a username or empty space)
+function w2f($1,$2){
+    if($2){
+        $2 | Out-File -Filepath "$vf19_DEFAULTPATH\NewUserSearches\$dyrl_myl_OUTNAME" -Append
+    }
+    $1 | Out-File -Filepath "$vf19_DEFAULTPATH\NewUserSearches\$dyrl_myl_OUTNAME" -Append
+}
+
+
+
+## Only load AD functions if user is admin
+if( ! $vf19_NOPE ){
+
+    function searchDesc(){
+        
+        function listSearchR(){
+            $index = 1
+            $Script:list = @()
+            $getad | %{
+                $a = $_.samAccountName
+                $c = $_.whenCreated
+                if($obj -eq 1){
+                    $d = $_.Name
+                }
+                else{
+                    $d = $_.Description
+                }
+                $Script:list += $a
+                $item = [string]$index + '. ' + $a
+                $item = $item -replace "\s+$"
+                $cr = $c -replace "\s+$"
+                $index++
+                if($obj -eq 2){
+                    screenResults $item $cr $d
+                }
+                else{
+                    screenResults $item $d
+                }
+            }
+            screenResults 'endr'
+            ''
+        }
+        ''
+        while($Z -notMatch "(d|o|c)"){
+            Write-Host -f GREEN ' Do you want to search by (' -NoNewline;
+            Write-Host -f YELLOW 'd' -NoNewline;
+            Write-Host -f GREEN ')escription or (' -NoNewline;
+            Write-Host -f YELLOW 'o' -NoNewline;
+            Write-Host -f GREEN ')ffice symbol/JDIR (type "' -NoNewline;
+            Write-Host -f YELLOW 'c' -NoNewline;
+            Write-Host -f GREEN '" to cancel)?  ' -NoNewline;
+            $Z = Read-Host
+        }
+
+        if($Z -eq 'c'){
+            Remove-Variable -Force list -Scope Global
             Return
         }
-        if( $dyrl_kon_Z -Match "[2-3]{1}" ){
-            if( $dyrl_kon_Z -eq 2 ){
-                $dyrl_kon_FPATH = $dyrl_kon_NEXTDRIVE         ## MPOD ALERT!! 'NEXTDRIVE' is set by 'splitShares' above
-                $dyrl_kon_Z = $null
-            }
-            elseif( $dyrl_kon_Z -eq 3 ){
-                $dyrl_kon_FPATH = $dyrl_kon_FIRSTDRIVE        ## MPOD ALERT!! 'FIRSTDRIVE' is set by 'splitShares' above
-                $dyrl_kon_Z = $null
-            }
 
-            while( $dyrl_kon_UNAME -notMatch "^[a-zA-Z0-9].*" ){
-                ''
-                Write-Host -f GREEN ' Enter ' -NoNewline;
-                Write-Host -f YELLOW 'ls' -NoNewline;
-                Write-Host -f GREEN ' to get a quick root + 1 directory listing, OR enter a full/partial'
-                Write-Host -f GREEN ' directory name (at least two letters/numbers), or a captial ' -NoNewline;
-                Write-Host -f YELLOW 'C' -NoNewline;
-                Write-Host -f GREEN ' to cancel:  ' -NoNewline;
-                $dyrl_kon_UNAME = Read-Host
+        Write-Host -f GREEN ' Enter your keyword(s): ' -NoNewline;
+        $ZZ = Read-Host
 
-                if( $dyrl_kon_UNAME -eq 'ls' ){
-                    Get-ChildItem -Path $dyrl_kon_FPATH -Recurse -Directory -Depth 1 |
-                    Foreach-Object{
-                        $nc_list = $_.FullName
-                        Write-Host -f GREEN " $nc_list"
-                    }
+        if($Z -eq 'd'){
+            $obj = 2
+            $getad = Get-ADUser -Filter * -Properties * | where{$_.Description -Like "*$ZZ*"}
+        }
+        elseif($Z -eq 'o'){
+            $obj = 1
+            $getad = Get-ADUser -Filter * -Properties * | where{$_.Description -Like "*$ZZ*"}
+        }
+
+        $ZZ = $null
+        $Z = $null
+
+        if($getad){
+            while($Z -ne ''){
+                if($obj -eq 2){
+                    screenResults 'ACCOUNT' '  CREATED' '  DESCRIPTION'
+                }
+                else{
+                    screenResults 'ACCOUNT' '   OFFICE SYMBOL/JDIR'
+                }
+                listSearchR
+                Write-Host -f GREEN ' Select a number for full details, or ENTER to skip: ' -NoNewline;
+                $Z = Read-Host
+                if($Z -Match "\d+"){
+                    $Z = $Z - 1
+                    $u = $list[$Z]
+                    $getad | where{$_.samAccountName -eq "$u"}
                     ''
-                    Write-Host -f GREEN "  Hit ENTER to continue.
-                    "
+                    Write-Host -f GREEN ' Hit ENTER to continue.
+                    '
                     Read-Host
-                    $dyrl_kon_UNAME = $null
-                }
-                elseif( $dyrl_kon_UNAME | Select-String -CaseSensitive "^C$" ){
-                    Remove-Variable nc_* -Scope Global
-                    Exit
                 }
             }
+            Remove-Variable -Force list -Scope Global
         }
         else{
-            cls
-            splashPage1a
-            splashPage1b
-
-            
-            Write-Host -f GREEN " Enter " -NoNewLine;
-            Write-Host -f CYAN "admin.<letter> " -NoNewLine;        ## MPOD ALERT!!  Your admins may not use an 'admin.name' designation
-            Write-Host -f GREEN "to search admin user shares.
-            "
-            Write-Host -f GREEN " If you only enter 'a', KÖNIG will search all 'a' users AND any admin users it finds.
-            "
-            while( $dyrl_kon_UNAME -notMatch "^[a-zA-Z].*" ){
-                Write-Host -f GREEN ' Enter a username, partial username, or ' -NoNewline;
-                Write-Host -f YELLOW 'BRRT' -NoNewline;
-                Write-Host -f GREEN ' to search all the things.
-                '
-                Write-Host -f GREEN ' Enter ' -NoNewline;
-                Write-Host -f YELLOW 'Q' -NoNewline;
-                Write-Host -f GREEN ' (MUST CAPITALIZE IT!) to quit.
-                '
-                Write-Host -f GREEN '   > ' -NoNewline;
-                $dyrl_kon_UNAME = Read-Host
-            }
-            
-
-            if( $dyrl_kon_UNAME | Select-String -CaseSensitive 'BRRT' ){
-		        Write-Host " Okay, searching EVERYBODY'S fileshare...
-		        "
-                $dyrl_kon_UNAME = '*'
-                $dyrl_kon_FPATH = $dyrl_kon_THIRDDRIVE                                  ## MPOD ALERT!!
-            }
-            elseif( $dyrl_kon_UNAME | Select-String -CaseSensitive 'Q' ){
-                Remove-Variable vf19_OPT1
-                Remove-Variable dyrl_kon* -Scope Global
-                Return
-            }
-            elseif($dyrl_kon_UNAME -Match $dyrl_kon_ADMINUSR){                           ## MPOD ALERT!!
-                $dyrl_kon_FPATH = $dyrl_kon_FOURTHDRIVE
-            }
-            elseif(($dyrl_kon_UNAME -Match $dyrl_kon_SINGLE)  -or  ($dyrl_kon_UNAME -Match $dyrl_kon_BROAD)){        ## MPOD ALERT!!
-                $dyrl_kon_FPATH = $dyrl_kon_THIRDDRIVE
-            }
-        }
-
-
-        }  ### Closes the if($NOTCONFIGURED)...else statement
-
-
-        #############
-        # Specify search for filenames or extensions & make sure only
-        # valid chars are used
-        #############
-
-        $dyrl_kon_HOLDINGPATTERN = $true
-        while( $dyrl_kon_HOLDINGPATTERN ){
-            ''
-            Write-Host -f GREEN " Enter a filename or partial filename to search (" -NoNewline;
-            Write-Host -f YELLOW "*" -NoNewline;
-            Write-Host -f GREEN " wildcard is okay), or " -NoNewLine;
-            Write-Host -f YELLOW "ext " -NoNewLine;
-            Write-Host -f GREEN "to search"
-            Write-Host -f GREEN " by file extension instead. If you want to search for hidden ADS files, enter" -NoNewline;
-            Write-Host -f YELLOW " altds" -NoNewline;
-            Write-Host -f GREEN " to"
-            Write-Host -f GREEN " only report on alternate data streams:  " -NoNewline;
-                    $dyrl_kon_NORE = Read-Host
-            if( $dyrl_kon_NORE -eq "ext" ){
-                ''
-                Write-Host -f GREEN " Specify the file extension(s) you need to find. If more than one, separate them with"
-                Write-Host -f GREEN " a comma (no spaces).  " -NoNewline;
-                    $dyrl_kon_FEXT0 = Read-Host
-
-                if( $dyrl_kon_FEXT0 -Match $dyrl_kon_ONLYLC ){
-                    Remove-Variable -Force dyrl_kon_HOLDINGPATTERN
-                }
-                else{
-                    Write-Host -f CYAN $dyrl_kon_ERRMSG
-                }
-
-            }
-            elseif( $dyrl_kon_NORE -eq 'altds' ){
-                $dyrl_kon_WILD = "*"
-                $dyrl_kon_ADS = $true                 ## Skip writing any results that are not alt data streams
-                Remove-Variable -Force dyrl_kon_HOLDINGPATTERN 
-            }
-            elseif( $dyrl_kon_NORE -Match $dyrl_kon_ONLYFC ){
-                $dyrl_kon_WILD = "*$dyrl_kon_NORE*"
-                Remove-Variable -Force dyrl_kon_HOLDINGPATTERN
-            }
-            else{
-                Write-Host -f CYAN $dyrl_kon_ERRMSG
-            }
-
-            
-            ''
-            Write-Host -f GREEN " If you want to save a txt output, enter a new filename. A file is required if you want to send"
-            Write-Host -f GREEN " search results to another tool for parsing. If not, hit ENTER to skip:  " -NoNewLine;
-            $dyrl_kon_NEWOUT = Read-Host
-
-        }
-
-        #############
-        # If user entered multiple items, check them against the input validators,
-        # create an array to store each item then add the wildcards
-        #############
-        if( $dyrl_kon_FEXT0 -Match $dyrl_kon_ONLYLC ){
-            $dyrl_kon_FEXT0 = $dyrl_kon_FEXT0.Split(",")
-            $dyrl_kon_CT = $dyrl_kon_FEXT0.count
-
-            if( $dyrl_kon_CT -ge 1 ){
-                foreach($dyrl_kon_i in $dyrl_kon_FEXT0){
-                    $dyrl_kon_FEXT1 += "*.$dyrl_kon_i"
-                }
-                $dyrl_kon_WILD = $dyrl_kon_FEXT1.Split(' ')
-            }
-            else{
-                $dyrl_kon_WILD = $dyrl_kon_FEXT0
-            }
-        }
-
-
-
-
-        #############
-        # Filter collection by filesize to help narrow the size of lists
-        #############
-        ''
-        Write-Host -f GREEN " Adjusting KÖNIG's loadout selector... (you can filter by filesize here)"
-        Write-Host "    1. " -NoNewLine;
-            Write-Host -f GREEN "Autocannons    (files between 0 and 3MB)"
-        Write-Host "    2. " -NoNewLine;
-            Write-Host -f GREEN "Micro-missles  (files between 3 and 6MB)"
-        Write-Host "    3. " -NoNewLine;
-            Write-Host -f GREEN "Cluster Bombs  (files between 6 and 10MB)"
-        Write-Host "    4. " -NoNewLine;
-            Write-Host -f GREEN "Heat-Seekers   (files between 0 and 10MB)"
-        Write-Host "    5. " -NoNewLine;
-            Write-Host -f GREEN "Rail Guns      (files between 10MB and 100MB)
-             "
-        Write-Host -f GREEN " Choose 1, 2, 3, 4, or 5, or press ENTER to go for broke and find all files up to 100 " -NoNewline;
-		    Write-Host -f YELLOW "GB:  " -NoNewLine;
-            $dyrl_kon_SZ1 = Read-Host 
-
-            if( $dyrl_kon_SZ1 -eq 1 ){
-                $dyrl_kon_SM = "0MB"
-                $dyrl_kon_LG = "3MB"
-                $dyrl_kon_FDESC = "0_to_3MB"
-            }
-            elseif( $dyrl_kon_SZ1 -eq 2 ){
-                $dyrl_kon_SM = "3MB"
-                $dyrl_kon_LG = "6MB"
-                $dyrl_kon_FDESC = "3_to_6MB"
-            }
-            elseif( $dyrl_kon_SZ1 -eq 3 ){
-                $dyrl_kon_SM = "6MB"
-                $dyrl_kon_LG = "10MB"
-                $dyrl_kon_FDESC = "6_to_10MB"
-            }
-            elseif( $dyrl_kon_SZ1 -eq 4 ){
-                $dyrl_kon_SM = "0MB"
-                $dyrl_kon_LG = "10MB"
-                $dyrl_kon_FDESC = "0_to_10MB"
-            }
-            elseif( $dyrl_kon_SZ1 -eq 5 ){
-                $dyrl_kon_SM = "10MB"
-                $dyrl_kon_LG = "100MB"
-                $dyrl_kon_FDESC = "10MB_to_100MB"
-            }
-            else{
-                $dyrl_kon_SM = "0MB"
-                $dyrl_kon_LG = "100GB"
-                $dyrl_kon_FDESC = "0_to_100GB"
-            }
-
-
-    
-        ''
-        Write-Host -f GREEN ' Searching for ' -NoNewLine;
-        Write-Host -f YELLOW "$dyrl_kon_WILD" -NoNewLine;
-        Write-Host -f GREEN '.'
-        Write-Host -f GREEN ' Please wait while I collect the directories matching your inputs...'
-        Write-Host " ==================================================================
-        "
-        Start-Sleep -Second 2
-
-
-
-    }   # Everything above this line is determined by either user input or an auto-generated file from an associated tool
-
-
-
-    #############
-    # Set default vars for search results output; create txt file that can be exported or shared within MACROSS
-    #############
-    $dyrl_kon_DIREXISTS = Test-Path "$vf19_DEFAULTPATH\target-pkgs\"
-    $dyrl_kon_CTR = 0
-    $Global:dyrl_kon_ADSC = 0
-
-
-    #############
-    # Create output directory
-    #############
-    if( $dyrl_kon_NEWOUT ){
-        if( ! $dyrl_kon_DIREXISTS ){
-            New-Item -Path $vf19_DEFAULTPATH -Name 'target-pkgs' -ItemType directory
-        }
-        $Global:RESULTFILE = "$vf19_DEFAULTPATH\target-pkgs\$dyrl_kon_NEWOUT.txt"
-    }
-
-    if( ! $dyrl_kon_GENERAL ){
-        splashPage1a
-    }
-
-    #########################
-    ## Look for hidden files
-    #########################
-    function secretStash(){
-        $dyrl_kon_ADS1 = Get-Item $_ 
-		$dyrl_kon_ADS2 = Get-Item $_ -Stream * | Where Stream -ne ':$DATA' | Where Stream -ne 'Zone.Identifier'
-        $dyrl_kon_ADSF = $dyrl_kon_ADS2 | Select -ExpandProperty Stream
-        $dyrl_kon_ADSN = $dyrl_kon_ADS1 | Select -ExpandProperty Name
-        $dyrl_kon_ADSP = $dyrl_kon_ADS2 | Select -ExpandProperty PSPath
-        if( $dyrl_kon_ADS ){
-            if( $dyrl_kon_ADS2 ){                                           ## Write to screen if only looking for ADS
-                Write-Host -f YELLOW "  $dyrl_kon_ADSN : $dyrl_kon_ADSF"
-                $dyrl_kon_ADSP | Out-File -FilePath "$RESULTFILE" -Append
-                $dyrl_kon_ADSF | Out-File -FilePath "$RESULTFILE" -Append
-                Add-Content -Path "$RESULTFILE" -Value '--------------------
-                '
-                $Global:dyrl_kon_ADSC++
-                $dyrl_kon_FILEWRITTEN = $true
-            }
-            else{
-                Write-Host "  $dyrl_kon_ADSN" -NoNewline;
-                Write-Host -f GREEN ' - No ADS found...'
-            }
-        }
-        elseif( $dyrl_kon_ADS2 ){
-            Write-Host -f CYAN "  $dyrl_kon_ADSN : $dyrl_kon_ADSF"
-            Add-Content -Path $RESULTFILE -Value 'ALTERNATE DATA STREAM FOUND:'
-            $dyrl_kon_ADSP | Out-File -FilePath "$RESULTFILE" -Append
-            $Global:dyrl_kon_ADSC++
-            $dyrl_kon_FILEWRITTEN = $true
-        }
-    }
-
-
-    <#================================================================
-                                 Run the search and generate a list
-    ================================================================#>
-    $Global:HOWMANY = 0  ## Track search results
-    $dyrl_kon_TRUNCATE = Split-Path -Path "$_" -Leaf -Resolve  ## Format the screen output to omit the filepath
-
-    ## Iterate through matching usernames
-    foreach( $dyrl_kon_DIR0 in Get-ChildItem -Directory $dyrl_kon_FPATH\$dyrl_kon_UNAME* ){
-        $dyrl_kon_DIR1 = Split-Path -Path $dyrl_kon_DIR0 -Leaf -Resolve
-        ''
-        Write-Host -f GREEN '  Now searching ' -NoNewline;
-        Write-Host -f MAGENTA "$dyrl_kon_DIR1" -NoNewline;
-        Write-Host -f GREEN "'s stuff..."
-        slp 1
-
-        ## Recursively search profile directory for specified words/extensions
-        Get-Childitem -Path "$dyrl_kon_DIR0\*" `
-            -Include $dyrl_kon_WILD `
-            -Exclude ._* `
-            -Recurse `
-            -Force |
-            %{
-                if(%{ 
-                    $_.length -gt "$dyrl_kon_SM" -and $_.length -le "$dyrl_kon_LG"
-                })
-
-
-                ## Write each result to the filename created by the user if not focused on alt data streams;
-                ##   will just silently error out if user didn't want a save file 
-                {
-                    if( $dyrl_kon_ADS -ne $true ){
-                        %{$_.FullName} |  
-                        Out-File -FilePath $RESULTFILE -Append
-                        $dyrl_kon_FILEWRITTEN = $true
-                        $dyrl_kon_TRUNCATE = Split-Path -Path "$_" -Leaf -Resolve
-                        $dyrl_kon_CTR++
-                        $Global:HOWMANY++
-                        Write-Host -f MAGENTA "     $dyrl_kon_DIR1" -NoNewline;
-                        Write-Host ":" -NoNewline;
-                        Write-Host -f YELLOW " Match #$dyrl_kon_CTR - $dyrl_kon_TRUNCATE"
-                    }
-                    secretStash $_
-                }
-            }
-    }
-
-    
-    $dyrl_kon_LOOP = $false
-
-}
-
-
-
-
-    <#================================================================
-                                Check if other modules need to load
-    ================================================================#>
-    Write-Host '
-
-    '
-
-    #############
-    ## Give user feedback on how many results they got 
-    #############
-    $dyrl_kon_RESULTFN = Split-Path -Path "$RESULTFILE" -Leaf -Resolve
-
-    if( ($dyrl_kon_CTR -gt 0) -or ($Global:dyrl_kon_ADSC -gt 0) ){
-        $dyrl_kon_LOOP = $false
-        Write-Host "  $HOWMANY " -NoNewLine;
-        Write-Host -f GREEN 'results have been found!'
-        if( $dyrl_kon_RESULTFN ){
-            Write-Host -f GREEN '  Results have been written to ' -NoNewLine;
-            Write-Host -f MAGENTA "$dyrl_kon_RESULTFN " -NoNewLine;
-            Write-Host -f GREEN 'in the ' -NoNewLine;
-            Write-Host -f MAGENTA 'target-pkgs' -NoNewLine;
-            Write-Host -f GREEN ' directory on your Desktop.
+            Write-Host -f CYAN ' Nothing found.
             '
         }
-        Write-Host "  $Global:dyrl_kon_ADSC" -NoNewline;
-        Write-Host -f GREEN ' alternate data streams were found!'
+
+        Write-Host -f GREEN ' Hit ENTER to search descriptions again, or type "c" to cancel: ' -NoNewline;
+        $Z = Read-Host
         
-        while( $dyrl_kon_ZC -ne 'c' ){
-            Write-Host -f GREEN '  Type ' -NoNewline;
-            Write-Host -f YELLOW 'c' -NoNewline;
-            Write-Host -f GREEN ' to continue:  ' -NoNewline;
-            $dyrl_kon_ZC = Read-Host
+        if($Z -eq 'c'){
+            Return
+        }
+        else{
+            Clear-Variable -Force Z,obj,g*
+            splashPage
+            searchDesc
         }
 
-        #############
-        ## Check if tool was run from another module, and send back a KONIG target package
-        #############
-        if( $dyrl_kon_CLIENT ){
-            cls
+    }
 
-            function pyFile($1,$2){
-                $1 | Out-File -FilePath "$vf19_GBIO\konig.eod" -Encoding UTF8 -Append
-                if($2){
-                    $2 | Out-File -FilePath "$vf19_GBIO\konig.eod" -Encoding UTF8 -Append
-                }
+    ## Collect Group Policy details; if $option param is '1', just return
+    ## true or false; if $option is '2', perform an EXACT search; if $option
+    ## is '3', user wants to search by creation date; if $option is null,
+    ## perform a wildcard search
+    function 3gpo($filter,$option){
+        Remove-Variable g*
+        function chooseG(){
+            $gpolist = @()
+            $i = 1
+            $gname | %{
+                $gpolist += $_
             }
-
-			if( $RESULTFILE ){
-                if( $dyrl_kon_GENERAL ){
-                    pyFile $RESULTFILE $HOWMANY
-                    Exit
-                }
-                else{
-				    Return $RESULTFILE,$HOWMANY
-                }
-			}
-			else{
-                if( $dyrl_kon_GENERAL ){
-                    pyFile $HOWMANY
-                    Exit
-                }
-                else{
-				    Return $HOWMANY
-                }
-			}
-        }
-
-
-
-        #############
-        ## Check if related MACROSS tools are available, and offer option
-        ## to cross-search results
-        #############
-        
-        function collaborate(){
+            $gpolist | %{
+                Write-Host -f YELLOW "  $i" -NoNewline;
+                Write-Host -f GREEN ". $_"
+                $i++
+            }
             Write-Host '
-
             '
-            if( $vf19_E1 ){
-                $choices = $true
-                Write-Host -f GREEN '      -Enter ' -NoNewline;
-                Write-Host -f YELLOW 'e' -NoNewline;
-                Write-Host -f GREEN " to have ELINTS string-search these $dyrl_kon_numfiles files."
+            while( ! $l ){
+                Write-Host -f GREEN ' Select a number from the list to view it in detail, or "q" to quit: ' -NoNewline;
+                $Z = Read-Host
+                if($Z -eq 'q'){
+                    Return
+                }
+                elseif($gpolist[$($Z - 1)]){
+                    $l = $gpolist[$($Z - 1)]
+                }
             }
-            if( $vf19_G1 ){
-                $choices = $true
-                Write-Host -f GREEN '      -Enter ' -NoNewline;
-                Write-Host -f YELLOW 'g' -NoNewline;
-                Write-Host -f GREEN ' to have GERWALK query Carbon Black for the most recent users/processes'
-                Write-Host -f GREEN "        related to these $dyrl_kon_numfiles files."
-            }
-            if( $choices ){
-                Write-Host -f GREEN '      -Just hit ENTER to skip.'
-                Write-Host -f GREEN '         > ' -NoNewline;
-                Read-Host
-            }
-            
+            Clear-Variable Z,g*
+            3gpo $l 2
         }
 
-        $dyrl_kon_numfiles = (gc $RESULTFILE).length
-        if($dyrl_kon_numfiles -gt 0){
-        while( $dyrl_kon_collaborate -ne 'no' ){
-            $dyrl_kon_collaborate = collaborate
-            if( $dyrl_kon_collaborate -eq 'e' ){
-                $COMEBACK = $true
-                collab 'ELINTS.ps1' 'KONIG'                            ## ELINTS is looking for $RESULTFILE
-                Write-Host '
-                '
+        if($option -eq 3){
+            $a1 = [string]$([int]$dyrl_myl_ZA[0] + 1) + ','
+            $a1 = $filter -replace "^\d+\.",$a1
+            $a2 = [string]$([int]$dyrl_myl_ZA[0] + 2) + ','
+            $a2 = $filter -replace "^\d+\.",$a2
+            $a3 = [string]$([int]$dyrl_myl_ZA[0] - 1) + ','
+            $a3 = $filter -replace "^\d+\.",$a3
+            $a4 = [string]$([int]$dyrl_myl_ZA[0] - 2) + ','
+            $a4 = $filter -replace "^\d+\.",$a4
+            $filter = "Created -Match '$filter' -or Created -Match '$a1' -or Created -Match '$a2' -or Created -Match '$a3' -or Created -Match '$a4'"
+        }
+        elseif($option -eq 2){
+            $filter = "Name -eq '$filter'"
+        }
+        else{
+            $filter = "Name -Like '*$filter*'"
+        }
+
+
+
+        $gquery = Get-ADGroup -Filter $filter -Properties Created,Description,Name,ManagedBy,Members,whenChanged
+        $gname = $gquery.Name
+        $gnamec = $gname.count
+        $gdesc = $gquery.Description -replace "\s{2,}"
+        $gman = $gquery.ManagedBy -replace "CN=" -replace ",.+$" -replace "\s{2,}"
+        $gcreated = $gquery.Created -replace "\s{2,}"
+        $gchanged = $gquery.whenChanged -replace "\s{2,}"
+        if($option -eq 1){
+            if($gname){
+                Return $true
             }
-            if( $dyrl_kon_collaborate -eq 'g' ){
-                $COMEBACK = $true
-                Write-Host -f GREEN "  Do you want to scan for ALL of these files? " -NoNewline;
-                $tcz = Read-Host
-                if( $tcz-Match "^y"){
-                    gc $RESULTFILE | Foreach-Object{
-                        $Global:external_NM = $_ -replace "^.+\\",''    ## GERWALK scans $external_NM
-                        collab 'GERWALK.ps1' 'KONIG'
+            else{
+                Return $false
+            }
+        }
+        elseif($gnamec -gt 0){
+            if($gnamec -gt 1){
+                chooseG
+            }
+            else{
+                $gmembers = $gquery | Select -ExpandProperty Members
+                if($option -eq 1){
+                    screenResults '  GROUP' '  CREATED'
+                    screenResults $gname $gcreated
+                }
+                else{
+                    screenResults '  GROUP' '  DESC' '  CREATED'
+                    screenResults $gname $gdesc $gcreated
+                    if($gman -or $changed){
+                        screenResults 'endr'
+                        screenResults 'endr'
+                        screenResults 'endr'
+                        screenResults '  MANAGED BY' $gman
+                        screenResults '  UPDATED' $changed
                     }
                 }
-
-                ## If user wants to pick and choose which filenames to query against Carbon Black
-                else{
-                    while($tch -ne 'q'){
-                        $tnm = 0
-                        $tlist = @()
-                        gc $RESULTFILE | Foreach-Object{
-                            $tnm++
-                            $tfl = $_ -replace "^.+\\",''
-                            $tlist += $tfl
-                            Write-Host -f YELLOW "  $tnm" -NoNewline;
-                            Write-Host -f GREEN ". $tfl"
+                screenResults 'endr'
+                ''
+                while($Z -ne 'q'){
+                    Write-Host -f GREEN ' Enter "' -NoNewline;
+                    Write-Host -f YELLOW 'm' -NoNewline;
+                    Write-Host -f GREEN '" to view group members, "' -NoNewline;
+                    Write-Host -f YELLOW 'd' -NoNewline;
+                    Write-Host -f GREEN '"' -NoNewline;
+                    Write-Host -f GREEN " to view this GPO's full description,"
+                    Write-Host -f GREEN ' "' -NoNewline;
+                    Write-Host -f YELLOW 'x' -NoNewline;
+                    Write-Host -f GREEN '" for extra details, ' -NoNewline;
+                    if($vf19_OPT1){
+                        Write-Host -f GREEN 'or "' -NoNewline;
+                        Write-Host -f YELLOW 'c' -NoNewline;
+                        Write-Host -f GREEN ' to cancel and go back:'
+                    }
+                    else{
+                        Write-Host -f GREEN '"' -NoNewline;
+                        Write-Host -f YELLOW 'q' -NoNewline;
+                        Write-Host -f GREEN '" to quit, or a new keyword to search:'
+                    }
+                    Write-Host -f GREEN '  > ' -NoNewline;
+                    $Z = Read-Host
+                    if($Z -eq 'm'){
+                        $Zu = $null
+                        $d = 'derpyDERP!'
+                        $uaccts = @{}
+                        function showAccts(){
+                            $uaccts.keys | %{
+                                $fn = $uaccts[$_]
+                                screenResults $_ $fn
+                            }
+                            screenResults 'endr'
                         }
-                        Write-Host -f GREEN '  Choose a file number to pull data on (q to quit):' -NoNewline;
-                        $tch = Read-Host
-                        $tch = $tch - 1
-                        if($tlist[$tch]){
-                            $Global:external_NM = [string]($tlist[$tch])
-                            collab 'GERWALK.ps1' 'KONIG'
+                        $gmembers | %{
+                            $fullname = $_ -replace "^..=" -replace ",OU=.+$" -replace "\\"
+                            $shortname = $(Get-ADUser -filter "Name -eq '$fullname'" | Select -ExpandProperty samAccountName)
+                            if(! $shortname){
+                                $shortname = $d
+                            }
+                            if(! $fullname){
+                                $fullname = $d
+                            }
+                            $uaccts.Add($shortname,$fullname)
+                        }
+                        showAccts
+                        while($Zu -ne ''){
+                            ''
+                            ''
+                            if($d -in $uaccts.keys -or $d -in $uaccts.values){
+                                Write-Host -f GREEN " Type 'derp' to show all members if there are derp'd entries, or hit"
+                            }
+                            else{
+                                Write-Host -f GREEN ' Hit' -NoNewline;
+                            }
+                            Write-Host -f GREEN ' ENTER to continue, or type a username to lookup their account'
+                            Write-Host -f GREEN ' (wildcarding names "*" is okay): ' -NoNewline;
+                            $Zu = Read-host
+                            if($Zu -eq 'derp'){
+                                $gmembers | %{
+                                    Write-Host "  $_"
+                                }
+                            }
+                            elseif($Zu -ne ''){
+                                singleUser $Zu
+                                showAccts
+                            }
+                            ''
+                        }
+                    }
+                    elseif($Z -eq 'd'){
+                        ''
+                        Write-Host -f CYAN "  $gdesc
+                        "
+                    }
+                    elseif($Z -eq 'x'){
+                        $gquery
+                    }
+                    elseif($Z -eq 'q'){
+                        Remove-Variable dyrl_myl_*
+                        Exit
+                    }
+                    elseif($Z -eq 'c'){
+                        Return
+                    }
+                }
+            }
+        }
+
+
+    }
+
+
+    ## Unfuglify powershell's output
+    function cleanList($1){
+
+        Remove-Variable -Force dyrl_myl_0* -Scope Global ## Start fresh
+
+        
+        <#
+             $dyrl_myl_username
+             ============================================================================
+             NAME         ||  $dyrl_myl_0cn
+             CREATED      ||  $dyrl_myl_0wcreated
+             TIMESTAMP    ||  $dyrl_myl_0created     ## In case of timestomping, not sure if CREATED &
+             MODIFIED     ||  $dyrl_myl_0modified    ##     TIMESTAMP could ever legit be different values
+             DESCRIPTION  ||  $dyrl_myl_0desc
+             LAST LOGON   ||  $dyrl_myl_0lastlogon
+             EMAIL        ||  $dyrl_myl_0email
+            =============================================================================
+        #>
+        function dv($obj){
+            Write-Host -f GREEN "$c  $obj"
+        }
+
+        function mg($j){
+            $1 | Select -ExpandProperty memberOf | %{
+                $g = $_ -replace "..="
+                if($j){
+                    if($g -Match $j){
+
+                    }
+                }
+            }
+        }
+    
+        
+
+        ## Make these available for future functions
+        $Script:dyrl_myl_0username = $1.samAccountName
+        $Script:dyrl_myl_0propername = $1.displayName
+        $Script:dyrl_myl_0cn = $1.CN
+        $Script:dyrl_myl_0desc = $1.Description
+        $Script:dyrl_myl_0created = $1.createTimeStamp
+        $Script:dyrl_myl_0wcreated = $1.whenCreated
+        $Script:dyrl_myl_0changed = $1.whenChanged
+        $Script:dyrl_myl_0lastlogon = $1.lastLogonDate
+        $Script:dyrl_myl_0modified = $1.Modified
+        $Script:dyrl_myl_0wmodified = $1.modifyTimeStamp
+        $Script:dyrl_myl_0email = $1.Mail
+        $Script:dyrl_myl_0passwX = $1.PasswordNeverExpires
+        $Script:dyrl_myl_0passwN = $1.PasswordNotRequired
+        $Script:dyrl_myl_0exp = $1.AccountExpirationDate
+        $Script:dyrl_myl_0smartC = $1.SmartcardLogonRequired
+        $Script:dyrl_myl_0gpochk = 3gpo $dyrl_myl_0jdir 1
+
+
+        if($dyrl_myl_LISTNUM){
+            $n = [string]$dyrl_myl_LISTNUM + '. ' + $dyrl_myl_username
+        }
+        else{
+            $n = $dyrl_myl_username
+        }
+
+        ## Check for possible timestomping
+        if($dyrl_myl_0created -ne $dyrl_myl_0wcreated){
+            $redT = $true
+        }
+        if($dyrl_myl_0modified -ne $dyrl_myl_0wmodified){
+            $redM = $true
+        }
+        
+
+        ## Uncomment and modify to highlight AD object deviations in your environment
+        <#
+        if($dyrl_myl_0username -notMatch "^(superadmin|superuser).*"){
+            $redD = $true
+        }
+        #>
+
+        
+        Write-Host -f CYAN "  $c$c$c$c$c$c NEW ACCT $n"
+        Write-Host -f GREEN '  ============================================================================'
+        Write-Host -f YELLOW '  NAME         ' -NoNewline;
+        dv $dyrl_myl_0cn
+        Write-Host -f YELLOW '  ACCOUNT      ' -NoNewline;
+        dv $dyrl_myl_0username
+        if($dyrl_myl_0exp -Match "\w"){
+            Write-Host -f RED    '  EXPIRES      ' -NoNewline;
+            dv $dyrl_myl_0exp
+        }
+        Write-Host -f YELLOW '  CREATED      ' -NoNewline;
+        dv $dyrl_myl_0wcreated
+        if($redT){
+            Write-Host -f RED '  CR.TIMESTAMP ' -NoNewline;
+        }
+        else{
+            Write-Host -f YELLOW '  CR.TIMESTAMP ' -NoNewline;
+        }
+        dv $dyrl_myl_0created
+        if($redM){
+            Write-Host -f RED '  MODIFIED     ' -NoNewline;
+        }
+        else{
+            Write-Host -f YELLOW '  MODIFIED     ' -NoNewline;
+        }
+        dv $dyrl_myl_0modified
+        if($redD){
+            Write-Host -f RED '  DESCRIPTION  ' -NoNewline;
+        }
+        else{
+            Write-Host -f YELLOW '  DESCRIPTION  ' -NoNewline;
+        }
+        dv $dyrl_myl_0desc
+        Write-Host -f YELLOW '  LAST LOGON   ' -NoNewline;
+        dv $dyrl_myl_0lastlogon
+        Write-Host -f YELLOW '  EMAIL        ' -NoNewline;
+        dv $dyrl_myl_0email
+        if($dyrl_myl_0passwX -eq $true -or $dyrl_myl_0passwN -eq $true){
+            Write-Host -f RED '  PASSWORD NULL OR NEVER EXPIRES'
+        }
+        Write-Host -f GREEN '  ============================================================================'
+
+
+        w2f $dyrl_myl_0wcreated $dyrl_myl_0username
+        w2f $dyrl_myl_0created
+        w2f $dyrl_myl_0propername
+        w2f '' $dyrl_myl_0desc
+
+    }
+
+
+    ## Tailor AD query based on user input
+    function singleUser($1){
+        if( $1 -Match $dyrl_myl_WILDC ){
+            $sU_FILTER = "displayName -Like '$1' -or samAccountName -Like '$1'"
+        }
+        else{
+            $sU_FILTER = "samAccountName -eq '$1'"
+            $sU_SPECIFIC = $true
+        }
+
+        $sU_Q1 = $(Get-ADUser -Filter $sU_FILTER -Properties displayName,samAccountName | 
+            Select samAccountName,displayName)
+        $sU_QCT = $sU_Q1.count
+        $sU_QUERY = Get-ADUser -Filter $sU_FILTER -Properties *
+        $sU_GPO = $sU_QUERY | Select -ExpandProperty memberOf
+
+        if( $sU_Q1 ){
+            ''
+            if( $sU_QCT -gt 1 ){
+                Write-Host -f GREEN ' Found multiple users matching that search:
+                '
+                foreach( $n in $sU_Q1 ){
+                    $n = $n -replace "^.+samAccountName=" -replace "; displayName=",":  " -replace "}$"
+                    Write-Host -f YELLOW "  $n"
+                }
+                ''
+                Write-Host -f GREEN " Choose one of the usernames above, or ENTER for a new search:"
+                Write-Host -f GREEN "  >  " -NoNewline; $Z = Read-Host
+                if( $Z -Match "[a-z0-9]" ){
+                    Remove-Variable sU_*
+                    singleUser $Z
+                }
+            }
+            else{
+                $sU_SPECIFIC = $true
+                Write-Host -f GREEN ' Pay special attention to the ' -NoNewline;
+                Write-Host -f YELLOW 'LAST LOGON' -NoNewline;
+                Write-Host -f GREEN ' and ' -NoNewline;
+                Write-Host -f YELLOW 'MODIFIED' -NoNewline;
+                Write-Host -f GREEN ' fields.'
+                Write-Host -f GREEN ' There should not usually be a huge gap between the two.
+    
+                '
+                cleanList $sU_QUERY
+                ''
+                'GPO ASSIGNMENTS:'
+                $sU_GPO | %{
+                    $g = $_ -replace "..=" -replace ",.*$"
+                    Write-Host -f YELLOW "   $g"
+                }
+                Remove-Variable g
+                ''
+                if( $sU_SPECIFIC ){
+                    Write-Host -f GREEN ' Do you need extra domain details for this user? (y/n)  ' -NoNewline;
+                    $Z = Read-Host
+
+                    if( $Z -eq 'y' ){
+                        $Z = $null
+                        while($Z -notMatch "^(A|C|G|S)$"){
+                            Write-Host -f GREEN " Type 'A' for Active-Directory info, 'C' for a Carbon Black lookup, 'G'"
+                            Write-Host -f GREEN " for GPO details, or 'S' to skip: " -NoNewline;
+                            $Z = Read-Host
+                        }
+                        if( $Z -eq 'A'){
+                            $sU_QUERY
+                        }
+                        elseif($Z -eq 'C'){
+                            uActivity "$1"
                             splashPage
                         }
+                        elseif($Z -eq 'G'){
+                            ''
+                            Write-Host -f GREEN ' Copy-in the GPO name to view: ' -NoNewline;
+                            $Z = Read-Host
+                            if($Z -Match "\w{4,}"){
+                                3gpo $Z 2
+                            }
+                        }
+
+                        if($Z -ne 'S'){
+                            Write-Host -f GREEN ' Hit ENTER to continue.' -NoNewline;
+                            Read-Host
+                        }
+                        $Z = $null
                     }
-                    
+                    $sU_SPECIFIC = $null
                 }
-                Remove-Variable -Force tnm,tlist,tfl,tch,tcz
-                Write-Host '
-                '
+            }
+
+
+
+        }
+        else{
+            noFind $1
+            Write-Host -f GREEN ' Hit ENTER to continue.' -NoNewline;
+            Read-Host
+        }
+        
+        splashPage
+
+    }
+
+}
+############################################
+##  END FUNCTIONS
+############################################
+
+
+
+if( $vf19_NOPE ){
+    while( $dyrl_myl_Z -ne 'q' ){
+        splashPage
+        Write-Host -f GREEN ' What username are you searching on? Enter ' -NoNewline;
+        Write-Host -f YELLOW 'q' -NoNewline;
+        Write-Host -f GREEN ' to quit:  ' -NoNewline;
+        $dyrl_myl_Z = Read-Host
+        if( $dyrl_myl_Z -ne 'q' ){
+            $dyrl_myl_U = net user $dyrl_myl_Z /domain
+            if( $dyrl_myl_U ){
+                $dyrl_myl_U
+                if( $vf19_C8 ){
+                    ''
+                    Write-Host -f GREEN " Do you want to see this user's most recent host(s)? " -NoNewline;
+                    $dyrl_myl_CQ = Read-Host
+                    if($dyrl_myl_CQ -Match "^y"){
+                        uActivity $dyrl_myl_Z
+                    }
+                    Remove-Variable dyrl_myl_CQ
+                }
+                else{
+                    Write-Host -f GREEN ' Hit ENTER to continue.
+                    '
+                    Read-Host
+                }
                 
             }
             else{
-                $dyrl_kon_collaborate = 'no'
-                $dyrl_kon_LOOP = $false
+                noFind $dyrl_myl_Z
+            }
+        }
+        else{
+            Exit
+        }
+    }
+}
+else{
+
+    $dyrl_usage = 1   ## Skip some menus when multiple searches are performed
+
+    do{
+
+        splashPage
+
+        if($dyrl_usage -ne 1){
+            Remove-Variable -Force dyrl_myl_* -Scope Global
+            $dyrl_myl_C2F = 'trash'
+            slp 1
+        }
+
+        if($vf19_OPT1){
+            ''
+            while($dyrl_myl_Z -ne 'q'){
+                Write-Host -f GREEN ' Enter a keyword to search for matching Group Policy names, OR a MM/YYYY'
+                Write-Host -f GREEN ' date to view Group Policies by creation times (searches 2 months before and'
+                Write-host -f GREEN ' after the date you enter), OR "q" to quit: ' -NoNewline;
+                [string]$dyrl_myl_Z = Read-Host
+                if($dyrl_myl_Z -ne 'q'){
+                    if($dyrl_myl_Z -Match "\d{1,2}/\d{4}"){
+                        $dyrl_myl_Z = $dyrl_myl_Z -replace "^0"
+                        $dyrl_myl_ZA = $dyrl_myl_Z -Split('/')
+                        $dyrl_myl_Z = $dyrl_myl_Z -replace '/','/.*' -replace "$",'.*'
+                        3gpo $dyrl_myl_Z 3
+                    }
+                    else{
+                        3gpo $dyrl_myl_Z
+                    }
+                    $dyrl_myl_Z = ''
+                    ''
+                    ''
+                    Write-Host -f GREEN " Hit ENTER to search again, or 'q' to quit: " -NoNewline;
+                    $dyrl_myl_Z = Read-Host
+                }
+            }
+            Remove-Variable -Force dyrl_myl_*
+            Exit
+        }
+
+        ## Set default vars
+        $dyrl_myl_FTMP = "C:\Users\$USR\AppData\Local\Temp\6d6163726f737364656c7461737578.txt"    ## Temp file gets passed to KONIG then sanitized and deleted
+        $dyrl_myl_CHKWRITE = Test-Path $dyrl_myl_FTMP -PathType Leaf
+        $dyrl_myl_NOSVC = [regex]"[^svc.]*"
+        $dyrl_myl_SINGLENAME = [regex]"[a-zA-Z][a-zA-Z0-9].*"
+        $dyrl_myl_WILDC = [regex]"^*?.*\*$"
+
+        ## Verify paths
+        $dyrl_myl_DIREXISTS = Test-Path "$vf19_DEFAULTPATH\NewUserSearches\"
+        $dyrl_myl_REPORTS = "$vf19_DEFAULTPATH\NewUserSearches\*.txt"
+
+        ## Clean up old reports if not needed anymore
+        if( (Get-ChildItem -Path $dyrl_myl_REPORTS).count -gt 0){
+            if($dyrl_usage -eq 1){
+                houseKeeping $dyrl_myl_REPORTS 'MYLENE'
+            }
+        }
+
+        ## Format the output filenames; generate new filenames if previous outputs exist
+        ## Currently appends a-z at the end of the filename, then goes back and appends two letters
+        ##     (ab, ac, ad, etc.) if the whole alphabet was already used once. Hopefully nobody
+        ##     needs more than 50 reports at a time.
+        $dyrl_myl_FDATE = (Get-Date).DateTime -replace "^[a-zA-Z]*, " -replace ", .*$" -replace ' ','-'
+        $dyrl_myl_REPAL = 'abcdefghijklmnopqrstuvwxyz'
+        $dyrl_myl_REPNO = 0
+        $dyrl_myl_OUTNAME = "MYLENE_" + $dyrl_myl_FDATE + $dyrl_myl_REPAL[$dyrl_myl_REPNO]
+        do{
+            if( $dyrl_myl_REPNO -le 25 ){
+                $dyrl_myl_REPNO++
+                $dyrl_myl_OUTNAME = 'MYLENE_' + $dyrl_myl_FDATE + $dyrl_myl_REPAL[$dyrl_myl_REPNO] + '.txt'
+            }
+            else{
+                $dyrl_myl_REPNO++
+                $dyrl_myl_REPNO2 = $dyrl_myl_REPNO + 1
+                $dyrl_myl_OUTNAME = 'MYLENE_' + $dyrl_myl_FDATE + $dyrl_myl_REPAL[$dyrl_myl_REPNO] + $dyrl_myl_REPAL[$dyrl_myl_REPNO2] + '.txt'
+            }
+        }while( Test-Path "$vf19_DEFAULTPATH\NewUserSearches\$dyrl_myl_OUTNAME*" )
+
+
+        $dyrl_myl_FO = ($vf19_M[2] * $vf19_M[1]) * ($vf19_M[1] + $vf19_M[0]) - 2
+        $dyrl_myl_FO = [string]$dyrl_myl_FO
+
+
+
+
+        if($dyrl_usage -eq 1){  ## Only run this option once, ignore it for subsequent searches
+            ''
+            Write-Host -f CYAN ' Before searching for user accounts, would you like a list of any recent'
+            #Write-Host -f CYAN ' hosts joined to the domain?  ' -NoNewLine;
+            Write-Host -f CYAN ' hosts joined to the domain?  ' -NoNewLine;
+            $dyrl_myl_Z1 = Read-Host
+
+            if( $dyrl_myl_Z1 -Match "^y" -or $dyrl_myl_Z1 -Match "^[0-9]+$"){
+                $dyrl_myl_arrayh = @{}   ## Collect list of hostnames
+                $dyrl_myl_sensors = @{}  ## Track hosts with CB installed
+                $dyrl_myl_arrayn = 0
+                ''
+                if($dyrl_myl_Z1 -Match "^y"){
+                    while($dyrl_myl_Z1 -notMatch "^[0-9]{1,2}$"){
+                        Write-Host -f GREEN ' How many days back?  ' -NoNewLine;
+                        $dyrl_myl_Z1 = Read-Host
+                    }
+                }
+                $dyrl_myl_DATE = (Get-Date).AddDays(-$dyrl_myl_Z1)
+
+                $dyrl_myl_GAD = Get-ADComputer -Filter * -Properties createTimeStamp,`
+                    Name,`
+                    whenCreated,`
+                    Description,`
+                    OperatingSystem | 
+                        Where {$_.createTimeStamp -ge $dyrl_myl_DATE} | 
+                        Where {$_.Name -notLike "SRV" }                      ## Modify this to match your network hosts!!!!
+        
+                Write-Host '
+
+                '
+                foreach( $dyrl_myl_i in $dyrl_myl_GAD ){
+                    $dyrl_myl_arrayn++
+
+                    ## Uncomment to remove the domain from the hostname
+                    #$dyrl_myl_in = $dyrl_myl_i.Name -replace ".DOMAIN.NAME$"
+
+                    $dyrl_myl_arrayh.Add([string]$dyrl_myl_arrayn,$dyrl_myl_in)
+
+                    if($vf19_C8){
+                        ## See if CB has a sensor for the host in question
+                        $Global:PROTOCULTURE = $dyrl_myl_in
+                        $dyrl_myl_CHECKSENSOR = $(collab 'GERWALK.ps1' 'MYLENE' 'sensor' | ConvertFrom-Json)
+                    }
+
+                    if( $dyrl_myl_CHECKSENSOR[0].id ){
+                        $dyrl_myl_SENSOR = $true
+                        $dyrl_myl_sensors.Add([string]$dyrl_myl_arrayn,$dyrl_myl_in)
+                    }
+
+                    $dyrl_myl_ipadd0 = $dyrl_myl_i.name
+                    $dyrl_myl_ipadd0 = $dyrl_myl_ipadd0.toUpper()
+                    $dyrl_myl_ipadd1 = nslookup $dyrl_myl_ipadd0 | Select-String "Address.*$dyrl_myl_FO"
+                    $dyrl_myl_ipadd2 = $dyrl_myl_ipadd0 + " resolves to " + $dyrl_myl_ipadd1 -replace("Address.*$dyrl_myl_FO","$dyrl_myl_FO")
+                    
+                    if( $dyrl_myl_ipadd1 ){
+                        screenResults "derpNEW HOST $dyrl_myl_arrayn" $($dyrl_myl_i.Name) $dyrl_myl_ipadd2
+                    }
+                    else{
+                        screenResults "derpNEW HOST $dyrl_myl_arrayn" $($dyrl_myl_i.Name) 'derpyDOES NOT RESOLVE'
+                    }
+                    screenResults 'Operating System' $($dyrl_myl_i.OperatingSystem)
+                    screenResults 'Created' $($dyrl_myl_i.whenCreated)
+                    if( $($dyrl_myl_i.Description) ){
+                        screenResults 'Description' $($dyrl_myl_i.Description)
+                    }
+                    else{
+                        screenResults 'Description' 'derpyNONE'
+                    }
+                    if($dyrl_myl_CHECKSENSOR){
+                        screenResults 'CB Sensor ID' $($dyrl_myl_CHECKSENSOR[0].id)
+                        screenResults 'CB Registered' $($($dyrl_myl_CHECKSENSOR[0].registration_time) -replace "\..*")
+                        screenResults 'CB Last Checkin' $($($dyrl_myl_CHECKSENSOR[0].last_checkin_time) -replace "\..*")
+                        screenResults 'CB OS Check' $($dyrl_myl_CHECKSENSOR[0].os_environment_display_string)
+                        screenResults 'CB Status' $($dyrl_myl_CHECKSENSOR[0].status)
+                        Remove-Variable -Force dyrl_myl_CHECKSENSOR -Scope Global
+                    }
+                    else{
+                        screenResults 'derpyNo Carbon Black agent installed!'
+                    }
+                    
+                    
+                    screenResults 'endr'
+                    
+                }
+                
+                Remove-Variable dyrl_myl_DATE
+
+                ''
+                Write-Host -f GREEN ' ...search complete.
+                '
+                if( $dyrl_myl_arrayn -gt 0 ){  ## If hosts were found and CB script exists, offer to search CB
+                    if($dyrl_myl_SENSOR){
+                    while( $dyrl_myl_Z -ne 'skip' ){
+                        Write-Host -f GREEN ' Select a ' -NoNewline;
+                        Write-host -f CYAN 'NEW HOST #' -NoNewline;
+                        Write-Host -f GREEN ' to query Carbon Black, or hit ENTER to skip: ' -NoNewline;
+                        $dyrl_myl_Z1 = Read-Host
+                        if($dyrl_myl_Z1 -Match "^[0-9]+$"){
+
+                            $dyrl_myl_HH = $dyrl_myl_sensors[$dyrl_myl_Z1]
+                            
+                            if( $dyrl_myl_HH ){
+                                hActivity  $dyrl_myl_HH
+                                Write-Host '
+                                '
+                                foreach($key in $dyrl_myl_arrayh.keys){
+                                    #$dyrl_myl_arraynn++
+                                    if($key -in $dyrl_myl_sensors.keys){
+                                        screenResults "derpNEW HOST $key" $dyrl_myl_arrayh[$key]
+                                    }
+                                    else{
+                                        screenResults "NEW HOST $key" ' (no cb agent installed)'
+                                    }
+                                }
+                                screenResults 'endr'
+                                ''
+                            }
+                            else{
+                                Write-Host -f CYAN ' That host does not have CB installed.'
+                            }
+                        }
+                        else{
+                            $dyrl_myl_Z1 = 'skip'
+                            Break
+                        }
+
+                    }
+                    }
+                }
+
+                Clear-Variable -Force dyrl_myl_Z1,dyrl_myl_arrayh,dyrl_myl_arrayn
+                ''
+                ''
+
+                Write-Host -f GREEN ' Continue to new user search?  ' -NoNewLine;
+                $dyrl_myl_Z1 = Read-Host
+
+                if( ($dyrl_myl_Z1 -notMatch "^y") -or ($dyrl_myl_Z1 -eq '') ){
+                    Remove-Variable dyrl_myl_*
+                    Exit
+                }
+
+            }
+        }
+        
+
+    
+
+
+        while( $dyrl_myl_C2F -ne 'retarded' ){
+            ''
+            Write-Host -f GREEN ' Enter a username (you can wildcard ' -NoNewline;
+            Write-Host -f YELLOW '*' -NoNewline;
+            Write-Host -f GREEN " if you don't have the full name) OR"
+            Write-Host -f GREEN ' "' -NoNewline;
+            Write-Host -f YELLOW 'd' -NoNewline;
+            Write-Host -f GREEN '" to search by user Description objects, OR how many days back'
+            Write-Host -f GREEN " you want to search for new accounts (max 30), OR " -NoNewline;
+            Write-Host -f YELLOW 'q' -NoNewline;
+            Write-Host -f GREEN " to quit:  " -NoNewLine; 
+            $dyrl_myl_Z = Read-Host
+    
+    
+            if( $dyrl_myl_Z -eq 'q' ){
+                if( $CALLER ){
+                    Remove-Variable dyrl_myl_*
+                    Return
+                }
+                elseif( $CALLHOLD ){
+                    Remove-Variable dyrl_myl_*
+                    Return
+                }
+                else{
+                    Remove-Variable dyrl_myl_*
+                    Exit
+                }
+            }
+            elseif($dyrl_myl_Z -eq 'd'){
+                $dyrl_myl_Z = ''
+                splashPage
+                searchDesc
+            }
+            elseif( $dyrl_myl_Z -Match $dyrl_myl_SINGLENAME ){
+                singleUser $dyrl_myl_Z
+            }
+            elseif( $dyrl_myl_Z -Match "^[0-9]+$" ){
+                if( $dyrl_myl_Z.toString.Length -ne 1 ){  ## WHY DOES POWERSHELL RANDOMLY REQUIRE ADDING A '0' FOR SINGLE DIGITS?!?!?!?!
+                    while( $dyrl_myl_Z -gt 30 ){
+                        Write-Host "  $dyrl_myl_Z is not less than 30. Please enter a new number:  " -NoNewline;
+                        $dyrl_myl_Z = Read-Host
+                    }
+                }
+                $dyrl_myl_C2F = 'retarded'
+                $dyrl_myl_DATE = (Get-Date).AddDays(-$dyrl_myl_Z)
+            }
+            else{
+                Write-Host -f CYAN '  What?
+                '
+                slp 2
+            }
+    
+
+        }
+        ''
+        Write-Host -f GREEN '
+     If you get a large amount of results, you can click anywhere in the window
+     to pause the script, then hit "Backspace" or the back arrow key to resume.
+                          
+     Polling AD...
+        '
+
+
+        ##########
+        ## Parse out user properties as needed
+        ##########
+        $dyrl_myl_GETNEWU = Get-ADUser -Filter * -Properties whenCreated | 
+            Where {$_.whenCreated -gt $dyrl_myl_DATE} | 
+            Select -ExpandProperty samAccountName
+
+        # format the output for a quicklook
+        $dyrl_myl_GETNEWTABLE = Get-ADUser -Filter * -Properties * |
+            Where{$_.whenCreated -gt $dyrl_myl_DATE}
+        $Script:dyrl_myl_howmany = $dyrl_myl_GETNEWTABLE.count
+        $dyrl_myl_ACCOUNTLIST = @{}
+
+    
+
+        ##########
+        ## Make sure we have a directory to collect search result files into
+        ##########
+        if( ! $dyrl_myl_DIREXISTS ){
+            New-Item -Path $vf19_DEFAULTPATH -Name 'NewUserSearches' -ItemType 'directory'
+        }
+
+
+        <#
+            Iterate through non-service accounts and send them to KONIG to look at their files.
+            Manually review the outputs for any suspicious looking docs/binaries in newly created
+            accounts or send them to ASS
+        #>
+
+        if( $dyrl_myl_GETNEWTABLE -ne $null ){
+            $Script:dyrl_myl_LISTNUM = 0
+            $Script:dyrl_myl_MULTIACCT = @()
+
+        
+            function listAccounts(){
+                $Script:dyrl_myl_LISTNUM = 0
+                $dyrl_myl_MULTIACCT | %{
+                    Write-Progress -activity 'Expanding details...' `
+                            -status "Collecting $dyrl_myl_LISTNUM of $dyrl_myl_howmany" `
+                            -CurrentOperation "Details for: $($_.samAccountName)" `
+                            -percentComplete (($dyrl_myl_LISTNUM / $dyrl_myl_howmany)  * 100)
+                    $Script:dyrl_myl_LISTNUM++
+                    cleanList $_
+                }
+                Write-Progress -activity "Expanding details..." -Completed
+            }
+
+            $nnn = 0; $dyrl_myl_GETNEWTABLE | %{
+                Write-Progress -activity "Searching for new users..." `
+                    -status "Collecting $nnn of $dyrl_myl_howmany" `
+                    -CurrentOperation "Found user: $($_.samAccountName)" `
+                    -percentComplete (($nnn / $dyrl_myl_howmany)  * 100)
+                $dyrl_myl_ACCOUNTLIST.Add($_.samAccountName,$_)
+            }
+            Write-Progress -activity 'Searching for new users...' -Completed
+            Remove-Variable -Force nnn
+            $dyrl_myl_ACCOUNTLIST | %{
+                $k = $dyrl_myl_ACCOUNTLIST.Keys
+                $Script:dyrl_myl_MULTIACCT += $dyrl_myl_ACCOUNTLIST[$k]
+            }
+        
+            listAccounts
+    
+
+            if( Test-Path -Path "$vf19_DEFAULTPATH\NewUserSearches\$dyrl_myl_OUTNAME" ){
+                Write-Host -f GREEN '  Search results (if any) have been written to text files on your Desktop'
+                Write-Host -f GREEN '  in the folder ' -NoNewLine;
+                Write-Host -f YELLOW 'NewUserSearches' -NoNewline;
+                Write-Host -f GREEN '.'
+            }
+            else{
+                Write-Host -f CYAN '  ERROR: ' -NoNewline;
+                Write-Host -f GREEN 'Output could not be written to file.'
+            }
+
+        }
+        else{
+            Write-Host -f CYAN '  No users found during this time window. Press ENTER to exit... 
+            '
+            Read-Host
+            Remove-Variable dyrl_myl_*
+            Exit
+        }
+
+        function firstMenu (){ 
+            Write-Host -f GREEN "
+         -Enter a NEW ACCT number to view that specific user's GPO assignments; OR
+         -Enter a keyword to search existing Group Policies for these users
+          (example: 'admin', 'Temp', etc.); OR
+         -Just hit ENTER to skip:  " -NoNewLine;
+        }
+
+        firstMenu
+        $dyrl_myl_Z = Read-Host
+        ''
+    
+        <# example of iterating through user groups
+        get-aduser -filter "samaccountname -eq '$USER'" -properties memberof | 
+        select-object -expandproperty memberof | 
+        foreach( $_.memberof ){
+            if($_ -Match "$GROUP"){write-host $_}
+        }
+        #>
+
+        if( $dyrl_myl_Z -eq '' ){
+            $dyrl_myl_SKIP1 = $true   ## No need to reload the list if the screen isn't changing
+        }
+        else{
+            $dyrl_myl_userReload = $true
+        }
+
+
+        ## Loop the choices until users have investigated all the accounts they needed to
+        while( $dyrl_myl_userReload ){
+
+            
+            function keepSearching(){
+                Write-Host -f GREEN '  Enter another keyword if you would like to search again, "gpo"'
+                Write-Host -f GREEN '  if you want to view details for a specific group policy, or'
+                Write-Host -f GREEN '  just hit ENTER to reload the user list.  ' -NoNewline;
+            }
+
+            $dyrl_myl_ZPO = $true
+
+
+            if($dyrl_myl_Z -Match "^[0-9]+$"){
+                $dyrl_myl_Z = $dyrl_myl_Z - 1
+                $dyrl_myl_UGPO = $dyrl_myl_MULTIACCT[$dyrl_myl_Z] | Select -ExpandProperty memberOf
+                if($dyrl_myl_UGPO){
+                Write-Host -f CYAN "  $($dyrl_myl_MULTIACCT[$dyrl_myl_Z].samAccountName) is assigned:"
+                #listGroups $dyrl_myl_UGPO
+                $dyrl_myl_UGPO | %{
+                    $g = $_ -replace "..=" -replace ",.*$"
+                    Write-Host -f YELLOW "     $g"
+                }
+                Remove-Variable g
+                }
+                else{
+                    Write-Host -f CYAN '
+        That is not a valid selection.
+                    '
+                    slp 2
+                    $dyrl_myl_BADCHOICE = $true
+                    $dyrl_myl_ZPO = $false
+                }
+                
+            }
+            elseif($dyrl_myl_Z -Match "[a-z]"){
+                screenResultsAlt 'endr'
+                $dyrl_myl_MULTIACCT | %{
+                    $dyrl_myl_UGPO = $_ | Select -ExpandProperty memberOf
+                    Write-Host -f CYAN "  Searching $($_.samAccountName) for " -NoNewline;
+                    Write-Host "$dyrl_myl_Z" -NoNewline; 
+                    Write-Host -f CYAN ':'
+                    #listGroups $dyrl_myl_UGPO $dyrl_myl_Z
+                    $dyrl_myl_UGPO | %{
+                        $g = $_ -replace "..=" -replace ",.*$"
+                        if($g -Match $dyrl_myl_Z){
+                            Write-Host -f YELLOW "        $g"
+                        }
+                    }
+                    Remove-Variable g
+                }
+            }
+            else{
+                $dyrl_myl_ZPO = $false
+            }
+
+            $dyrl_myl_Z = $null
+            Remove-Variable dyrl_myl_Z
+            Remove-Variable dyrl_myl_GRPMEM
+            ''
+
+
+            
+
+            while( $dyrl_myl_ZPO ){
+                keepSearching
+                $dyrl_myl_Z = Read-Host
+                ''
+                if( $dyrl_myl_Z -eq '' ){
+                    $dyrl_myl_ZPO = $false
+                }
+                elseif($dyrl_myl_Z -eq 'gpo'){
+                    ''
+                    $dyrl_myl_Z = $null
+                    Write-Host -f GREEN " Enter a GPO to search for. If you don't enter an exact GPO name, you"
+                    Write-Host -f GREEN " may end up with several results: " -NoNewline;
+                    $dyrl_myl_Z = Read-Host
+                    if($dyrl_myl_Z -Match "\w{2,}"){
+                        3gpo $dyrl_myl_Z
+                        ''
+                        Write-Host -f GREEN ' Hit ENTER to continue.'
+                        Read-Host
+                    }
+                }
+
+                ## Don't reset anything if the user searching GPO memberships with a new keyword
+                else{
+                    $dyrl_myl_SKIPMENU = $true
+                    $dyrl_myl_ZPO = $false
+                }
+            }
+
+            if( ! $dyrl_myl_BADCHOICE -and ! $dyrl_myl_SKIPMENU ){
+                listAccounts
+            }
+            else{
+                $dyrl_myl_BADCHOICE = $false
+            }
+
+            if( ! $dyrl_myl_SKIPMENU ){
+                firstMenu
+                $dyrl_myl_Z = Read-Host
+                if($dyrl_myl_Z -eq ''){
+                    $dyrl_myl_userReload = $false
+                    $dyrl_myl_SKIP1 = $true
+                }
+                ''
+            }
+            else{
+                $dyrl_myl_SKIPMENU = $false
+            }
+        }
+
+    
+    
+        if( $vf19_ATTS['KONIG'].name ){
+
+            if( ! $dyrl_myl_SKIP1 ){
+                splashPage
+                listAccounts
             }
 
 
-        }
-        }
-    }
-    #############
-    ##  While running 'KÖNIG' from other modules like MYLENE, give notice if search has no results
-    #############
-    elseif( $GOBACK ){
-        $dyrl_kon_LOOP = $false
-        Remove-Variable GOBACK
-        Remove-Variable dyrl_kon_*
-        ''
-        Write-Host -f CYAN '  Nothing found...
+            while( $dyrl_myl_Z -notMatch "^(y|n)" ){
+                Write-Host '
+
+                '
+                Write-Host -f GREEN "  Do you want to search for the presence of any files in these users'"
+                Write-Host -f GREEN '  home directories?  ' -NoNewLine; 
+                $dyrl_myl_Z = Read-Host
+            }
+
+            if( $dyrl_myl_Z -Match "^y" ){
+                $Global:PROTOCULTURE = ''
+                $dyrl_myl_MULTIACCT | %{
+                    $Global:PROTOCULTURE = $_.samAccountName
+                    slp 1
+                    collab 'KONIG.ps1' 'MYLENE'
+                    $dyrl_myl_GETNEWFILE = Split-Path $RESULTFILE -leaf
+                    Move-Item -Path "$RESULTFILE" -Destination "$vf19_DEFAULTPATH\NewUserSearches\$dyrl_myl_GETNEWFILE"
+                }
+                $dyrl_myl_KONIGFILES = Get-ChildItem "$vf19_DEFAULTPATH\NewUserSearches\*"
+                $dyrl_myl_Z = $null
+
+                listAccounts
+
+            }
         
-        '
-        Return
-    }
-    #############
-    ##  While running 'KÖNIG' by itself, give notice if search has no results
-    #############
-    else{
-        Write-Host -f CYAN '  Bummer, nothing was found! Exiting...'
-        slp 1
-        Exit
-    }
-
-
-
-    #############
-    ##  Resume here when finished with string searches and
-    ##  offer option to delete the 'KÖNIG' file if no longer needed
-    #############
-    if( $COMEBACK ){
-        $dyrl_kon_LOOP = $false
-        Remove-Variable COMEBACK
-        Remove-Variable GOBACK
-        ''
-        splashPage1a
-        Write-Host '
-
-        '
-
-        $dyrl_kon_Z = $null
-
-        while( $dyrl_kon_Z -notMatch "^(y|n)" ){
-            Write-Host -f GREEN "  Welcome back to KÖNIG! Do you want to delete " -NoNewLine; 
-            Write-Host -f YELLOW "$dyrl_kon_NEWOUT.txt" -NoNewLine; 
-            Write-Host -f GREEN " now that the other scans are finished? " -NoNewLine; 
-            $dyrl_kon_Z = Read-Host
-        }
-
-        if( $dyrl_kon_Z -Match "^y" ){
-            '6e656f6e67656e657369736576616e67656c696f6e737578' | Set-Content -Force $RESULTFILE   # sanitize file
-            Remove-Item -Path $RESULTFILE                                                         # delete file
-            Write-Host -f GREEN '  File has been deleted. Goodbye.
-            '
+            else{
+                Write-Host -f GREEN '  Skipping file searches...
+                '
+                $dyrl_myl_SKIP2 = $true  ## No need to reload the list if the screen isn't changing
+            }
         }
         else{
-            Write-Host -f GREEN '  File will not be deleted. Goodbye.
+            $dyrl_myl_SKIP2 = $true
+        }
+
+        ''
+        if( $vf19_C8 ){
+            $dyrl_myl_Z = $null
+            if( ! $dyrl_myl_SKIP2 ){
+                listAccounts
+            }
+            while($dyrl_myl_Z -ne ''){
+                Write-Host -f GREEN '  Select a number to search Carbon Black on any of these usernames,'
+                Write-Host -f GREEN '  or hit ENTER to skip:  ' -NoNewLine; 
+                $dyrl_myl_Z = Read-Host
+                if($dyrl_myl_Z -Match "^[0-9]+$"){
+                    $dyrl_myl_Z = $dyrl_myl_Z - 1
+                    $CUSER = $dyrl_myl_MULTIACCT[$dyrl_myl_Z].samAccountName
+                    uActivity $CUSER
+                    Remove-Variable CUSER
+                    $dyrl_myl_Z = $null
+                
+                    splashPage
+                    listAccounts
+                }
+                ''
+            }
+        }
+
+
+
+        $dyrl_myl_Z = $null
+
+        if( $dyrl_myl_GETNEWFILE ){
+            Write-Host -f GREEN '  Search results (if any) have been written to text files on your Desktop'
+            Write-Host -f GREEN '  in the folder ' -NoNewLine;
+            Write-Host -f YELLOW 'target-pkgs' -NoNewLine;
+            Write-Host -f GREEN '.
             '
         }
-        Remove-Variable -Force dyrl_kon_loop
-        slp 3
-    }
 
 
+        ## Prevent user accidentally clearing the screen if they've been hitting ENTER during slow searches
+        while( $dyrl_myl_Z -notMatch "^(c|q)$" ){
+            Write-Host -f GREEN '  Type "' -NoNewline;
+            Write-Host -f YELLOW 'c' -NoNewline;
+            Write-Host -f GREEN '" to continue, or "q" to quit:   ' -NoNewline;
+            $dyrl_myl_Z = Read-Host
+        }
 
-Remove-Variable dyrl_kon_* -Scope Global
-Remove-Variable RESULTFILE -Scope Global
+        if($dyrl_myl_Z -eq 'c'){
+            $dyrl_myl_Z = $null
+            $dyrl_usage++
+        }
+
+    }while($dyrl_myl_Z -ne 'q') 
+
+}
+
