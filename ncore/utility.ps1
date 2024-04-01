@@ -1,97 +1,111 @@
 ## MACROSS shared utilities
-## Do not modify or delete the checks below!
-<#  Add your own defaults below here (see the readme!)  9rkd4mv
-tblJFBTU2NyaXB0Um9vdFxyZXNvdXJjZXM=@@@exaaHR0cDovL3lvdXIud2ViLmZpbGUvZXhhbXBs
-ZS50eHQ=@@@gbgJHZmMTlfVE9PTFNST09UXG5jb3JlXHB5X2NsYXNzZXNcZ2FyYmFnZV9pbw==@@@
-nreJGRhc2hfVE9PTFNESVI=@@@gerLVggR0VUICdodHRwczovL3lvdXIuY2FyYm9uYmxhY2tzZXJ2
-ZXIubG9jYWwv
-#>
-
-<#
-    MPOD ALERT!!
-    The above lines 3-7 contain base64 encoded strings separated with '@@@'.
-    The first three letters of each string are stripped by the function "startUp"
-    located in the display.ps1 script (it is the first core script to run, since it
-    has to know where everything is so it can build the main menu). Those three-letter
-    strings are used as index keys in an array called $vf19_MPOD, and each base64 is
-    the value for those keys.
-
-    These have been stored here as a self-contained example of setting global
-    default variables used by MACROSS and its tools, but I recommend you store
-    these in a location outside of MACROSS that is only accessible by you or
-    your SOC.
-    
-    For example, the very first index, 'tbl', contains the encoded location of a
-    text file in the MACROSS resources folder, while the last index in the list,
-    'ger', contains the encoded URL of a fictional Carbon Black server. These can
-    be retrieved by your custom scripts by using the "getThis" function (located
-    in the validation.ps1 script), which writes decoded plaintext to $vf19_READ:
-
-        getThis $vf19_MPOD['tbl'] 
-        $list_of_events = $vf19_READ   ## Now your script can read this text file
-        getThis $vf19_MPOD['ger']
-        $edr = $vf19_READ              ## Now your script knows where to access an API
-
-    If you have a more secure place to store these types of common values, I recommend you
-    write them all to a text file or json, and then modify the "startUp" function in
-    display.ps1 to look at that file instead of this one in order to build the $vf19_MPOD
-    array that all the scripts will use to find stuff.
-
-#>
 
 <# Unlisted MACROSS menu option --
-## Change the message output for errors so you can 
-## troubleshoot scripts. Type 'debug' in the MACROSS
-## menu to call this function; enter a command to test your scripts or
-## functions. Example:
+   Change the message output for errors so you can 
+   troubleshoot scripts. Type 'debug' in the MACROSS
+   menu to call this function; enter a command to test your scripts or
+   functions. Example:
         debug getThis $dyrl_MYVARIABLE; $vf19_READ
         ^^ This will decode some base64 value and display it onscreen for you
         debug
         ^^ This will just open the menu that lets you choose whether to show or
             hide error messages
+
+    Add keywords to the "blacklist" regex variable if you want to prevent users from
+    using the debug function to perform actions you've access-controlled.
 #>
 function debugMacross($1){
     splashPage
     Write-Host '
     '
+    $blacklist = [regex]".*(your keywerdz here|other keywerdz|more keywerdz).*"
     if($1){
-        iex "$1"
-        Write-Host -f GREEN "
-        Type another command for testing (don't use 'debug'), or hit ENTER
-        to exit debugging:
-        "
-        $cmd = Read-Host
-        if($cmd -ne ''){
-            debugMacross $cmd
+        if($1 -notMatch $blacklist){
+            $1 = $1 -replace "^debug "  ## I always mess up hitting the "up" key
+            iex "$1"
+            Write-Host -f GREEN "
+            Type another command for testing (don't use 'debug'), or hit ENTER
+            to exit debugging:
+            "
+            $cmd = Read-Host
+            if($cmd -ne ''){
+                debugMacross $cmd
+            }
         }
     }
     else{
-        $current = $ErrorActionPreference
         $e = @('SilentlyContinue','Continue','Inquire')
+        $c = $ErrorActionPreference
+        $m = [regex]"(logs|[1-3])"
+        while($z -notMatch $m){
+            Write-Host -f CYAN "
+            Current error display:  $c"
+            Write-Host -f GREEN '
 
-        while($z -notMatch "^(1|2|3)$"){
-            Write-Host -f CYAN '
-            ERROR DEBUGGING:
-            (select 1-3, default is 1, current is ' -NoNewline;
-            Write-Host -f YELLOW "$current" -NoNewline;
-            Write-Host -f CYAN ')
-                1. Suppress error messages
-                2. Display errors but continue execution
-                3. Display errors and ask whether to continue
-                > ' -NoNewline;
+            Which error level do you want to set (1-3)?
+                1. Suppress all error messages
+                2. Display errors without stopping scripts
+                3. Pause after each error message with a choice to continue
 
+            OR
+            Type "logs" to review MACROSS log files.
+
+            >  ' -NoNewline;
             $z = Read-Host
         }
 
-        $z = $z - 1
-        $Script:ErrorActionPreference = $e[$z]
-        $new = $ErrorActionPreference
-        splashPage
-        Write-Host -f CYAN '
-        Error messaging is now set to ' -NoNewline;
-        Write-Host -f YELLOW "$new" -NoNewline;
-        Write-Host -f CYAN '.'
-        slp 2
+        if($z -ne 'logs'){
+            [int]$z = [int]$z - 1
+            $Script:ErrorActionPreference = $e[$z]
+            splashPage
+            $c = $ErrorActionPreference
+            Write-Host -f CYAN "
+            Error display is now set to:  $c"
+            slp 2
+        }
+        else{
+            $la = @()
+            (Get-ChildItem $vf19_LOG).Name | Sort -Descending | %{
+                $la += $_
+                $ln++
+            }
+            splashPage
+            ''
+            while( $z -ne 'q' ){
+                $ln = 0
+                $la | %{
+                    screenResults "$ln" "$($la[$ln])"
+                    $ln++
+                }
+                screenResults 'red~                  SELECT A FILE ABOVE ("q" to quit):'
+                screenResults 'endr'
+                Write-Host -f GREEN ' Log file >  ' -NoNewline;
+                $z = Read-Host
+
+                if($la[$z]){
+                    $lf = $la[$z]
+                    foreach($msg in Get-Content "$vf19_LOG\$lf"){
+                        $msg = $msg -Split('\|\|')
+                        if($msg[1] -eq 'ERROR'){
+                            $level = 'derpy    ' + $msg[1]
+                        }
+                        else{
+                            $level = "    $($msg[1])"
+                        }
+                        screenResultsAlt "$($msg[0] + '  ' + $lf)" "$level" "$($msg[2])"
+                        if( $msg[3] ){
+                            screenResultsAlt 'next' "$($msg[3])"
+                        }
+                        screenResultsAlt 'endr'
+                    }
+                    screenResultsAlt 'endr'
+                    ''
+                    Write-Host -f GREEN '  Hit ENTER to continue.
+                    '
+                    Read-Host
+                }
+            }
+        }
     }
 }
 
@@ -190,9 +204,84 @@ function decodeSomething(){
 
 
 
+<#################################
+    Deobfuscate your encoded value ($1), plaintext gets saved as $vf19_READ
+            OR
+    Encode your plaintext value ($1) to base64 by making your second param 0 (zero)
+    
+    -DO NOT USE ENCODING TO HIDE USERNAMES/PASSWORDS/KEYS or other sensitive info! This
+    is only intended to prevent regular users from seeing your filepaths/URLs, etc.,
+    and avoiding automated keyword scanners.
+
+    -You MUST set your new variable to $vf19_READ **before** this function gets called again:
+
+        getThis $base64string
+        $plaintext = $vf19_READ
+
+    -To decode a hexadecimal string, call this function with '1' as a second parameter (and
+      your hex string can include spaces and/or '0x' tags, or neither):
+
+        getThis '0x746869732069 730x20 61 200x740x650x7374' 1
+        $plaintext = $vf19_READ
+
+    -If you want to ENCODE plaintext to Base64, call this function with your plaintext as
+        the first parameter, and 0 as the second parameter. This does NOT write to $vf19_READ!
+        
+        $encoded_variable = getThis $plaintext 0     #  ENCODE A VALUE
+     
+
+    This function can also be used by your scripts for normal decoding tasks, it isn't
+    limited to MACROSS' startup.
+
+    The reason it always writes to $vf19_READ instead of just returning a value to your script
+    is to ensure that decoded plaintext gets wiped from memory every time the MACROSS menu loads.
+    Yes, I'm one of those paranoid types.
+
+#################################>
+function getThis($1,$2){
+    ## Start fresh
+    $Global:vf19_READ = $null
+
+    if( $2 -eq 1 ){
+        $a = $1 -replace "0x",''
+        $a = $a -replace " ",''
+        $a = $(-join ($a -split '(..)' | ? { $_ } | % { [char][convert]::ToUInt32($_,16) }))
+    }
+    elseif( $2 -eq 0 ){
+        $a = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($1))
+    }
+    else{
+        $a = [Text.Encoding]::Utf8.GetString([Convert]::FromBase64String($1))
+    }
+    
+    if( $2 -eq 0 ){
+        Return $a
+    }
+    else{
+        $Global:vf19_READ = $a
+    }
+}
+
+
+
+
+## I can never remember how to convert unicode in powershell, just rename it to match python
+function ord($1){
+    if($1.getType().Name -eq 'String'){
+        Return [char]"$1" -as [int]
+    }
+}
+function chr($1){
+    if($1.getType().Name -eq 'Int32'){
+        Return [char]$1
+    }
+}
+
+
+
 ## When a python script calls a powershell script to find or eval something, it currently
 ## can't read the results straight from powershell without extra coding. This function
-## lets powershell write results to a file in the directory "MACROSS\ncore\py_classes\garbage_io"
+## lets powershell write results to a file in the directory "MACROSS\core\py_classes\garbage_io"
 ## so that the calling python script can read and ingest the contents of that file more
 ## easily. Eventually the mcdefs library will contain a method to better handle this.
 ##
@@ -290,12 +379,14 @@ function getHash(){
 }
 
 
-## Output tool values to spreadsheet on user's desktop;
-## TO-DO: need to add instructions for grouping by rows or columns using $4
-<# 
 
-    This is very simplistic at the moment; the goal is to eventually make more useful spreadsheets when
-    simple CSV files aren't good enough.
+
+<# 
+    Output tool values to an Excel spreadsheet on user's desktop; need to add instructions for grouping
+    by rows or columns using $4
+
+    (This is very simplistic at the moment; the goal is to eventually make more useful spreadsheets when
+    simple CSV files aren't good enough.)
 
 
     $1 = (req'd) the name of the output file
@@ -315,44 +406,95 @@ function getHash(){
     If you send comma-separated strings as param $4, this function will write those values as the column headers
     in the worksheet, and then begin writing the values from param $2 into the appropriate row/columns.
 
+    TO COLORIZE TEXT:
+
+        Send your color choice (red, green, blue, yellow, cyan, gray, black or white) with a "~" symbol between
+        your color and the value, i.e. "red~RESULT FAILED!" will write "RESULT FAILED!" in red text.
+
+    TO COLORIZE CELLS:
+
+        Send your color (same choices as above) AND the color you want for text, separated with "~" like so:
+
+            "black~red~RESULT FAILED~"
+
+        The above will make the cell black with red text. You must send BOTH a cell color AND a text color to
+        colorize cells.
+
+
+
     Usage:
 
-            sheetResults 'myoutput' 'host 1,host 2,host 3,host 4'
+        EXAMPLE 1
 
-    The above example will write out the hosts in a simple list to 'myoutput.xlsx'
+            $vals = 'host 10,host 24,host 13,host 4'
+            sheetz 'myoutput' $vals
 
-            sheetResults 'myoutput' 'host 1,windows,11,192.168.10.10,host2,,,192.168.10.11' 1 'HOST,OS,VER,IP'
+    The above example will write out the hosts in a simple list to 'myoutput.xlsx' in cells A1 - A4
+
+        EXAMPLE 2
+
+            $hosts = 'host 1,blue~white~windows,11,192.168.10.10,host2,linux,red~kali,192.168.10.11'
+            $headers = 'HOST,OS,VER,IP'
+            sheetz 'myoutput' $hosts 1 $headers
 
     The above will create (or open) myoutput.xlsx, and then writes 'HOST' to cell A1, 'OS' to B1, 'VER' to C1, and
     'IP' to D1.
 
     Next it will go through all the comma-separated values in param 2, writing values into the next row until it reaches
-    column D, then jump to the next row back at column A:
+    column D, then jump to the next row back at column A. And in this example, cell B2 (windows) will be blue with white
+    text while cell C3 (kali) will be in red text.
 
 
                          A         B       C         D
             row 1      HOST       OS      VER        IP
             row 2      host 1   windows   11    192.168.10.10
-            row 3      host 2                   192.168.10.11
+            row 3      host 2   linux     kali  192.168.10.11
+
 
 
     Make sure your script is sending your report values to param $2 IN ORDER, otherwise they'll get written to the wrong
-    cells!
+    cells! Also, if you're adding values to an existing sheet, don't send the headers, just send the next available cell
+    in column A as parameter $3, and the number of columns being written, in this case 4 (A-D).
 
-    Alternately, you could set param $4 to '4' if you don't need to label the columns:
+        EXAMPLE 3
 
-            sheetResults 'myoutput' 'host 1,windows,11,192.168.10.10,host2,,,192.168.10.11' 1 4
+    Sometimes you don't need headers. You could set param $4 to '6' if you just need to specify that there should be 6
+    columns (A-F):
+        
+            sheetz 'myoutput' $patchInfo 1 6
 
-                        A         B       C         D
-            row 1      host 1   windows   11    192.168.10.10
-            row 2      host 2                   192.168.10.11
+                        A         B        C         D                 E           F
+            row 1      host 1   windows   11    192.168.10.10      patched     1/31/2020
+            row 2      host 2   windows   10    192.168.10.11     unpatched
     
 
 
-#>
-function sheetResults(){
+                 CELL & FONT COLORIZE:
+    Colors have to be calculated by adding R + G + B,
+    but G has to be multiplied by G and 256, and B has to be
+    multiplied by B * 256 * 256 because why just let us write
+    'blue', 'green, 'red'...
 
-    Param(
+        Play with the equations to find ugly colors
+
+        RGB COLORS:
+        Black: RGB(0,0,0)
+        White: RGB(255,255,255)
+        Red: RGB(255,0,0)
+        Green: RGB(0,255,0) This green is eye cancer
+        Blue: RGB(0,0,255)
+        Yellow: RGB(255,255,0)
+        Magenta: RGB(255,0,255)
+        Cyan: RGB(0,255,255)
+        Light Gray: RGB(192,192,192)
+        Dark Gray: RGB(128,128,128)
+        Snot Green: RGB(204,255,204)
+
+
+#>
+function sheetz(){
+
+    param(
         [Parameter(Mandatory=$true)]
         [string]$1,
         [Parameter(Mandatory=$true)]
@@ -360,6 +502,17 @@ function sheetResults(){
         [int]$3,
         $4
     )
+
+    $colors = @{
+        'red~' = 255 + (1*256) + (1*256*256);
+        'green~' = 204 + (255*256) + (204*256*256);
+        'blue~' = (255*256*256);
+        'white~' = 255 + (255*256) + (255*256*256);
+        'gray~' = 128 + (128*256) + (128*256*256);
+        'yellow~' = 255 + (255*256);
+        'cyan~' = (255*256) + (255*256*256);
+        'black~' = 0
+    }
 
 
     $r = 1  ## Starting row
@@ -383,16 +536,7 @@ function sheetResults(){
 
 
     # Add reference to the Microsoft Excel assembly
-    if( $MSXL){
-        Add-Type -AssemblyName Microsoft.Office.Interop.Excel
-    }
-    else{
-        Write-Host -f CYAN '
-    Cannot write to file... excel is not installed!
-        '
-        slp 3
-        Return
-    }
+    Add-Type -AssemblyName Microsoft.Office.Interop.Excel
 
     
     # Create a new Excel application
@@ -418,7 +562,29 @@ function sheetResults(){
         
         function columnVals($rr,$cc,$count){
             Foreach($v1 in $val1){
-                $worksheet.Cells.Item($rr, $cc).Value2 = $v1  ## Write value to cell
+                if($v1 -Match "^[a-z]+~[a-z]+~"){
+                    $shade_cell = $v1 -replace "~[a-z]+~",'~' -replace "~.+",'~'
+                    $shade_text = $v1 -replace "^[a-z]+~?" -replace "~.+",'~'
+                    $v1 = $v1 -replace "^[a-z]+~[a-z]+~"
+                }
+                elseif($v1 -Match "^[a-z]+~"){
+                    $shade_text = $v1 -replace "~.+",'~'
+                    $v1 = $v1 -replace "^[a-z]+~"
+                }
+                
+                $worksheet.Cells.Item($rr, $cc).Value2 = $v1     ## Write values as a list in column A
+                
+
+                ## Format cells if applicable
+                if($shade_cell){
+                    $worksheet.Cells.Item($rr, $cc).Interior.Color = $colors[$shade_cell]    
+                }
+                if($shade_text){
+                    $worksheet.Cells.Item($rr, $cc).Font.Color = $colors[$shade_text]
+                }
+
+                Remove-Variable shade_*
+
                 $cc++                                         ## shift to the next column
                 $count++                                      ## track which column is current
                 if($count -gt $val2c){                        ## stop shifting if all columns have been written
@@ -432,7 +598,26 @@ function sheetResults(){
 
         if($val2){
             Foreach($v2 in $val2){
-                $worksheet.Cells.Item($r, $c).Value2 = $v2  ## Write all the initial column values in row 1
+                if($v2 -Match "^[a-z]+~[a-z]+~"){
+                    $shade_cell = $v2 -replace "~[a-z]+~",'~' -replace "~.+",'~'
+                    $shade_text = $v2 -replace "^[a-z]+~?" -replace "~.+",'~'
+                    $v2 = $v2 -replace "^[a-z]+~[a-z]+~"
+                }
+                elseif($v2 -Match "^[a-z]+~"){
+                    $shade_text = $v2 -replace "~.+",'~'
+                    $v2 = $v2 -replace "^[a-z]+~"
+                }
+
+                ## Format cells if applicable & Write all the initial column values in row 1
+                if($shade_cell){
+                    $worksheet.Cells.Item($r, $c).Interior.Color = $colors[$shade_cell]    
+                }
+                if($shade_text){
+                    $worksheet.Cells.Item($r, $c).Font.Color = $colors[$shade_text]
+                }
+                Remove-Variable shade_*
+
+                $worksheet.Cells.Item($r, $c).Value2 = $v2  ## 
                 $c++                                        ## shift to next column
             }
             $c = 1                                          ## go back to column A
@@ -447,7 +632,27 @@ function sheetResults(){
     }
     else{
         Foreach($v1 in $val1){
+            if($v1 -Match "^[a-z]+~[a-z]+~"){
+                $shade_cell = $v1 -replace "~[a-z]+~",'~' -replace "~.+",'~'
+                $shade_text = $v1 -replace "^[a-z]+~?" -replace "~.+",'~'
+                $v1 = $v1 -replace "^[a-z]+~[a-z]+~"
+            }
+            elseif($v1 -Match "^[a-z]~"){
+                $shade_text = $v1 -replace "~.+",'~'
+                $v1 = $v1 -replace "^[a-z]~"
+            }
+
             $worksheet.Cells.Item($r, $c).Value2 = $v1     ## Write values as a list in column A
+
+            if($shade_cell){
+                $worksheet.Cells.Item($rr, $cc).Interior.Color = $colors[$shade_cell]    
+            }
+            if($shade_text){
+                $worksheet.Cells.Item($rr, $cc).Font.Color = $colors[$shade_text]
+            }
+
+            Remove-Variable shade_*
+            
             $r++
         }
     }
@@ -479,14 +684,13 @@ function sheetResults(){
 
 
 
-
 ## This func opens a dialog window so the user can specify a filepath to whatever.
 ## Param $filter is optional, allows you to specify a filetype to select; default is
 ## to show all files for selection
 ##    Example usage: $file_to_read = getFile 'Text Document (.txt)|*.txt'
 ##                                   ^^ only shows user txt files to select
 function getFile($filter){
-    [System.Reflection.Assembly]::LoadWithPartialName(“System.windows.forms”) | Out-Null
+    [System.Reflection.Assembly]::LoadWithPartialName("System.windows.forms") | Out-Null
 
     if($filter -eq 'folder'){
         $f = New-Object System.Windows.Forms.FolderBrowserDialog
@@ -500,9 +704,11 @@ function getFile($filter){
         $f.Description = "Select a folder"
         $f.SelectedPath = 'C:\'
 
-        if($f.ShowDialog() -eq "OK")
-        {
+        if($f.ShowDialog() -eq "OK"){
             Return $f.SelectedPath
+        }
+        else{
+            Return $false
         }
         
     }
@@ -513,7 +719,7 @@ function getFile($filter){
             $o.filter = $filter
         }
         else{
-            $o.filter = “All files (*.*)| *.*”
+            $o.filter = "All files (*.*)| *.*"
         }
         $o.ShowDialog() | Out-Null
         $o.filename
@@ -574,6 +780,7 @@ function houseKeeping(){
             Write-Host -f CYAN '
             ...Delete action failed!
             '
+            errLog 'ERROR' "$USR failed to delete $($_.Name) for $2 (houseKeeping)"
         }
         else{
             $Script:fcount = $fcount - 1
@@ -600,6 +807,7 @@ function houseKeeping(){
                     $dn = $_.Name
                     Write-Host -f CYAN "  Deleting $dn...."
                     rmFiles $dn
+                    errLog 'INFO' "$USR deleted $($_.Name) for $2 (houseKeeping)"
                     slp 1
                 }
         }
@@ -613,6 +821,7 @@ function houseKeeping(){
                         $dn = $_.Name
                         Write-Host -f CYAN "  Deleting $dn...."
                         rmFiles $dn
+                        errLog 'INFO' "$USR deleted $($_.Name) for $2 (houseKeeping)"
                         slp 1 
                     }
             }
