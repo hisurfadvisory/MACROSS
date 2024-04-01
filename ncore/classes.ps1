@@ -52,14 +52,15 @@
 class macross {
     
 
-    [string]$name   ## Attribute 1: Name of the script
-    [string]$priv   ## Attribute 2: Privilege level required, admin vs. user
-    #[string]$access  ## Level of analyst access
+    [string]$name     ## Attribute 1: Name of the script
+    [string]$priv     ## Attribute 2: Privilege level required, admin vs. user
+    #[string]$access   ## Level of analyst access
     [string]$valtype  ## Attribute 3: What kind of values the script can accept (strings, filenames, etc).
-    [string]$lang   ## Attribute 4: The script language
-    [string]$author ## Attribute 5: Script author
-    [int]$evalmax   ## Attribute 6: How many values a script can accept from other tools
-    [string]$ver    ## Attribute 7: The script version
+    [string]$lang     ## Attribute 4: The script language
+    [string]$author   ## Attribute 5: Script author
+    [int]$evalmax     ## Attribute 6: How many values a script can accept from other tools
+    [string]$ver      ## Attribute 7: The script version
+    [string]$fname    ## The full filename for use with MACROSS' collab function
 
     
     <# 
@@ -117,6 +118,7 @@ class macross {
         $this.author = ($scriptvalues -Split ',')[4]
         $this.evalmax = ($scriptvalues -Split ',')[5]
         $this.ver = ($scriptvalues -Split ',')[6]
+        $this.fname = [string]($scriptvalues -Split ',')[7]
     }
 
     [void]setAttributes(
@@ -127,7 +129,8 @@ class macross {
             [string]$lang,
             [string]$author,
             [int]$evalmax,
-            [string]$ver){
+            [string]$ver,
+            [string]$fname){
         $this.name = $name
         $this.priv = $priv
         #$this.access = $access
@@ -136,6 +139,7 @@ class macross {
         $this.author = $author
         $this.evalmax = $evalmax
         $this.ver = $ver
+        $this.fname = $fname
     }
 
 
@@ -148,6 +152,7 @@ class macross {
         $pr = ' Privilege required:          ' + $this.priv #+ ', ' + $this.access
         $la = ' Language:                    ' + $this.lang
         $ev = ' Max # of simultaneous evals: ' + [string]$this.evalmax
+        $ff = ' File Name:                   ' + $this.fname
         $info = "
  $nm
     $ve
@@ -156,6 +161,7 @@ class macross {
     $pr
     $la
     $ev
+    $ff
         "
         Return $info
     }
