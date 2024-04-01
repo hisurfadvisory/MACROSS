@@ -5,7 +5,7 @@
 
 ################################
 ##  toolCount func:
-##  Check if local nmods folder has all the necessary scripts; includes python scripts
+##  Check if local modules folder has all the necessary scripts; includes python scripts
 ##   only if python is installed.
 ##  Generates the $vf19_ATTS array that contains class attributes for
 ##   each MACROSS script
@@ -35,8 +35,8 @@ function toolCount(){
             $n = $rc -replace "^.*\\" -replace "\.p.*$"                   ## Get the script name, strip the extension
             $v = (gc $rc | Select -Index 1) -replace "^#_ver "            ## Get the script version
             $c1 = (gc $rc | Select -Index 2) -replace "^#_class ","$n,"   ## Get the class/attribute line
-            $c1 = $c1 + ",$v"                                             ## Cat all the script attributes into 1 string
-            [MACROSS]$c2 = ($c1)                                          ## Create new object with the script's class
+            $c1 = $c1 + ",$v" + ",$($rc.Name)"                            ## Cat all the script attributes into 1 string
+            [macross]$c2 = ($c1)                                          ## Create new object with the script's class
             $Global:vf19_ATTS.Add($n,$c2)                                 ## Add the script's attributes to global array
             
 
@@ -67,7 +67,7 @@ function toolCount(){
 
    If using a master repository to maintain your custom scripts, store them
    separately from the MACROSS root folder you share out to users. Let them copy
-   MACROSS, the ncore folder and its contents, and an empty nmods folder to their
+   MACROSS, the core folder and its contents, and an empty modules folder to their
    desktop. When they run MACROSS for the first time, the tools they have permissions
    to will download from your script repo, i.e. admin-only scripts will not get
    downloaded for standard users, and scripts that don't contain MACROSS attributes
@@ -155,7 +155,7 @@ function look4New(){
     }
 
     ## If you're using a central repo separate from MACROSS that may contain non-MACROSS scripts,
-    ## your analysts should be given an empty "nmods" folder at first-use. This check will automatically
+    ## your analysts should be given an empty "modules" folder at first-use. This check will automatically
     ## search your repo for the appropriate MACROSS tools and download them.
     elseif($tool_diff){
         Foreach($t0 in $tool_diff){
@@ -187,20 +187,15 @@ function look4New(){
 ## $2 is the latest tool version found by verChk (required)
 ################################
 function dlNew($1,$2){
-    <#Params(
-        [Parameter(Mandatory=$true)]
-        $1,
-        [Parameter(Mandatory=$true)]
-        $2
-    )#>
     if( ! $1 -or ! $2 ){
         errMsg 3
+        errLog 'ERROR' "$USR - dlNew function failed to check for new scripts."
     }
     else{
         $dir = $Global:vf19_REPOTOOLS
         $3 = $1 -replace "\.p*"
-        $3 = $3 -replace "nmods\\"
-        $4 = $1 -replace "nmods\\"
+        $3 = $3 -replace "modules\\"
+        $4 = $1 -replace "modules\\"
         if( $3 -eq "MACROSS" ){
             $NC_CHK = $true
             $dir = $Global:vf19_REPOCORE
@@ -214,9 +209,9 @@ function dlNew($1,$2){
         ## Update the main console and all its files
         if( $NC_CHK ){
             Copy-Item -Force -Path "$dir\$1" "$vf19_TOOLSROOT\$1"
-            Get-ChildItem -Recurse -Path "$dir\ncore\*" | 
+            Get-ChildItem -Recurse -Path "$dir\core\*" | 
                 ForEach-Object{
-                    Copy-Item -Recurse -Force -Path "$dir\ncore\$_" "$vf19_TOOLSROOT\ncore\"
+                    Copy-Item -Recurse -Force -Path "$dir\core\$_" "$vf19_TOOLSROOT\core\"
                 }
         }
         else{
@@ -250,24 +245,21 @@ function dlNew($1,$2){
 
 
 ################################
-## Update latest tool versions
+## Update latest tool versions; requires that you maintain a master repository and that its
+## location can be found in $vf19_MPOD['nre'] (see the temp_config.txt file).
 ## $1 is a required value, the tool name passed in from the functions 'chooseMod' & 'dlNew'
 ## $2 is an optional verification check passed in from the function 'dlNew'
 ################################
 function verChk($1){
-    <#Params(
-        [Parameter(Mandatory=$true)]
-        [string]$1,
-        [string]$2
-    )#>
     if( ! $1 ){
         errMsg 3
+        errLog "$USR - corrupt or non-existent modules script tried to load."
     }
     else{
         $3 = $1 -replace "\.ps1"
         if( $3 -ne 'MACROSS' ){
             $local = "$vf19_TOOLSDIR\$1"
-            $dir = $Global:vf19_REPOTOOLS
+            $dir = $vf19_REPOTOOLS
             $Global:vf19_LVER = $vf19_LIST1[$1]
             $vf19_CVER = $vf19_LIST0[$1]
         }
@@ -289,6 +281,7 @@ function verChk($1){
                 '
                 Write-Host -f YELLOW '     UPDATE FAILED!
                 '
+                errLog 'ERROR' "$USR - failed updating $1 to version $vf19_LVER"
                 slp 3
                 $Global:vf19_Z = 'GO'
                 Return
