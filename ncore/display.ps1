@@ -82,7 +82,7 @@ function startUp(){
     foreach($i in $INST){
         $prog = $i.GetValue('DisplayName')
         if($prog -match 'python'){
-            $Global:MONTY = $true               ## Confucious say: 'Python is less stressful than powershell'
+            $Global:MONTY = $true
             getThis $Global:vf19_MPOD['gbg']
             $Global:vf19_GBIO = $vf19_READ      ## Set the garbage-in-garbage-out directory for python scripts
             $Global:vf19_PYPOD = ''             ## Prep string values for passing to python scripts
@@ -99,24 +99,45 @@ function startUp(){
         }
     }
 
+
+    
+    ## Use the integer $N_ in conjunction with $M_ (see validation.ps1) for performing
+    ## math, permission checks, obfuscating values, writing hexadecimal strings, etc. without writing
+    ## out the actual integers in plaintext.
+    ##
+    ## This value is currently calculated using the first line in MACROSS.ps1. However, If you plan
+    ## to perform sensitive mathing, I recommend changing and storing this value somewhere
+    ## other than this script with access controls.
+    ##
+    ## To see the default values, from the main menu, enter "debug $N_" or "debug $M_"
+    $i = 0
+    $mio = (Get-Content "$vf19_TOOLSROOT\MACROSS.ps1" | Select -Index 2) -replace "^..."
+    $mio = Get-Content "$vf19_TOOLSROOT\MACROSS.ps1" | Select -Index 0
+    $mio -Split('') | %{
+        $i = $i + $(ord "$_")
+    }
+    $Global:N_ = 671042 + ($i * 39)
+
+
+
     ## Arm the missile pod (although Basara's VF-19 only carried missiles once);
     ## populate this global array with any Base64-encoded filepaths that you want shared with your scripts
-    ## The contents of vf19_MPOD get read in from the opening comments in utility.ps1
+    ## The contents of vf19_MPOD get read in from the opening comments in temp_config.txt; I recommend
+    ## you create your own file to store your values and keep it in a better-secured location. Don't forget
+    ## to modify the lines below with your new filepath!
     $Global:vf19_MPOD = @{}
-    $aa = @()
-    $x = Select-String $vf19_TAG "$vf19_TOOLSROOT\ncore\utility.ps1" |
+    $a = ''
+    $x = Select-String $vf19_TAG "$vf19_TOOLSROOT\core\temp_config.txt" |
         Select-Object -ExpandProperty LineNumber
-    while($a -ne '#>'){
-        $a = Get-Content "$vf19_TOOLSROOT\ncore\utility.ps1" | Select -Index $x
-        $aa += $a
+    while($aa -ne "~~~#>"){
+        $aa = $(Get-Content "$vf19_TOOLSROOT\core\temp_config.txt" | Select -Index $x)
         $x++
+        $a += $aa
     }
-    $b = $aa -Join ''
-    $b = $b -replace "#>$",''
-    $b = $b -Split '@@@'
+    $b = $($a -replace "~~~#>$") -Split '@@@'
     foreach($c in $b){
         $d = $c.substring(0,3)
-        $e = $c -replace "^...",''
+        $e = $c -replace "^..."
         $Global:vf19_MPOD.Add($d,$e)
         if($MONTY){
             $p += $c  ## Create a parallel MPOD list that python can read
@@ -131,73 +152,61 @@ function startUp(){
 
 
 
-<# 
-   Format up to three rows of outputs to the screen; parameters you send will be
-   truncated to fit in the window (up to 3 separate params, but $1 is required).
-
-   ***Call this function with "endr" as the only parameter to add the final row separator
-   "$r" after all your results have been displayed.***
-
-    $1 (REQUIRED) is the name of your output/results OR the row separator $r.
-    $2 is the value of your output's name.
-    $3 is an optional value for whatever you need.
-
-      Example usage for displaying an array of results:
-  
-           screenResults '                                     Items in my list'
-           foreach($i in $results.keys){ screenResults $i $results[$i] }
-           screenResults 'endr'
-
-        will write to screen:
-
-        ‖≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡‖
-        ‖                                     Items in my list                                     ‖
-        ‖≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡‖
-        ‖  Key 1 name        ║  The value of key 1                                                 ‖
-        ‖≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡‖
-        ‖  Key 2 name        ║  The value of key 2                                                 ‖
-        ‖≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡‖
-  
-   ...and so on. If you send a value that begins with "derpy", for example "derpyWindows PC", the
-   value "Windows PC" will be written to screen in red-colored text. This lets you highlight
-   values that meet thresholds you specify in your script so you can easily identify them.
-
-#>
+## Format up to three rows of outputs to the screen; parameters you send will be
+## wrapped to fit in their columns (up to 3 separate columns).
+## Call this function with "endr" as the only parameter to add the final
+## separator $c after all your results have been displayed.
+##
+## $1 is required, $2 and $3 are optional.
+##
+##    Example usage for displaying an array of results:
+##
+##         foreach($i in $results.keys){ screenResults $i $results[$i] }
+##         screenResults 'endr'
+##
+## If you send a value that begins with "red~", for example "red~Windows PC", the
+## value "Windows PC" will be written to screen in red-colored text. You can use any
+## color recognized by powershell's "write-host -f" option (green, yellow, cyan, etc.)
+##
 function screenResults(){
     Param(
         [Parameter(Mandatory=$true)]
         [string]$1,
         [string]$2,
-        [string]$3
+        [string]$3,
+        [int]$4
     )
 
-    $NAMEc = 'YELLOW'
-    $VAL1c = 'WHITE'
-    $VAL2c = 'GREEN'
-    $r = '4oCW4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh
-    4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh
-    4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh
-    4omh4omh4omh4omh4omh4omh4omh4omh4omh4oCW' 
-    $c = '4oCW'
-    getThis $r    ## 92 char length
-    $r = $vf19_READ
-    getThis $c
-    $c = $vf19_READ
-    if($1 -Match "^derpy"){
-        $NAMEc = 'RED'
-        $1 = $1 -replace "^derpy"
+    ## Set default colors
+    $ncolor = 'YELLOW'
+    $v2color = 'GREEN'
+
+    ## Set border sizes; resizing with $4 is not implemented yet!
+    if($4 -and $4 -gt 90){
+        $tw = $4
     }
-    elseif($1 -Match "^derp"){
-        $NAMEc = 'CYAN'
-        $1 = $1 -replace "^derp"
+    else{
+        $tw = 90
+    }
+    $r = ''
+    getThis '4oCW'; $c = $hk_READ
+    getThis '4omh'
+    1..$tw | %{$r += $hk_READ}; $r = $c + $r + $c
+    getThis $br; $r = $vf19_READ  ## 92 char length top-bottom border
+    getThis $bc; $c = $vf19_READ
+    if($1 -Match "^[a-z]+~"){
+        $ncolor = $1 -replace "~(.|`n)+"
+        $1 = $1 -replace "^([a-z]+~)?"
     }
     elseif($1 -eq 'endr'){
         Write-Host -f GREEN $r
         Return
     }
 
-
-
+    
+    ## This function counts characters to create borders based on string-length
+    ## and the number of inputs. It tries not to split words but create \newlines
+    ## based on whitespace.
     function genBlocks($outputs,$max,$min){
         $o1 = @()
         $o2 = @()
@@ -242,7 +251,7 @@ function screenResults(){
                     else{
                         if($bl -lt $max){
                             while($bl -ne $max){
-                                $block = $block + ' '       ## Add space if the line is < $max
+                                $block = $block + ' '   ## Add whitespace if the line is < $max
                                 $bl++
                             }
                         }                        
@@ -254,25 +263,25 @@ function screenResults(){
                     
                 }
                     
-                ## If the current $o1 item is the last one from $outputs, add it to
+                ## If the current $o1 item is the last item from $outputs, add it to
                 ## the $o2 response
                 if($_ -eq $p[-1]){
-                    $last = $o1 -Join(' ')
-                    $l = $last.length
-                    if($l -gt $max){                   ## The last item might be > $max
-                        $cut = $max - $l
-                        $o2 += $last.Substring(0,$max)
-                        $o2 += $last.Substring($cut,-1)
-                    }
-                    else{
-                        if($l -lt $max){
-                            while($l -ne $max){
-                                $last = $last + ' '    ## Add spaces if the line is < $max
-                                $l++
-                            }
+                        $last = $o1 -Join(' ')
+                        $l = $last.length
+                        if($l -gt $max){                   ## The last item might be > $max
+                            $cut = $max - $l
+                            $o2 += $last.Substring(0,$max)
+                            $o2 += $last.Substring($cut,-1)
                         }
-                        $o2 += $last
-                    }
+                        else{
+                            if($l -lt $max){
+                                while($l -ne $max){
+                                    $last = $last + ' '    ## Add spaces if the line is < $max
+                                    $l++
+                                }
+                            }
+                            $o2 += $last
+                        }
                 }
                     
                     
@@ -285,26 +294,18 @@ function screenResults(){
     $wide1 = $NAME.length
 
     if($2){
-        if($2 -Match "^derpy"){
-            $VAL1c = 'RED'
-            $2 = $2 -replace "^derpy"
-        }
-        elseif($2 -Match "^derp"){
-            $VAL1c = 'CYAN'
-            $2 = $2 -replace "^derp"
+        if($2 -Match "^[a-z]+~"){
+            $v1color = $2 -replace "~(.|`n)+"
+            $2 = $2 -replace "^([a-z]+~)?"
         }
         $VAL1 = $2
         $wide2 = $2.length
         
     
         if($3){
-            if($3 -Match "^derpy"){
-                $VAL2c = 'RED'
-                $3 = $3 -replace "^derpy"
-            }
-            elseif($3 -Match "^derp"){
-                $VAL2c = 'CYAN'
-                $3 = $3 -replace "^derp"
+            if($3 -Match "^[a-z]+~"){
+                $v2color = $3 -replace "~(.|`n)+"
+                $3 = $3 -replace "^([a-z]+~)?"
             }
             $VAL2 = $3
             $wide3 = $3.length
@@ -326,18 +327,19 @@ function screenResults(){
 
     }
     else{
-        [array]$BLOCK1 = genBlocks $NAME 88 86
+        [array]$BLOCK1 = genBlocks $NAME 89 87
     }
 
     
-    ## Generate empty space to keep columns uniform
-    $empty1 = '                        '                   ## 23 char length 1st column
+    ## Generate empty lines to keep columns uniform-ish (fonts are not usually monospace,
+    ## but this will get close enough)
+    1..$($tw-67) | %{$empty1 += ' '}                       ## 23 char length 1st column
     if($ct3){
-        $empty2 = '                                   '    ## 35 char length  2nd column with 3rd
-        $empty3 = '                             '          ## 28 char length  3rd column
+        1..$($tw-55) | %{$empty2 += ' '}                   ## 35 char length 2nd column with 3rd column
+        1..$($tw-61) | %{$empty3 += ' '}                   ## 28 char length 3rd column
     }
-    elseif($ct2){                                          ## 64 char length 2nd column without 3rd
-        $empty2 = '                                                                 ' 
+    elseif($ct2){
+        1..$($tw-25) | %{$empty2 += ' '}                   ## 64 char length 2nd column WITHOUT 3rd column
     }
 
 
@@ -350,7 +352,7 @@ function screenResults(){
     <#
     Outputs will get formatted to screen based on:
         -how many values got passed in (1, 2, or 3)
-        -how many words are in each output
+        -how many words/chars are in each output
         -which outputs have the most words in them
         -I hate math
     #>
@@ -359,7 +361,7 @@ function screenResults(){
         while($countdown -ne 0){
             Write-Host -f GREEN $c -NoNewline;
             if($BLOCK1[$index1]){
-                Write-Host -f $NAMEc " $($BLOCK1[$index1])" -NoNewline;
+                Write-Host -f $ncolor " $($BLOCK1[$index1])" -NoNewline;
                 $index1++
                 $countdown = $countdown - 1
             }
@@ -368,7 +370,12 @@ function screenResults(){
             }
             Write-Host -f GREEN $c -NoNewline;
             if($BLOCK2[$index2]){
-                Write-Host -f $VAL1c " $($BLOCK2[$index2])" -NoNewline;
+                if($v1color){
+                    Write-Host -f $v1color " $($BLOCK2[$index2])" -NoNewline;
+                }
+                else{
+                    Write-Host " $($BLOCK2[$index2])" -NoNewline;
+                }
                 $index2++
                 $countdown = $countdown - 1
             }
@@ -377,7 +384,7 @@ function screenResults(){
             }
             Write-Host -f GREEN $c -NoNewline;
             if($BLOCK3[$index3]){
-                Write-Host -f $VAL2c " $($BLOCK3[$index3])" -NoNewline;
+                Write-Host -f $v2color " $($BLOCK3[$index3])" -NoNewline;
                 $index3++
                 $countdown = $countdown - 1
             }
@@ -402,7 +409,7 @@ function screenResults(){
             $BLOCK1 | %{
                 if($linenum -lt $middle){
                     Write-Host -f GREEN "$c " -NoNewline;
-                    Write-Host -f $NAMEc $_ -NoNewline;
+                    Write-Host -f $ncolor $_ -NoNewline;
                     Write-Host -f GREEN $c -NoNewline;
                     Write-Host $empty2 -NoNewline;
                     Write-Host -f GREEN $c
@@ -410,10 +417,15 @@ function screenResults(){
                 }
                 else{
                     Write-Host -f GREEN "$c " -NoNewline;
-                    Write-Host -f $NAMEc "$_" -NoNewline;
+                    Write-Host -f $ncolor "$_" -NoNewline;
                     Write-Host -f GREEN $c -NoNewline;
                     if($BLOCK2[$index2]){
-                        Write-Host -f $VAL1c " $($BLOCK2[$index2])" -NoNewline;
+                        if($v1color){
+                            Write-Host -f $v1color " $($BLOCK2[$index2])" -NoNewline;
+                        }
+                        else{
+                            Write-Host " $($BLOCK2[$index2])" -NoNewline;
+                        }
                         Write-Host -f GREEN $c
                         $index2++
                     }
@@ -442,7 +454,7 @@ function screenResults(){
                 }
                 else{
                     if($BLOCK1[$index1]){
-                        Write-Host -f $NAMEc " $($BLOCK1[$index1])" -NoNewline;
+                        Write-Host -f $ncolor " $($BLOCK1[$index1])" -NoNewline;
                         $index1++
                     }
                     else{
@@ -451,17 +463,27 @@ function screenResults(){
                     }
                 }
                 Write-Host -f GREEN $c -NoNewline;
-                Write-Host -f $VAL1c " $_" -NoNewline;
+                if($v1color){
+                    Write-Host -f $v1color " $_" -NoNewline;
+                }
+                else{
+                    Write-Host " $_" -NoNewline;
+                }
                 Write-Host -f GREEN $c
             }
         }
         else{
             $BLOCK2 | %{
                 Write-Host -f GREEN $c -NoNewline;
-                Write-Host -f $NAMEc " $($BLOCK1[$index1])" -NoNewline;
+                Write-Host -f $ncolor " $($BLOCK1[$index1])" -NoNewline;
                 $index1++
                 Write-Host -f GREEN $c -NoNewline;
-                Write-Host -f $VAL1c " $_" -NoNewline;
+                if($v1color){
+                    Write-Host -f $v1color " $_" -NoNewline;
+                }
+                else{
+                    Write-Host " $_" -NoNewline;
+                }
                 Write-Host -f GREEN $c
             }
         }
@@ -472,7 +494,7 @@ function screenResults(){
     else{
         $BLOCK1 | %{
             Write-Host -f GREEN "$c " -NoNewline;
-            Write-Host -f $NAMEc " $_" -NoNewline;
+            Write-Host -f $ncolor $_ -NoNewline;
             Write-Host -f GREEN $c
         }
     }
@@ -480,99 +502,97 @@ function screenResults(){
 }
 
 
+<# Alternate output format for MACROSS results; don't use this for large outputs, use
+        screenResults instead!
 
-<# Alternate output format for MACROSS results
-    $1 can be a header for each item; make it an empty value if you want to
+    $1 is the header for each item; set it to 'next' if you want to
     write additional values to the table without a row separator.
     
     $2 and $3 are written below the header.
     $2 will get truncated if longer than 14 chars.
 
-    As with screenResults, send a single parameter, 'endr', to close out the table.
+    As with screenResults, send a single parameter, '0', to close out the table.
 
     Example usage:
+        $1 = 'rundll32.exe'
+        $2 = 'Parent'
+        $3 = 'acrobat.exe'
+        $4 = 'ParentID'
+        $5 = '2351'
 
-        screenResultsAlt 'rundll32.exe' 'Parent' 'acrobat.exe'
-        screenResultsAlt '' 'ParentID' '2351'                   ## leave 1st param empty
-        screenResultsAlt 'endr'
+    screenResultsAlt $1 $2 $3
+    screenResultsAlt 'next' $4 $5
+    screenResultsAlt 'endr'
 
-    The above will write to screen:
+        The above will write to screen:
 
-        ║║║║║║ rundll32.exe
-        ============================================================================
-        Parent    ║  acrobat.exe
-        ParentID  ║  2351
-        ============================================================================
+    ║║║║║║ rundll32.exe
+    ============================================================================
+    Parent    ║  acrobat.exe
+    ParentID  ║  2351
+    ============================================================================
 
-    As with the original screenResults function, send values that begin with 'derpy'
-    to highlight them in red-colored text onscreen.
+    As with the "screenResults" function, use "<COLOR>~" to highlight your values.
 
 #>
-function screenResultsAlt(){
-    Param(
-        [Parameter(Mandatory=$true)]
-        $1,
-        $2,
-        $3
-    )
+function screenResultsAlt($1,$2,$3){
+    
+    $1color = 'CYAN'
+    $2color = 'GREEN'
+    $3color = 'YELLOW'
+    $r = '  '
+    foreach($i in 1..76){$r += '='};Remove-Variable i
+    getThis '4pWR4pWR4pWR4pWR4pWR4pWR'; $c6 = $hk_READ
+    getThis '4pWR'; $c1 = $hk_READ
+    
+
+    if($1 -Match "^[a-z]+~"){
+        $1color = $1 -replace "~.+"
+        $1 = $1 -replace "^([a-z]+~)?"
+    }
+    if($2 -Match "^[a-z]+~"){
+        $2color = $2 -replace "~.+"
+        $2 = $2 -replace "^([a-z]+~)?"
+    }
+    if($3 -Match "^[a-z]+~"){
+        $3color = $3 -replace "~.+"
+        $3 = $3 -replace "^([a-z]+~)?"
+    }
 
 
-    $r = '  ============================================================================'
-    $c = '4oCW'
-    getThis $c
-    $c = $vf19_READ
+
     if($1 -eq 'endr'){
         Write-Host -f GREEN $r
     }
     else{
-        if($1 -Like "derpy*"){
-            $1rd = $true
-            $1 = $1 -replace "^derpy"
-        }if($2 -Like "derpy*"){
-            $2rd = $true
-            $2 = $2 -replace "^derpy"
-        }if($3 -Like "derpy*"){
-            $3rd = $true
-            $3 = $3 -replace "^derpy"
-        }
-        [int]$2l = $($2.length)
         [string]$2 = '  ' + $2
-        if($2l -gt 14){
-            $2 = $2.Substring(0,11)
-            $2 = $2 + '...'
-        }
-        else{
-            while($2l -ne 15){
-                $2 = $2 + ' '
-                $2l++
-            }
-        }
-        if($1 -ne ''){
-            Write-Host -f CYAN "  $c$c$c$c$c$c " -NoNewline;
-            if($1rd){
-                Write-Host -f RED $1
+        if($3){
+            [int]$2l = $($2.length)
+            if($2l -gt 19){
+                $2 = $2.Substring(0,15)
+                $2 = $2 + '... '
             }
             else{
-                Write-Host -f CYAN $1
+                while($2l -ne 19){
+                    $2 = $2 + ' '
+                    $2l++
+                }
             }
+        }
+        if($1 -ne 'next'){
+            Write-Host -f $1color "  $c6 $1"
             Write-Host -f GREEN $r
         }
-        if($2rd){
-            Write-Host -f RED "$2" -NoNewline;
+        if($3){
+            Write-Host -f $2color "$2" -NoNewline;
+            Write-Host -f GREEN "$c1" -NoNewline;
+            Write-Host -f $3color " $3"
         }
         else{
-            Write-Host -f GREEN "$2 $c" -NoNewline;
+            Write-Host -f $2color "$2"
         }
-        if($3rd){
-            Write-Host -f RED "  $3"
-        }
-        else{
-            Write-Host -f YELLOW "  $3"
-        }
-        
     }
 }
-
 
 
 
@@ -597,22 +617,12 @@ function slp(){
 
 <################################
 ## Display tool menu to user
-    You will notice an 'if' statement in this chooseMod function:
-        if( $_ -Match 'GERWALK' )
-    This is setting a global variable that lets all MACROSS scripts
-    know that the Carbon Black API script is available to be queried
-    (and by extension, if you have GERWALK in the nmods folder, that
-    assumes you also have Carbon Black).
-    You can tweak this to set different global values that will let
-    your scripts know that other scripts they might want to interact
-    with are available for use... very helpful for any other APIs you
-    want to integrate into MACROSS.
     The planned improvement is to rewrite this function so it can
-    accomodate more than 20 scripts in the /nmods folder. Right
-    now, for example, if you have 40 scripts in /nmods, the
+    accomodate more than 20 scripts in the /modules folder. Right
+    now, for example, if you have 40 scripts in /modules, the
     scrollPage function will show the first 9 tools in $FIRSTPAGE,
     but would show tools 10-40 in $NEXTPAGE because chooseMods
-    only generates two hashtables based on the nmods folder file-count
+    only generates two hashtables based on the modules folder file-count
     (single-digit vs. double-digit).
     I also need to standardize scripts' filename length to keep the menu uniform.
     Currently, it only adds whitespace to names less than 7 characters long.
@@ -622,26 +632,20 @@ function chooseMod(){
     $Global:vf19_NEXTPAGE = @{}
     $Global:vf19_MODULENUM = @()
     if( $MONTY ){
-        $Global:vf19_pylib = "$vf19_TOOLSROOT" + '\ncore\py_classes'  ## Filepath to the MACROSS python library
-        $ftypes = "*.p*"                                          ## Integrate python scripts if Python3 is installed
+        $Global:vf19_pylib = "$vf19_TOOLSROOT" + '\core\py_classes'  ## Filepath to the MACROSS python library
+        $ftypes = "*.p*"                                             ## Integrate python scripts if Python3 is installed
     }
     else{
         $ftypes = "*.ps*"                                        ## Ignore py files if Python3 not installed
     }
     $vf19_LISTDIR = Get-ChildItem "$vf19_TOOLSDIR\$ftypes" | Sort Name     ## Get the names of all the scripts in alpha-order
 
-    # Enumerate the nmods\ folder to find all scripts; all of my scripts  
+    # Enumerate the modules\ folder to find all scripts; all of my scripts  
     # contain a descriptor on the first line beginning with '_sdf1'
     $vf19_LISTDIR |
     Select -First 9 | 
     ForEach-Object{
         if( Get-Content $_.FullName | Select-String -Pattern "^#_sdf1.*" ){   # Verify the script is meant for MACROSS
-            if( $_ -Match 'GERWALK' ){
-                $Global:vf19_G1 = $true   ## Tells other scripts Carbon-Black script is available for queries
-            }
-            if( $_ -Match 'ELINTS' ){
-                $Global:vf19_E1 = $true   ## Tells other scripts String-Search script is available for queries
-            }
             $d1 = Get-Content $_.FullName -First 1         # Grab the first line of the script
             $d1 = $d1 -replace("^#_sdf1[\S]* ",'')          # Remove the 'sdf1'
             $d2 = $_ -replace("\.p.+$",'')    # Remove the file extension, only care about the name
@@ -836,7 +840,7 @@ function chooseMod(){
     }
     elseif( $vf19_Z -eq 'splash' ){  ## Easter egg
         $Global:vf19_Z = 0
-        $screens = [int](gc "$vf19_TOOLSROOT\ncore\splashes.ps1" | Select-String 'b =').count
+        $screens = [int](gc "$vf19_TOOLSROOT\core\splashes.ps1" | Select-String 'b =').count
         while( $vf19_Z -lt $screens ){
             transitionSplash $vf19_Z
             $Global:vf19_Z++
@@ -854,7 +858,7 @@ function chooseMod(){
             if( $vf19_MULTIPAGE ){
                 scrollPage   ## Changes menu to show 1-9 vs 10-20
             }
-            $Global:vf19_Z = $null  ## scrollPage only works if there's more than 9 tools in the nmods folder
+            $Global:vf19_Z = $null  ## scrollPage only works if there's more than 9 tools in the modules folder
         }
         elseif( $vf19_Z -eq 'q' ){
             $Global:vf19_Z = $null
@@ -873,7 +877,7 @@ function chooseMod(){
             $Global:vf19_NEWWINDOW = $true   ## Triggers the availableMods function to launch the selected script in a new powershell window
         }
         elseif( $vf19_Z -eq 'refresh' ){
-            dlNew "MACROSS.ps1" $vf19_LVER  ## Downloads a fresh copy of MACROSS and the ncore files, then exits
+            dlNew "MACROSS.ps1" $vf19_LVER  ## Downloads a fresh copy of MACROSS and the core files, then exits
         }
         else{
             $Global:HELP = $false
