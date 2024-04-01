@@ -1,37 +1,85 @@
 ## CUSTOMIZING THE CORE FUNCTIONS FOR YOUR ENVIRONMENT
 
-<b><u>SETTING DEFAULT VARIABLES</u></b><br>
+<b><u>ADDING SCRIPTS AND CONFIGURING MACROSS</u></b><br>
 TL;DR -- To reiterate the main Macross README -- MACROSS isn't so much a toolset as it is a standardized scheme (we'll call it a "Framework" because buzzwords) to help you connect unrelated scripts together in any way that seems natural or relevant to the everyday tasks in your SOC. <u>Its primary goal is to speed up the gathering of common info from Active Directory and any tools that have command-line APIs you already make use of</u>. Look up a host, or a username, or a filename, then extract any related data that is relevant to your investigation. Run the DEMO options from the menu in MACROSS (Hikaru and Minmay) to see a demonstration of how the scripts talk to each other to enrich gathered data.
 
 
-HOW TO CONFIGURE GLOBAL DEFAULTS:
-To begin with, the opening comment lines in the utility.ps1 file are reserved for a string of Base64-encoded lines delimited by '@@@'. Additional base64 strings can be inserted into this file's multi-line comment, as long as you prepend it with a three-letter identifier, and separate each base64
-value with '@@@'.
+MACROSS.ps1  = execute this to start MACROSS
 
-For example, let's say you have a security tool that you've written an automation API to run queries in your command line. If you want to modify your API to work in MACROSS, you could base64-encode the IP or URL to your security tool and add it to the lines in utility.ps1 so that everytime MACROSS loads, that URL/IP is ready to POST or QUERY to any time you need it.
+\core folder = contains all of MACROSS' core functions; you shouldn't need to change much in here<br>
+\modules folder = put your automation scripts in here<br>
+\resources folder = put any enrichment or config files you want in here (json, xml, etc.); I recommend you place this in an alternate, access-controlled location and modify the temp_config.txt file with the new location.<br>
 
-I have a couple of my custom scripts included in the github release --MYLENE and KONIG-- which query active directory in environments that use roaming profiles, and so instead of having the fileshare paths sitting in each script, I would just keep them encoded in this comment block until they're needed.
 
-I included this as a way to avoid hardcoding my commonly used values in plaintext. ***This should NOT be used to obscure sensitive details!***
-(Also, the better method for this would be to have a restricted web or fileserver that contains a textfile with these base64 values,
-and use the utility.ps1 comments for the base64 encoded path to THAT protected file. But you'll need to modify the <b>startUp</b> function in
-display.ps1 to do this properly. Remember, obfuscation ATTRACTS everyone on both sides of the infosec yin-yang, Defenders and Attackers alike.)
 
-After encoding your info, which could be filenames/filepaths, GPO membership strings, etc., you add a three-letter identifier to the front
-of that string before inserting it into the commented section. I have examples already set in utility.ps1 that you can modify however you need to. I do have two identifiers that are <u>reserved</u> for MACROSS functions, so don't use them for anything else:<br>
-	&emsp;&emsp;nre = location of the master MACROSS repo (it is currently set to the same location as your local MACROSS root)<br>
-	&emsp;&emsp;tbl = location of the resources folder, I typically stored common txt, xml or json files here. (this is also currently in the MACROSS root, though you might consider changing the location to something more accessed-controlled. It's up to you).<br>
+The first three lines of your automation script requires these:<br>
 
-These commented Base64 strings get read into the <b>startUp</b> function in the display.ps1 file, which splits your encoded block into their individual
-values by removing the '@@@' delimiters. <b>startUp</b> then reads your three-character identifier at the front of each Base64 value, and uses those characters as the index-key for a global array, <i>$vf19_MPOD</i>.
+	#_sdf1   <BRIEF DESCRIPTION OF YOUR SCRIPT>
+	#_ver    <VERSION NUMBER OF YOUR SCRIPT>
+	#_class  <COMMA-SEPARATED ATTRIBUTES OF YOUR SCRIPT>
 
-Anytime one of your scripts needs to decode a specific value, you can call the <b>getThis</b> function (in the validation.ps1 file) with
-your <i>$vf19_MPOD</i>['key']. The plaintext result is written to <i>$vf19_READ</i>, which gets overwritten every time the function is called. You may only need to use $dash_READ once, but if you need it persistently, you'll need to set it with another variable name:
+	The "sdf1" line needs a brief description of your script; this gets written to the MACROSS menu
+	The "ver" line is the version of your script
+	The "class" line needs you to comma-separate these attributes, in order:
+		1. The LOWEST privilege level your script requires (user, admin, etc.)
+		2. If you have different levels of analysts, use this for access control (Tier 1 or "help desk", etc.)
+			If not, just put anything in this field. Do NOT leave it blank.
+		3. What kind of data your script processes (IPs, filescans, etc.). Keep this uniform across your scripts.
+		4. What language your script is (powershell, python)
+		5. The author
+		6. The maximum number of values your script can process
 
-    getThis $vf19_MPOD['abc']
-    $my_var = $vf19_READ
-    
+		Example class line:
+		#_class user,tier2,PDFs,powershell,HiSurfAdvisory,1
 
+When all these lines are set correctly, MACROSS uses the [macross] class to keep track of the scripts in the "modules" folder. You can see what these look like by typing "debug TL" in the main menu.
+
+For python scripts:<br>
+You'll need the argv and path functions from the sys library. MACROSS always passes at least 6 args to any python script it executes (7 if you include the script name). The below example explains how to use them.
+
+	from sys import argv,path
+	L = len(argv)
+	if L >= 7: 			## make sure MACROSS sent all its default values
+		mpath = argv[6]  	## MACROSS sends the filepath to the mcdefs.py library
+		path.insert(0,mpath) 	## modify the sys path to include the local py_classes folder
+		import mcdefs 		## this is the custom MACROSS library
+
+		## The other 5 args always passed in by MACROSS can be used or ignored as you like.
+  		## In order, they are:
+
+		USR = argv[1] 		## The logged-in user $USR
+		atts = argv[2] 		## The $vf19_ATTS hashtable attributes .name and .valtype for each script,
+ 					## but you'll need to use "mcdefs.getATTS(atts)" to actually import this
+					## as a dictionary in python.
+		vf19_DEFAULTPATH = argv[3]  	## USR's desktop filepath
+		vf19_PYPOD = argv[4]        	## The encoded array of filepaths/URLs generated from temp_configs.txt
+		N_ = argv[5]                	## The integer MACROSS uses for common math functions in all the scripts
+		M_ = mcdefs.makeM(N_)        	## This function splits the N_ value into 6 digits you can use for mathing
+		vf19_TOOLSROOT = argv[7]    	## The path to the MACROSS folder
+		GBG = argv[6] + '\\garbage_io'  ## Path to the garbage I/O folder.
+
+GBG is a folder your python scripts can write outputs into if you want them available for later use in your MACROSS session. This folder gets cleared out every time MACROSS exits.
+
+
+
+<b><u>HOW TO CONFIGURE GLOBAL DEFAULTS:</u></b><br>
+-Lines 130 and 133 in "core/display.ps1" point to a file called "core/temp_config.txt". This file contains a block of base64-encoded strings separated with "@@@" delimiters. These base64 values are default values that will be needed by various MACROSS tools, for instance URLs, IP addresses, filepaths, etc., that your scripts may need to access at any given time.
+	
+Each of these strings begins with three letters that are not part of the string. MACROSS strips these letters and uses them as keys, with the base64 string being the value. All of these strings are kept in a hashtable called "$vf19_MPOD", and your scripts can decode them by sending the key to the "getThis" function (detailed later on), which returns the plaintext value to you in "$vf19_READ":
+
+		getThis $vf19_MPOD['abc']; $vf19_READ
+
+To set your defaults here, encode the value in base64, choose a 3-letter key to put in front of it, and add it to the last line of the block in "temp_config.txt", separating it from the rest with a new "@@@". I also suggest you use something other than "temp_config.txt" in a central location you control. If you do create a different file, make sure to modify line 130 and 133 in "display.ps1"! 
+	
+This is NOT for security. Do <u>not</u> put credentials in here. The purpose of this file is to store not-quite sensitive values in a way that avoids scanners, while also letting you write your scripts without hardcoding things like IP addresses into them. For example, if your script is accessing an API, instead of hardcoding a URL, you can simply do
+
+	curl -X GET $(getThis $vf19_MPOD['abc']; $vf19_READ)
+	
+and then modify the temp_config (or whatever file you use) with updated addresses as needed.
+
+-The file "core/validation.ps1" contains a function at line 199 called "setUser". If your environment uses active directory to set permissions, AND you enforce code-signing, review this function to see how you can use it to restrict MACROSS use to only your SOC users. This is especially important if you will be adding API scripts to MACROSS. You don't want random users to be able to query your firewalls or endpoint agents.
+
+-Unfortunately, MACROSS does not provide a way for you to handle API keys. I think it's best for everyone to come up with their own way rather than have one method in MACROSS that could be ripped apart and exploited by people much smarter than me. Just don't hardcode them anywhere, and don't store them in the temp_config file, please.
 
 <br>
 <br><br>
@@ -61,15 +109,14 @@ To further customize and modify these core functions to your liking, see the com
 <b>I. display.ps1</b><br>
 	&emsp;<b>A.</b> splashPage() = a cosmetic function for the MACROSS menu<br>
 <br>
-	&emsp;<b>B.</b> screenResults() = This is a cosmetic feature that lets you present your script's results in a pre-formatted manner
-	on screen. Call this function with 1 required parameter (plus 2 optional) to print a table:<br>
+	&emsp;<b>B.</b> screenResults() = This is a cosmetic feature that lets you present your script's results in a pre-formatted manner on screen. Call this function with 1 required parameter (plus 2 optional) to print a table. Additionally, if you have need to highlight a value, attach a color to it with a "~" symbol, as below:<br>
 	Usage:<br>
 	
 	# This displays your results in 3 columns like a spreadsheet
-	foreach($i in someFunction){ screenResults $result_name $result_value $optional_value }
+	foreach($i in someFunction){ screenResults $result_name "red~$result_value" $optional_value }
 	screenResults 'endr'
 	
-At the end of printing your results, call the function again with a single parameter 'endr', to write a closing "row" separator at the bottom of the table. Example output:<br>
+The second parameter above, "red~$result_value", will print $result_value in red-colored text. At the end of printing your results, call the function again with a single parameter 'endr', to write a closing "row" separator at the bottom of the table. Example output:<br>
 
 	‖≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡‖
 	║ HOST 1                 ║ Windows 11                ║ Patched                             ║
@@ -82,10 +129,9 @@ At the end of printing your results, call the function again with a single param
 	‖≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡‖
 
 <br>
-	&emsp;<b>B.</b> screenResultsAlt() = This is an alternate format to display your outputs, meant for simpler results.
-	Call this function with same parameters as screenResults to print a list (don't forget to use 'endr' to close your
- list):<br>
-	Usage: with example output:<br>
+	&emsp;<b>B.</b> screenResultsAlt() = This is an alternate format to display your outputs, meant for simpler results. Call this function with same parameters as screenResults to print a list (don't forget to use 'endr' to close your list, and add a "color~" to highlight interesting results).<br>
+ 
+	Usage with example output:
 
  	foreach($i in someFunction){ screenResultsAlt $result_name $result_value $optional_value; screenResultsAlt 'endr' }
 
@@ -105,34 +151,26 @@ At the end of printing your results, call the function again with a single param
   
  <br>
 	&emsp;<b>C.</b> slp() = Sleep function; provide it the number of seconds you want your script to pause; pass 'm' as a second param to use milliseconds.<br>
-	Usage:<br>
-	
+ 
+	Usage:
 	slp 2   # This pauses your script for 2 seconds
 <br>
-	&emsp;<b>D.</b> startUp() = This is the first function to run when MACROSS loads. It sets many of the default variable values, and
-	checks to see if programs like wireshark are installed. It sets these values to $true for your scripts to be aware of (and you
-	can add other checks as necessary for other installed software):<br>
+	&emsp;<b>D.</b> startUp() = This is the first function to run when MACROSS loads. It sets many of the default variable values, and checks to see if programs like wireshark are installed. It sets these values to $true for your scripts to be aware of (and you can add other checks as necessary for other installed software):<br>
 	&emsp;&emsp;$MONTY = python3 is installed<br>
 	&emsp;&emsp;$SHARK = wireshark is installed<br>
 	&emsp;&emsp;$MAPPER = nmap is installed<br>
 <br>
 <br>
-	&emsp;<b>E.</b> chooseMod() = This function builds the main menu screen in MACROSS. It reads the contents of the nmods folder, strips
-	out file extensions, and creates hashtables using the script names and the descriptions found in the
-	first line of those scripts. If the startUp() function did not detect python, chooseMod() will only look
-	for scripts ending in ".ps1" or ".psm" and ignore any ".py".<br>
+	&emsp;<b>E.</b> chooseMod() = This function builds the main menu screen in MACROSS. It reads the contents of the modules folder, strips out file extensions, and creates hashtables using the script names and the descriptions found in the first line of those scripts. If the startUp() function did not detect python, chooseMod() will only look for scripts ending in ".ps1" or ".psm" and ignore any ".py".<br>
 <br>
-	&emsp;<b>F.</b> scrollPage() = If you have more than 9 scripts in your nmods folder, a second "page" will be created in chooseMods().
+	&emsp;<b>F.</b> scrollPage() = If you have more than 9 scripts in your modules folder, a second "page" will be created in chooseMods().
 	The scrollPage() function is then used to switch between them when the user types 'p' into the main menu.<br>
 	
 <br>
 <br>
 <b>II. validation.ps1</b><br>
-	&emsp;<b>A.</b> varCleanup() = Everytime a script exits and returns to the MACROSS menu, this function clears out the shared variables*
-	to make sure they're ready to use with the next script<br>
-	&emsp;&emsp;<i>* the global $PROTOCULTURE value, which is the value all scripts look for as the IOC or element to investigate, does not get cleared
-	until you do it manually from the menu, or you exit MACROSS. Be careful, as one of the framework's guidelines is to write your scripts so that they 
-	automatically act on, or at least are aware of, the existence of $PROTOCULTURE!</i> You can also uncomment the PROTOCULTURE line in the varCleanup function 	to have it cleared every time the main menu loads, if you prefer.<br>
+	&emsp;<b>A.</b> varCleanup() = Everytime a script exits and returns to the MACROSS menu, this function clears out the shared variables* to make sure they're ready to use with the next script<br>
+	&emsp;&emsp;<i>* the global $PROTOCULTURE value, which is the value all scripts look for as the IOC or element to investigate, does not get cleared until you do it manually from the menu, or you exit MACROSS. Be careful, as one of the framework's guidelines is to write your scripts so that they automatically act on, or at least are aware of, the existence of $PROTOCULTURE! You can also uncomment the PROTOCULTURE line in the varCleanup function to have it cleared every time the main menu loads, if you prefer.</i><br>
 <br>
 	&emsp;<b>B.</b> getThis() = This function will decode Base64 and Hexadecimal strings. Call it with your encoded string as the first param.
 	Leave the second param empty if decoding base64; if you are decoding hexadecimal you must pass it a '1' as your
@@ -172,7 +210,7 @@ At the end of printing your results, call the function again with a single param
 	&emsp;<b>F.</b> setUser() = Attempts two different methods to set the logged in user as global $USR. If the system or active-directory method fails, it will default to using "whoami" and also set the global value $vf19_ROBOTECH, which tells all the MACROSS scripts that the user does not have elevated privilege. (Of course, that assumes your IT managers don't allow standard users to run Get-AD cmdlets!) This way you can write checks to avoid loading different functions unnecessarily.<br>
 <br>
 	&emsp;<b>G.</b> collab() = This is the function that allows your scripts to talk to each other. It must be called with (1) the name of the script you
-	want to "collaborate" with in the nmods folder, and (2) the name of the script making the call, WITHOUT the file extension.
+	want to "collaborate" with in the modules folder, and (2) the name of the script making the call, WITHOUT the file extension.
 	Your script should already be setting the global values for <i>$RESULTFILE</i> and <i>$PROTOCULTURE</i> as necessary, but this
 	function does allow for passing another optional value if needed. That value will be set as <i>$eNM</i> and passed along as a separate
 	param to the script you're calling.<br>
@@ -182,7 +220,7 @@ At the end of printing your results, call the function again with a single param
 	&emsp;&emsp;2. the user's desktop path<br>
 	&emsp;&emsp;3. the $vf19_MPOD hashtable that MACROSS uses to store default filepaths<br>
 	&emsp;&emsp;4. the $vf19_numchk integer for mathing<br>
-	&emsp;&emsp;5. the filepath to the MACROSS python library (ncore\pyclasses)<br>
+	&emsp;&emsp;5. the filepath to the MACROSS python library (core\pyclasses)<br>
 	&emsp;&emsp;6. the path to the MACROSS root folder<br>
 	&emsp;&emsp;7. the name of the script making the call<br>
 	&emsp;&emsp;8. the $PROTOCULTURE value being evaluated<br>
@@ -200,24 +238,24 @@ At the end of printing your results, call the function again with a single param
 <br>
 	&emsp;<b>J.</b> availableMods() = When a user selects a script from the MACROSS menu, the chooseMods() function sends their selection to availableMods()
 	where the filepath to the script gets verified, along with the script version using the verChk() function (see the
-	updates.ps1 file). As with the collab() function, availableMods() will automatically send some default arguments to
-	python scripts.<br>
+	updates.ps1 file). As with the collab() function, availableMods() will automatically send some default arguments to python scripts.<br>
 	
 <br>
 <br>
 <b>III. updates.ps1</b><br>
-<i>*** To use verChk & dlNew, you must first set a central repo for your master copies, either your gitlab or a fileshare or something, and set the location of your repo as a base64-encoded string prepended with "nre" in the utility.ps1 comment section***</i><br>
-	&emsp;<b>A.</b> toolCount() = This function counts the number of scripts in the local nmods folder vs. the number in your master repository. It then reads the first three lines of each script to get its attributes, and uses that info to create macross objects that get stored in the $vf19_ATTS hashtable, with the scriptnames as the index keys. See the included scripts in the nmods folder for examples of the magic lines described here; the first three lines of your script MUST contain:<br>
-	
+<i>*** To use verChk & dlNew, you must first set a central repo for your master copies, either your gitlab or a fileshare or something, and set the location of your repo as a base64-encoded string prepended with "nre" in the temp_config.txt comment section. Even if you are not managing a MACROSS repo, this file and its functions are required by MACROSS for local management.***</i><br>
+<br>
+&emsp;<b>A.</b> toolCount() = This function counts the number of scripts in the local modules folder vs. the number in your master repository. It then reads the first three lines of each script to get its attributes, and uses that info to create macross objects that get stored in the $vf19_ATTS hashtable, with the scriptnames as the index keys. See the included scripts in the modules folder for examples of the magic lines described here; the first three lines of your script MUST contain:<br>
+
 	#_sdf1 "This is a brief description of the tool"
 	#_ver 1.0
 	#_class comma,separated,attributes,for,your,script  # See the classes.ps1 further down
-	
+<br>
 &emsp;<b>B.</b> look4New() = This relies on the number of scripts <b>toolCount()</b> discovered. If the local count is higher, the update functions 
 	will be disabled to avoid problems. If the master count is higher, the dlNew() function will be used to automatically download the scripts that the 
 	user is missing.<br>
 	&emsp;<b>C.</b> dlNew() = This function gets called when new scripts or newer versions are available, or if the user wants to pull fresh copies from
-	the master repo.<br>
+	the master repo.<br><br>
 &emsp;<b>D.</b> verChk() = This function is used every time a script gets selected from the MACROSS menu. It compares the "#\_ver" line in the local
 	script and in the master repo script. If the master version is newer, it gets downloaded before the selected script executes.<br>
 	
@@ -267,7 +305,7 @@ At the end of printing your results, call the function again with a single param
 
 <b>VI. classes.ps1</b><br>
 	This file should be reserved for any custom classes your scripts need, especially if they could be useful for other scripts to make use of.<br>
-	&emsp;<b>A.</b> macross = A custom powershell class that tags every script in the \nmods folder with specific attributes that you MUST include on the third line of your scripts, tagged with "#\_class" so that MACROSS will parse it correctly. In this example:<br>
+	&emsp;<b>A.</b> macross = A custom powershell class that tags every script in the \modules folder with specific attributes that you MUST include on the third line of your scripts, tagged with "#\_class" so that MACROSS will parse it correctly. In this example:<br>
 	<br>
 	`#_class  User,syslogs,Python3,SuzyQ,1`
 	<br>
@@ -317,5 +355,4 @@ This is used for:<br>
 <br>
 <b>VII. py_classes\mcdefs.py</b><br>
 	&emsp;<b>A.</b> This is a python library that provides many of the same core functions used in the MACROSS powershell scripts, as well a "getDefaults" function that will convert MACROSS' $vf19_MPOD hashtable into a python dictionary. See the mcdefs file comments for more details.
-
 
