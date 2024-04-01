@@ -1,59 +1,42 @@
 
+
 TL;DR -- A "no-command-line-necessary" powershell menu to link multiple automation scripts together for blue-team investigators. When you run MACROSS for the first time, select the HIKARU demo to get a quick walkthru on configuring your defaults.<br><br>
 
 <img src="https://raw.githubusercontent.com/hisurfadvisory/MACROSS/main/mscr.PNG">
 
 # MACROSS
-Powershell framework aimed at interweaving Powershell and Python API automations for blueteams
-
-Multi-API-Cross-Search Console (MACROSS) tool interface is a very simple powershell framework to connect multiple automation scripts together. I've included a few of my own scripts here, but the key to MACROSS is adding scripts specific to your environment, and letting the console seamlessly link them together.
-
-The purpose of this framework is to make automation tasks available to everyone on your blue team regardless of their skill with command-line. This can make things alot quicker if you're able to use APIs to query security tools instead of web-interfaces (See my GERWALK tool as an example, which uses the Carbon Black API).
-
+Powershell framework that links your Powershell and Python API automations for blueteam investigations
+<br><br><br>
+Multi-API-Cross-Search (MACROSS) console interface is a very simple powershell framework to connect multiple automation scripts together. I've included a few of my own scripts here, but the key to MACROSS is adding scripts specific to your environment, and letting the console seamlessly link them together.
+<br><br>
+The purpose of this framework is to make automation tasks available to everyone on your blue team regardless of their skill with command-line. This can make things alot quicker if you script out your most common Active-Directory and Windows Server tasks, or you're able to use APIs instead of web-interfaces to query security tools (See my GERWALK script as an example, which accesses the Carbon Black Endpoint Response API).
+<br><br>
 DISCLAIMER: I'm a bash junkie, but Windows is what I work on in most corporate environments, and this project originally started as a way simplify my most common investigation queries. While I am experienced in a few scripting languages, I am NOT a powershell expert. I'm sure there's tons of optimizations that could be done to this framework.
+<br><br>
+MACROSS came about because I got tired of handjamming queries and wanted a way to pull in API information without going to multiple web interfaces. Eventually I created a single front-end to handle doing all of these queries in whatever sequence I needed. It is written in powershell because the initial automations were for active-directory and windows desktop tasks.
+<br><br>
 
-MACROSS came about because I realized that all of the scripts I was writing to gather information during investigations were usually related -- look up AD info in a host > find out who's logged in > what was that file they just downloaded? > Let's string search that document file for some macros > Does the EDR have info on other copies of that file?...
+See the full README inside the core folder for function details, but here's the basics:<br>
+<br>
 
-Eventually I created a single front-end to handle doing all of these queries in whatever sequence I needed.
+&emsp;-Several of my scripts are included in this release mainly as examples to help you integrate MACROSS, but you may find KONIG and ELINTS helpful; KONIG can scan enterprise shares for files based on names/extensions, and ELINTS can perform keyword & pattern searches on those files.
+<br><br>
+&emsp;-When you add the required MACROSS values to your scripts, they'll be able to talk to each other and enrich IOCs your SOC analysts are investigating. This is not a SEIM or SOAR replacement, but a "quick-lookup" designed to help you gather data quickly if you don't have a million-dollar security stack to work with.
+<br><br>
+&emsp;-MACROSS provides several built-in functions to make your life easy, like printing your outputs to screen in pretty tables, writing reports to colorized excel spreadsheets, performing basic decoding tasks, and showing lists of stale reports that may need to be deleted from your report folders. See the "core/utility.ps1" file for details on these and more!
+<br><br>
+&emsp;-Core functions are kept in scripts within the "core" folder, though you're unlikely to need to modify any of these except the "display.ps1" file. This file contains the startUp function to kick off everything MACROSS, and points to the initial config file (see next point).
+<br><br>
+&emsp;-The temp_config.txt file inside the core folder contains an example of the default values that MACROSS sets and makes available to all its tools. Your default values should be kept in a centrally-located file in a location you control so that your users aren't all downloading it and leaving copies all over the place.
+<br><br>
+&emsp;-Files that can be used for enrichment across multiple scripts (xml, json, txt) are kept in the "resources" folder. This folder is currently in the MACROSS root folder, but can be placed anywhere you want
+<br><br>
+&emsp;-There are several global variables used within MACROSS that your scripts will need to recognize. These are explained in the core folder's README.
+<br><br>
+&emsp;-If you want your script to be part of MACROSS, it *requires* special tags in the first 3 lines of your script. These lines are read by MACROSS and used to classify each script by its language and what it does.
+<br><br>
+&emsp;-Because several scripts can be running at once and sharing data, I strongly recommend naming your variables beginning with "dyrl_" and maybe a nickname of the script (example, "$dyrl_mys_var" for a variable generated in "myscript.ps1"). The reason for this is that MACROSS automatically clears all variables beginning with "$dyrl_" every time the menu loads, ensuring scripts always behave as intended even if somebody forgot to clear globals in their code.
+<br><br>
+&emsp;-All of your custom automation scripts go into the "modules" folder. Once placed there, they immediately become available in the main menu.
 
-See the full README inside the ncore folder for function details, but the basic FAQ is that core functions are kept in the 'ncore' folder within the same directory as MACROSS.ps1 (usually on the user's desktop), and all of your custom powershell scripts, when dropped into the 'nmods' folder, will automatically become options in the MACROSS menu. If you host a master repo for MACROSS on your network and modify the extras.ps1 file to include its encoded filepath, then any updates you make to your scripts in the 'nmods' folder will automatically get pushed out to your SOC users.
-<br>
-<br>
-FRAMEWORK RULES (modify however works best for you):
-<br>1. All core functions are kept in the "ncore" folder<br>
-&emsp;1a. Default variables that are used by all the MACROSS tools are base-64 encoded and stored in the opening comments line within "utility.ps1" in the ncore folder. When MACROSS starts up, it grabs those comments and splits them into an array for quick decoding anytime you need them.<br>
-&emsp;1b. The ncore folder also contains subfolder "py_classes". This folder contains the MACROSS python library "mcdefs.py", and a subfolder called "garbage_io". MACROSS uses a function called "pyCross" that can write outputs from your powershell scripts to plaintext "\*.eod" files  in garbage_io, so that python scripts can call powershell scripts to perform tasks and then read the output from the .eod file. See the "pyCross" function in the utility.ps1 file. 
-<br>
-<br>
-2. Custom automation scripts are kept in the "nmods" folder<br>
-&emsp;2a. Custom scripts must contain "magic lines" at the beginning of the script, or they will be ignored. The first line is where you'll write a brief description of your script, which gets displayed in the MACROSS menu. The second line is the version number. For the third line, please review the \ncore\classes.ps1 file to see what kind of attributes need to be placed there. 
-<br>
-&emsp;2b. Custom python scripts are always passed 6 arguments by default (see the availableMods function in "validation.ps1") so that they can share MACROSS' default values.
-	<br>&emsp;2c. MACROSS ignores python scripts if Python3 isn't installed
-<br>
-<br>
-3. All core variables (when possible) are named beginning "$vf19_" to control cleanup
-	<br>&emsp;3a. For the same reason, custom variables (when possible) should be named beginning with "$dyrl_"
-	<br>&emsp;3b. Common globally-assigned variables that get passed from one script to another for processing include:
-		<br>&emsp;&emsp;$PROTOCULTURE = the thing being investigated (A file, a value, a username, etc)
-		<br>&emsp;&emsp;$CALLER = the name of the script calling functions in another
-		<br>&emsp;&emsp;$HOWMANY = the number of successful results being tracked between scripts
-		<br>&emsp;&emsp;$RESULTFILE = the path to any output your script generates that can be processed by another script
-<br>
-<br>
-4. Files used for enrichment across multiple scripts (xml, json, txt) are kept in the "resources" folder
-	<br>&emsp;4a. This folder is currently in the MACROSS root folder, but can be placed anywhere you want
-<br>
-<br>
-5. At the top of the utility.ps1 file, you'll find a block of base64 encoded strings. These are default values used for MACROSS and its scripts. Changing or adding your own defaults involves base64-encoding your value and adding a three-letter ID to the front of it, and separating each value with "@@@". At startup, MACROSS will strip the "@@@" delimiters, and create a hashtable ($vf19_MPOD) of your values using the three-letter ID as an index so that you can grab and decode them as needed.  Example:<br><br>
-
-	getThis $vf19MPOD['abc']
-
-^^ This will decode the value you've tagged as "abc" and store it as $vf19_READ`
-
-<br>
-<br>
-6. MACROSS handles many functions common to what your scripts will likely be doing. Some examples:
-<br>
-	Do you output results to file? The "houseKeeping" function will remind you if old reports exist and delete them for you if you choose. Need your user to specify a document or file to analyze? The "getFile" function will open a dialog for them to quickly select it. Need to see if an odd string can decode from Base64 or hexadecimal, or maybe you want to grab the hash of a file? "getThis" can decode base64 and hex, while "getHash" will give you an md5 or sha256 signature for any file you want. Do you want a professional looking screen output? Send your script's outputs to the screenResults or screenResultsAlt functions. Check out the README in the ncore folder for more --- and use MACROSS to automate your SOC automations!
 
