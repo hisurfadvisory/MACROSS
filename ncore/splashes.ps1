@@ -1,12 +1,9 @@
-﻿
 ## Decorative transition screens for MACROSS scripts
 <#
    Set $1 to 1 for VF-19, 2 for SDF-1, 3 for VF-1J Gerwalk, 4 for Gubaba, 5 for Minmay,
    6 for Mylene, 7 for Basara, 8 for Hikaru Ichijo, or null for VF-1S
-
    Pass '1' as a second parameter if you want to show a persisten splash without clearing
    the screen after a few seconds.
-
    If these transitions annoy you, just remove the function call "transitionSplash"
    from any script.
 #>
@@ -63,4 +60,3 @@ function transitionSplash($1,$2){
         cls
     }
 }
-
