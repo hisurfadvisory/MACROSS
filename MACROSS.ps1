@@ -1,5 +1,6 @@
-#_sdf1 Front end for investigation toolset
+#_sdf1 Front end for MACROSS toolset
 #_ver 3.1
+
 <#
     Multi-API-Cross-Search (MACROSS) Console
     Automated powershell framework for blue teams
@@ -10,216 +11,248 @@
     Author: HiSurfAdvisory
     
     'Script' & 'Tool' are used interchangebly in my comments. Sorry.
-	
-    v3.1
-    :Modified the update functions to:
-        -allow automatically refreshing scripts if they get borked
-    :Also made performance optimizations; scripts can now check for
-        $vf19_ROBOTECH to descriminate users vs. admins to restrict when
-        certain functions get loaded to save on resources.
-    :Cleaned up the mcdefs python library
-	
-    TO DO:
-		-Clean up and condense repeating instructions
-		-Automate the creation of multiple menu hashtables
-			to keep the screen from cluttering as more tools
-			get added. Currently using $FIRSTPAGE and $NEXTPAGE
-			to limit the menu to 10 tools at a time (max 20
-			until I can rework the "chooseMod" function to
-			handle more).
-		-Improve integration with python scripts
-	
-	ADDING NEW SCRIPTS:
-    1. Any new ps or py tools you want added to MACROSS, just add
-        this as the FIRST line of your script, and put the script
-        in the \nmods folder: 
-		
-			#_sdf1 <your brief description of the script>
-				
-        The "#_sdf1 " is necessary to identify scripts
-        created for MACROSS (don't forget the whitespace). The description
-        line is what gets written to the menu for users to see.
-        Scripts without this line will be ignored.
-		
-    2. The second line is used for version control. It should begin
-        "#_ver 0.1" or whatever number you want to use. MACROSS
-        strips out the "#_ver " to get the version number from the
-        local copy of the script, and compares it to the version number
-        in the master copy (See the verChk function in updates.ps1).
-        If the master copy is a higher number, MACROSS will grab the updated 
-        version.
-		
-	3. The third line describes your script. MACROSS uses its own custom powershell
-		class 'macross' to identify what scripts do. Review the classes.ps1 file
-		for how this works in detail, but your third line should contain
-		
-			#_class
-			
-		followed by your [macross] class attributes.
-		
-	4. Keep the script name under 7 characters to preserve the menu's
-		uniformity (not including the '.ps1' file extension, MACROSS
-		automatically ignores it).
-		
-	5. Where possible, begin your variables (especially global ones) with 'dyrl_',
-        for example $dyrl_var1.
 
-		MACROSS flushes all variables beginning with 'dyrl_' each time it
-		loads to make sure the tools function as expected. I also added
-		other identifiers for each script's variables to be able to handle
-		clearing and keeping them when necessary, but this is entirely
-		dependent on your scripts and what you want them to do and how you
-		want them to interact with other MACROSS functions.
+    MACROSS shared functions are in the core\utility.ps1 file for powershell,
+    and the core\py_classes\mcdefs.py file for python. Look them over to see
+    if any of these automations can benefit your scripts.
+
+	ADDING AUTOMATIONS TO MACROSS:
+		1. Any new ps or python tools you want added to MACROSS, just add this
+		    as the FIRST line of your script, and put the script in
+		    the modules\ folder: 
 		
-	6. To jump back into MACROSS after your script is finished while
-        retaining your script's variable values for further evals, add
-        this line wherever appropriate:
+			    #_sdf1 <your description of the script>
+
+            The "#_sdf1" is necessary to easily identify scripts created
+            for MACROSS and display them in the main menu.
+
+        2a. The second line is used for version control. It should begin
+            "#_ver 0.1" or whatever number you want to use. MACROSS
+            strips out the "#_ver " to get the version number from the
+            local copy of the script, and compares it to the version
+            number in the master copy that should be kept in the DCO/
+            NTRCEPT shares. (See the verChk function below). If the
+            master copy is a higher number, MACROSS can grab the updated
+            version.
+
+        2b. The third line must contain custom [macross] class attributes in order:
+
+            #_class <PRIVILEGE>,<ACCESS>,<FUNCTION or WHAT YOUR SCRIPT EVALS>,<LANGUAGE>,<AUTHOR>,<HOW MANY PARAMS CAN BE PROCESSED>
+
+            This helps MACROSS determine when to provide tools to users. 
+                Privilege: does the script require admin or user priv?
+                Access: if your SOC has different levels of users (analysts vs. investigators),
+                    you can specify it here so that certain users can only use certain scripts.
+                Function: Add a BRIEF description of what your script handles. Examples:
+                    "Parse office documents", "Access SEIM logs", "Verify IP addresses".
+                    This attribute can be used by MACROSS to load multiple tools to investigate
+                    the same IOCs if you write your scripts to take advantage of this.
+                Language: Powershell vs. Python
+                Author: who wrote the script
+                How Many Params: tell MACROSS how many parameters can be passed to the script for evaluation.
+                    As of version 2, MACROSS only passes 1 param to any script. See notes in "validation.ps1"
+                    under the function "collab" if you need to modify this.
+
+            Review the "classes.ps1" file for more info!
+
+		3. Keep the script name under 7 characters to preserve the menu's
+		    uniformity (not including the '.py' or '.ps1' file extensions, MACROSS
+		    automatically ignores them).
 		
-			if( $CALLHOLD ){ Return }
+		4. Where possible, prepend your variables with 'dyrl_', for example $dyrl_var1.
+		    Because multiple scripts can be running at once and sharing data, MACROSS
+            flushes all variables beginning with 'dyrl_' each time the main menu loads
+            to make sure the tools function as expected.
 			
-                 ******THIS IS DEPRECATED AS OF v2.1******
-		You only need use a 'Return' or 'Exit' now that MACROSS handles all
-		default behaviors, including default var management
-			
-	7a. Include a function that displays any help or extended description
-        of your scripts. Set the function to run FIRST if the variable
-        $HELP is true, and automatically return to MACROSS after the
-        function finishes. $HELP automatically gets reset by the console.
-		
-    7b. See the 'mcdefs.py' library file in the ncore\py_classes folder for
-        working python scripts into MACROSS.
-		
-    8. MACROSS was designed on a closed network that enforced digitally signed
-        code. This made it possible to semi-restrict it against non-security users
-        being able to make use of the automation. See the \ncore\validation.ps1
-        file for notes on how this is accomplished. The methods can still be
-        used on networks without enforced digital signatures, but savvy users
-        could just comment out the permission checks. This feature is default-
-        disabled (the functions are commented out).
-		
-	9. These variables are used GLOBALLY across all the tools:
-		$USR is the local user
-		$PROTOCULTURE is the file/user/thing of interest that gets passed to
-			other scripts for evaluations. Example, I had a script that
-			scanned for newly-created user accounts. Each username was passed
-			as $PROTOCULTURE to one script that collected logs related to
-			the account, while another script used $PROTOCULTURE
-			to simultaneously perform keyword searches on PDFs, txt, and
-			other document files in that user's workstation and shares.
-		$HOWMANY is typically the number of search results that gets tracked
-			between scripts
-		$CALLER is used when one script calls functions in another script;
-			it passes the name of the current script to the one that is
-			being called
-		$RESULTFILE is any txt output generated by any of the scripts; pass it
-            back and forth to perform manipulations and formatting as needed
-		$GOBACK and $COMEBACK are used when scripts need to jump back and
-			forth between each other
-		$vf19_NOPE gets set to 'true' when the logged in user is not an admin (see
-            the ncore/validation.ps1 file's "setUser" function to configure this)
-		$vf19_DEFAULTPATH is the user's Desktop; you may need to tweak this in the
-            validation.ps1 file
-		$vf19_OPT1 gets set when a user appends an 's' to their module selection
-			(e.g. 1s). This allows your script to switch modes or provide added
-			functionality that normally wouldn't be used/needed. For example,
-			my LEGIT tool is used to digitally sign scripts, but with 's' 
-			selected, it instead lets you inspect the digital signatures of
-			any signed scripts or binaries.
-		$vf19_Z is the current user input.
-		
-    10.  If you want to set your default shared values in the utility.ps1 file (see
-         the readme), the following indexes are already reserved:
-            "tbl" = the location of the resources folder
-            "nre" = the location of the master MACROSS repository (you need to set this)
-        
+		5. Include a function that displays any help or extended description
+            of your scripts. Set the function to run FIRST if the variable
+            $HELP is true, and automatically exit after the function finishes.
+            $HELP automatically gets reset by MACROSS.
+
+        6. Make sure your script recognizes these GLOBAL values:
+			$USR is the local user
+			$HOWMANY is typically the number of search results that gets tracked
+                between scripts
+			$CALLER is used when one script calls functions in another script;
+                it passes the name of the current script to the one that is
+                being called
+			$RESULTFILE is any file output generated by any of the scripts
+			$GOBACK and $COMEBACK are used when scripts need to jump back and
+				forth between each other (I used this in early versions of MACROSS,
+                you may not have a need for them).
+            $vf19_OPT1 gets set when a user appends an 's' to their module selection
+                (e.g. 1s). This allows your tool to switch modes or provide added
+                functionality that normally wouldn't be used/needed. For example,
+                my LEGIT tool is used to digitally sign scripts, but with 's' set
+                it instead lets you inspect the digital signatures of any signed files.
+            $vf19_Z is the current user input.
+           
 #>
 
+$vf19_TOOLSROOT = "$PSScriptRoot"
+
+
+## Log actions/errors for troubleshooting; Send up to 3 parameters, they
+## will get cat'd together and written to logs **in the order you send them**.
+##
+##
+## Standard format -- use $1 as the log level: INFO, EVENT, ERROR, etc.
+##
+## Regardless of your parameters, Date and Time will automatically be written first, 
+## you don't have to send it, EXCEPT WHEN:
+##      -Send 'read' as $1 to read the latest log file, or 
+##      -include the date as $2 to read that specific log file.
+function errLog(){
+    Param(
+        [Parameter(Mandatory=$true)]
+        $1,
+        $2,
+        $3
+    )
+    
+
+    ## By default, the logs directory is set to your local MACROSS/resources/logs
+    ## folder. You should change this to an alternate location if you don't want
+    ## all users to see these logs. (It is set with $vf19_MPOD['log'], which gets
+    ## set in the "temp_config.txt" file.)
+    
+    $d = $(Get-Date -Format 'yyyy-MM-dd')
+    $t = $(Get-Date -Format 'yyyy-MM-dd hh:mm:ss')
+    [string]$log = $($d) + '.txt'               ## Create the log filename
+    [string]$msg = '[' + $t + ']'               ## Begin the log msg with the timestamp
+
+    if($1 -eq 'read'){
+        if($2){
+            $line = gc -Raw "$vf19_LOG\$($2 + '.txt')"
+            if( ! $line ){
+                Write-Host -f CYAN '
+        That file does not exist!
+                '
+            }
+            else{
+                foreach($l in $line){
+                    $msgs = $l -Split('\|\|')
+                    if($msgs[1] -eq 'ERROR'){
+                        $level = 'derpy' + $msgs[1]
+                    }
+                    else{
+                        $level = $msgs[1]
+                    }
+                    $c = $msgs.count
+                    if($c -eq 4){
+                        screenResults $level
+                        screenResults $msgs[0] $msgs[2] $msgs[3]
+                    }
+                    elseif($c -eq 3){
+                        screenResults $level
+                        screenResults $msgs[0] $msgs[2]
+                    }
+                    elseif($c -eq 2){
+                        screenResults $level
+                        screenResults $msgs[0]
+                    }
+                }
+            }
+        }
+        else{
+            $latest = (gci "$vf19_LOG\*.txt" | Sort -Descending)[0]
+            gc -Raw $latest
+        }
+        Write-Host -f GREEN '
+        Hit ENTER to exit.
+        '
+        Read-Host
+    }
+
+    if($3){
+        $msg = $msg + '||' +$1 + '||' + $2 + '||' + $3
+    }
+    elseif($2){
+        $msg = $msg + '||' +$1 + '||' + $2
+    }
+    else{
+        $msg = $msg + '||' +$1
+    }
+
+    if(Test-Path -Path "$vf19_LOG\$log"){
+        $msg | Out-File "$vf19_LOG\$log" -Append
+    }
+    else{
+        $msg | Out-File "$vf19_LOG\$log"
+    }
+
+}
+
 ##################################
-## Start fresh  &  >/dev/null all the expected errors
+## Start fresh & >/dev/null any errors
 ##################################
-[console]::WindowWidth = 105  ## We want to avoid line-wrapping in script outputs
+[console]::WindowWidth = 105                         ## Modify this to your preference
 $Script:ErrorActionPreference = 'SilentlyContinue'
+$rn = $(Get-Random -Minimum 1 -Maximum 8)           ## Randomly pick a splashpage
 Remove-Variable vf19_* -Scope Global
 cls
+
 Write-Host -f GREEN '
-    Loading defaults...
-    '
+       Setting console defaults:
+'
 
 
-## Use this integer in conjunction with $vf19_M (see validation.ps1) for performing math,
-## permission checks, obfuscating values, writing hexadecimal strings, etc.
-## If you plan to perform sensitive mathing, I recommend changing and storing this value somewhere
-## other than this script (but this value needs to be set before the validation.ps1 script gets
-## executed below, otherwise $vf19_M will break!!)
-$Global:vf19_numchk = 864351   
+
 
 ##################################
 ## Import core functions
-## Iterate through the ncore folder, quit if a file is missing
+## Iterate through the core folder, quit if a file is missing
 ##################################
-
-$dir = "$PSScriptRoot\ncore"
-$v = 'validation.ps1'
-$d = 'display.ps1'
-$c = 'classes.ps1'
-$e = 'utility.ps1'
-$u = 'updates.ps1'
-$s = 'splashes.ps1'
-if(Test-Path -Path "$dir\$v"){
-if(Test-Path -Path "$dir\$d"){
-if(Test-Path -Path "$dir\$e"){
-if(Test-Path -Path "$dir\$u"){
-if(Test-Path -Path "$dir\$c"){
-    # load functions: varCleanup, setUser, setUserCt, availableMods, getHelp1,
-    #  getHelp2, getThis, SJW, adminChk, errMsg
-    . "$PSScriptRoot\ncore\$v"
-    Write-Host -f GREEN '  core security functions loaded...'
-
-    # load functions: startUp, splashPage, chooseMod, scrollPage
-    . "$PSScriptRoot\ncore\$d"
-    Write-Host -f GREEN '  core display functions loaded...'
-
-    #load functions: decodeSomething, runSomething, disVer, houseKeeping
-    . "$PSScriptRoot\ncore\$e"
-    Write-Host -f GREEN '  core utility functions loaded...'
-
-    # load functions: look4New, toolCount, dlNew, verChk
-    . "$PSScriptRoot\ncore\$u"
-    Write-Host -f GREEN '  core update functions loaded...'
-    # load custom classes
-    . "$PSScriptRoot\ncore\$c"
-    Write-Host -f GREEN '  custom classes loaded...'
-}else{$f=$c}}else{$f=$u}}else{$f=$e}}else{$f=$d}}else{$f=$v}
-
-if($f){
-    Write-Host -f CYAN "
+$mcore = "$vf19_TOOLSROOT\core"
+$mcores = @(
+    'display',
+    'utility',
+    'validation',
+    'classes',
+    'updates'
+)
+''
+Foreach($c in $mcores){
+    $script = "$mcore\" + $c + '.ps1'
+    if(Test-Path -Path "$script"){
+        try{
+            . $script
+            Write-Host -f GREEN "   core $c functions loaded..."
+        }
+        catch{
+            Write-Host -f CYAN "
+    ERROR -- $script is present but cannot load!
+    
+    $Error[0]"
+            Exit
+        }
+    }
+    else{
+        Write-Host -f CYAN "
     ERROR -- Couldn't find required file $f"
-    Exit
+        Exit
+    }
 }
 
-
-if(Test-Path -Path "$dir\$s"){
-    # load functions: transitionSplash
-    . "$PSScriptRoot\ncore\$s"
-    Write-Host -f GREEN '  ascii screens loaded...'
+## The ASCII art is not that critical
+if(Test-Path -Path "$mcore\splashes.ps1"){
+    . "$mcore\splashes.ps1"
+    Write-Host -f GREEN '   ascii screens loaded...'
     Start-Sleep -Seconds 1
 }
-
-Remove-Variable -Force dir,v,d,e,u,c,s
-
+Remove-Variable c,mcor*,script
 
 
 ################################
 ## Input validation
 ################################
 $vf19_CHOICE = [regex]"^(p|q|refresh|[0-9hrsw]{1,3})$"
-$vf19_TAG = '9rkd4mv'               ## This is necessary for the startUp function to find its data
+$vf19_TAG = '9rkd4mv'               ## This is necessary for the "startUp" function to find its data
 
 ################################
 ## Set default vars for local MACROSS directories
 ################################
-$Global:vf19_TOOLSROOT = $PSScriptRoot
-$Global:vf19_TOOLSDIR = "$vf19_TOOLSROOT\nmods\"
+$Global:vf19_TOOLSDIR = "$vf19_TOOLSROOT\modules\"
 $Global:vf19_REPOTOOLS = $vf19_TOOLSDIR  ## Delete this after you've set a master repo location
 startUp                                  ## see the display.ps1 file
 setUser                                  ## see the validation.ps1 file
@@ -227,7 +260,8 @@ setUser                                  ## see the validation.ps1 file
 #$Global:vf19_REPOTOOLS = $vf19_READ       ## This sets the main repo for MACROSS that users can pull updates from
 getThis $vf19_MPOD['tbl']
 $Global:vf19_TABLES = $vf19_READ           ## This sets the location of txt/xml files used for your custom scripts
-
+getThis $vf19_MPOD['log']
+$Global:vf19_LOG = $vf19_READ
 
 $vf19_VERSION = Get-Content "$vf19_TOOLSROOT\MACROSS.ps1" | Select -Index 1
 $vf19_VERSION = $vf19_VERSION -replace "^#_ver ",""  ## This gets the current version of MACROSS to write on-screen
@@ -235,7 +269,7 @@ $vf19_VERSION = $vf19_VERSION -replace "^#_ver ",""  ## This gets the current ve
 ## Need a temp-file dump so python can read MACROSS' powershell stuff
 ## All .eod temp files are deleted at MACROSS start (here) & at MACROSS quit (see varCleanup function in validation.ps1)
 if( $MONTY ){
-    $Global:vf19_GBIO = "$vf19_TOOLSROOT\ncore\py_classes\garbage_io"
+    $Global:vf19_GBIO = "$vf19_TOOLSROOT\core\py_classes\garbage_io"
     cleanGBIO
 }
 
