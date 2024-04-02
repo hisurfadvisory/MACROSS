@@ -1,6 +1,6 @@
-#_sdf1 Network Fileshare Search tool
+#_sdf1 Network Fileshare Search
 #_ver 1.1
-#_class User,File search,Powershell,HiSurfAdvisory,1
+#_class user,file search,powershell,HiSurfAdvisory,1
 
 <#
     KÖNIG fileshare search tool
@@ -135,10 +135,6 @@ if( $HELP ){
     Write-Host -f YELLOW "' directory.
  If your enterprise uses roaming profiles, KÖNIG can attempt to search based on
  user profiles, if you provide it a full or partial username.
- KÖNIG can interact with these MACROSS tools:
-    -forward its target packages to ELINTS to perform string-searches
-    -forward its target packages to GERWALK, querying your Carbon Black EDR for file info
-    -accepts usernames from MYLENE to perform filesearches in their roaming profiles
  Hit ENTER to return.
  "
 
@@ -310,7 +306,7 @@ $dyrl_kon_ERRMSG = "  ERROR! Unsupported character in your filename!"
     Encode them as base64 strings, and add a three-letter
     ID to the front of the encoded string (for example,
     'fdr' and 'nxd' below), and add them to the opening
-    comment in utility.ps1 separated by '@@@'. (or use whatever
+    comment in temp_config.txt separated by '@@@'. (or use whatever
     method you created and changed in the display.ps1 script's
     "startUp" function).
 
@@ -319,16 +315,16 @@ $dyrl_kon_ERRMSG = "  ERROR! Unsupported character in your filename!"
     inside the $vf19_MPOD hashtable. 
 
     PROCESS:
-    MACROSS starts up, reads the opening comments from utility.ps1,
+    MACROSS starts up, reads the opening comments from temp_config.txt,
     splits the comment up into separate strings using '@@@' as the
     delimiter, and stores each value in $vf19_MPOD, using the first
     three characters of each string as the index.
     YOUR script can decode those filepaths (or whatever value you
-    stored in utility.ps1) by using the getThis function:
+    stored in temp_config.txt) by using the getThis function:
 
-        getThis $vf19_MPOD['abc']
+        getThis $vf19_MPOD['zzz']
 
-    where 'abc' is the index you added to your encoded string. The
+    where 'zzz' is the index you added to your encoded string. The
     plaintext value is stored in $vf19_READ, which you can then use
     however you need to. Be aware that $vf19_READ gets overwritten
     every time the getThis function is used, so store that variable
@@ -336,13 +332,13 @@ $dyrl_kon_ERRMSG = "  ERROR! Unsupported character in your filename!"
 
 #>
 #splitShares 'fdr'
-$dyrl_kon_FIRSTDRIVE = splitShares 'fdr'
+$dyrl_kon_FIRSTDRIVE = splitShares 'zzz'
 #splitShares 'nxd'
-$dyrl_kon_NEXTDRIVE = splitShares 'nxd'
+$dyrl_kon_NEXTDRIVE = splitShares 'zzz'
 #splitShares 'thd'
-$dyrl_kon_THIRDDRIVE = splitShares 'thd'
+$dyrl_kon_THIRDDRIVE = splitShares 'zzz'
 #splitShares 'fth'
-$dyrl_kon_FOURTHDRIVE = splitShares 'fth'
+$dyrl_kon_FOURTHDRIVE = splitShares 'zzz'
 
 ## Enables the main "While" loop
 $dyrl_kon_LOOP = $true
@@ -354,7 +350,7 @@ while( $dyrl_kon_LOOP ){
     
     # Tables/Arrays
     $dyrl_kon_FEXT0 = @()          ## Collects multiple extensions entered by user
-    $dyrl_kon_FEXT1 = @()          ## FEXT0 contents formatted with wildcards
+    $dyrl_kon_FEXT1 = @()          ## Collects each item from FEXT0 and formats them with wildcards
     [int[]]$dyrl_kon_CT = $null    ## number of items in FEXT1
 
 
@@ -378,10 +374,10 @@ while( $dyrl_kon_LOOP ){
 
         $dyrl_kon_CLIENT = $CALLER         ## $CALLER gets replaced below if necessary
         $dyrl_kon_WILD = $PROTOCULTURE     ## This is the default search term; will change below if necessary
-        $dyrl_kon_LOOP = $false            ## Only perform one search
+        $dyrl_kon_LOOP = $false            ## Only perform one search, kill the loop
 
 
-        ## Account for python callers
+        ## Check if being called from a python script
         if( $dyrl_kon_GENERAL ){
             $dyrl_kon_CLIENT = $dyrl_kon_GENERAL
             $dyrl_kon_WILD = '*' + $dyrl_kon_ORDERS + '*'
@@ -391,13 +387,13 @@ while( $dyrl_kon_LOOP ){
 
                 if($dyrl_kon_COMMANDER -ne $CALLER){
 
+                    ## Ignore $CALLER, KÖNIG is being queried by $pyCALLER
+                    $dyrl_kon_CLIENT = $dyrl_kon_COMMANDER
+
                     ## $external_NM may already be in use by another script; use pyCALLER's search words instead
                     if( $dyrl_kon_ORDERS -and ($dyrl_kon_ORDERS -ne $external_NM) ){
                         $dyrl_kon_WILD = $dyrl_kon_ORDERS
                     }
-
-                    ## Ignore $CALLER, KÖNIG is being queried by $pyCALLER
-                    $dyrl_kon_CLIENT = $dyrl_kon_COMMANDER
 
                 }
 
@@ -505,7 +501,8 @@ while( $dyrl_kon_LOOP ){
 
         <#
             MPOD ALERT!!  Modify the below text to match the network shares you are searching.
-                          Until set those values, you will be stuck manually entering filepaths!!
+                          Until you set those values in temp_config.txt, you will be stuck
+                          manually entering filepaths!!
         #>
 
         Write-Host ''
@@ -574,12 +571,6 @@ while( $dyrl_kon_LOOP ){
             splashPage1b
 
             
-            Write-Host -f GREEN " Enter " -NoNewLine;
-            Write-Host -f CYAN "admin-<letter> " -NoNewLine;        ## MPOD ALERT!!  Your admins may not use an 'admin-name' designation
-            Write-Host -f GREEN "to search admin user shares.
-            "
-            Write-Host -f GREEN " If you only enter 'a', KÖNIG will search all 'a' users AND any admin users it finds.
-            "
             while( $dyrl_kon_UNAME -notMatch "^[a-zA-Z].*" ){
                 Write-Host -f GREEN ' Enter a username, partial username, or ' -NoNewline;
                 Write-Host -f YELLOW 'BRRT' -NoNewline;
@@ -756,7 +747,7 @@ while( $dyrl_kon_LOOP ){
 
 
 
-    }   # Everything above this line is determined by either user input or an auto-generated file from an associated tool
+    }   # Everything above this line is determined by either user input or an auto-generated file sent from an associated tool
 
 
 
@@ -826,9 +817,8 @@ while( $dyrl_kon_LOOP ){
     foreach( $dyrl_kon_DIR0 in Get-ChildItem -Directory $dyrl_kon_FPATH\$dyrl_kon_UNAME* ){
         $dyrl_kon_DIR1 = Split-Path -Path $dyrl_kon_DIR0 -Leaf -Resolve
         Write-Host ''
-        Write-Host -f GREEN '  Now searching ' -NoNewline;
-        Write-Host -f MAGENTA "$dyrl_kon_DIR1" -NoNewline;
-        Write-Host -f GREEN "'s stuff..."
+        Write-Host -f GREEN '  Target Lock: ' -NoNewline;
+        Write-Host -f MAGENTA "$dyrl_kon_DIR1"
         slp 1
 
         ## Recursively search profile directory for specified words/extensions
@@ -946,25 +936,28 @@ while( $dyrl_kon_LOOP ){
         function collaborate(){
             Write-Host '
             '
-            if( $vf19_E1 ){
-                $choices = $true
-                Write-Host -f GREEN '      -Enter ' -NoNewline;
-                Write-Host -f YELLOW 'e' -NoNewline;
-                Write-Host -f GREEN " to have ELINTS string-search these $dyrl_kon_numfiles files."
-            }
-            if( $vf19_G1 ){
-                $choices = $true
-                Write-Host -f GREEN '      -Enter ' -NoNewline;
-                Write-Host -f YELLOW 'g' -NoNewline;
-                Write-Host -f GREEN ' to have GERWALK query Carbon Black for the most recent users/processes'
-                Write-Host -f GREEN "        related to these $dyrl_kon_numfiles files."
+            $vf19_ATTS.keys | %{
+                if($vf19_ATTS[$_].valtype -like "*string*search*"){
+                    $Script:dyrl_eli_STR = $vf19_ATTS[$_].fname
+                    $choices = $true
+                    Write-Host -f GREEN '      -Enter ' -NoNewline;
+                    Write-Host -f YELLOW 'e' -NoNewline;
+                    Write-Host -f GREEN " to have $($vf19_ATTS[$_].name) string-search these $dyrl_kon_numfiles files."
+                }
+                if($vf19_ATTS[$_].valtype -eq 'EDR'){
+                    $Script:dyrl_eli_EDR = $vf19_ATTS[$_].fname
+                    $choices = $true
+                    Write-Host -f GREEN '      -Enter ' -NoNewline;
+                    Write-Host -f YELLOW 'g' -NoNewline;
+                    Write-Host -f GREEN ' to query EDR for the most recent users/processes'
+                    Write-Host -f GREEN "        related to these $dyrl_kon_numfiles files."
+                }
             }
             if( $choices ){
                 Write-Host -f GREEN '      -Just hit ENTER to skip.'
                 Write-Host -f GREEN '         > ' -NoNewline;
                 Read-Host
             }
-            
         }
 
         $dyrl_kon_numfiles = (gc $RESULTFILE).length
@@ -973,7 +966,7 @@ while( $dyrl_kon_LOOP ){
             $dyrl_kon_collaborate = collaborate
             if( $dyrl_kon_collaborate -eq 'e' ){
                 $COMEBACK = $true
-                collab 'ELINTS.ps1' 'KONIG'                            ## ELINTS is looking for $RESULTFILE
+                collab $dyrl_eli_STR 'KONIG'                            ## ELINTS is looking for $RESULTFILE
                 Write-Host '
                 '
             }
@@ -981,10 +974,10 @@ while( $dyrl_kon_LOOP ){
                 $COMEBACK = $true
                 Write-Host -f GREEN "  Do you want to scan for ALL of these files? " -NoNewline;
                 $tcz = Read-Host
-                if( $tcz-Match "^y"){
+                if( $tcz -Match "^y"){
                     gc $RESULTFILE | Foreach-Object{
                         $Global:external_NM = $_ -replace "^.+\\",''    ## GERWALK scans $external_NM
-                        collab 'GERWALK.ps1' 'KONIG'
+                        collab $dyrl_eli_EDR 'KONIG'
                     }
                 }
 
