@@ -266,17 +266,16 @@ Writing plaintext values to $vf19_READ makes cleanup actions easier, as this val
 <br>
 <br>
 <b>IV. utility.ps1</b><br>
-	*** The comments section of this file contains base64-encoded values that are used to populate the $vf19_MPOD hashtable; values can be decoded and used by referencing thier index, like
-	
-	getThis $vf19_MPOD["nre"]
-	
-&emsp;<b>A.</b> debugMacross() = 'debug' is an unlisted option in the MACROSS menu. Use it to change whether errors are output to the screen or not
-	to troubleshoot scripts (the default is 'SilentlyContinue' to suppress errors). You can also use 'debug' to test commands or variables in your scripts:<br>
+&emsp;<b>A.</b> debugMacross() = 'debug' is an unlisted option in the MACROSS menu. Use it to change whether errors are output to the screen or not to troubleshoot scripts (the default is 'SilentlyContinue' to suppress errors). You can also use 'debug' to test commands or variables in your scripts:<br>
 	
 	debug
 	debug screenResults 'Item 1' 'Value 1' 'Optional Value 1'
 	
-^^ Typing 'debug' in the main menu, you can either open the error message selector, or do things like check what your script's outputs might look like after being sent to the screenResults function.<br>
+^^ Typing 'debug' in the main menu, you can either open the error message selector, or do things like check what your script's outputs might look like after being sent to the screenResults function.
+
+If you review this function, it contains a "blacklist" that you can edit. As the "debug" command is not restricted in any way, you can add keywords here that will prevent command executions that you don't want performed.
+
+<br>
 	&emsp;<b>B.</b> runSomething() = Pauses the MACROSS console and loads a fresh powershell instance so that the user can perform a quick powershell task; users can call this by typing 'shell' into the MACROSS menu. Typing "exit" returns the user to MACROSS.<br>
 	&emsp;<b>C.</b> decodeSomething() = From the MACROSS menu, the user can call this by typing 'dec' to quickly decode a simple Base64 or Hex string they may come across in an investigation.<br>
 	&emsp;<b>D.</b> getHash() = accepts a filepath and the hash method (md5 or sha256), and returns the hash for
