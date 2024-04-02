@@ -13,7 +13,7 @@ function splashPage($1){
     cls
     if($1 -eq 1){
         ''
-        screenResults '[macross] Attributes' '.name | .ver | .priv | .valtype | .lang | .author | .evalmax | .fname'
+        screenResults '[macross] Attributes' '.ver | .priv | .valtype | .lang | .author | .evalmax | .fname '
         screenResults 'Variables to remember' '$PROTOCULTURE, $CALLER, $RESULTFILE, $vf19_MPOD, $vf19_ATTS'
         screenResults 'endr'
     }
