@@ -1,6 +1,6 @@
 #_sdf1 Code-signing & Cert inspection
 #_ver 1.5
-#_class User,Digital_Certs,Powershell,HiSurfAdvisory,0
+#_class user,digital certificates,powershell,HiSurfAdvisory,1
 
 ## Watch for alt filenames requested from python scripts via 'collab'
 param(
@@ -47,12 +47,16 @@ if( $HELP ){
      Code-signing may be enforced for security. If you have a signing certificate,
      you can use this tool to quickly sign your new scripts so they will be
      allowed to run, or re-sign expired/updated code.
-     Simply put your script in the \nmods folder, or let BASARA prompt you
+
+     Simply put your script in the \modules folder, or let BASARA prompt you
      for the file location.
  
      If you run BASARA with the 's' option (ex '1s'), it disables the code-
      signing function and instead lets you inspect the details for a file's
      digital signature.
+
+     BASARA can also be sent the filepath to a signed binary from other scripts,
+     scan it and then report the digital cert information to you.
 
      Hit ENTER to continue.
  "
