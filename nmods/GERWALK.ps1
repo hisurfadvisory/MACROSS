@@ -1,6 +1,6 @@
 #_sdf1 Carbon Black EDR Integration
 #_ver 2.1
-#_class User,Carbon Black EDR,Powershell,HiSurfAdvisory,1
+#_class user,EDR,powershell,HiSurfAdvisory,1
 
 <#
 
@@ -399,7 +399,7 @@ if( $HELP ){
 ## and the hostname as second param
 function inspectSID($1,$2){
     if($2){
-        if($CALLER -eq 'C2EFFDi'){
+        if($CALLER -and $vf19_ATTS[$CALLER].valtype -Match ' IP(s| Addresses)?.*'){
             craftQuery '' "v1/sensor?ip=$2" $dyrl_ger_MARK '1'
         }
         else{
@@ -2105,17 +2105,6 @@ while($r -Match "[0-9]"){
             }
             else{
                 Write-Host -f GREEN "    Select a result (1 - $rr) to drill down, " -NoNewline;
-                if( $dyrl_ger_ip ){
-                    $dyrl_ger_i1 = [string]($vf19_M[3] + $vf19_M[1]) + '.' + [string]($vf19_M[3] + $vf19_M[1])
-                    $dyrl_ger_i2 = $vf19_numchk - 5183
-                    if( $dyrl_ger_ip -Match "^($dyrl_ger_i1|$dyrl_ger_i2)" ){
-                        Write-Host -f GREEN "'" -NoNewline;
-                        Write-Host -f YELLOW 'i' -NoNewline;
-                        Write-Host -f GREEN "' to query C2EFFD for $dyrl_ger_ip,"
-                        Write-Host '    ' -NoNewline;
-                    }
-
-                }
                 Write-Host -f GREEN ' "' -NoNewline;
                 Write-Host -f YELLOW 'p' -NoNewline;
                 Write-host -f GREEN '"'
@@ -2134,12 +2123,7 @@ while($r -Match "[0-9]"){
             
 
             
-            if($dyrl_ger_Z -eq 'i'){
-                $Global:PROTOCULTURE = $dyrl_ger_ip
-                collab 'C2EFFD.ps1' 'GERWALK'
-                Remove-Variable -Force PROTOCULTURE -Scope Global
-            }
-            elseif($dyrl_ger_Z -eq 'u'){
+            if($dyrl_ger_Z -eq 'u'){
                 quickList $dyrl_ger_WORKSPACE1 'u'
             }
             elseif($dyrl_ger_Z -eq 'p'){
@@ -2209,13 +2193,6 @@ while($r -Match "[0-9]"){
                         Write-Host -f YELLOW 'e' -NoNewline;
                         Write-Host -f GREEN "' to list binary execution" -NoNewline;
                     }
-                    if($dyrl_ger_hname){
-                        Write-Host -f GREEN ', or'
-                        Write-Host -f GREEN "       -Type '" -NoNewline;
-                        Write-Host -f YELLOW 'h' -NoNewline;
-                        Write-Host -f GREEN "' to query C2EFFD for " -NoNewline;
-                        Write-Host -f GREEN "$dyrl_ger_hname" -NoNewline;
-                    }
                     if( $getSID ){  ## Not implemented yet
                         Write-Host -f GREEN ', or '
                         Write-Host -f GREEN "       -Type '" -NoNewline;
@@ -2245,11 +2222,6 @@ while($r -Match "[0-9]"){
                     }v
                     elseif($dyrl_ger_ZZ -eq 'c'){
                         showFULLEVENT $dyrl_ger_SINGLEEVENT[0] 'c'
-                    }
-                    elseif( $dyrl_ger_ZZ -eq 'h' ){
-                        $Global:PROTOCULTURE = $dyrl_ger_hname
-                        collab 'C2EFFD.ps1' 'GERWALK'
-                        Remove-Variable -Force dyrl_ger_hname,PROTOCULTURE -Scope Global
                     }
                     elseif( $dyrl_ger_ZZ -eq 's' ){
                         $ssiidd = $RESULTS[[int]$dyrl_ger_Z].sensor_id
