@@ -1,6 +1,6 @@
 #_sdf1 User lookup + audit new accounts
 #_ver 2.1
-#_class User,Common,Usernames,Powershell,HiSurfAdvisory,1
+#_class user,active-directory lookups,powershell,HiSurfAdvisory,1
 
 <#
     MYLENE: Target recently-created accounts for inspection; look up AD info
@@ -23,7 +23,7 @@
         -keywords to match against Group-Policy names
 
     2) Anomalous attributes can be highlighted by modifying the function "cleanList".
-        Look for line 718, or the section labeled
+        Look for line 725, or the section labeled
         "Add other values here to highlight deviations from standard account attributes"
 
     3) Results will output to screen and to your Desktop in a folder called
@@ -33,16 +33,25 @@
         options to display more info as needed. Future updates will have
         improved outputs for $CALLER scripts.
     
+    5) This script was written in an environment that used VMWare's Carbon Black as an
+        Endpoint Detection (EDR) solution, which this script would use to perform user
+        activity lookups to aid analyst investigations. If your environment uses something
+        else, you can modify the EDR/Carbon Black sections of this script to fit your needs.
+        You may also find it useful to write your own EDR API script in powershell or
+        python so that it can be used within MACROSS with your other scripts.
+
+        If there is no EDR, don't worry. If you delete GERWALK from the "modules" folder,
+        MACROSS will know there is no EDR-specific script and won't offer the option to this
+        or any other tool.
 
     ---------------------------------------------------
     If calling MYLENE from your script via the "collab" function, MYLENE
     does not return any values. It writes all of its search results
-    for $PROTOCULTURE to the screen, then exits back to your script.
+    for $PROTOCULTURE to the screen, then exits back to your script when
+    the analyst is finished reviewing it.
     ---------------------------------------------------
 
 
-    v2.1
-    Improved data collection from GERWALK
 
 #>
 
@@ -86,10 +95,11 @@ if( $HELP ){
  cls
  Write-Host -f YELLOW "
  Author: $($vf19_ATTS['MYLENE'].author)
- version $($vf19_LIST0['MYLENE.ps1'])
+ version $($vf19_ATTS['MYLENE'].ver)
  
  
- MYLENE's Recent Acct Search lets you perform user lookups by name or creation date.
+ 
+ MYLENE's Recent Account Search lets you perform user lookups by name or creation date.
  As an admin, you can query Active Directory for partial name matches. If you 
  don't know the entire username, you can search with wildcards (*), but it might 
  return several results. If you wildcard the front  of your searches, you must 
@@ -100,7 +110,7 @@ if( $HELP ){
     -do a quick keyword search on all of the new accounts' GPO assignments
     -get a quickview of all the GPO assignments for specific new accounts
     -get a quick alert for non-standard attributes on any new accounts (i.e. things like
-        "null password" will be highlighted in red)
+        'null password' will be highlighted in red)
  
  MYLENE also lets you search for new hosts recently added to the network.
 
@@ -108,12 +118,6 @@ if( $HELP ){
  Write-Host -f GREEN 'net' -NoNewline;
  Write-Host -f YELLOW ' utility, and
  you cannot wildcard. You must search for exact names.
- 
-
- MYLENE interacts with these SKYNET tools:
-    -KONIG can scan new user accounts for the presence of *any* files
-    -GERWALK can lookup history of usernames or hostnames being evaluated by MYLENE
-        (requires Carbon Black EDR deployed and configured on your network)
 
 
  If you are logged in as admin and select MYLENE with the "s" option (example "12s" 
@@ -167,15 +171,25 @@ function noFind($1){
 }
 
 
-## GERWALK plugin function
+## Let user choose when to proceed
+function hetc(){
+    Write-Host -f GREEN ' Hit ENTER to continue. ' -NoNewline; Read-Host
+}
+
+
+
+
+## EDR enrichment functions
+$vf19_C8 = availableTypes '' 'powershell' 'EDR'
 if( $vf19_C8 ){
     function uActivity($1){  ## Send a username to Carbon Black
         $Global:PROTOCULTURE = $1
-        $activityu = collab 'GERWALK.ps1' 'MYLENE' 'usrlkup'
+        $activityu = collab $($vf19_C8[0]) 'MYLENE' 'usrlkup'
 
 
-        ## GERWALK randomly sends a useless header with the max results,
-        ## need to ignore when it does this
+        ## These instructions are specific to Carbon Black responses;
+        ## you'll need to adjust the rest of this function to fit outputs
+        ## from other EDR products.
         if(($activityu).count -gt 2){
             $r = $($activityu[1] | ConvertFrom-Json).results
         }
@@ -188,7 +202,7 @@ if( $vf19_C8 ){
         $total = ($r).count
 
         screenResults "   Recent activity for user $1 (unsorted; system processes omitted)"
-        screenResults 'derpHOSTNAME' 'derpACTIVITY' 'derpDATE'
+        screenResults 'red~HOSTNAME' 'red~ACTIVITY' 'red~DATE'
 
         while($ct -lt $total){
             if("$(($r.process_name[$ct]))" -notIn $l){
@@ -206,11 +220,11 @@ if( $vf19_C8 ){
         Remove-Variable -Force activityu
     }
 
-    function hActivity($1){  ## Send a hostname to Carbon Black
+    function hActivity($1){  ## Send a hostname to EDR for process lookups
         $Global:PROTOCULTURE = $1
 
         if( ! $activityh ){
-            $activityh = collab 'GERWALK.ps1' 'MYLENE' 'hlkup'
+            $activityh = collab $($vf19_C8[0]) 'MYLENE' 'hlkup'
         }
 
         ## GERWALK randomly sends a useless header with the max results,
@@ -227,7 +241,7 @@ if( $vf19_C8 ){
 
         while( $z -ne '' ){
             screenResults "           Activity on host $1 ($type)"
-            screenResults 'derpACCOUNTS' 'derpRUNNING PROCESSES' 'derpCB GROUP'
+            screenResults 'red~ACCOUNTS' 'red~RUNNING PROCESSES' 'red~CB GROUP'
             screenResults "$($f.username_full.name)" "$($f.process_name.name)" "$($f.group.name)"
             screenResults "Last seen: $(($f.start.name | Sort -Descending)[0])"
             screenResults 'endr'
@@ -307,7 +321,7 @@ function w2f($1,$2){
 
 
 ## Only load AD functions if user is admin
-if( ! $vf19_NOPE ){
+if( ! $vf19_ROBOTECH ){
 
     function searchDesc(){
         
@@ -344,7 +358,7 @@ if( ! $vf19_NOPE ){
             Write-Host -f YELLOW 'd' -NoNewline;
             Write-Host -f GREEN ')escription or (' -NoNewline;
             Write-Host -f YELLOW 'o' -NoNewline;
-            Write-Host -f GREEN ')ffice symbol/JDIR (type "' -NoNewline;
+            Write-Host -f GREEN ')ffice (type "' -NoNewline;
             Write-Host -f YELLOW 'c' -NoNewline;
             Write-Host -f GREEN '" to cancel)?  ' -NoNewline;
             $Z = Read-Host
@@ -376,7 +390,7 @@ if( ! $vf19_NOPE ){
                     screenResults 'ACCOUNT' '  CREATED' '  DESCRIPTION'
                 }
                 else{
-                    screenResults 'ACCOUNT' '   OFFICE SYMBOL/JDIR'
+                    screenResults 'ACCOUNT' '   OFFICE'
                 }
                 listSearchR
                 Write-Host -f GREEN ' Select a number for full details, or ENTER to skip: ' -NoNewline;
@@ -527,7 +541,7 @@ if( ! $vf19_NOPE ){
                     $Z = Read-Host
                     if($Z -eq 'm'){
                         $Zu = $null
-                        $d = 'derpyDERP!'
+                        $d = 'cyan~DERP!'
                         $uaccts = @{}
                         function showAccts(){
                             $uaccts.keys | %{
@@ -601,20 +615,22 @@ if( ! $vf19_NOPE ){
         Remove-Variable -Force dyrl_myl_0* -Scope Global ## Start fresh
 
         
+        #'║║║║║'
         <#
-             $dyrl_myl_username
+             $dyrl_myl_0username
              ============================================================================
-             NAME         ||  $dyrl_myl_0cn
-             CREATED      ||  $dyrl_myl_0wcreated
-             TIMESTAMP    ||  $dyrl_myl_0created     ## In case of timestomping, not sure if CREATED &
-             MODIFIED     ||  $dyrl_myl_0modified    ##     TIMESTAMP could ever legit be different values
-             DESCRIPTION  ||  $dyrl_myl_0desc
-             LAST LOGON   ||  $dyrl_myl_0lastlogon
-             EMAIL        ||  $dyrl_myl_0email
+             NAME         ║  $dyrl_myl_0cn
+             CREATED      ║  $dyrl_myl_0wcreated
+             DESCRIPTION  ║  $dyrl_myl_0desc
+             INFO         ║  $dyrl_myl_0info
+             LAST LOGON   ║  $dyrl_myl_0lastlogon
+             EMAIL        ║  $dyrl_myl_0email
+             PHONE        ║  $dyrl_myl_0phone
+             OFFICE       ║  $dyrl_myl_0room
             =============================================================================
         #>
         function dv($obj){
-            Write-Host -f GREEN "$c  $obj"
+            Write-Host -f GREEN "║  $obj"
         }
 
         function mg($j){
@@ -630,96 +646,88 @@ if( ! $vf19_NOPE ){
     
         
 
-        ## Make these available for future functions
+        ## Parse out the profile details
         $Script:dyrl_myl_0username = $1.samAccountName
         $Script:dyrl_myl_0propername = $1.displayName
+        $Script:dyrl_myl_0title = $1.Title
         $Script:dyrl_myl_0cn = $1.CN
         $Script:dyrl_myl_0desc = $1.Description
-        $Script:dyrl_myl_0created = $1.createTimeStamp
+        #$Script:dyrl_myl_0created = $1.createTimeStamp    ## This is a useless replication
         $Script:dyrl_myl_0wcreated = $1.whenCreated
         $Script:dyrl_myl_0changed = $1.whenChanged
         $Script:dyrl_myl_0lastlogon = $1.lastLogonDate
-        $Script:dyrl_myl_0modified = $1.Modified
-        $Script:dyrl_myl_0wmodified = $1.modifyTimeStamp
+        #$Script:dyrl_myl_0modified = $1.Modified          ## These are also replicated and useless
+        #$Script:dyrl_myl_0wmodified = $1.modifyTimeStamp
+        $Script:dyrl_myl_0enabled = $1.Enabled
+        $Script:dyrl_myl_0lockedout = $1.LockedOut
+        if($dyrl_myl_lockedout -eq $true){
+            $Script:dyrl_myl_0locktime = $1.AccountLockoutTime
+        }
         $Script:dyrl_myl_0email = $1.Mail
+        $Script:dyrl_myl_0phone = $1.telephoneNumber
+        $Script:dyrl_myl_0room = $1.roomNumber
         $Script:dyrl_myl_0passwX = $1.PasswordNeverExpires
         $Script:dyrl_myl_0passwN = $1.PasswordNotRequired
         $Script:dyrl_myl_0exp = $1.AccountExpirationDate
         $Script:dyrl_myl_0smartC = $1.SmartcardLogonRequired
-        $Script:dyrl_myl_0gpochk = 3gpo $dyrl_myl_0jdir 1
 
 
         if($dyrl_myl_LISTNUM){
-            $n = [string]$dyrl_myl_LISTNUM + '. ' + $dyrl_myl_username
+            $n = [string]$dyrl_myl_LISTNUM + '. ' + $dyrl_myl_0username
         }
         else{
-            $n = $dyrl_myl_username
+            $n = $dyrl_myl_0username
         }
 
-        ## Check for possible timestomping
-        if($dyrl_myl_0created -ne $dyrl_myl_0wcreated){
+        ## Check for sus' timestamps
+        if($dyrl_myl_0wcreated -like "*00:00"){
             $redT = $true
         }
-        if($dyrl_myl_0modified -ne $dyrl_myl_0wmodified){
-            $redM = $true
-        }
         
 
-        ## Uncomment and modify to highlight AD object deviations in your environment
-        <#
-        if($dyrl_myl_0username -notMatch "^(superadmin|superuser).*"){
-            $redD = $true
-        }
-        #>
-
-        
-        Write-Host -f CYAN "  $c$c$c$c$c$c NEW ACCT $n"
-        Write-Host -f GREEN '  ============================================================================'
+        getThis '4pWR4pWR4pWR4pWR4pWR4pWR'
+        Write-Host -f CYAN "  $vf19_READ NEW ACCT $n"
+        $e='';Foreach($i in 1..76){$e = $e + '='}
+        write-host -f green "  $e"
+        Write-Host -f GREEN "  $e"
         Write-Host -f YELLOW '  NAME         ' -NoNewline;
         dv $dyrl_myl_0cn
         Write-Host -f YELLOW '  ACCOUNT      ' -NoNewline;
         dv $dyrl_myl_0username
         if($dyrl_myl_0exp -Match "\w"){
-            Write-Host -f RED    '  EXPIRES      ' -NoNewline;
+            Write-Host -f RED '  EXPIRES      ' -NoNewline;
             dv $dyrl_myl_0exp
+        }if($redT){
+            Write-Host -f RED '  CREATED      ' -NoNewline;
         }
-        Write-Host -f YELLOW '  CREATED      ' -NoNewline;
+        else{
+            Write-Host -f YELLOW '  CREATED      ' -NoNewline;
+        }
         dv $dyrl_myl_0wcreated
-        if($redT){
-            Write-Host -f RED '  CR.TIMESTAMP ' -NoNewline;
-        }
-        else{
-            Write-Host -f YELLOW '  CR.TIMESTAMP ' -NoNewline;
-        }
-        dv $dyrl_myl_0created
-        if($redM){
-            Write-Host -f RED '  MODIFIED     ' -NoNewline;
-        }
-        else{
-            Write-Host -f YELLOW '  MODIFIED     ' -NoNewline;
-        }
-        dv $dyrl_myl_0modified
-        if($redD){
-            Write-Host -f RED '  DESCRIPTION  ' -NoNewline;
-        }
-        else{
-            Write-Host -f YELLOW '  DESCRIPTION  ' -NoNewline;
-        }
+        Write-Host -f YELLOW '  DESCRIPTION  ' -NoNewline;
         dv $dyrl_myl_0desc
+        Write-Host -f YELLOW '  INFO         ' -NoNewline;
+        dv $dyrl_myl_0info
         Write-Host -f YELLOW '  LAST LOGON   ' -NoNewline;
         dv $dyrl_myl_0lastlogon
         Write-Host -f YELLOW '  EMAIL        ' -NoNewline;
         dv $dyrl_myl_0email
-
-
-        ####################################################################################################
-        ## Add other values here to highlight deviations from standard account attributes
-        ####################################################################################################
+        Write-Host -f YELLOW '  PHONE        ' -NoNewline; 
+        dv $dyrl_myl_0phone
+        Write-Host -f YELLOW '  OFFICE       ' -NoNewline;
+        dv $dyrl_myl_0room
+        <#if($dyrl_myl_0smartC -ne $true){
+            Write-Host -f RED    '  SMART CARD NOT REQUIRED'
+        }#>
         if($dyrl_myl_0passwX -eq $true -or $dyrl_myl_0passwN -eq $true){
             Write-Host -f RED '  PASSWORD NULL OR NEVER EXPIRES'
         }
-
-        
+        if( $dyrl_myl_0enabled -eq $false ){
+            Write-Host -f CYAN '  ACCOUNT IS DISABLED'
+        }
+        if( $dyrl_myl_0lockedout -eq $true){
+            Write-Host -f CYAN "  ACCOUNT IS LOCKED ($dyrl_myl_0locktime)"
+        }
         Write-Host -f GREEN '  ============================================================================'
 
 
@@ -729,6 +737,7 @@ if( ! $vf19_NOPE ){
         w2f '' $dyrl_myl_0desc
 
     }
+
 
 
     ## Tailor AD query based on user input
@@ -741,92 +750,112 @@ if( ! $vf19_NOPE ){
             $sU_SPECIFIC = $true
         }
 
-        $sU_Q1 = $(Get-ADUser -Filter $sU_FILTER -Properties displayName,samAccountName | 
-            Select samAccountName,displayName)
-        $sU_QCT = $sU_Q1.count
-        $sU_QUERY = Get-ADUser -Filter $sU_FILTER -Properties *
-        $sU_GPO = $sU_QUERY | Select -ExpandProperty memberOf
+        ## User ran a specific search
+        if($sU_SPECIFIC){
+            $sU_Q1 = $(Get-ADUser -Filter $sU_FILTER -properties *)
+            $sU_GPO = $(($sU_Q1).memberOf -replace "..=" -replace ",.*$")
+        }
 
-        if( $sU_Q1 ){
-            ''
-            if( $sU_QCT -gt 1 ){
+         ## User ran a wildcard search
+        else{
+            $sU_Q0 = $(Get_ADUser -Filter $sU_FILTER -Properties displayName,samAccountName |
+                Select samAccountName,displayName)
+            if($sU_Q0.count -eq 1){
+                singleUser $sU_Q0.samAccountName ## Only one user was found, re-run the function to get all their attributes
+            }
+            else{
                 Write-Host -f GREEN ' Found multiple users matching that search:
                 '
-                foreach( $n in $sU_Q1 ){
-                    $n = $n -replace "^.+samAccountName=" -replace "; displayName=",":  " -replace "}$"
-                    Write-Host -f YELLOW "  $n"
+                foreach( $n in $sU_Q0 ){
+                    Write-Host -f YELLOW "  $($_.samAccountName): $($_.displayName)"
                 }
                 ''
-                Write-Host -f GREEN " Choose one of the usernames above, or ENTER for a new search:"
-                Write-Host -f GREEN "  >  " -NoNewline; $Z = Read-Host
-                if( $Z -Match "[a-z0-9]" ){
+                Write-Host -f GREEN ' Type one of the usernames above, or hit ENTER for a new search:'
+                Write-Host -f GREEN '  > ' -NoNewline; $Z = Read-Host
+                if( $Z -in $sU_Q0.samAccountName ){
                     Remove-Variable sU_*
                     singleUser $Z
                 }
             }
-            else{
-                $sU_SPECIFIC = $true
-                Write-Host -f GREEN ' Pay special attention to the ' -NoNewline;
-                Write-Host -f YELLOW 'LAST LOGON' -NoNewline;
-                Write-Host -f GREEN ' and ' -NoNewline;
-                Write-Host -f YELLOW 'MODIFIED' -NoNewline;
-                Write-Host -f GREEN ' fields.'
-                Write-Host -f GREEN ' There should not usually be a huge gap between the two.
-    
-                '
-                cleanList $sU_QUERY
-                ''
-                'GPO ASSIGNMENTS:'
+        }
+
+        if( $su_Q1 ){
+
+            function listGPO(){
+                ## Modify this if your org has a way to name users based on their group policy access,
+                ## for example domain admins might have a username like "dadmin.bob" while server admins
+                ## would just be "admin.bob".
                 $sU_GPO | %{
-                    $g = $_ -replace "..=" -replace ",.*$"
-                    Write-Host -f YELLOW "   $g"
-                }
-                Remove-Variable g
-                ''
-                if( $sU_SPECIFIC ){
-                    Write-Host -f GREEN ' Do you need extra domain details for this user? (y/n)  ' -NoNewline;
-                    $Z = Read-Host
 
-                    if( $Z -eq 'y' ){
-                        $Z = $null
-                        while($Z -notMatch "^(A|C|G|S)$"){
-                            Write-Host -f GREEN " Type 'A' for Active-Directory info, 'C' for a Carbon Black lookup, 'G'"
-                            Write-Host -f GREEN " for GPO details, or 'S' to skip: " -NoNewline;
-                            $Z = Read-Host
-                        }
-                        if( $Z -eq 'A'){
-                            $sU_QUERY
-                        }
-                        elseif($Z -eq 'C'){
-                            uActivity "$1"
-                            splashPage
-                        }
-                        elseif($Z -eq 'G'){
-                            ''
-                            Write-Host -f GREEN ' Copy-in the GPO name to view: ' -NoNewline;
-                            $Z = Read-Host
-                            if($Z -Match "\w{4,}"){
-                                3gpo $Z 2
-                            }
-                        }
-
-                        if($Z -ne 'S'){
-                            Write-Host -f GREEN ' Hit ENTER to continue.' -NoNewline;
-                            Read-Host
-                        }
-                        $Z = $null
+                    ## If the GPO name contains "admin", does the username begin with "admin"?
+                    if($_ -Like "*admin*" -and $1 -notMatch "admin*"){
+                        Write-Host -f RED "   $_"
                     }
-                    $sU_SPECIFIC = $null
+                    else{
+                        Write-Host -f YELLOW "   $_"
+                    }
                 }
+            }
+            ''
+            cleanList $sU_Q1
+            ''
+            'GPO ASSIGNMENTS:'
+            listGPO
+
+            Remove-Variable g
+            ''
+            if( $sU_SPECIFIC ){
+                Write-Host -f GREEN ' Do you need extra domain details for this user (y/n)?  ' -NoNewline;
+                $Z = Read-Host
             }
 
 
+            if( $Z -like "y*"){
+                $Z = $null
+                while($Z -notMatch "^(A|C|G|S)$"){
+                    Write-Host -f GREEN " -Type 'A' for Active-Directory info"
+                    if($vf19_C8){
+                        Write-Host -f GREEN " -Type 'E' for a EDR lookup"  ## Uncomment if you have an EDR configured
+                    }
+                    Write-Host -f GREEN " -Type 'G' for GPO details"
+                    Write-Host -f GREEN " -Type 'S' to skip"
+                    Write-Host -f GREEN '  >  ' -NoNewline; $Z = Read-Host
+                }
+                if( $Z -eq 'A' ){
+                    $sU_Q1
+                }
+                elseif($Z -eq 'E'){
+                    uActivity "$1"
+                    splashPage
+                }
+                elseif($Z -eq 'G'){
+                    while($Z -ne ''){
+                        ''
+                        Write-Host -f GREEN ' Type the GPO name to view or hit ENTER to cancel: ' -NoNewline;
+                        $Z = Read-Host
+                        if($Z -in $sU_GPO){
+                            3gpo $Z 2
+                            ''
+                            cleanList $sU_Q1
+                            ''
+                            'GPO ASSIGNMENTS:'
+                            listGPO
+                        }
+                    }
+                }
 
+                if($Z -ne 'S'){
+                    hetc
+                }
+
+                $Z = $null
+            }
+            $sU_SPECIFIC = $null
+        
         }
         else{
             noFind $1
-            Write-Host -f GREEN ' Hit ENTER to continue.' -NoNewline;
-            Read-Host
+            hetc
         }
         
         splashPage
@@ -840,7 +869,7 @@ if( ! $vf19_NOPE ){
 
 
 
-if( $vf19_NOPE ){
+if( $vf19_ROBOTECH ){
     while( $dyrl_myl_Z -ne 'q' ){
         splashPage
         Write-Host -f GREEN ' What username are you searching on? Enter ' -NoNewline;
@@ -886,7 +915,7 @@ else{
 
         if($dyrl_usage -ne 1){
             Remove-Variable -Force dyrl_myl_* -Scope Global
-            $dyrl_myl_C2F = 'trash'
+            $dyrl_myl_DELTA = 'trash'
             slp 1
         }
 
@@ -1003,7 +1032,7 @@ else{
                     $dyrl_myl_arrayh.Add([string]$dyrl_myl_arrayn,$dyrl_myl_in)
 
                     if($vf19_C8){
-                        ## See if CB has a sensor for the host in question
+                        ## See if EDR has a sensor for the host in question
                         $Global:PROTOCULTURE = $dyrl_myl_in
                         $dyrl_myl_CHECKSENSOR = $(collab 'GERWALK.ps1' 'MYLENE' 'sensor' | ConvertFrom-Json)
                     }
@@ -1019,10 +1048,10 @@ else{
                     $dyrl_myl_ipadd2 = $dyrl_myl_ipadd0 + " resolves to " + $dyrl_myl_ipadd1 -replace("Address.*$dyrl_myl_FO","$dyrl_myl_FO")
                     
                     if( $dyrl_myl_ipadd1 ){
-                        screenResults "derpNEW HOST $dyrl_myl_arrayn" $($dyrl_myl_i.Name) $dyrl_myl_ipadd2
+                        screenResults "red~NEW HOST $dyrl_myl_arrayn" $($dyrl_myl_i.Name) $dyrl_myl_ipadd2
                     }
                     else{
-                        screenResults "derpNEW HOST $dyrl_myl_arrayn" $($dyrl_myl_i.Name) 'derpyDOES NOT RESOLVE'
+                        screenResults "red~NEW HOST $dyrl_myl_arrayn" $($dyrl_myl_i.Name) 'cyan~DOES NOT RESOLVE'
                     }
                     screenResults 'Operating System' $($dyrl_myl_i.OperatingSystem)
                     screenResults 'Created' $($dyrl_myl_i.whenCreated)
@@ -1030,7 +1059,7 @@ else{
                         screenResults 'Description' $($dyrl_myl_i.Description)
                     }
                     else{
-                        screenResults 'Description' 'derpyNONE'
+                        screenResults 'Description' 'cyan~NONE'
                     }
                     if($dyrl_myl_CHECKSENSOR){
                         screenResults 'CB Sensor ID' $($dyrl_myl_CHECKSENSOR[0].id)
@@ -1041,7 +1070,7 @@ else{
                         Remove-Variable -Force dyrl_myl_CHECKSENSOR -Scope Global
                     }
                     else{
-                        screenResults 'derpyNo Carbon Black agent installed!'
+                        screenResults 'cyan~No Carbon Black agent installed!'
                     }
                     
                     
@@ -1054,7 +1083,7 @@ else{
                 ''
                 Write-Host -f GREEN ' ...search complete.
                 '
-                if( $dyrl_myl_arrayn -gt 0 ){  ## If hosts were found and CB script exists, offer to search CB
+                if( $dyrl_myl_arrayn -gt 0 ){  ## If hosts were found and EDR script exists, offer to search EDR
                     if($dyrl_myl_SENSOR){
                     while( $dyrl_myl_Z -ne 'skip' ){
                         Write-Host -f GREEN ' Select a ' -NoNewline;
@@ -1072,7 +1101,7 @@ else{
                                 foreach($key in $dyrl_myl_arrayh.keys){
                                     #$dyrl_myl_arraynn++
                                     if($key -in $dyrl_myl_sensors.keys){
-                                        screenResults "derpNEW HOST $key" $dyrl_myl_arrayh[$key]
+                                        screenResults "red~NEW HOST $key" $dyrl_myl_arrayh[$key]
                                     }
                                     else{
                                         screenResults "NEW HOST $key" ' (no cb agent installed)'
@@ -1082,7 +1111,7 @@ else{
                                 ''
                             }
                             else{
-                                Write-Host -f CYAN ' That host does not have CB installed.'
+                                Write-Host -f CYAN ' That host does not have EDR agent installed.'
                             }
                         }
                         else{
@@ -1113,7 +1142,7 @@ else{
     
 
 
-        while( $dyrl_myl_C2F -ne 'retarded' ){
+        while( $dyrl_myl_DELTA -ne 'garbage' ){
             ''
             Write-Host -f GREEN ' Enter a username (you can wildcard ' -NoNewline;
             Write-Host -f YELLOW '*' -NoNewline;
@@ -1156,7 +1185,7 @@ else{
                         $dyrl_myl_Z = Read-Host
                     }
                 }
-                $dyrl_myl_C2F = 'retarded'
+                $dyrl_myl_DELTA = 'garbage'
                 $dyrl_myl_DATE = (Get-Date).AddDays(-$dyrl_myl_Z)
             }
             else{
@@ -1425,7 +1454,7 @@ else{
                 $dyrl_myl_MULTIACCT | %{
                     $Global:PROTOCULTURE = $_.samAccountName
                     slp 1
-                    collab 'KONIG.ps1' 'MYLENE'
+                    collab 'KONIG.ps1' 'MYLENE'  ## Use KONIG to search for files in the new user accounts.
                     $dyrl_myl_GETNEWFILE = Split-Path $RESULTFILE -leaf
                     Move-Item -Path "$RESULTFILE" -Destination "$vf19_DEFAULTPATH\NewUserSearches\$dyrl_myl_GETNEWFILE"
                 }
