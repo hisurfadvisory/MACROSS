@@ -75,7 +75,7 @@ This is NOT for security. Do <u>not</u> put credentials in here. The purpose of 
 
 	curl -X GET $(getThis $vf19_MPOD['abc']; $vf19_READ)
 	
-and then modify the temp_config (or whatever file you use) with updated addresses as needed. The "getThis" function can base64-encode strings for you if you just need to do a few. From the main MACROSS menu, simply pass type "debug" followed by your command. To encode, pass in 0 as the second parameter:
+and then modify the temp_config (or whatever file you use) with updated addresses as needed. The "getThis" function can base64-encode strings for you if you just need to do a few. From the main MACROSS menu, simply type "debug" followed by your command. To encode, pass in 0 as the second parameter:
 
 	debug getThis 'hello world' 0
 
