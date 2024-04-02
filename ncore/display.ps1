@@ -192,8 +192,6 @@ function screenResults(){
     getThis '4oCW'; $c = $vf19_READ
     getThis '4omh'
     1..$tw | %{$r += $vf19_READ}; $r = $c + $r + $c
-    getThis $br; $r = $vf19_READ  ## 92 char length top-bottom border
-    getThis $bc; $c = $vf19_READ
     if($1 -Match "^[a-z]+~"){
         $ncolor = $1 -replace "~(.|`n)+"
         $1 = $1 -replace "^([a-z]+~)?"
