@@ -168,7 +168,7 @@ The second parameter above, "red~$result_value", will print $result_value in red
 	&emsp;<b>E.</b> chooseMod() = This function builds the main menu screen in MACROSS. It reads the contents of the modules folder, strips out file extensions, and creates hashtables using the script names and the descriptions found in the first line of those scripts. If the startUp() function did not detect python, chooseMod() will only look for scripts ending in ".ps1" or ".psm" and ignore any ".py".<br>
 <br>
 	&emsp;<b>F.</b> scrollPage() = If you have more than 9 scripts in your modules folder, a second "page" will be created in chooseMods().
-	The scrollPage() function is then used to switch between them when the user types 'p' into the main menu.<br>
+	The scrollPage() function is then used to switch between them when the user types 'p' into the main menu. At the moment this is limited to 2 pages, someday I'll update in case more are needed.<br>
 	
 <br>
 <br>
