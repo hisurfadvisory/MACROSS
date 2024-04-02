@@ -532,6 +532,8 @@ while($varc1 -notMatch $varc0){
     Write-Host '
  debug $vf19_ATTS.keys | %{if($vf19_ATTS[$_].valtype -like "*IPs*"){$vf19_ATTS[$_].name}}'
     Write-Host -f GREEN "
+    ...and the 'availableTypes' function does the same thing for you.
+
     The 'classes.ps1' file contains all the details on what attributes need to get passed
     from your scripts, and in what order. You can also look at all the scripts in the modules
     folder included in this github release to get a rough idea of how this all works.
