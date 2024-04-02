@@ -1,6 +1,6 @@
 #_sdf1 String-search documents
-#_ver 3.1
-#_class User,Strings,Powershell,HiSurfAdvisory,1
+#_ver 3.2
+#_class user,string search,powershell,HiSurfAdvisory,1
 
 <#
     Author: HiSurfAdvisory
@@ -19,12 +19,11 @@
 	
     This script does NOT incorporate iTextSharp for scanning PDF files
     at this time, instead it uses Didier Stevens' pdf-parser (see the 
-    peeDeeEff function later in this script for details.)
+	peeDeeEff function later in this script for details.)
 	
-    Many customer networks I investigate do not have access to
-    whatever 3rd-party utils that make life easy, so MACROSS tries to
-    work with what's available. Also, integratrating that dll into
-    MACROSS is more work than I have time for right now.
+	Many customer networks I investigate do not have access to whatever
+    3rd-party utilities that make life easy, so MACROSS tries to work
+    with what's available.
 	
     There are a few variables in this script that are not used by
     default. They exist for infosec purposes. You can tweak this script
@@ -37,8 +36,8 @@
         by creating more copies of it.
 		
         $dyrl_eli_norecord -- when this is set to true, the filenames and
-        their string-matches (if any) will NOT be written to the
-        ~\Desktop\strings-found.txt file
+        their string-matches (if any) write to screen, but will NOT be written
+        to the ~\Desktop\strings-found.txt file
 #>
 
 ## ASCII art for launching the script
@@ -116,8 +115,6 @@ if( $HELP ){
     -Can accept manual input of a single file for string-searching
     -Will notify you if macros are detected in MS Office documents & spreadsheets
     -Can copy files you find onto your desktop for investigation
-    -Can query Carbon Black* using GERWALK to find additional info on files you've scanned
-        *(Requires that your organization uses Carbon Black, obviously)
  
   When ELINTS is called by another script or you give it a list of filepaths, it will only
   grab the first instance of a match for you to view. All search results get saved into a
@@ -127,7 +124,7 @@ if( $HELP ){
   instance of a match --not just the first one-- so you can get some context.
 
   In order to scan through PDF files, you'll need python installed, and Didier Steven's
-  pdf-parser script copied into your local ncore folder.
+  pdf-parser script copied into your local core folder.
 
   hxxps://github.com/DidierStevens/DidierStevensSuite/blob/master/pdf-parser.py
 
@@ -213,7 +210,6 @@ function completeMsg (){
 function msOffice($1,$2,$3){
     Set-Variable -Name a,n -Option AllScope        ## Let nested functions control these values
     $fn = $1 -replace "^.*\\"                      ## Cut filepath for display
-    #$encode = "[^\x00-\x7F]"                      ## Ignore non-ASCII blocks
     $n = 0                                         ## Track number of matches PER FILE
     $a = @('')                                     ## Only care if matches get written to $a
     $Script:dyrl_eli_VBA = 0                       ## Count of any vba scripts found
@@ -245,9 +241,9 @@ function msOffice($1,$2,$3){
                 }
                 else{
                     $b = $_ -replace "<.*$macroname"                    ## Look for the line with the macro name
-                    $b >> $dyrl_eli_POOP
-                    '' >> $dyrl_eli_POOP
-                    '' >> $dyrl_eli_POOP
+                    $b >> $dyrl_eli_intelpkg
+                    '' >> $dyrl_eli_intelpkg
+                    '' >> $dyrl_eli_intelpkg
                     Return
                 }
                 $b | where{ $_ -ne ''} |
@@ -311,7 +307,7 @@ function msOffice($1,$2,$3){
 
     ## Excel contents are *typically* in "xl\worksheets\Sheet[0-9].xml" and ".\sharedStrings.xml" paths,
     ## and MSWord contents are in the Document.xml... but we'll search the whole thing anyway. If there is
-    ## noticeable lag we'll go back to just grabbing Document.xml from Word files
+    ## noticeable lag you can modify this to just grab Document.xml from Word files
     if( $doc ){
         $doc.Entries |
             Where-Object{
@@ -319,8 +315,8 @@ function msOffice($1,$2,$3){
             } | %{
                 if($_.name -Match "^vba"){
                     $Script:dyrl_eli_VBA++
-                    'VBA Script found: ' >> $dyrl_eli_POOP
-                    '' >> $dyrl_eli_POOP
+                    'VBA Script found: ' >> $dyrl_eli_intelpkg
+                    '' >> $dyrl_eli_intelpkg
                     $PLAINTEXT = grabXML $_ 
                     keyWordScan $PLAINTEXT 'wne:macroName=' ## uncompressed file has VBA info
                 }
@@ -347,8 +343,8 @@ function msOffice($1,$2,$3){
             ''
             slp 3
             $Script:dyrl_eli_VBA++
-            "VBA Script found: $mac" | Out-File -Append $dyrl_eli_POOP
-            '' | Out-File -Append $dyrl_eli_POOP
+            "VBA Script found: $mac" | Out-File -Append $dyrl_eli_intelpkg
+            '' | Out-File -Append $dyrl_eli_intelpkg
         }
 
         $findstr | %{
@@ -406,14 +402,14 @@ function msOffice($1,$2,$3){
 ## $1 is the filepath, $2 is the search term(s)
 function peeDeeEff($1,$2,$3){
 
-    $ppp = "$vf19_TOOLSROOT\ncore\pdf-parser.py"
+    $ppp = "$vf19_TOOLSROOT\core\pdf-parser.py"
     if( ! $ppp ){
         Write-Host -f CYAN "
     pdf-parser is not present! Grab it from 
 
         hxxps://github.com/DidierStevens/DidierStevensSuite/blob/master/pdf-parser.py
 
-    and place it in MACROSS' ncore folder then run this search again. Hit ENTER to continue.
+    and place it in MACROSS' core folder then run this search again. Hit ENTER to continue.
         "
         Read-Host
         Return
@@ -466,94 +462,242 @@ function peeDeeEff($1,$2,$3){
         [string]$22 = $22
     }
 
-
-    $f0 = (& py "$ppp" -f --searchstream="$22" --regex $1)
-        
-    $Script:m = 0 ## Track the number of matches within the stream
-        
-
-    #$obj = $f | Select-String -Pattern "^obj \d+ "  ## If we need to start tracking the object containing the match
-    
-    ## PDF streams aren't uniform; going to have to add multiple patterns based
-    ## on how plaintext gets split up for coordinates
-    if($f0 -Match "<<.*>>"){
-        $join = ($f0 -Split('<<') | %{$_ -replace ">>.*"}) -Join('  ')
-    }
-    elseif($f0 -Match "\\n\("){
-        $join = ($f0 -Split('\(') | %{$_ -replace "\).*"}) -Join('  ')
-    }
-
-
-    ## If match is found, write out the whole contents for now; will clean this up later
-    if($join){
-        function highlightMatches{
-            param(
-                [Parameter(Mandatory = $true,ValueFromPipeline = $true)]
-                [string]$textblk,
-                [Parameter(Mandatory = $true)]
-                [string]$pattern
-            )
-
-            begin{ 
-                $r = [regex]$pattern
-            }
-            process{
-                $matches = $r.Matches($textblk)
-                $Script:m = $matches.count
-                $startIndex = 0
-
-                foreach($match in $matches){
-                    $nonMatchLength = $match.Index - $startIndex
-                    Write-Host $textblk.Substring($startIndex, $nonMatchLength) -NoNew
-                    Write-Host -f YELLOW $match.Value -NoNew
-                    $startIndex = $match.Index + $match.Length
-                }
-
-                if($startIndex -lt $textblk.Length){
-                    Write-Host $textblk.Substring($startIndex) -NoNew
-                }
-
-                Write-Host
-            }
-            
-
-        }
-
-        highlightMatches $join $22
-        $mm = $m
-        Remove-Variable m -Scope Global
-        
-
-
-        if($mm -eq 0 -and $join -gt 0){
-            $mm = $($join.count)
-        }
-
-
-        if($3 -eq 'multi'){
-            Return "$mm matches"  ## Only report # of matches if parsing multiple files (don't write to screen)
+    ## "quickScan" is a simple best-effort that will filter out the most common noise IF the contents
+    ## are easily decoded in memory; if this fails to find any keywords we can try dumping all the
+    ## streams next.
+    function quickScan($pdfFile,$search){
+        $f0 = (py "$vf19_TOOLSROOT\core\pdf-parser.py" -f --searchstream="$search" --regex $pdfFile)
+        if($f0 | sls 'R/S/Span/Type/StructElem/ActualText'){
+            $a = ((($f0 -split 'R/S/Span/Type/StructElem/ActualText' | 
+                where{
+                    $_ -notMatch "\\x.+\\"
+                }) -replace "/K.+" -replace "(\(|\))") -join ' ') -replace "(\d+(\.\d+)? ){2,}"
         }
         else{
-            ''
-            ''
-            Write-Host -f YELLOW "   $mm" -NoNewline;
-            Write-Host -f GREEN ' matches found!' -NoNewline;
-            if($mm -gt 0){
-                Write-Host -f GREEN ' If no text was highlighted onscreen, your match may be buried'
-                Write-Host -f GREEN "   in another layer of encoding and couldn't be extracted.
-                "
-            }
-            else{
-                Write-Host '
-                '
-            }
-            while($z -ne 'c'){  ## Prevent user exiting before they can view the results
-                Write-Host -f GREEN '   Type "c" to continue: ' -NoNewline;
-                $z = Read-Host
-            }
+            $a = ((($f0 -split "\)" | 
+                where{
+                    $_ -notMatch "\\x.+\\"
+                }) -replace "(\(|\))") -join ' ') -replace "(\d+(\.\d+)? ){2,}" -replace "\\\\"
+        }
+        if(sls " and " $a){
+            Return $a
         }
     }
 
+    if( ! (Test-Path -Path "$dumps\$outf")){
+        $pdfblock = quickScan $1 $22
+    }
+
+
+        if($pdfblock){
+
+            ## PDF streams aren't uniform; going to have to add multiple patterns based
+            ## on how plaintext gets split up for coordinates
+            ## It would be easier to create an array of words, but words can get split
+            ## into letters when decoded from the PDF object... so matches would potentially miss.
+            if($pdfblock -Match "<<.*>>"){
+                $Script:pdfJoin = ($pdfblock -Split('<<') | %{$_ -replace ">>.*"}) -Join('  ')
+            }
+            elseif($pdfblock -Match "\\n\("){
+                $Script:pdfJoin = ($pdfblock -Split('\(') | %{$_ -replace "\).*"}) -Join('  ')
+            }
+            elseif($pdfblock -Like "* the *"){
+                $Script:pdfJoin = $pdfblock
+            }
+
+            
+            if($pdfJoin){
+                Remove-Variable pdfblock -Scope Script
+                
+                function highlightMatches{
+                    param(
+                        #[Parameter(Mandatory = $true,ValueFromPipeline = $true)]
+                        [Parameter(Mandatory = $true)]
+                        [string]$textblk,
+                        [Parameter(Mandatory = $true)]
+                        [string]$pattern
+                    )
+
+                    begin{ 
+                        $r = [regex]$pattern
+                    }
+                    process{
+                        $matched = $r.Matches($textblk)
+                        $Script:m = $matched.count
+                        $startIndex = 0
+
+                        if($m -gt 0){
+                            $Script:pdfReturn = @()
+                            ## Pull the matching keyword(s) along with some of the surrounding text
+                            foreach($match in $matched){
+                                $Script:pdfReturn += "$( (($textblk.substring($($match.index - 10))) -split (' '))[0..35])"
+                            }
+                        }
+                        ''
+                    }
+                }
+                highlightMatches $pdfJoin $22
+                $mm = $m
+                Remove-Variable m -Scope Script
+
+                if($3 -eq 'multi'){
+                    $Script:pdfReturn = "$mm matches"  ## Only report # of matches if parsing multiple files (don't write to screen)
+                }
+                
+
+            }
+            else{
+                ## Don't waste time trying to prettify this mess, just count the results
+                $mm = ($pdfblock | Select-String -Pattern "$22").count
+                $Script:pdfReturn = "$mm matches"
+            }
+
+
+        }
+        
+
+        <#======================================================================
+            It is not a good idea to run this next fct with multiple documents.
+            If content streams could not be decoded with "quickScan", this
+            will dump all the PDF objects to disk & decodes them to plaintext.
+            This is more reliable, but takes a lot longer than quickScan.
+        ========================================================================#>
+        elseif( (Test-Path -Path "$dumps\$outf") -or (( $3 -ne 'multi' ) -and ! $pdfJoin -and ! $pdfblock) ){
+
+            ## This section of peeDeeEff can get called whether or not a dump file exists;
+            ## if dump file does exist, the user is performing a follow-up search on the same dump so we skip this part
+            if( ! (Test-Path -Path "$dumps\$outf")){
+
+            
+                ## Change this write-to location if you feel PDF dumps should not be written to analyst profiles, or
+                ## if you are in a virtualized environment that deletes sessions at logout.
+                if( ! (Test-Path -Path $dumps)){
+                    New-Item -ItemType directory -Path "C:\Users\$USR\AppData\Local\Temp" -Name 'pdfdump'
+                }
+
+
+                Write-Host '
+            
+                '
+                Write-Host -f YELLOW "  Nothing found! You can try doing an object dump, but that may take several"
+                Write-Host -f YELLOW "  minutes. Do you want to dump & decode the entire PDF for your search?  " -NoNewline;
+                $pz = Read-Host
+                Write-Host '
+                '
+                if($pz -notLike "y*"){
+                    Return $null
+                }
+
+                
+                Write-Host -f GREEN "  Initiating target triangulation... (go get some coffee)
+                "
+
+                ## Try to speed things up with some Runspaces
+                $SensorArray = [runspacefactory]::CreateRunspacePool(2,10)
+                $SensorArray.Open()
+
+                ## Get the indirect object names & dump them all to file
+                $objects = ((py "$vf19_TOOLSROOT\core\pdf-parser.py" -a $1 | 
+                    sls 'Indirect objects with a stream:') -replace '^.+: ') -split(', ')
+
+                $Assessor = foreach($obj in $objects){
+                    $RadarLock = [powershell]::Create().AddScript({  # Create new PowerShell instance
+                        param(
+                            $obj,
+                            $dumps,
+                            $pyscript,
+                            $path
+                        )
+                        py "$pyscript" -o $obj -f -d "$dumps\$('obj' + $obj + '.dump')" $path
+                    }).AddParameter(
+                        'obj',$obj
+                    ).AddParameter(
+                        'dumps',$dumps
+                    ).AddParameter(
+                        'pyscript',"$vf19_TOOLSROOT\core\pdf-parser.py"
+                    ).AddParameter(
+                        'path',$1
+                    )
+                }
+
+                $mins = 0
+                $secs = 0
+                while($Assessor | ? { ! $_.Result.IsCompleted }) {
+                    cls
+                    if($secs = 60){
+                        $mins++
+                        $secs = 0
+                    }
+                    if($secs -lt 10){
+                        $secs = '0' + [string]$secs
+                    }
+                    Write-Host -f GREEN "
+            Time elapsed: $([string]$mins + ':' + $string[$secs])"
+                    Start-Sleep -Seconds 1
+                }
+
+                Write-Host -f GREEN "
+            INTEL ASSESSMENT: $((gci $dumps\*dump).count) potential targets.
+            "
+            
+                $SensorArray.Dispose()
+                Remove-Variable objects,SensorArray,mins,secs,Assessor
+
+                $imgs = 0  ## Count extracted images (future feature)
+                
+                ## Extract plaintext from dumps to '-plaintext.txt'
+                ## Format to remove as much noise as possible.
+                foreach($file in Get-ChildItem -Path "$dumps\*.dump"){
+                    Write-Host -f YELLOW "  CONVERTING $($file.Name) TO READABLE FORMAT"
+                    (Get-Content $file | where{
+                        $_ -Match "\(.+\)\-" -and ! ($_ -cMatch $dyrl_eli_encode)
+                        }) `
+                        -replace "(\)\-?\d+\()" `
+                        -replace "\)\]" `
+                        -replace "\[\(" `
+                        -replace "\-?\d+\(" `
+                        -replace "\)$" `
+                        -replace "TJ$" `
+                        -replace "\)\-?\d$" | Out-File "$dumps\$outf" -Append
+                }
+
+                
+                ## Sanitize & erase the dumps
+                foreach($delete in Get-ChildItem "$dumps\*.dump"){
+                    Set-Content "SEFWRSBBIE5JQ0UgREFZ" $delete
+                    Remove-Item -Force $delete
+                }
+            }
+
+            
+            $pt = Get-Content "$dumps\$outf"
+
+            $fm = 0         ## Track the number of matches within the stream
+
+            ## Scan the total plaintext for the user's keywords; collect all matches in a list.
+            ## When a match is found, get the lines before and after the match for context
+            $finds = @()
+            $i = 0
+            $pt | %{
+                if($_ -cMatch "$22"){
+                    $find = [string]$($pt[$($i-1)..$($i+1)])
+                    $finds += $(($find -join '') -replace "\s{2,}",' ')
+                    $fm++
+                }
+                $i++
+            }
+            
+            if($fm -gt 0){
+                if($3 -eq 'multi'){
+                    $Script:pdfReturn = @("$($finds.count + ' matches for ' + $2)")
+                }
+                else{
+                    ''
+                    $Script:pdfReturn = $finds
+                }
+            }
+        
+    }
 }
 
 
@@ -589,75 +733,61 @@ function fileCopy(){
     }
 
 
-    ## Scripts that can't copy may need more info from Carbon Black, or whatever
-    ## other API you want to throw in here
+    ## If this investigation shouldn't copy files, you may need more info from EDR, if your
+    ## org uses one and you have a MACROSS script to access its API
     if( $dyrl_eli_nocopy ){
-
-    if( $vf19_CB ){   ## Check if GERWALK is available; this gets set in display.ps1
+        
         while( ! $probe ){
-                ''
-                Write-Host -f GREEN ' Select a file # to research in GERWALK, or Hit ENTER to continue: ' -NoNewline;
-                $mz = Read-Host
+            $vf19_ATTS.keys | %{
+                if($vf19_ATTS[$_].valType -eq 'EDR'){
+                    $dyrl_EDR = $vf19_ATTS[$_].fname
+                    rv e
+                    ''
+                    Write-Host -f GREEN " Select a file # to research in $dyrl_EDR, or Hit ENTER to continue: " -NoNewline;
+                    $mz = Read-Host
 
-                if($mz -Match "[0-9]"){
-                    $mz = $mz - 1
-                    if( $dyrl_eli_SENSOR2[$mz] ){
-                        $probe = $dyrl_eli_SENSOR2[$mz] -replace("^.*\\",'')
-                        $Global:PROTOCULTURE = $probe
-			
-                        ## Don't lose the original caller, if any; ELINTS will become the new $CALLER in the next command set
-                        if( $CALLER ){
-                            $dyrl_eli_callerhold = $CALLER
+                    if($mz -Match "[0-9]"){
+                        $mz = $mz - 1
+                        if( $dyrl_eli_SENSOR2[$mz] ){
+                            $probe = $dyrl_eli_SENSOR2[$mz] -replace("^.*\\",'')
+                            $Global:PROTOCULTURE = $probe
+                            ## Don't lose the original caller, if any
+                            if( $CALLER ){
+                                $dyrl_eli_callerhold = $CALLER
+                            }
+                        
+                            collab $dyrl_EDR 'ELINTS' ## Carbon Black needs to know how to eval the $PROTOCULTURE
+                            Write-Host '
+                            '
+                            while($mz -notMatch "^(y|n)"){
+                                Write-Host -f GREEN " Do you want to search $dyrl_EDR for another file? " -NoNewline;
+                                $mz = Read-Host
+                            }
+                            if( $mz -Match "^y" ){
+                                Clear-Variable -Force mz,probe
+                                fileCopy
+                            }
+                            else{
+                                $Global:CALLER = $dyrl_eli_callerhold  ## Reinstate the original caller
+                            }
+                            rv dyrl_EDR
                         }
-                    
-                        $file_info = collab 'GERWALK.ps1' 'ELINTS' 'greedy'
-
-			## GERWALK's response SHOULD be a hashtable with 2 values; but it sometimes
-   			## responds with a random header in the [0] position that we don't care about.
-      			## The second value received in $file_info is a list of the noisiest processes 
-	 		## in most Carbon Black events, which you can use to filter out here if needed.
-			if($file_info.count -eq 3){
-				$fi = $file_info[1] | ConvertFrom-Json
-   			}
-      			else{
-	 			$fi = $file_info[0] | ConvertFrom-Json
-     			}
-
- 			screenResults 'derpUSERNAMES' 'derpHOSTNAMES'
-    			screenResulsts "$($fi.facets.username.name)" "$($fi.facets.hostname.name)"
-       			screenResults 'endr'
-   
-                        Write-Host '
-                        '
-                        while($mz -notMatch "^(y|n)"){
-                            Write-Host -f GREEN ' Do you want to search GERWALK for another file? ' -NoNewline;
-                            $mz = Read-Host
+                        else{
+                            Write-Host -f CYAN ' ERROR! That is not a valid selection.'
+                            Clear-Variable -Force mz
                         }
-                        if( $mz -Match "^y" ){
-                            Clear-Variable -Force mz,probe
-                            fileCopy
-                        }
-                        elseif($dyrl_eli_callerhold){
-                            $Global:CALLER = $dyrl_eli_callerhold      ## Reinstate the original caller
-                        }
-                    
                     }
                     else{
-                        Write-Host -f CYAN ' ERROR! That is not a valid selection.'
-                        Clear-Variable -Force mz
+                        $probe = $true
                     }
-                }
-                else{
-                    $probe = $true
                 }
             }
         }
     }
     else{
-    
     ##  Skip this notice if string search wasn't needed
     if( ! $dyrl_eli_JUSTCOPY ){
-        Write-Host -f GREEN " Large strings *may* be truncated for readability, so you might not see your exact match above."
+        Write-Host -f GREEN " Large strings are truncated for readability, so you may not see your exact match above."
         Write-Host -f GREEN " Do you want to copy any of these files to your desktop for further investigation (y/n)?  " -NoNewline;
         $COPYIT = Read-Host
     }
@@ -674,7 +804,7 @@ function fileCopy(){
                 Return
             }
 
-            $Z = ($Z - 1)  ## Arrays start at index 0, but menu choices start at 1. Do the correction here.
+            $Z = ($Z - 1)  ## Arrays start at index 0
 
             if( $dyrl_eli_SENSOR2[$Z] ){
                 $COPYFROM = $dyrl_eli_SENSOR2[$Z]
@@ -734,10 +864,9 @@ $dyrl_eli_SENSOR2 = @()
 
 
 
-## If running ELINTS script by itself, get the user to 
-## manually enter a filepath or list
+## If running ELINTS script by itself, get the user to  manually enter a filepath or list
 if( ! $RESULTFILE ){
-    $dyrl_eli_C2f = $null
+    $dyrl_myl_DELTA = $null
     splashPage 'img'
     ''
     Write-Host -f GREEN ' ELINTS can search multiple files if you have a list of filepaths in a txt'
@@ -755,22 +884,19 @@ if( ! $RESULTFILE ){
 
     if( $dyrl_eli_YNC -eq 'c' ){
         Remove-Variable dyrl_eli*
-        Remove-Variabe dash_MPOD
+        Remove-Variable dash_MPOD
         Return
     }
     elseif( $dyrl_eli_YNC -Match "^y" ){
         while( $dyrl_eli_ULIST -notMatch ".*\.txt" ){
             Write-Host -f GREEN ' Please select your text file:'
             slp 2
-            $dyrl_eli_ULIST = getFile 'Text Document (.txt) | *.txt'   ## This should force only txt files to be available...
+            $dyrl_eli_ULIST = getFile
 
-	    ## But just in case...
             if( $dyrl_eli_ULIST -notMatch ".*\.txt" ){
                 Write-Host -f CYAN ' ERROR! You have to use a ".txt" file.
                 '
             }
-
-     	    ## User clicked "Cancel" in the selection window, does not want to continue.
             elseif( $dyrl_eli_ULIST -eq '' ){
                 Write-Host -f CYAN ' Action cancelled. Exiting...'
                 slp 2
@@ -782,7 +908,7 @@ if( ! $RESULTFILE ){
         Write-Host -f GREEN " Okay, I'll open a window for you to select your document:
         "
         slp 2
-        $Script:dyrl_eli_PATH = getFile 'Text Document (.txt) | *.txt'
+        $Script:dyrl_eli_PATH = getFile
         if( $dyrl_eli_path -eq '' ){
             Write-Host -f CYAN '
             Action cancelled. Exiting...'
@@ -803,7 +929,7 @@ if( ! $RESULTFILE ){
 elseif( $RESULTFILE ){
     $GOBACK = $true  ## Avoid issues with CALLER getting set
     $dyrl_eli_FLIST = $RESULTFILE
-    $dyrl_eli_TRUNCATE = Split-Path -Path $RESULTFILE -Leaf -Resolve
+    $dyrl_eli_RFNAME = Split-Path -Path $RESULTFILE -Leaf -Resolve
     splashPage 'text'
     ''
 }
@@ -831,7 +957,7 @@ do{
             ''
             Write-Host -f CYAN " $USR/$CALLER " -NoNewLine;
             Write-Host -f GREEN 'needs to search thru ' -NoNewLine;
-            Write-Host -f CYAN "$dyrl_eli_TRUNCATE" -NoNewLine;
+            Write-Host -f CYAN "$dyrl_eli_RFNAME" -NoNewLine;
             Write-Host -f GREEN '...
             '
         }
@@ -901,7 +1027,8 @@ do{
 
         # Get required vars and run the search
         Write-Host -f GREEN ' Type "regex " (without quotes) followed by your search string to'
-        Write-Host -f GREEN ' match a pattern, otherwise just enter your keywords: '
+        Write-Host -f GREEN ' match a pattern, otherwise just enter your keywords (note that PDF'
+        Write-Host -f GREEN ' searches are *always* case-sensitive): '
         Write-Host '  >  ' -NoNewLine; 
         $dyrl_eli_TARGET = Read-Host 
 
@@ -920,7 +1047,7 @@ do{
                 -replace '\{'.'\{' `
                 -replace '\}','\}'
             while($dyrl_eli_CASE -notMatch "^(y|n)$"){
-                Write-Host -f GREEN ' Does case matter? (' -NoNewLine;
+                Write-Host -f GREEN ' Does case matter for non-PDFs? (' -NoNewline;
                 Write-Host -f YELLOW 'y' -NoNewLine;
                 Write-Host -f GREEN '/' -NoNewLine;
                 Write-Host -f YELLOW 'n' -NoNewLine;
@@ -1013,7 +1140,7 @@ do{
                             ## cat the filesize, filename, and string sample into one variable
                             $dyrl_eli_INTELPRODUCT = "(" + $dyrl_eli_FSIZE + ")  " + $dyrl_eli_BOGEY + ": " + $dyrl_eli_CONVSTR_TRUNC
                             $dyrl_eli_SENSOR1 += $dyrl_eli_INTELPRODUCT          ## record the filename, size and strings
-                            $dyrl_eli_SENSOR2 += $dyrl_eli_RADARCONTACT      ## record the filepath of search hits
+                            $dyrl_eli_SENSOR2 += $dyrl_eli_RADARCONTACT          ## record the filepath of search hits
                         }
                     }
                     else{
