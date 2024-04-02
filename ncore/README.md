@@ -244,6 +244,25 @@ Writing plaintext values to $vf19_READ makes cleanup actions easier, as this val
 
 ^^ Calls Anotherscript.py, tells it 'Myscript' is the caller. Because it's calling a python script, the <b>collab</b> function will automatically add the first seven args mentioned above. Assuming your script generated a global $PROTOCULTURE value, that will also be passed as an arg to python. See also the 'pyCross' and 'cleanGBIO' functions down below in the utility.ps1 section for further python integration info.<br>
 <br>
+	&emsp;<b>H.</b> yorn() = This lets you generate a pop-up "yes" or "no" dialog for the user to answer. Useful for asking things like "do you want to save this to file" or "do you want to continue".
+	
+		Usage:
+		if($(yorn 'SCRIPTNAME' '$CURRENT_TASK') -eq 'No'){$STOP_DOING_TASK}
+		
+<br>	
+	&emsp;<b>I.</b> availableTypes() = This is how your script can find other relevant tools for enrichment. It uses each script's [macross] class to find functions relevant to the type of data you're investigating.
+	
+		Usage:
+		## Ask for any scripts that process strings:
+		availableTypes  'strings'
+
+		## Ask only for python scripts with .valtype that is "firewall api":
+		availableTypes  ''  'python'  'firewall api'
+	
+		## This function returns a list of scripts that match your filters, that you can then 
+  		## iterate through and send to the "collab" function.
+	
+<br>	
 	&emsp;<b>J.</b> availableMods() = When a user selects a script from the MACROSS menu, the chooseMods() function sends their selection to availableMods()
 	where the filepath to the script gets verified, along with the script version using the verChk() function (see the
 	updates.ps1 file). As with the collab() function, availableMods() will automatically send some default arguments to python scripts.<br>
