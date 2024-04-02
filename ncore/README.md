@@ -69,7 +69,11 @@ Each of these strings begins with three letters that are not part of the string.
 
 		getThis $vf19_MPOD['abc']; $vf19_READ
 
-To set your defaults here, encode the value in base64, choose a 3-letter key to put in front of it, and add it to the last line of the block in "temp_config.txt", separating it from the rest with a new "@@@". I also suggest you use something other than "temp_config.txt" in a central location you control. If you do create a different file, make sure to modify line 130 and 133 in "display.ps1"! 
+To set your defaults here, encode the value in base64, choose a 3-letter key to put in front of it, and add it to the last line of the block in "temp_config.txt", separating it from the rest with a new "@@@". 
+
+Note that the keys 'nre', 'tbl', and 'log' are reserved for MACROSS use. These point to your master MACROSS repo, MACROSS resources folder, and MACROSS logs folder respectively. You can change these values, but MACROSS will always assume they are pointing to those locations, and functions will break if they are not used for those purposes!
+
+I also suggest you use something other than "temp_config.txt" in a central location you control. If you do create a different file, make sure to modify line 130 and 133 in "display.ps1"! 
 	
 This is NOT for security. Do <u>not</u> put credentials in here. The purpose of this file is to store not-quite sensitive values in a way that avoids scanners, while also letting you write your scripts without hardcoding things like IP addresses into them. For example, if your script is accessing an API, instead of hardcoding a URL, you can simply do
 
