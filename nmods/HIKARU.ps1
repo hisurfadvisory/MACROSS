@@ -1,6 +1,6 @@
 #_sdf1 Demo - a basic config walkthru (8-10 mins)
-#_ver 0.3
-#_class User,demo script,Powershell,HiSurfAdvisory,0
+#_ver 0.2
+#_class user,demo script,powershell,HiSurfAdvisory,0
 
 <#
     Author: HiSurfAdvisory
@@ -12,7 +12,8 @@
 function splashPage($1){
     cls
     if($1 -eq 1){
-        screenResults '[macross] Attributes' '.name | .ver | .priv | .valtype | .lang | .author | .evalmax'
+        ''
+        screenResults '[macross] Attributes' '.name | .ver | .priv | .valtype | .lang | .author | .evalmax | .fname'
         screenResults 'Variables to remember' '$PROTOCULTURE, $CALLER, $RESULTFILE, $vf19_MPOD, $vf19_ATTS'
         screenResults 'endr'
     }
@@ -89,11 +90,12 @@ while($Z -notMatch "(1|2)"){
 
         1. Quick & dirty (3-4 mins)
         2. Detailed (8-10 mins)
+        3. Quit
     
         > ' -NoNewline;
 
         $Z = Read-Host
-        if($Z -eq ''){
+        if($Z -eq '3'){
             Exit
         }
 }
@@ -101,15 +103,14 @@ while($Z -notMatch "(1|2)"){
 if($Z -eq 1){
     splashPage
     Write-Host -f GREEN '
-
     Core breakdown:
-    The "ncore" folder contains all of the core MACROSS functions.
+    The "core" folder contains all of the core MACROSS functions.
         
         -utility.ps1
         Any functions that add capabilities to your automations go in this file. For example,
         the "getThis" function can perform Base64 and hexadecimal decoding, the "getFile"
         function can open dialog windows for your scripts to let users select files/folders,
-        and the "sheetResults" function can write your outputs to an excel spreadsheet. Make
+        and the "sheetz" function can write your outputs to an excel spreadsheet. Make
         sure to familiarize yourself with all the functions in here!
 
         -display.ps1
@@ -117,22 +118,16 @@ if($Z -eq 1){
         and "screenResultsAlt" functions can receive inputs from your scripts and format them in
         different ways to prettify how outputs are written to screen.
 
-        From the MACROSS main menu, type these commands to preview outputs ("debug" is only
-        necessary the first time):
-
-            debug screenResults "items" "Thing 1" "Thing 2"; screenResults "endr"
-            screenResultsAlt "items" "Thing 1" "Thing 2"; screenResultsAlt "endr"
-
         -updates.ps1
-        These functions are used if you are maintaining your automations in a central repository
-        like gitlab or a fileshare. They allow MACROSS to look for new or updated scripts and 
-        automatically download them.
+        These functions set the attributes for all scripts in the "modules" folder, and if you are
+        maintaining your automations in a central repository like gitlab or a fileshare. They allow
+        MACROSS to look for new or updated scripts and automatically download them.
 
         -validation.ps1
         This file contains functions specific to making sure scripts chosen by the user are 
-        valid, and (if configured) that only valid users can use certain scripts. It also contains
-        one of the primary reasons for MACROSS, the "collab" function, which passes values from
-        one script to another and back.
+        available, and (if configured) that only valid users can use certain scripts. It also
+        contains one of the primary reasons for MACROSS, the "collab" function, which passes
+        values from one script to another and back.
 
         -splashes.ps1
         The function "transitionSplash" can be called to briefly display some Macross-related
@@ -151,19 +146,24 @@ if($Z -eq 1){
     Read-Host
     splashPage 1
     Write-Host -f GREEN '
+    The table above shows the attributes of the custom powershell class "macross", and the names
+    of the most important variables your scripts should make use of.
+    '
+    Write-Host -f GREEN '
     The primary purpose of MACROSS is to let automations talk to each other and share info/
-    resources. The "utility.ps1" file contains Base64 lines in its opening comments,
+    resources. The "temp_config.txt" file contains Base64 lines in its opening comments,
     separated by "@@@". These are values that can be commonly shared by all the MACROSS tools,
     and they get stored in a hashtable called "$vf19_MPOD". The first three letters of each
     Base64 string are index keys for this hashtable, so your script can quickly grab and
     decode them whenever necessary by using MACROSS decoding function, "getThis":
 
-        getThis $vf19_MPOD["abc"]  ## Writes the decoded value to $vf19_READ for you to use.
+    ' -NoNewline; Write-Host -f YELLOW '    getThis $vf19_MPOD["abc"]  ' -NoNewline;
+    Write-Host -f GREEN '## Writes the decoded value to $vf19_READ for you to use.
     
     Just as importantly, the MACROSS framework revolves around another global variable,
     "$PROTOCULTURE", which all your automations should be aware of and looking for. If a script
     is called via the "collab" function, it should contain a check that evaluates the
-    $PROTOCULTURE value if it exists.
+    $PROTOCULTURE value if protoculture exists.
 
     The collab function also supports sending an additional value to scripts that can evaluate
     $PROTOCULTURE + an optional value. See the notes for "collab" in the validation.ps1 file.
@@ -176,7 +176,7 @@ if($Z -eq 1){
 
     ADDING YOUR CUSTOM SCRIPTS TO MACROSS'
     Write-Host -f GREEN '
-    Your custom scripts go in the "nmods" folder. These are the scripts that are
+    Your custom scripts go in the "modules" folder. These are the scripts that are
     selectable from the main menu.
 
     The first three lines of your powershell/python scripts must be reserved for
@@ -186,7 +186,7 @@ if($Z -eq 1){
         #_ver 0.2
         #_class User,demo script,Powershell,HiSurfAdvisory,0'
     Write-Host -f GREEN "
-    MACROSS ignores any scripts in the nmods folder that don't contain these lines.
+    MACROSS ignores any scripts in the modules folder that don't contain these lines.
 
     The first line contains a BRIEF description of the script -- this is the text that
     gets written to MACROSS' main menu.
@@ -201,8 +201,8 @@ if($Z -eq 1){
         -the script author                                         (.author)
         -the maximum number of values it can process per session   (.evalmax)
 
-    The script's filename and version also get collected as macross object attributes
-    (.ver and .name).
+    The script's screen name, filename and version also get collected as macross object attributes
+    (.fname, .name and .ver).
 
     When this demo finishes and the main menu loads again, try typing"
     Write-Host -f YELLOW '
@@ -232,30 +232,30 @@ if($Z -eq 1){
         # that can search usernames in a database, or an EDR, or whatever, and
         # collect all the results to enrich whatever your "ADScript" is reporting on.
         # In this example "Bob" is set as $PROTOCULTURE, the global value/IOC that
-        # every MACROSS script should be coded to automatically act on.'
+        # every MACROSS script should be coded to automatically act on.
+
+    In the below example, the MyADScript powershell script has found the user Bob and
+    wants to look for additional information. "Bob" gets stored as $PROTOCULTURE, and
+    then the script looks through the $vf19_ATTS list for scripts that match python as
+    the language and "user info" as the evaluation type. Any MACROSS tools matching
+    these filters will lookup $PROTOCULTURE and return their results to the $collection
+    variable:'
     Write-Host -f YELLOW '
         $Global:PROTOCULTURE = "Bob"
+        $S = "MyADScript"
         $collection = @{}
         foreach ($key in $vf19_ATTS.keys) {
-        '
-    Write-Host -f GREEN '            # "collab" requires the file extension in the first param
-            # This check will append the correct extension based on .lang attribute'
-    Write-Host -f YELLOW '            if($MONTY -and $vf19_ATTS[$key].lang -eq "Python"){
-                $script = $key + ".py"
-            }
-            else{
-                $script = $key + ".ps1"
-            }  
-
-            if ($vf19_ATTS[$key].valtype -eq "usernames") { 
-                $enrich = $( collab  $script  "ADScript" ) 
-                $collection.Add("$key ENRICHMENT", $enrich)
+            if($MONTY -and $vf19_ATTS[$key].lang -eq "Python"){
+                if ($vf19_ATTS[$key].valtype -eq "user info") { 
+                    $enrich = $( collab  $vf19_ATTS[$key].fname  $S ) 
+                    $collection.Add("$key ENRICHMENT", $enrich)
+                }
             }
         }
     '
     Write-Host -f GREEN '    The $MONTY variable is set during startup, and is used to tell MACROSS tools
     whether or not python3 is installed. If it is not, MACROSS will not bother
-    with any python scripts in the "nmods" folder. (MACROSS came about in part while
+    with any python scripts in the "modules" folder. (MACROSS came about in part while
     I worked on a network that prevented python use, because that was easier 
     "security" than creating group-policies or something).
 
@@ -265,7 +265,7 @@ if($Z -eq 1){
     splashPage 1
     Write-Host -f GREEN "
     Lastly, if your automations are written in python, MACROSS contains a library
-    called 'mcdefs.py', located in the 'ncore/py_classes' folder. I recommend you 
+    called 'mcdefs.py', located in the 'core/py_classes' folder. I recommend you 
     take a quick look at that file, it is meant to replicate most of the same
     functions in 'utility.ps1' for python. MACROSS handles sending all the required
     values to your python automations; the main requirement for you is to use
@@ -300,16 +300,16 @@ if($Z -eq 1){
 
     -Python integration is a little clunky; sorry! Review the "collab" function
     in validation.ps1 to see what values and in what order they get passed to
-    python. Powershell outputs for python get written to plaintext ".eod" files in
-    "ncore/py_classes/gbio/" if the response cannot or should not be contained in a
-    simple variable. (For example, maybe the output will need to be stored so that
-    other automations can make use of it later).
+    python. If necessary, Powershell outputs for python get written to plaintext
+    ".eod" files in "core/py_classes/gbio/" if the response cannot or should not be
+    contained in a simple variable. (For example, maybe the output will need to be
+    stored so that other MACROSS automations can make use of it later).
 
     -MACROSS uses a custom python library called "mcdefs", located in the
-    "ncore\py_classes" folder. It replicates many of the functions in utility.ps1
+    "core\py_classes" folder. It replicates many of the functions in utility.ps1
     for use in python.
 
-    -While not necessary, you should write a man/help page that will load if the
+    -While not necessary, you should write a manual/help page that will load if the
     user selects your script from the menu with the "h" option, which temporarily
     sets the global variable $HELP to "true".
 
@@ -341,9 +341,12 @@ Write-Host -f GREEN "
     give you the basics of why this framework has worked well for me."
 next 1
 splashPage 1
-    
 Write-Host -f GREEN "
-    We'll start with the missile pod (MPOD):"
+    The table above shows you the attributes of the custom powershell class
+    for [macross]. More on that later. The table also lists the important
+    variables your scripts should use within the MACROSS framework."
+Write-Host -f GREEN "
+    First of all, let's start with the missile pod (MPOD):"
 Write-Host -f GREEN '
     $vf19_MPOD is a hashtable that contains all the default values that MACROSS
     and its tools can access as needed. This is a critical component of how
@@ -362,11 +365,11 @@ Write-Host -f GREEN "
     obfuscation functions to 'secure' your code!"
 
 Write-Host -f GREEN "
-    Right now, MACROSS reads its default values from the ncore\utility.ps1 file. That
+    Right now, MACROSS reads its default values from the core\temp_config.txt file. That
     file's opening comment section is where you will need to add your own values,
-    although you can easily change the at-rest location of MPOD's ammo. Instead of the
-    utility.ps1 file, maybe you can store these values in a text file on a web server
-    that you control, for instance (see the startUp function in ncore\display.ps1)."
+    although I suggest you change the at-rest location of MPOD's ammo. Instead of the
+    temp_config.txt file, maybe you can store these values in a text file on a web server
+    that you control (see the startUp function in core\display.ps1)."
 
 next
 splashPage 1
@@ -377,10 +380,10 @@ Write-Host -f GREEN "    How to set your own default values:
          MACROSS' main menu has a function to do that for you -- just type 'enc' as
          your selection.
       2. Add a 3-letter identifier to the front of your encoded value. This is your
-         index. Two indexes are already in use -- 'tbl' and 'nre'. They are used to
-         set the location of the \resources folder and the location of the master
-         MACROSS repository, respectively (which you'll need to set yourself if you want
-         to use it). If you view the MACROSS.ps1 file, you'll see entries like
+         index. A few indexes are already in use -- 'log', 'tbl' and 'nre'. They are used
+         to set the location of the \logs & \resources folders, and the location of the
+         master MACROSS repository, respectively (which you'll need to set yourself if you
+         want to use it). If you view the MACROSS.ps1 file, you'll see entries like
          "
          Write-Host '                  getThis $vf19_MPOD["nre"]'
          Write-Host -f GREEN '
@@ -388,14 +391,14 @@ Write-Host -f GREEN "    How to set your own default values:
          decode the location of the repository.'
          Write-Host -f GREEN "
       3. Next you need to edit " -NoNewline;
-        Write-Host -f YELLOW "utility.ps1" -NoNewline;
+        Write-Host -f YELLOW "temp_config.txt" -NoNewline;
         Write-Host -f GREEN " and add a '@@@' to the end of whatever the
          last opening comment line is, then append your encoded value after it. It
          doesn't matter where you start a new line -- you could put everything
          on line 4 if you want to, but you MUST separate each new string with a
          '@@@', and the closing comment '#>' must be left alone. Don't add anything
          in front of it otherwise MACROSS will get confused!
-      4. MACROSS automatically stores everything from utility.ps1's opening comments
+      4. MACROSS automatically stores everything from temp_config's opening comments
          in a hashtable called " -NoNewline;
 Write-Host '$vf19_MPOD' -NoNewline;
 Write-Host -f GREEN '. Your indexes will let your scripts pull
@@ -418,9 +421,9 @@ Write-Host -f GREEN '. Your indexes will let your scripts pull
          as a new variable before the getThis function is executed again!'
 next
 splashPage 1
-Write-Host -f GREEN "    After reading utility.ps1, MACROSS sets its *global* default filepaths:"
+Write-Host -f GREEN "    After reading temp_config.txt, MACROSS sets its *global* default filepaths:"
 Write-Host -f GREEN '
-        -$vf19_TOOLSDIR = the local \nmods folder, where your automation scripts will be
+        -$vf19_TOOLSDIR = the local \modules folder, where your automation scripts will be
             located
         -vf19_DEFAULTPATH = the path to the' -NoNewline;
 Write-Host -f GREEN " user's desktop, currently:"
@@ -433,8 +436,8 @@ Write-Host -f GREEN '        -$vf19_MPOD = an array/hashtable of string-indexed 
             $vf19_TABLES to perform ID lookups
         -$vf19_REPO = the URL/filepath to where your master MACROSS files will be located
             (optional; this is meant to ensure up-to date copies get pushed to everyone)
-        -$vf19_numchk = a hard-coded integer that can be used for common math functions
-        -$vf19_M = an array of digits created by splitting $vf19_numchk, used for more
+        -$N_ = a hard-coded integer that can be used for common math functions
+        -$M_= an array of digits created by splitting $N_, used for more
             mathing or obfuscation
         -Add your own default filepaths as needed so all your scripts can use them!'
 Write-Host -f GREEN "
@@ -456,7 +459,7 @@ Write-Host -f GREEN ". Again, if you need to make use of that
     value more than once, you'll need to store it in another variable because it gets
     overwritten everytime " -NoNewline;
     Write-Host -f YELLOW "getThis" -NoNewline;
-    Write-Host -f GREEN ' is called.'
+    Write-Host -f GREEN ' is called AND everytime the main menu loads.'
 
 if( Test-Path "$vf19_TOOLSDIR\GUBABA.ps1" ){
 Write-Host -f GREEN "
@@ -530,7 +533,7 @@ while($varc1 -notMatch $varc0){
  debug $vf19_ATTS.keys | %{if($vf19_ATTS[$_].valtype -like "*IPs*"){$vf19_ATTS[$_].name}}'
     Write-Host -f GREEN "
     The 'classes.ps1' file contains all the details on what attributes need to get passed
-    from your scripts, and in what order. You can also look at all the scripts in the nmods
+    from your scripts, and in what order. You can also look at all the scripts in the modules
     folder included in this github release to get a rough idea of how this all works.
     
     Now, back to GUBABA."
@@ -574,13 +577,13 @@ splashPage 1
 ''
 ''
 if($searchID.count -gt 0){
-    screenResults "derp                       GUBABA RESULTS FOR $dyrl_Z"
+    screenResults "red~                       GUBABA RESULTS FOR $dyrl_Z"
     $searchID.keys | %{
         screenResults $_ $searchID[$_]
     }
 }
 else{
-    screenResults "derpy               Nothing found for $dyrl_Z"
+    screenResults "cyan~               Nothing found for $dyrl_Z"
 }
 screenResults 'endr'
 Write-Host -f GREEN "
@@ -642,7 +645,7 @@ if($MONTY -and (Test-Path "$vf19_TOOLSDIR\MINMAY.py")){
     splashPage
     Write-Host -f GREEN "
     And now we're back with HIKARU... again!
-    MACROSS' \ncore folder contains a subfolder called 'py_classes' where you can
+    MACROSS' \core folder contains a subfolder called 'py_classes' where you can
     store any custom classes or libraries you want for your python scripts. Run MINMAY
     again later for a little more detail, or go read the notes inside mcdefs.py"
 }
@@ -662,7 +665,7 @@ Write-Host -f GREEN '
         Write-Host -f GREEN "    For example, this script (HIKARU) knows " -NoNewline;
         Write-Host -f GREEN "that"
         Write-Host -f YELLOW "        $fp"
-        Write-Host -f GREEN "    is your KÖNIG report retrieved by MINMAY, so if we needed to, we could grab it to read
+        Write-Host -f GREEN "    is your Kï¿½NIG report retrieved by MINMAY, so if we needed to, we could grab it to read
     or edit however we wanted."
     }
 
@@ -714,7 +717,8 @@ else{
             automatically recognize $CALLER, $PROTOCULTURE, $RESULTFILE, and
             $HOWMANY... but be careful not to lose track of things if you jump
             between multiple scripts!!
-        -Shared default values -- stored encoded in utility.ps1
+        -Shared default values -- stored encoded in temp_config.txt (but you
+            should put this somewhere else).
         -Magic lines -- the first three lines of each script are reserved for
             info that MACROSS expects to be available
         -Custom class -- you can design your scripts to scan the attributes
@@ -726,17 +730,17 @@ else{
     Write-Host '
              IMPORTANT VARS (available to all MACROSS tools):
     $vf19_TOOLSROOT - the directory MACROSS is run from
-    $vf19_TOOLSDIR - the location of the nmods folder
+    $vf19_TOOLSDIR - the location of the modules folder
     $vf19_MPOD - the array storing base64-encoded default values (this is
         a value you need to configure)
     $vf19_PYOPT - same as previous, but formatted so python can ingest it
         (MACROSS does this for you automagically)
-    $vf19_numchk - a hardcoded 6-digit number for performing math
+    $N_ - a hardcoded 6-digit number for performing math
         without plaintext numbers, like obscuring IP addresses or
         generating hexadecimal values (you can change this to be whatever
         integer you want in the MACROSS.ps1 file, or better yet, have this
         value read from an external location.)
-    $vf19_M - an array created by splitting $vf19_numchk for more mathing
+    $M_- an array created by splitting $N_ for more mathing
         (MACROSS generates this for you automagically)
     $vf19_READ - the last plaintext value decoded/encoded by the getThis function
     $vf19_REPO - the location of your MACROSS master copies; MACROSS
