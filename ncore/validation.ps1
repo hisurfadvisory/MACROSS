@@ -381,15 +381,15 @@ function collab(){
     )
 
     if(-not($module)){
-        Read-Host -f CYAN ï¿½
+        Read-Host -f CYAN "
         A script name wasn't supplied!
-        ï¿½
+        "
         Return
     }
     if(-not($C)){
-        Read-Host -f CYAN ï¿½
+        Read-Host -f CYAN "
         A CALLER name wasn't supplied!
-        ï¿½
+        "
         Return
     }
     else{
