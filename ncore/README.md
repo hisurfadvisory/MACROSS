@@ -75,7 +75,9 @@ This is NOT for security. Do <u>not</u> put credentials in here. The purpose of 
 
 	curl -X GET $(getThis $vf19_MPOD['abc']; $vf19_READ)
 	
-and then modify the temp_config (or whatever file you use) with updated addresses as needed.
+and then modify the temp_config (or whatever file you use) with updated addresses as needed. The "getThis" function can base64-encode strings for you if you just need to do a few. From the main MACROSS menu, simply pass type "debug" followed by your command. To encode, pass in 0 as the second parameter:
+
+	debug getThis 'hello world' 0
 
 -The file "core/validation.ps1" contains a function at line 199 called "setUser". If your environment uses active directory to set permissions, AND you enforce code-signing, review this function to see how you can use it to restrict MACROSS use to only your SOC users. This is especially important if you will be adding API scripts to MACROSS. You don't want random users to be able to query your firewalls or endpoint agents.
 
@@ -93,6 +95,8 @@ Call it with '1' as a second parameter if you're decoding hex:<br><br>
 
     getThis $hex_value 1
     $myVar = $vf19_READ
+
+Or call it with a plaintext value as the first parameter, and 0 as the second parameter to get the Base64 value.
     
 Decoding is also offered as an option in the MACROSS menu for the occasional obfuscated string that doesn't require full-blown CyberChef to decode in your investigation of events.<br>
 
@@ -172,9 +176,7 @@ The second parameter above, "red~$result_value", will print $result_value in red
 	&emsp;<b>A.</b> varCleanup() = Everytime a script exits and returns to the MACROSS menu, this function clears out the shared variables* to make sure they're ready to use with the next script<br>
 	&emsp;&emsp;<i>* the global $PROTOCULTURE value, which is the value all scripts look for as the IOC or element to investigate, does not get cleared until you do it manually from the menu, or you exit MACROSS. Be careful, as one of the framework's guidelines is to write your scripts so that they automatically act on, or at least are aware of, the existence of $PROTOCULTURE! You can also uncomment the PROTOCULTURE line in the varCleanup function to have it cleared every time the main menu loads, if you prefer.</i><br>
 <br>
-	&emsp;<b>B.</b> getThis() = This function will decode Base64 and Hexadecimal strings. Call it with your encoded string as the first param.
-	Leave the second param empty if decoding base64; if you are decoding hexadecimal you must pass it a '1' as your
-	second param. The decoded value gets stored as <i>$vf19_READ</i>.<br>
+	&emsp;<b>B.</b> getThis() = This function will decode Base64 and Hexadecimal strings, and can encode plaintext to base64. Call it with your encoded string as the first param.vLeave the second param empty if decoding base64; if you are decoding hexadecimal you must pass it a '1' as yourvsecond param. The decoded value gets stored as <i>$vf19_READ</i>.<br>
 	
 	getThis $base64_string
 	write-host $vf19_READ
@@ -182,10 +184,12 @@ The second parameter above, "red~$result_value", will print $result_value in red
 	getThis $hex_string 1
 	write-host $vf19_READ
 	
- Alternatively, if you pass a plaintext string as your first parameter, with '0' as your second param, getThis() will return a Base64-encoded value (it will NOT get stored in $vf19_READ!).<br>
+Writing plaintext values to $vf19_READ makes cleanup actions easier, as this value gets cleared every time the main menu loads. Alternatively, if you pass a plaintext string as your first parameter, with '0' as your second param, getThis() will return a Base64-encoded value (it will NOT get stored in $vf19_READ!).<br>
 	
 	$encodedstr = getThis 'plaintext string of whatever' 0
-	
+
+
+
 <br>
 	&emsp;<b>C.</b> SJW() = This function checks the user's privilege, which is determined in the setUser() function. Call it from your scripts to automatically alert MACROSS users that they may not have the required privilege to continue.<br>
 	&emsp;Usage:<br>
