@@ -189,9 +189,9 @@ function screenResults(){
         $tw = 90
     }
     $r = ''
-    getThis '4oCW'; $c = $hk_READ
+    getThis '4oCW'; $c = $vf19_READ
     getThis '4omh'
-    1..$tw | %{$r += $hk_READ}; $r = $c + $r + $c
+    1..$tw | %{$r += $vf19_READ}; $r = $c + $r + $c
     getThis $br; $r = $vf19_READ  ## 92 char length top-bottom border
     getThis $bc; $c = $vf19_READ
     if($1 -Match "^[a-z]+~"){
@@ -542,8 +542,8 @@ function screenResultsAlt($1,$2,$3){
     $3color = 'YELLOW'
     $r = '  '
     foreach($i in 1..76){$r += '='};Remove-Variable i
-    getThis '4pWR4pWR4pWR4pWR4pWR4pWR'; $c6 = $hk_READ
-    getThis '4pWR'; $c1 = $hk_READ
+    getThis '4pWR4pWR4pWR4pWR4pWR4pWR'; $c6 = $vf19_READ
+    getThis '4pWR'; $c1 = $vf19_READ
     
 
     if($1 -Match "^[a-z]+~"){
