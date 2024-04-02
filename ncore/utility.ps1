@@ -243,8 +243,8 @@ function getThis($1,$2){
     $Global:vf19_READ = $null
 
     if( $2 -eq 1 ){
-        $a = $1 -replace "0x",''
-        $a = $a -replace " ",''
+        $a = $1 -replace "0x"
+        $a = $a -replace " "
         $a = $(-join ($a -split '(..)' | ? { $_ } | % { [char][convert]::ToUInt32($_,16) }))
     }
     elseif( $2 -eq 0 ){
