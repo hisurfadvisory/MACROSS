@@ -1,0 +1,53 @@
+
+<#      Add your own defaults here (see the README )  9rkd4mv
+logJHZmMTlfVE9PTFNST09UXHJlc291cmNlc1xsb2dz@@@tblJFBTU2NyaXB0Um9vdFxyZXNvdXJj
+ZXM=@@@exaaHR0cDovL3lvdXIud2ViLmZpbGUvZXhhbXBsZS50eHQ=@@@gbgJHZmMTlfVE9PTFNST
+09UXG5jb3JlXHB5X2NsYXNzZXNcZ2FyYmFnZV9pbw==@@@nreJHZmMTlfVE9PTFNESVI=@@@gerLV
+ggR0VUICdodHRwczovL3lvdXIuY2FyYm9uYmxhY2tzZXJ2ZXIubG9jYWwv
+~~~#>
+
+<#
+    README:
+    The above lines contain base64-encoded strings separated with '@@@'. MACROSS
+    is using looking for the first line following "9rk..." to begin looking for
+    it's config values. (I do this to make sure I can put values anywhere inside
+    any file as long as this unique string is present).
+
+    The first three letters of each string are stripped by the function "startUp"
+    located in the display.ps1 script (it is the first core script to run, since it
+    has to know where everything is so it can build the main menu). Those three-letter
+    strings are used as index keys in an array called $vf19_MPOD, and each base64 is
+    the value for those keys.
+
+    These have been stored here as a self-contained example of setting global default
+    variables used by MACROSS and its tools, but I recommend you store these in a
+    location outside of MACROSS that is only accessible by you or your SOC.
+
+    I used this to keep from having to hardcode URLs, IPs, or other things into my
+    scripts. (Not passwords or keys, please don't do that). This helps avoid keyword
+    & regex scanners, curious outsiders, etc.
+    
+    For example, the very first index, 'log', contains the encoded location of where
+    MACROSS writes its logs, while the last index in the list, 'ger', contains the
+    encoded URL of a fictional EDR server. These can be retrieved by your custom scripts
+    by using the "getThis" function (located in the validation.ps1 script), which writes
+	decoded plaintext to $vf19_READ:
+
+        getThis $vf19_MPOD['log']      ## This decodes the location of the MACROSS logs folder to $vf19_READ
+        get-childitem $vf19_READ       ## This would list the contents of the MACROSS logs folder
+        getThis $vf19_MPOD['ger']      ## This decodes the API you want to query on the EDR server
+        $edr = $vf19_READ              ## Now your script knows where to access an API
+
+    If you have a more secure place to store these types of common values, I recommend you
+    write them all to a text file or json, and then modify the "startUp" function in
+    display.ps1 to look at that file instead of this one in order to build the $vf19_MPOD
+    array that all the scripts will use to find stuff.
+
+    MAKE SURE TO KEEP THESE KEYS (even if you change their values; MACROSS uses these!):
+    "log" = location where MACROSS writes its logs to
+    "nre" = location of MACROSS master repository (currently your local MACROSS folder)
+    "tbl" = location of the "resources" folder. You should change this value and keep your resources 
+            folder in a controlled central location if possible, that way your users don't all need
+            to download it with MACROSS.
+#>
+
