@@ -431,8 +431,7 @@ function getHash(){
 
 
 <# 
-    Output tool values to an Excel spreadsheet on user's desktop; need to add instructions for grouping
-    by rows or columns using $4
+    Output tool values to an Excel spreadsheet on user's desktop
 
     (This is very simplistic at the moment; the goal is to eventually make more useful spreadsheets when
     simple CSV files aren't good enough.)
