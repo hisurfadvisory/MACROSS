@@ -8,7 +8,7 @@
     
         [1] $USR -- the logged in user
         [2] $pyATTS -- The macross class .name and .valtype attributes from
-                all of the scripts in the "nmods" folder
+                all of the scripts in the "modules" folder
         [3] $vf19_DEFAULTPATH -- the user's desktop
         [4] $vf19_PYOPT -- The base64 encoded defaults contained
                 in $vf19_MPOD, but reformatted so python doesn't complain
@@ -32,12 +32,12 @@
     for use in your automation, and you don't have to contaminate your python
     environment with my janky code! :p
     
-    $vf19_TOOLSROOT will contain the nmods folder where your scripts are
+    $vf19_TOOLSROOT will contain the modules folder where your scripts are
     kept... and is also where the "py_classes" folder is located, where you can
     add your own custom MACROSS-related python resources:
     
         MACROOT = sys.argv[7]             -> set the MACROSS root folder location
-        TOOLS = MACROOT + '\\nmods'       -> set the location of the scripts
+        TOOLS = MACROOT + '\\modules'       -> set the location of the scripts
         RSRCS = MACROOT + '\\resources'   -> set the location of the resources folder*
         PYLIB = MACROOT + '\\py_classes'  -> set the location of your python stuff
         
@@ -59,7 +59,7 @@
     MACROSS powershell scripts already know the location of this folder as $vf19_GBIO. You
     can set the location in python using the sys library, set as
     
-                    vf19_GBIO = sys.argv[6] + '\\ncore\\py_classes\\garbage_io'
+                    vf19_GBIO = sys.argv[6] + '\\core\\py_classes\\garbage_io'
                     
     These eod files are automatically deleted when MACROSS exits cleanly, or
     when MACROSS starts after a crash where it did not get to delete them when
@@ -90,11 +90,34 @@ import sys
 import re
 
 
-
+## Enable powershell colors
+## Usage: write green text "bar foo" and reset to default color after printing ("rs" resets to default color):
+##                  print(tcolo.g + 'bar foo' + tcolo.ed)
+##
+osys('color')   ## Colorize the terminal
+tcolo = {
+'g':'\033[92m',
+'c':'\033[96m',
+'m':'\033[95m',
+'y':'\033[93m',
+'b':'\033[94m',
+'r':'\033[91m',
+'bl':'\033[30m',
+'ul':'\033[4m',
+'rs':'\033[0m'
+}
 
 ################################################################
 ###############  FUNCTION DEFINITIONS  #########################
 ################################################################
+
+## Alias to write colorized text to screen
+def w(TEXT,C1 = 'rs',C2 = None):
+    '''Pass this function your text/string as arg 1 and the first letter of the color you\nwant ("bl" for black). You can pass "ul" as a second\noption to underline the text.'''
+    if C2 != None:
+        print(tcolo[C1] + tcolo[C2] + TEXT + tcolo['rs'])
+    else:
+        print(tcolo[C1] + TEXT + tcolo['rs'])
 
 
 ## Sleep function for pausing scripts when needed
@@ -111,7 +134,7 @@ def makeM(n):
 
 
 ## Call this function with a filepath (d) to delete a file
-def delStuff(d):
+def dS(d):
     confirm = input('''
     Are you sure you want to delete''',d)
     if re.search("^y",confirm):
@@ -130,10 +153,10 @@ def rgx(pattern,string,replace = None):
 
 
 ##  Run windows commands when needed using os lib
-##  Typically, you will call this function with one arg -- a powershell command to launch
+##  Typically, I call this function with one arg -- a powershell command to launch
 ##  one of the MACROSS *.ps1 scripts and whatever parameters that powershell script requires.
-##  However, if you just need to collect values from a quick command like "hostname" or "ping",
-##  call mcdefs.psc() with an empty value as the first arg, and your command as the second:
+##  If you need to collect values from the script, or from a quick command like "hostname" or 
+##  "ping", call mcdefs.psc() with an empty value as the first arg, and your command as the second:
 
 ##          var = mcdefs.psc('','ping 192.168.1.1')
 
@@ -185,32 +208,41 @@ def getFile(opendir = 'C:\\',filter = (('All files', '*.*'),('All files', '*.*')
     return chooser
  
 
-
-## Same as MACROSS' screenResults function, but without color options
-## Too bad colorama isn't part of the standard lib... but feel free to
-## install it and modify this function if your org allows it.
+## Same as MACROSS' screenResults function, with minor differences.
+##
+## For each arg, begin with the first letter of a powershell-compatible color
+## ("bl" for black, "b" for blue, and no purple but "m" for magenta) and a "~"
+## char.  Example:  screenResults("c~My output is written to screen in cyan.")
 ##
 ## Pass in up to three values, each of which will be type-wrapped into its
-## own column on screen. Call this function without any values to write
+## own column on screen. Call this function WITHOUT any values to write
 ## the closing row of "≡≡≡" characters.
 ##
 ## Your mileage may vary depending on the strings that get passed in; I sometimes
 ## get a display with broken columns. It usually works pretty well, though.
 def screenResults(A = 'endr',B = None,C = None):
-    '''Usage: screenResults(value1,value2,value3)\nEach value is optional, and will be written to screen in separate rows & columns. To finish your outputs,\ncall the function again without any values to write the closing row boundary.'''
-    RC = '4oCW4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4omh4oCW'
-    CR = '4oCW'
-    r = getThisPy(RC,0)  ## 98 char length
-    c = getThisPy(CR,0)
-
+    '''Usage: screenResults(value1,value2,value3)\n\nEach value is optional, and will be written to screen in separate rows & columns.\nYou can send the first letter of a color ("bl" for black) and "~" to colorize text,\nfor example "c~Value" to write "Value" in cyan.\nColors:(c)yan, (bl)ack, (b)lue, (r)ed, (y)ellow, (w)hite, (m)agenta, and (ul) for underline.\nTo finish your outputs, call the function again without any values to write the closing row boundary.'''
+    atc = btc = ctc = None      ## Default text color
+    c = chr(8214)
+    RC = chr(8801)
+    r = c + RC
+    for rr in range(1,98):      ## 98 char length
+        r = r + RC
+    r = r + c
+    del(rr)
+    
+    
     if A == 'endr':
-        print(r)
+        w(r,'g')
 
     else:
         
         ## Write text to screen without newlines
-        def csep(text):
-            print(text, end = ' ')
+        def csep(text,tc=None):
+            if tc != None:
+                print(tcolo[tc] + text + tcolo['rs'], end = ' ')
+            else:
+                print(text, end = ' ')
 
         ## Take the input and wrap it to fit within the specified column width, OR
         ## if the input is smaller, add whitespace to increase its length.
@@ -240,8 +272,6 @@ def screenResults(A = 'endr',B = None,C = None):
                 o2.append(outputs)
             else:
                 P = None
-
-
 
             if P != None:
                 for WORD in P:
@@ -292,21 +322,32 @@ def screenResults(A = 'endr',B = None,C = None):
                     
             return o2
         ## End genBlocks nested function
-
+        
+        ## Check for highlight tags
+        if rgx("^[a-z]{1,2}~",A):
+            atc = rgx("~.+",A,'')
+            A = rgx("^[a-z]{1,2}~",A,'')
+        if B != None and rgx("^[a-z]{1,2}~",B):
+            btc = rgx("~.+",B,'')
+            B = rgx("^[a-z]{1,2}~",B,'')
+        if C != None and rgx("^[a-z]{1,2}~",C):
+            ctc = rgx("~.+",C,'')
+            C = rgx("^[a-z]{1,2}~",C,'')
+            
         WIDE1 = len(A)
 
         
         if B != None:
             WIDE2 = len(B)
-            BLOCK1 = genBlocks(A,23,22)
+            BLOCK1 = genBlocks(A,25,24)
             if C != None:
                 WIDE3 = len(C)
-                BLOCK2 = genBlocks(B,34,32)
+                BLOCK2 = genBlocks(B,35,33)
                 BLOCK3 = genBlocks(C,30,28)
                 CT3 = len(BLOCK3)
             else:
                 CT3 = None
-                BLOCK2 = genBlocks(B,66,64)
+                BLOCK2 = genBlocks(B,68,65)
                 
             CT2 = len(BLOCK2)
 
@@ -318,13 +359,19 @@ def screenResults(A = 'endr',B = None,C = None):
         CT1 = len(BLOCK1)
 
         ## Generate empty lines based on how many columns are needed
-        EMPTY1 = '                      '                     ## 22 char length 1st column
+        def makeEmpty(ii):
+            ee = ' '
+            for i in range(1,ii):
+                ee = ee + ' '
+            return ee
+            
+        EMPTY1 = makeEmpty(25)              ## 25 empty char length 1st column
         if CT3 != None:
-            EMPTY2 = '                                 '      ## 33 char length  2nd column with 3rd
-            EMPTY3 = '                             '          ## 28 char length  3rd column
-        elif CT2 != None:                                     ## 65 char length 2nd column without 3rd
-            EMPTY2 = '                                                                 '
-
+            EMPTY2 = makeEmpty(35)          ## 35 empty char length 2nd column with 3rd column
+            EMPTY3 = makeEmpty(28)          ## 28 empty char length  3rd column
+        elif CT2 != None:
+            EMPTY2 = makeEmpty(64)          ## 64 empty char length 2nd column without 3rd column
+        
 
         ## Iterate through each column block for strings
         INDEX1 = 0
@@ -332,7 +379,7 @@ def screenResults(A = 'endr',B = None,C = None):
         INDEX3 = 0
         LINENUM = 0
 
-        print(r)
+        w(r,'g')
 
         '''
         Outputs will get formatted to screen based on:
@@ -344,34 +391,34 @@ def screenResults(A = 'endr',B = None,C = None):
         if CT3 != None:
             COUNTDOWN = CT1 + CT2 + CT3
             while COUNTDOWN != 0:
-                csep(c)
+                csep(c,'g')
                 if CT1 != 0:
-                    csep(BLOCK1[INDEX1])
+                    csep(BLOCK1[INDEX1],atc)
                     CT1 = CT1 - 1
                     INDEX1 += 1
                     COUNTDOWN = COUNTDOWN - 1
                 else:
                     csep(EMPTY1)
 
-                csep(c)
+                csep(c,'g')
                 if CT2 != 0:
-                    csep(BLOCK2[INDEX2])
+                    csep(BLOCK2[INDEX2],btc)
                     CT2 = CT2 - 1
                     INDEX2 += 1
                     COUNTDOWN = COUNTDOWN - 1
                 else:
                     csep(EMPTY2)
 
-                csep(c)
+                csep(c,'g')
                 if CT3 != 0:
-                    csep(BLOCK3[INDEX3])
+                    csep(BLOCK3[INDEX3],ctc)
                     CT3 = CT3 - 1
                     INDEX3 += 1
                     COUNTDOWN = COUNTDOWN - 1
                 else:
                     csep(EMPTY3)
 
-                print(c)
+                w(c,'g')
     
         elif CT2 != None:
             if CT1 > CT2 and CT2 != 0:
@@ -382,25 +429,25 @@ def screenResults(A = 'endr',B = None,C = None):
 
                 for Block in BLOCK1:
                     if LINENUM < MIDDLE:
-                        csep(c)
-                        csep(Block)
-                        csep(c)
+                        csep(c,'g')
+                        csep(Block,atc)
+                        csep(c,'g')
                         csep(EMPTY2)
-                        print(c)
+                        w(c,'g')
                         LINENUM += 1
                     else:
-                        csep(c)
-                        csep(Block)
-                        csep(c)
+                        csep(c,'g')
+                        csep(Block,atc)
+                        csep(c,'g')
                         if CT2 != 0:
-                            csep(BLOCK2[INDEX2])
-                            print(c)
+                            csep(BLOCK2[INDEX2],btc)
+                            w(c,'g')
                             INDEX2 += 1
                             CT2 = CT2 - 1
                         else:
                             LINENUM = -1
                             csep(EMPTY2)
-                            print(c)
+                            w(c,'g')
             elif CT2 > CT1 and CT1 != 0:
                 if CT1 == 1:
                     MIDDLE = math.ceil((CT2/2) - 1)
@@ -408,37 +455,37 @@ def screenResults(A = 'endr',B = None,C = None):
                     MIDDLE = math.ceil((CT2/CT1) - 1)
 
                 for Block in BLOCK2:
-                    csep(c)
+                    csep(c,'g')
                     if LINENUM < MIDDLE:
                         csep(EMPTY1)
                         LINENUM += 1
                     else:
                         if CT1 != 0 and INDEX1 < CT1:
-                            csep(BLOCK1[INDEX1])
-                            csep(c)
+                            csep(BLOCK1[INDEX1],atc)
+                            csep(c,'g')
                             INDEX1 += 1
                         else:
                             LINENUM = -1
                             csep(EMPTY1)
-                    csep(c)
+                    csep(c,'g')
                     if CT2 != 0:
-                        csep(Block)
-                    print(c)
+                        csep(Block,btc)
+                    w(c,'g')
             else:
                 for Block in BLOCK2:
-                    csep(c)
+                    csep(c,'g')
                     if INDEX1 < CT1:
-                        csep(BLOCK1[INDEX1])
+                        csep(BLOCK1[INDEX1],atc)
                         INDEX1 += 1
-                        csep(c)
+                        csep(c,'g')
                     if CT2 != 0:
-                        csep(Block)
-                    print(c)
+                        csep(Block,btc)
+                    w(c,'g')
         else:
             for Block in BLOCK1:
-                csep(c)
-                csep(Block)
-                print(c)
+                csep(c,'g')
+                csep(Block,atc)
+                w(c,'g')
             
 
 
@@ -446,28 +493,38 @@ def screenResults(A = 'endr',B = None,C = None):
 ## Same as MACROSS's "getThis" function, decodes B64 and hex values.
 ## !!! However, it returns the decoded value to your call, it does NOT write to "vf19_READ" !!!
 ## 'd' is the value to decode;
-## 'e' is the encoding
-## Call with 0 to decode base64, or 1 to decode hex. Your hex can contain whitespace and/
-##  or '0x', this function will strip them out.
+## 'e' is the encoding:
+##        0 = decode base64
+##        1 = decode hexadecimal (Your hex can contain whitespace and/or '0x', this function will strip them out)
+##        2 = encode plaintext to base64
+##        3 = encode plaintext to hexadecimal
 ##
 ##  You can pass an optional 3rd arg to specify the out-encoding
 ##  (ascii, ANSI, etc, default is UTF-8).
 ##
 ##      MYVAR = mcdefs.getThisPy('base64 string',0)
 ##      MYVAR = mcdefs.getThisPy('hex string',1,'ascii')
+##
 def getThisPy(d,e,ee = 'utf8'):
-    """This is the same as MACROSS' powershell function 'getThis'. Your first argument is the\nencoded string you want to decode, and your second arg will be (0) if decoding base64,\nor (1) if decoding hexadecimal.\n\nUsage:  var = mcdefs.getThisPy('base64string',0)\n                OR\nvar = mcdefs.getThisPy('hexstring',1)"""
+    """This is the same as MACROSS' powershell function 'getThis'. Your first argument is the\nencoded string you want to decode, and your second arg will be:\n(0) if decoding base64,\nor (1) if decoding hexadecimal,\nor (2) if encoding to base64,\nor (3) if encoding to hex.\n\nUsage:  var = mcdefs.getThisPy('base64string',0)\n                OR\nvar = mcdefs.getThisPy('hexstring',1)"""
     if e == 0:
-        decval = b64.b64decode(d)
-        decval = decval.decode(ee)
+        newval = b64.b64decode(d)
+        newval = newval.decode(ee)
     elif e == 1:
         if re.search('0x',d):
             d = re.sub('0x','',d)
         if re.search(' ',d):
             d = re.sub(' ','',d)
-        decval = bytes.fromhex(d).decode(ee)
+        newval = bytes.fromhex(d).decode(ee)
+    elif e == 2:
+        newval = b64.b64encode(d)
+    elif e == 3:
+        newval = ''
+        for b in d:
+            hb = '0x' + "{0:02x}".format(ord(b))
+            newval = newval + hb
         
-    return decval
+    return newval
 
 
 
