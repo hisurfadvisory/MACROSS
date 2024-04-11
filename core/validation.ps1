@@ -269,7 +269,7 @@ function setUser($1){
             Exit
         }
     }
-    else{<#
+    else{
         $u = $([System.Security.Principal.WindowsIdentity]::GetCurrent().Name)  ## First attempt
         if( ! $u ){
             $u = $env:USERNAME
@@ -279,8 +279,6 @@ function setUser($1){
         ## breaking any such scripts, but also avoid using a "$vf19_" name everwhere, we'll just make  
         ## a constant var check to reapply the value if necessary. This check is performed in MACROSS.ps1.
         $Global:USR = $u -replace "^(.+\\)?"
-        Set-Variable -Name vf19_USRCHK -Value $USR -Scope Global -Option Constant  #>
-        $global:usr = 'kamue'
         Set-Variable -Name vf19_USRCHK -Value $USR -Scope Global -Option Constant
 
 
