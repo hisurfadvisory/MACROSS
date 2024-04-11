@@ -20,7 +20,7 @@ ojilZHilZrilojilojilojilojilojilojilZTilZ3ilojilojilojilojilojilojilojilZHilojil
 jilojilZEKICAgICAgIOKVmuKVkOKVnSAgICAg4pWa4pWQ4pWd4pWa4pWQ4pWdICDilZrilZDilZ0g4pWa4pWQ4pWQ4pWQ4pW
 Q4pWQ4pWd4pWa4pWQ4pWdICDilZrilZDilZ0g4pWa4pWQ4pWQ4pWQ4pWQ4pWQ4pWdIOKVmuKVkOKVkOKVkOKVkOKVkOKVkOKV
 neKVmuKVkOKVkOKVkOKVkOKVkOKVkOKVnQ=='
-    $ip = $(ipconfig | Select-String "IPv4 Address") -replace "^.* : ",""
+    $ip = $(ipconfig | Select-String "IPv4 Address") -replace "^.* : "
     $hn = hostname
     $vl = $vf19_VERSION.length
     cls
@@ -49,6 +49,45 @@ neKVmuKVkOKVkOKVkOKVkOKVkOKVkOKVnQ=='
         '
     }
                                                                      
+}
+
+## I got sick of typing "Write-Host", gimme a break powershell
+## $1 = the text you want to print to screen
+##
+## $2 = Send a 1 char (or 2 -- "bl" for black) letter to set your preferred 
+## text color (optional, default is white).
+##
+## $3 = your preferred background color (optional)
+##
+##  ** Not supported yet -- underlining: Write-Host "$([char]27)[4m Underlined Word $([char]27)[24m"
+function w($1,$2,$3){
+    $colors = @{
+        'w'='white'
+        'b'='blue'
+        'bl'='black'
+        'g'='green'
+        'r'='red'
+        'y'='yellow'
+        'm'='magenta'
+        'c'='cyan'
+    }
+    $colors.keys | %{
+        if($2 -eq $_){
+            $f = $2
+        }
+        if($3 -eq $_){
+            $b = $3
+        }
+    }
+    if($b -and $f){
+        Write-Host -f $colors[$f] -b $colors[$b] "$1"
+    }
+    elseif($f){
+        Write-Host -f $colors[$f] "$1"
+    }
+    else{
+        Write-Host "$1"
+    }
 }
 
 
@@ -83,9 +122,9 @@ function startUp(){
         $prog = $i.GetValue('DisplayName')
         if($prog -match 'python'){
             $Global:MONTY = $true
-            getThis $Global:vf19_MPOD['gbg']
-            $Global:vf19_GBIO = $vf19_READ      ## Set the garbage-in-garbage-out directory for python scripts
-            $Global:vf19_PYPOD = ''             ## Prep string values for passing to python scripts
+            $Global:vf19_pylib = "$vf19_TOOLSROOT" + '\core\py_classes'
+            $Global:vf19_GBIO = "$vf19_pylib\garbage_io"      ## Set the garbage-in-garbage-out directory for python scripts
+            $Global:vf19_PYPOD = ''                             ## Prep string values for passing to python scripts
             $p = @()
         }
         if($prog -match 'nmap'){
@@ -103,11 +142,12 @@ function startUp(){
     
     ## Use the integer $N_ in conjunction with $M_ (see validation.ps1) for performing
     ## math, permission checks, obfuscating values, writing hexadecimal strings, etc. without writing
-    ## out the actual integers in plaintext.
+    ## out the actual integers in plaintext. If you deploy MACROSS for multiple users, delete this
+    ## comment section. This is NOT a security feature, but sometimes you just need to obfuscate things.
     ##
     ## This value is currently calculated using the first line in MACROSS.ps1. However, If you plan
-    ## to perform sensitive mathing, I recommend changing and storing this value somewhere
-    ## other than this script with access controls.
+    ## to perform sensitive mathing, I recommend changing the get-content location to somewhere
+    ## external to MACROSS that you control access to.
     ##
     ## To see the default values, from the main menu, enter "debug $N_" or "debug $M_"
     $i = 0
@@ -150,7 +190,78 @@ function startUp(){
 }
 
 
+## When writing outputs to screen and you're not using screenResults(), this
+## function can write a simple separator if you need to break up lines.
+## $1 = the character that makes up the separator
+## $2 = the length of the separator line
+## $3 = (optional) the color of the separator
+##
+##  Usage:   sep '*' 16 'yellow'    ## Create a 16 char-length line of "*" in
+##                                     yellow text
+function sep(){
+    Param(
+        [Parameter(Mandatory=$true)]
+        [string]$1,
+        [Parameter(Mandatory=$true)]
+        [int]$2,
+        [string]$3 = 'WHITE'
+    )
+    $b = ' '
+    1..$2 | %{$b += $1}
+    Write-Host -f $3 $b
+}
 
+
+## Display HELP for internal MACROSS functions. Send the tool name as parameter 1
+## for its details and usage, or send "dev" to get a full list of descriptions.
+## Calling without parameters just lists the Local Attributes table.
+function macrossHelp($1){
+    $helps = @{
+        'w'= @{'d'="Alias for 'Write-Host'. Send your string as the first parameter, and the first letter of the color you want to use ('bl' for black, 'b' for blue). Send another letter as the third parameter to set a highlight color. The default text color is white.";'u'='Usage: w "your text" "[b|bl|c|g|m|r|y]" "[b|bl|c|g|m|r|y]"'}
+        'screenResults'= @{'d'="Display large outputs to screen in a table format. Colorize the text by adding '<color>~' to the beginning of your value, i.e. green~$('$'+'value'). Send a single param, 'endr' to create the closing border after your final values.";'u'='Usage: screenResults $VALUE1 $OPTIONAL_VALUE2 $OPTIONAL_VALUE3'}
+        'screenResultsAlt'= @{'d'="Similar to screenResults; send the 'header' items of your list first, followed by $('$'+'KEY1') and $('$'+'VALUE1'). If you have more than 2 key-values under each 'header', make the first parameter of each subsequent call 'next'.";'u'='Usage: screenResultsAlt $HEADER $KEY1 $VALUE1; screenResultsAlt "next" $KEY2 $VALUE2'}
+        'ord'= @{'d'='Get the decimal value of a text character';'u'='Usage: ord [text char]'}
+        'chr'= @{'d'='Get the text character of a decimal value';'u'='Usage: chr [decimal value]'}
+        'sheetz'= @{'d'="Output results to an excel worksheet. First parameter is the name of your spreadsheet. Second parameter is the values you're writing, separated by commas. Third parameter is the row to start writing in. If you are adding values to an existing sheet, set this to the next empty row, otherwise set to 1. -Fourth parameter is comma-separated column names, OR if you are editing an existing sheet/don't need column headers, you can send the number of columns you require. -You can colorize text by adding a 'color~' to the beginning of any field in the first parameter's comma-separated list, or colorize the cell by adding 'cellColor~textColor~' to the value.";'u'='Usage: sheetz "myspreadsheet.xlsx"  [comma separated values]  [the next empty row number]  [total number of columns to write|comma-separated column names]'}
+        'getThis'= @{'d'="Decode base64 and hex values to plaintext in the global variable $('$'+'vf19_READ'); encode plaintext to base64 string";'u'='Usage: getThis $string [1 to decode hex|0 to encode base64|none to decode base64]'}
+        'getFile'= @{'d'='Open a dialog window to let analysts select a file from any local/network location';'u'='Usage: $file = getFile'}
+        'yorn'= @{'d'='Open a "yes/no" dialog to get response from analysts so your script can perform an action they choose.';'u'='Usage: if( $( yorn "SCRIPTNAME" $CURRENT_TASK ) -eq "No") { $STOP_DOING_TASK }'}
+        'pyCross'= @{'d'="Write your powershell script's results to a generic file that can later be read by MACROSS python scripts. This file is written to a folder, 'core\py_classes\garbage_io', that MACROSS regularly empties.";'u'='Usage: pyCross "myScriptName" $VALUES_TO_WRITE'}
+        'stringz'= @{'d'="Extract ASCII characters from binary files. Call this function without parameters to open a nav window and select a file. You can also send a filepath as parameter one. If you do not want to keep the output text file, send 1 as parameter two.";'u'="Usage: stringz ['path\to\file' (optional)] [1 (optional)]"}
+        'eMsg'= @{'d'="Send an integer 1-4 as the first parameter to display a canned message, or send your own message as the first parameter.  The second parameter is optional and will change the text color (It must be a color recognized by 'write-host')";'u'='Usage: eMsg [message number|your custom msg] [text color (optional)]'}
+        'errLog'= @{'d'="Write messages to MACROSS' log folder. Timestamps are added automatically. You can read these logs by typing 'debug' into MACROSS' main menu.";'u'='Usage: errLog [message level, examples: "INFO"|"WARN"|"ERROR"] [message field 1] [message field 2]'}
+        'collab'= @{'d'="Enrich or collect data from other MACROSS scripts. An optional value can be sent as parameter three if the called script's .evalmax value is 2.";'u'='Usage: collab [scriptToCall.extension] [yourScriptName] [optional value]'}
+        'getHash'= @{'d'='Get the hash of a file.';'u'='Usage: getHash [filepath] [md5|sha256]'}
+        'houseKeeping'= @{'d'="Displays a list of existing reports your script has created, and gives the option of deleting one or more of them if no longer needed.";'u'="Usage: houseKeeping [directory containing your script's report outputs] [yourScriptName]"}
+        'sep'= @{'d'='Create a separator line to write on screen if you want to separate simple outputs being displayed.';'u'='Usage: sep [character you want to create line from] [length you want the line to be] [text color of the line (optional)]'}
+        'slp'= @{'d'="Alias for 'start-sleep' to pause your scripts. Send the number of seconds to pause as parameter one, and 'm' as the second parameter if you want to pause in milliseconds instead.";'u'='Usage: slp [number of seconds] ["m" (changes seconds to milliseconds)]'}
+        'transitionSplash'= @{'d'='This function contains various ASCII art from the MACROSS anime. You can add your own ASCII art here.';'u'='Usage: transitionSplash [1-8]'}
+    }
+    cls
+    if($1 -in $helps.keys){
+        w "`n`n`n`n"
+        screenResults $1 "$($helps[$1]['d'])"
+        screenResults "$($helps[$1]['u'])"
+        screenResults 'endr'
+        ''
+    }
+    elseif($1 -eq 'dev'){
+        1..33 | %{$m += ' '}
+        screenResults "cyan~$m MACROSS FUNCTIONS"
+        $helps.keys | Sort | %{
+            screenResults $_ $($helps[$_]['d'])
+            screenResults "cyan~$($helps[$_]['u'])"
+        }
+        screenResults 'endr'
+        ''
+    }
+    else{
+        TL
+    }
+    ''
+    w 'Hit ENTER to go back.' 'g'; Read-Host
+    
+}
 
 ## Format up to three rows of outputs to the screen; parameters you send will be
 ## wrapped to fit in their columns (up to 3 separate columns).
@@ -188,10 +299,10 @@ function screenResults(){
     else{
         $tw = 90
     }
-    $r = ''
     getThis '4oCW'; $c = $vf19_READ
+    $r = $c
     getThis '4omh'
-    1..$tw | %{$r += $vf19_READ}; $r = $c + $r + $c
+    1..$tw | %{$r = $r + $vf19_READ}; $r = $r + $c
     if($1 -Match "^[a-z]+~"){
         $ncolor = $1 -replace "~(.|`n)+"
         $1 = $1 -replace "^([a-z]+~)?"
@@ -311,7 +422,7 @@ function screenResults(){
         
         
 
-        [array]$BLOCK1 = genBlocks $NAME 23 22
+        [array]$BLOCK1 = genBlocks $NAME 23 23
         $ct1 = $BLOCK1.count
         if($VAL2){
             [array]$BLOCK2 = genBlocks $VAL1 34 32
@@ -331,7 +442,7 @@ function screenResults(){
     
     ## Generate empty lines to keep columns uniform-ish (fonts are not usually monospace,
     ## but this will get close enough)
-    1..$($tw-67) | %{$empty1 += ' '}                       ## 23 char length 1st column
+    1..$($tw-66) | %{$empty1 += ' '}                       ## 25 char length 1st column
     if($ct3){
         1..$($tw-55) | %{$empty2 += ' '}                   ## 35 char length 2nd column with 3rd column
         1..$($tw-61) | %{$empty3 += ' '}                   ## 28 char length 3rd column
@@ -626,160 +737,85 @@ function slp(){
     Currently, it only adds whitespace to names less than 7 characters long.
 ################################>
 function chooseMod(){
-    $Global:vf19_FIRSTPAGE = @{}
-    $Global:vf19_NEXTPAGE = @{}
-    $Global:vf19_MODULENUM = @()
-    if( $MONTY ){
-        $Global:vf19_pylib = "$vf19_TOOLSROOT" + '\core\py_classes'  ## Filepath to the MACROSS python library
-        $ftypes = "*.p*"                                             ## Integrate python scripts if Python3 is installed
-    }
-    else{
-        $ftypes = "*.ps*"                                        ## Ignore py files if Python3 not installed
-    }
-    $vf19_LISTDIR = Get-ChildItem "$vf19_TOOLSDIR\$ftypes" | Sort Name     ## Get the names of all the scripts in alpha-order
+    $Global:vf19_MENULIST = @{}
+    $Global:vf19_MODULENUM = @{}
+    $extralist = @(
+        'dec',
+        'enc',
+        'shell',
+        'proto',
+        'splash',
+        'refresh'
+    )
 
-    # Enumerate the modules\ folder to find all scripts; all of my scripts  
-    # contain a descriptor on the first line beginning with '_sdf1'
-    $vf19_LISTDIR |
-    Select -First 9 | 
-    ForEach-Object{
-        if( Get-Content $_.FullName | Select-String -Pattern "^#_sdf1.*" ){   # Verify the script is meant for MACROSS
-            $d1 = Get-Content $_.FullName -First 1         # Grab the first line of the script
-            $d1 = $d1 -replace("^#_sdf1[\S]* ",'')          # Remove the 'sdf1'
-            $d2 = $_ -replace("\.p.+$",'')    # Remove the file extension, only care about the name
-            $d2 = $d2 -replace("^.+\\",'')    # Remove the filepath
-            $d3 = $d2.Length                  # Count how many characters in the filename
-            if($d3 -lt 7){
-                $d4 = (7 - $d3)
-                while($d4 -gt 0){
-                    $d2 = $d2 + ' '      # Format the name to append whitespaces so the length adds up to 7 characters; 
-                    $d4--                # this keeps the list uniform on the screen
+    $ct = 1
+    $brdr = '  '; 1..70 | %{$brdr += '='}
+    $vf19_MENU.keys | Sort |
+        %{
+            $k1 = $_
+            $menuNum = [string]$ct
+            if($ct -lt 10){
+                $menuNum = '0' + $menuNum
+            }
+            $desc = $vf19_MENU[$k1].keys
+            $fname = $($vf19_MENU[$k1][$desc].fname)
+            
+            $d0 = $k1.Length
+            $d1 = " $menuNum" + ". $k1"
+            if($d0 -lt 15){
+                $d2 = (15 - $d0)
+                while($d2 -gt 0){
+                    $d1 += ' '
+                    $d2--
                 }
             }
-            # Create an array containing each script name and its description
-            $Global:vf19_FIRSTPAGE.Add("$d2","$d1")
-        }
-
-        
-    }
-
-    ## Repeat the above to create a new menu page if there are more than 9 tools available
-    if( $vf19_FILECT -gt 9 ){
-        $Global:vf19_MULTIPAGE = $true
-        $vf19_LISTDIR |
-        Select -Skip 9 | 
-        ForEach-Object{
-            if( Get-Content $_.FullName | Select-String -Pattern "^#_sdf1.*" ){
-                if( $_ -Match 'GERWALK' ){
-                    $Global:vf19_G1 = $true   ## Tells other scripts Carbon-Black script is available for queries
-                }
-                if( $_ -Match 'ELINTS' ){
-                    $Global:vf19_E1 = $true   ## Tells other scripts String-Search script is available for queries
-                }
-                $d5 = Get-Content $_.FullName -First 1
-                $d5 = $d5 -replace("^#_sdf1[\S]* ","")
-                $d6 = $_ -replace("\.p.+$",'')
-                $d6 = $d6 -replace("^.+\\",'')
-                $d7 = $d6.Length
-                if($d7 -lt 7){
-                    $d8 = (7 - $d7)
-                    while($d8 -gt 0){
-                        $d6 = $d6 + " "
-                        $d8--
-                    }
-                }
+            elseif($d0 -gt 15){
+                $d1 = $a.substring(0,15)
             }
-
-            # Create an array containing each script name and its description
-            $Global:vf19_NEXTPAGE.Add("$d6","$d5")
+            $Global:vf19_MODULENUM.Add($ct,$fname)
+            $Global:vf19_MENULIST.Add($d1,$desc)
+            $ct++
         }
-    }
-
-    $vf19_MODCT = 0
-
-    ####################
-    # Use the arrays to generate the list of active scripts/modules for the user to choose from
-    ####################
-    if( $Global:vf19_PAGE -eq 'X' -or $Global:vf19_PAGE -eq $null ){
-        $vf19_FIRSTTOOL = '1'
-        foreach($vf19_STUFF in $Global:vf19_FIRSTPAGE.GetEnumerator()){
-            $vf19_MODCT++
-            $d_a = $vf19_STUFF.Key
-
-            # The names formatted for the MODULES array need to have their whitespaces stripped
-            $d_a1 = $d_a -replace("\s*",'')
-
-            # figure out what the extension is...
-            $ext = (Get-ChildItem $vf19_TOOLSDIR | where{$_ -Match "$d_a1"}) -replace "^.+\.p",'.p'
-
-            # ...and add the correct extension back in for a new array
-            $d_a1 = $d_a1 -replace("$", "$ext")
-
-             # This array tracks the scripts with an index for the availableMods function
-            $Global:vf19_MODULENUM += $d_a1
-            $d_b = $vf19_STUFF.Value
-
-            # Write the script number, name, and description together
-            $d_c = "   $vf19_MODCT. " + $d_a + "|| " + $d_b
-
-            ## Iterate through the key-value pairs in vf19_MODULES table and write them to the screen
-            Write-Host -f CYAN "  ======================================================================"
-            Write-Host -f YELLOW "   $d_c"
     
-        }
-    }
-    ## Build the $NEXTPAGE menu if user selected 'p'; mirrors previous instructions but with new vars
-    else{
-        $vf19_FIRSTTOOL = '10'
-        $vf19_MODCT = 9
-        splashPage
-        foreach($vf19_STUFF in $Global:vf19_NEXTPAGE.GetEnumerator()){
-            $vf19_MODCT++
-            $d_d = $vf19_STUFF.Key
-            $d_d1 = $d_d -replace("\s*",'')
-            $ext = (Get-ChildItem $vf19_TOOLSDIR | where{$_ -Match "$d_a1"}) -replace "^.+\.p",'.p'
-            $d_d1 = $d_d1 -replace("$", "$ext")
-            $Global:vf19_MODULENUM += $d_d1
-            $d_e = $vf19_STUFF.Value
-            $d_f = "   $vf19_MODCT. " + $d_d + "|| " + $d_e
-            Write-Host -f CYAN "  ======================================================================"
-            Write-Host -f YELLOW "   $d_f"
-    
-        }
-    }
+        $toolcount = $vf19_MENULIST.count
+        $Global:vf19_PAGECT = [math]::Truncate(($toolcount/10) + 1)  ## Generate a new page for every 10 tools in "/modules"
 
-    Write-Host -f CYAN "  ======================================================================
-    "
+        $vf19_MENULIST.GetEnumerator() | Sort -Property Name | Select -Skip $($vf19_PAGE * 10) | %{
+            Write-Host -f CYAN $brdr
+            Write-Host -f YELLOW "   $($_.Name -replace "^ 0",'  ') || $($_.Value)"
+        }
+        Write-Host -f CYAN "$brdr
+        "
 
     SJW 'menu'     ## check user's privilege LOL
     if( $PROTOCULTURE ){
-        Write-Host -f RED "      PROTOCULTURE IS HOT (enter 'proto' to view & clear it)"
+        Write-Host '      ' -NoNewline; w ' PROTOCULTURE IS HOT (enter "proto" to view & clear it) ' 'r' 'bl'
     }
     Write-Host ''
 
     if( $vf19_MULTIPAGE ){
-        Write-Host -f GREEN '   -There are more than 9 tools available. Hit ' -NoNewline;
+        Write-Host -f GREEN "   -There are $toolcount tools available. Enter " -NoNewline;
         Write-Host -f YELLOW 'p' -NoNewline;
-        Write-Host -f GREEN ' for the next Page.'
+        w ' for the next Page.' 'g'
     }
-    Write-Host -f GREEN '   -Select the module for the tool you want (' -NoNewline;
-    Write-Host -f YELLOW "$vf19_FIRSTTOOL-$vf19_MODCT" -NoNewline;
-    Write-Host -f GREEN '). Add an ' -NoNewline;
-    Write-Host -f YELLOW 'h' -NoNewline;
-    Write-Host -f GREEN ' to view'
-    Write-Host -f GREEN "      a help/description of the tool (ex. '1h')."
+    Write-Host -f GREEN '   -Select the module you want (' -NoNewline;
+    Write-Host -f YELLOW "1 - $toolcount" -NoNewline;
+    w ').' 'g'
+    Write-Host -f GREEN '   -Enter "' -NoNewline;
+    Write-Host -f YELLOW 'help' -NoNewline;
+    w '" and the number of the tool to view its help page' 'g'
     Write-Host -f GREEN '   -Type ' -NoNewline;
     Write-Host -f YELLOW 'shell' -NoNewline;
-    Write-Host -f GREEN ' to pause and run your own commands.'
+    w ' to pause and run your own commands' 'g'
     Write-Host -f GREEN '   -Type ' -NoNewline;
     Write-Host -f YELLOW 'dec' -NoNewline;
     Write-Host -f GREEN ' or ' -NoNewline;
     Write-Host -f YELLOW 'enc' -NoNewline;
-    Write-Host -f GREEN ' to do Hex/B64 evals.'
+    w ' to do Hex/B64 evals.' 'g'
     Write-Host -f GREEN '   -Type ' -NoNewline;
     Write-Host -f YELLOW 'q' -NoNewline;
-    Write-Host -f GREEN ' to quit.
-    '
+    w ' to quit.
+    ' 'g'
 
     ## If version control is in use, offer options to pull fresh or updated
     ## copies of all the scripts.
@@ -802,108 +838,70 @@ function chooseMod(){
     Write-Host -f GREEN '                        SELECTION: ' -NoNewline;
         $Global:vf19_Z = Read-Host
 
-
-    if( $vf19_Z -eq 'dec' ){
-        decodeSomething 0 ## function to decode obfuscated strings; see utility.ps1
-    }
-    elseif( $vf19_Z -eq 'enc' ){
-        decodeSomething 1 ## function to encode plaintext strings; see utility.ps1
-    }
-    elseif( $vf19_Z -eq 'shell' ){
-        runSomething     ## pauses the console so user can run commands; see utility.ps1
-    }
-    elseif( $vf19_Z -Match "^debug" ){
-        if($vf19_Z -Match ' '){
-            $p = $($vf19_Z -replace "^debug ")
+        
+        if( $vf19_Z -in $extralist ){
+            extras $vf19_Z            ## Access extra tasks
         }
-        else{
-            $p = $null
-        }
-        debugMacross $p      ## Enables setting error message display or suppression
-    }
-    
-    elseif( $vf19_Z -eq 'proto' ){
-        $sp = $(Get-Random -min 0 -max 9)
-        transitionSplash $sp 1
-        [string]$proto = $PROTOCULTURE
-        $proto = $proto.Substring(0,200)
-        Write-Host "
-        PROTOCULTURE == $proto...
-        Do you want to clear it?  " -NoNewline;
-        $z = Read-Host
-        if($z -Match "^y"){
-            $Global:PROTOCULTURE = $null     ## clear the primary investigation value
-        }
-        Remove-Variable -Force z,sp,proto
-    }
-    elseif( $vf19_Z -eq 'splash' ){  ## Easter egg
-        $Global:vf19_Z = 0
-        $screens = [int](gc "$vf19_TOOLSROOT\core\splashes.ps1" | Select-String 'b =').count
-        while( $vf19_Z -lt $screens ){
-            transitionSplash $vf19_Z
-            $Global:vf19_Z++
-        }
-        $Global:vf19_Z = $null
-        Remove-Variable screens
-
-    }
-    elseif( $vf19_Z -Match $vf19_CHOICE ){
-        if( $vf19_Z -Match "[0-9]{1,2}h" ){
-            $Global:vf19_Z = $vf19_Z -replace 'h'
+        elseif( $vf19_Z -Like "help*" -and $vf19_Z -Match "\d"){
             $Global:HELP = $true   ## Launch the selected script's man page/help menu
+            $Global:vf19_Z = $vf19_Z -replace "help(\s)?"
+            availableMods $([int]$vf19_Z)
+        }
+        elseif( $vf19_Z -Like "help*"){
+            macrossHelp "$($vf19_Z -replace "help(\s)?")"
+        }
+        elseif( $vf19_Z -Match $vf19_CHOICE ){
+            if( $vf19_Z -Like "*r" ){
+                $Global:vf19_Z = $vf19_Z -replace 'r'
+                $Global:vf19_REF = $true      ## Triggers the dlNew function (updates.ps1) to download fresh copy of the selected script before executing it
+            }
+            elseif( $vf19_Z -Like "*s" ){
+                $Global:vf19_Z = $vf19_Z -replace 's' 
+                $Global:vf19_OPT1 = $true     ## Triggers the selected script to switch modes/enable added functions
+            }
+            elseif( $vf19_Z -Like "*w" ){
+                $Global:vf19_Z = $vf19_Z -replace 'w'
+                $Global:vf19_NEWWINDOW = $true   ## Triggers the availableMods function to launch the selected script in a new powershell window
+            }
+            else{
+                $Global:HELP = $false
+                $Global:vf19_OPT1 = $false
+            }
+            ## availableMods (validation.ps1) checks to see if script exists, then launches with any selected options
+            availableMods $([int]$vf19_Z)
         }
         elseif( $vf19_Z -eq 'p' ){
             if( $vf19_MULTIPAGE ){
-                scrollPage   ## Changes menu to show 1-9 vs 10-20
+                scrollPage          ## Changes menu to show 1-9 vs 10-20
             }
             $Global:vf19_Z = $null  ## scrollPage only works if there's more than 9 tools in the modules folder
         }
         elseif( $vf19_Z -eq 'q' ){
-            $Global:vf19_Z = $null
-            Break                    ## User chose to quit MACROSS
+            varCleanup 1
+            Exit                    ## User chose to quit MACROSS
         }
-        elseif( $vf19_Z -Match "[0-9]{1,2}r" ){
-            $Global:vf19_Z = $vf19_Z -replace 'r'
-            $Global:vf19_REF = $true      ## Triggers the dlNew function (updates.ps1) to download fresh copy of the selected script before executing it
+        elseif( $vf19_Z -Match "^debug" ){
+            if($vf19_Z -Match ' '){
+                $p = $($vf19_Z -replace "^debug ")
+            }
+            else{
+                $p = $null
+            }
+            debugMacross $p      ## Enables setting error message display or suppression
         }
-        elseif( $vf19_Z -Match "[0-9]{1,2}s" ){
-            $Global:vf19_Z = $vf19_Z -replace 's' 
-            $Global:vf19_OPT1 = $true     ## Triggers the selected script to switch modes/enable added functions
-        }
-        elseif( $vf19_Z -Match "[0-9]{1,2}w" ){
-            $Global:vf19_Z = $vf19_Z -replace 'w'
-            $Global:vf19_NEWWINDOW = $true   ## Triggers the availableMods function to launch the selected script in a new powershell window
-        }
-        elseif( $vf19_Z -eq 'refresh' ){
-            dlNew "MACROSS.ps1" $vf19_LVER  ## Downloads a fresh copy of MACROSS and the core files, then exits
-        }
-        else{
-            $Global:HELP = $false
-            $Global:vf19_OPT1 = $false
-        }
-
-
-        ## availableMods (validation.ps1) checks to see if script exists, then launches with any selected options
-        if( $vf19_Z -Match "\d" ){
-            availableMods $([int]$vf19_Z)
-        }
-    }
-
-    Clear-Variable -Force vf19_Z
+        Clear-Variable -Force vf19_Z
 
 }
 
 ################################
-## If more than 9 tools are available, split into two menus
+## Menu will dynamically add a page for every 10 tools
+## This function lets users sequentially "flip pages"
 ################################
 function scrollPage(){
-    ##  X = 1st page, Y= 2nd page
-    if( $vf19_FILECT -gt 9 ){
-        if( $vf19_PAGE -eq 'X' ){
-            $Global:vf19_PAGE = 'Y'
-        }
-        elseif( $vf19_PAGE -eq 'Y' ){
-            $Global:vf19_PAGE = 'X'
+    if( $vf19_PAGECT -gt 1 ){
+        $Global:vf19_PAGE++
+        if( $vf19_PAGE -ge $vf19_PAGECT ){
+            $Global:vf19_PAGE = 0
         }
         splashPage
         chooseMod
