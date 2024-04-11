@@ -309,8 +309,8 @@ function setUser($1){
 
                 ##  which checks if the "tier3" key and the "check" keys match. There's not
                 ##  really a huge difference and isn't "security", just a basic access control
-                ##  if you have nothing else. Code-signing helps, otherwise this can be bypassed
-                ##  pretty easily.
+                ##  if you have nothing else. Enforced code-signing helps, otherwise this can be 
+                ##  bypassed pretty easily.
 
                 #Set-Variable -Name vf19_tier1 -Value $(Get-Random -min 10000000 -max 9999999999) -Scope Global -Option Constant
                 #Set-Variable -Name vf19_modifier -Value $(Get-Random -min 500 -max 50000) -Scope Global -Option Constant
