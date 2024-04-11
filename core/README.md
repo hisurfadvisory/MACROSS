@@ -344,14 +344,14 @@ This is used for:<br>
 	     Author:                      HiSurfAdvisory
 	     Evaluates:                   demo script
 	     Privilege required:          User
-	     Language:                    Python 3
+	     Language:                    python
 	     Max # of simultaneous evals: 2
 	
 	[macross]$vf19_ATTS['MINMAY']
 	name    : MINMAY
 	priv    : User
 	valtype : demo script
-	lang    : Python 3
+	lang    : python
 	author  : HiSurfAdvisory
 	evalmax : 2
 	ver     : 0.1
