@@ -8,6 +8,8 @@
     together with MACROSS to give your team quick and easy access
     to any data that can help their investigations.
     
+    https://github.com/hisurfadvisory/MACROSS
+    
     Author: HiSurfAdvisory
     
     'Script' & 'Tool' are used interchangebly in my comments. Sorry.
@@ -37,7 +39,7 @@
 
         2b. The third line must contain custom [macross] class attributes in order:
 
-            #_class <PRIVILEGE>,<ACCESS>,<FUNCTION or WHAT YOUR SCRIPT EVALS>,<LANGUAGE>,<AUTHOR>,<HOW MANY PARAMS CAN BE PROCESSED>
+            #_class <PRIVILEGE>,<FUNCTION or WHAT YOUR SCRIPT EVALS>,<LANGUAGE>,<AUTHOR>,<HOW MANY PARAMS CAN BE PROCESSED>
 
             This helps MACROSS determine when to provide tools to users. 
                 Privilege: does the script require admin or user priv?
@@ -186,9 +188,9 @@ function errLog(){
 ##################################
 ## Start fresh & >/dev/null any errors
 ##################################
-[console]::WindowWidth = 105                         ## Modify this to your preference
 $Script:ErrorActionPreference = 'SilentlyContinue'
-$rn = $(Get-Random -Minimum 1 -Maximum 8)           ## Randomly pick a splashpage
+[console]::WindowWidth = 105                        ## Modify this to your preference
+$rn = $(Get-Random -Minimum 1 -Maximum 8)           ## Randomly pick a transition page
 Remove-Variable vf19_* -Scope Global
 cls
 
@@ -223,7 +225,7 @@ Foreach($c in $mcores){
             Write-Host -f CYAN "
     ERROR -- $script is present but cannot load!
     
-    $Error[0]"
+    $($Error[0])"
             Exit
         }
     }
@@ -234,7 +236,7 @@ Foreach($c in $mcores){
     }
 }
 
-## The ASCII art is not that critical
+## The ASCII art is not that critical, keep loading even if it's missing
 if(Test-Path -Path "$mcore\splashes.ps1"){
     . "$mcore\splashes.ps1"
     Write-Host -f GREEN '   ascii screens loaded...'
@@ -246,7 +248,7 @@ Remove-Variable c,mcor*,script
 ################################
 ## Input validation
 ################################
-$vf19_CHOICE = [regex]"^(p|q|refresh|[0-9hrsw]{1,3})$"
+$vf19_CHOICE = [regex]"^([0-9hrsw]{1,3})$"
 $vf19_TAG = '9rkd4mv'               ## This is necessary for the "startUp" function to find its data
 
 ################################
@@ -254,6 +256,7 @@ $vf19_TAG = '9rkd4mv'               ## This is necessary for the "startUp" funct
 ################################
 $Global:vf19_TOOLSDIR = "$vf19_TOOLSROOT\modules\"
 $Global:vf19_REPOTOOLS = $vf19_TOOLSDIR  ## Delete this after you've set a master repo location
+$Global:vf19_REPOCORE = $vf19_TOOLSROOT  ## Delete this after you've set a master repo location
 startUp                                  ## see the display.ps1 file
 setUser                                  ## see the validation.ps1 file
 #getThis $vf19_MPOD['nre']
@@ -266,7 +269,8 @@ $Global:vf19_LOG = $vf19_READ
 $vf19_VERSION = Get-Content "$vf19_TOOLSROOT\MACROSS.ps1" | Select -Index 1
 $vf19_VERSION = $vf19_VERSION -replace "^#_ver ",""  ## This gets the current version of MACROSS to write on-screen
 
-## Need a temp-file dump so python can read MACROSS' powershell stuff
+## This is a temp-file dump so MACROSS can hold your script outputs for both powershell and python to share as needed
+## See the "pyCross" function in utility.ps1
 ## All .eod temp files are deleted at MACROSS start (here) & at MACROSS quit (see varCleanup function in validation.ps1)
 if( $MONTY ){
     $Global:vf19_GBIO = "$vf19_TOOLSROOT\core\py_classes\garbage_io"
@@ -285,7 +289,7 @@ while( $Global:vf19_Z -ne 'q' ){
 
 
     
-    toolCount  ## Menu changes based on the tool count. See the updates.ps1 file
+    toolCount  ## The main menu changes based on the tool count. See the updates.ps1 file
 
     <#  UNCOMMENT TO USE CENTRAL SCRIPT DISTRIBUTION
     #   MASTER REPO IS CURRENTLY SET TO SAME DIRECTORY AS YOUR LOCAL MACROSS ROOT FOLDER
@@ -303,16 +307,15 @@ while( $Global:vf19_Z -ne 'q' ){
     elseif( $vf19_FILECT -gt $vf19_REPOTOOLSCT ){
         $Global:vf19_MISMATCH = $true
         look4New
-    }#>
+    }
+    #>
     
     
     if( $USR -ne $vf19_USRCHK ){  ## Fix var if it was modified by another script
         setUser
     }
 
-
-    $CALLHOLD = 'MACROSS'   ## Holdover from original toolset, was originally meant to tell a script to return to the console without clearing vars
-    $Global:vf19_PAGE = 'X'
+    $Global:vf19_PAGE = 0
 
     splashPage              ## load the MACROSS banner
     verChk 'MACROSS.ps1'    ## Check for updates before loading anything
