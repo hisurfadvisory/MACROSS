@@ -1,5 +1,6 @@
 ## Functions controlling MACROSS's display
 
+## List of text colors for "write-host" cmdlet
 $Global:vf19_colors = @{
     'w'='white'
     'b'='blue'
