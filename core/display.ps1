@@ -41,7 +41,7 @@ neKVmuKVkOKVkOKVkOKVkOKVkOKVkOKVnQ=='
     Write-Host -f CYAN "$vf19_READ"
     Write-Host ' ' -NoNewline; sep '=' 70 'c'
     Write-Host -f YELLOW "               Welcome to Multi-API-Cross-Search, " -NoNewline;
-    Write-Host -f CYAN 'HiSurfAdvisory'#"$USR"
+    Write-Host -f CYAN "$USR"
     Write-Host -f YELLOW "                   Host: $hn  ||  IP: $ip"
     Write-Host ' ' -NoNewline; sep '=' 70 'c'
     getThis '4pWR'; $va = ''; $vb = $vf19_READ
