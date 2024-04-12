@@ -1,6 +1,6 @@
 #_sdf1 String-search documents
 #_ver 1.5
-#_class user,string search,powershell,HiSurfAdvisory,1
+#_class user,document string search,powershell,HiSurfAdvisory,1
 
 <#
     Author: HiSurfAdvisory
@@ -232,6 +232,10 @@ function msOffice($1,$2,$3){
         $type = Read-Host
     }
 
+    ## Create "or" search for comma-separated words
+    if($2 -Like "*,*"){
+        $2 = [regex]$('(' + $($2 -replace ",(\s)?",'|' -replace "\|$") + ')')
+    }
     
     function grabXML($xml){
         $s = $xml.Open()
@@ -412,335 +416,337 @@ function msOffice($1,$2,$3){
 ## $1 is the filepath, $2 is the search term(s)
 ## Only load if python is installed.
 if($MONTY){
-$pdfp = "$vf19_TOOLSROOT\core\pdf-parser.py"
-function pdfScan($1,$2,$3){
-
-    ##  Ensure cleanup of all temp files
-    if($1 -eq 'fin'){
-        Get-ChildItem -File -Path "$dumps\*" | %{
-            Set-Content "SEFWRSBBIE5JQ0UgREFZ" $_.Fullname
-            Remove-Item -Path $_.Fullname
-        }
-        Return
-    }
+    $pdfp = "$vf19_TOOLSROOT\core\pdf-parser.py"
+    function pdfScan($1,$2,$3){
     
-    
-    ## Temp files created in $outf don't get deleted until ELINTS exits, so only need to dump once.
-    $outf = $($1 -replace ".*\\" -replace "\.pdf") + '-plaintext.txt'
-
-    $20 = @()  ## Use this to rewrite words with whitespace-regex
-    $22 = @()  ## This is the list of exact words + whitespace-regex to search on
-
-    
-    if($dyrl_eli_re){
-        $23 = [regex]$2  ## $23 value means user entered a specific regex pattern
-    }
-    ## User may separate exact words with either spaces or commas or both
-    ## $21 value means user is looking for exact words
-    elseif($2 -Match ', '){
-        $21 = $2 -Split(', ')
-    }
-    <#
-    ## User might be looking for a phrase, so don't split without commas;
-    ## be aware that phrase-searching may not work because things get broken
-    ## up unpredictably while decoding
-    elseif($2 -Match ' '){
-        $21 = $2 -Split(' ')
-    }#>
-    else{
-        $21 = $2 -Split(',')
-        ## PDF streams often break words apart; take all of the user's search
-        ## keywords, split them into separate characters and add a regex for
-        ## "match even if there is whitespace between letters". Also add 
-        ## escapes for special characters
-        $21 | %{
-            foreach($char in ($_ -Split(''))){
-                if($char -Match "(\\|\$|\(|\)\|\[|\]|\{|\}|\.|\?|\*|\^|\&)"){
-                    $char = '\' + $char
-                }
-                $sp = $char + '\s*'
-                $20 += $sp
+        ##  Ensure cleanup of all temp files
+        if($1 -eq 'fin'){
+            Get-ChildItem -File -Path "$dumps\*" | %{
+                Set-Content "SEFWRSBBIE5JQ0UgREFZ" $_.Fullname
+                Remove-Item -Path $_.Fullname
             }
-            $22 += $($20 -Join(''))
-            $20 = $null
-        }
-    }
-
-
-    if($23){
-        $22 = $23
-    }
-    elseif($22.count -gt 1){
-        $23 = $22 -Join('|')  ## Join all array items into 1 regex "or" string
-        [regex]$22 = "($23)"
-    }
-    else{
-        [string]$22 = $22
-    }
-
-    ## "quickScan" is a simple best-effort that will filter out the most common noise IF the contents
-    ## are easily decoded in memory; if this fails to find any keywords we can try dumping all the
-    ## streams next.
-    function quickScan($doc,$search){
-        $f0 = (py $pdfp -f --searchstream="$search" --regex $doc)
-        if($f0 | sls 'R/S/Span/Type/StructElem/ActualText'){
-            $a = ((($f0 -split 'R/S/Span/Type/StructElem/ActualText' | 
-                where{
-                    $_ -notMatch "\\x.+\\"
-                }) -replace "/K.+" -replace "(\(|\))") -join ' ') -replace "(\d+(\.\d+)? ){2,}"
-        }
-        else{
-            $a = ((($f0 -split "\)" | 
-                where{
-                    $_ -notMatch "\\x.+\\"
-                }) -replace "(\(|\))") -join ' ') -replace "(\d+(\.\d+)? ){2,}" -replace "\\\\"
-        }
-        if(sls " and " $a){
-            Return $a
-        }
-    }
-
-    if( ! (gci -File "$dumps\$outf")){
-        $pdfblock = quickScan $1 $22
-    }
-
-
-        if($pdfblock.Length -gt 0){
-
-            ## PDF streams aren't uniform; going to have to add multiple patterns based
-            ## on how plaintext gets split up for coordinates.
-            ## It would be easier to create an array of words, but words can get split
-            ## into letters when decoded from the PDF object... so matches would potentially miss.
-            if($pdfblock -Match "<<.*>>"){
-                $Script:pdfJoin = ($pdfblock -Split('<<') | %{$_ -replace ">>.*"}) -Join('  ')
-            }
-            elseif($pdfblock -Match "\\n\("){
-                $Script:pdfJoin = ($pdfblock -Split('\(') | %{$_ -replace "\).*"}) -Join('  ')
-            }
-            elseif($pdfblock -Like "* the *"){
-                $Script:pdfJoin = $pdfblock
-            }
-
-            
-            if($pdfJoin){
-                Remove-Variable pdfblock -Scope Script
-                
-                function highlightMatches{
-                    param(
-                        #[Parameter(Mandatory = $true,ValueFromPipeline = $true)]
-                        [Parameter(Mandatory = $true)]
-                        [string]$textblk,
-                        [Parameter(Mandatory = $true)]
-                        [string]$pattern
-                    )
-
-                    begin{ 
-                        $r = [regex]$pattern
-                    }
-                    process{
-                        $matched = $r.Matches($textblk)
-                        $Script:m = $matched.count
-                        $startIndex = 0
-
-                        if($m -gt 0){
-                            $Script:pdfReturn = @()
-                            ## Pull the matching keyword(s) along with some of the surrounding text
-                            foreach($match in $matched){
-                                $Script:dyrl_eli_CONFIRMED++
-                                $Global:HOWMANY++                       ## track the total search hits
-                                $Script:pdfReturn += "$( (($textblk.substring($($match.index - 10))) -split (' '))[0..35])"
-                            }
-                        }
-                        ''
-                    }
-                }
-                highlightMatches $pdfJoin $22
-                if($pdfReturn){
-                    $p = $pdfReturn
-                }
-
-            }
-            else{
-                if($pdfReturn){
-                    $p = $pdfReturn
-                }
-            }
-            Remove-Variable m,pdfReturn -Scope Script
-            Return $p
+            Return
         }
         
-
-        <#======================================================================
-            This method is a "best-effort"; if it doesn't find your keywords,
-            that doesn't mean they aren't present in the document.
-            
-            If content streams could not be decoded with "quickScan", this
-            will dump all the PDF objects to disk & decodes them to plaintext.
-            This is more reliable, but takes a lot longer than quickScan depending
-            on the size of the file, even with runspaces.
-        ========================================================================#>
-        #elseif( (Test-Path -Path "$dumps\$outf") -or (( $3 -ne 'multi' ) -and ! $pdfJoin -and ! $pdfblock) ){
+        
+        ## Temp files created in $outf don't get deleted until ELINTS exits, so only need to dump once.
+        $outf = $($1 -replace ".*\\" -replace "\.pdf") + '-plaintext.txt'
+    
+        $20 = @()  ## Use this to rewrite words with whitespace-regex
+        $22 = @()  ## This is the list of exact words + whitespace-regex to search on
+    
+        
+        if($dyrl_eli_re){
+            $23 = [regex]$2  ## $23 value means user entered a specific regex pattern
+        }
+        ## User may separate exact words with either spaces or commas or both
+        ## $21 value means user is looking for exact words
+        elseif($2 -Match ', '){
+            $21 = $2 -Split(', ')
+        }
+        <#
+        ## User might be looking for a phrase, so don't split without commas;
+        ## be aware that phrase-searching may not work because things get broken
+        ## up unpredictably while decoding
+        elseif($2 -Match ' '){
+            $21 = $2 -Split(' ')
+        }#>
         else{
-            $outf = $1 -replace ".*\\" -replace "\.\w+$",'-plaintext.txt'
-            ## This section of pdfScan can get called whether or not a dump file exists;
-            ## if dump file does exist, the user is performing a follow-up search on the same dump so we skip this part
-            if( ! (gci -File "$dumps\$outf")){
-
-                ## Make sure we have a temp folder to dump into
-                if( ! (Test-Path -Path $dumps)){
-                    New-Item -ItemType directory -Path "$($dumps -replace "\\pdf-dumps")" -Name 'pdf-dumps'
+            $21 = $2 -Split(',')
+        }
+    
+        if($21){
+            ## PDF streams often break words apart; take all of the user's search
+            ## keywords, split them into separate characters and add a regex for
+            ## "match even if there is whitespace between letters". Also add 
+            ## escapes for special characters
+            $22 = @()
+            $21 | %{
+                foreach($char in ($_ -Split(''))){
+                    if($char -Match "(\\|\$|\(|\)\|\[|\]|\{|\}|\.|\?|\*|\^|\&)"){
+                        $char = '\' + $char
+                    }
+                    $sp = $char + '\s*'
+                    $20 += $sp
                 }
-
+                $22 += $($20 -Join(''))
+                $20,$21 = $null,$null
+            }
+        }
+        if($23){
+            $22 = $23
+        }
+        elseif($22.count -gt 1){
+            $23 = $22 -Join('|')  ## Join all array items into 1 regex "or" string
+            [regex]$22 = "($23)"
+        }
+        else{
+            [string]$22 = $22
+        }
+    
+        ## "quickScan" is a simple best-effort that will filter out the most common noise IF the contents
+        ## are easily decoded in memory; if this fails to find any keywords we can try dumping all the
+        ## streams next.
+        function quickScan($doc,$search){
+            $f0 = (py $pdfp -f --searchstream="$search" --regex $doc)
+            if($f0 | sls 'R/S/Span/Type/StructElem/ActualText'){
+                $a = ((($f0 -split 'R/S/Span/Type/StructElem/ActualText' | 
+                    where{
+                        $_ -notMatch "\\x.+\\"
+                    }) -replace "/K.+" -replace "(\(|\))") -join ' ') -replace "(\d+(\.\d+)? ){2,}"
+            }
+            else{
+                $a = ((($f0 -split "\)" | 
+                    where{
+                        $_ -notMatch "\\x.+\\"
+                    }) -replace "(\(|\))") -join ' ') -replace "(\d+(\.\d+)? ){2,}" -replace "\\\\"
+            }
+            if(sls " and " $a){
+                Return $a
+            }
+        }
+    
+        if( ! (gci -File "$dumps\$outf")){
+            $pdfblock = quickScan $1 $22
+        }
+    
+    
+            if($pdfblock.Length -gt 0){
+    
+                ## PDF streams aren't uniform; going to have to add multiple patterns based
+                ## on how plaintext gets split up for coordinates.
+                ## It would be easier to create an array of words, but words can get split
+                ## into letters when decoded from the PDF object... so matches would potentially miss.
+                if($pdfblock -Match "<<.*>>"){
+                    $Script:pdfJoin = ($pdfblock -Split('<<') | %{$_ -replace ">>.*"}) -Join('  ')
+                }
+                elseif($pdfblock -Match "\\n\("){
+                    $Script:pdfJoin = ($pdfblock -Split('\(') | %{$_ -replace "\).*"}) -Join('  ')
+                }
+                elseif($pdfblock -Like "* the *"){
+                    $Script:pdfJoin = $pdfblock
+                }
+    
                 
-                
-                ## Try to speed things up with some Runspaces (is 20 too much or too little?)
-                $SensorArray = [runspacefactory]::CreateRunspacePool(2,20)
-                $SensorArray.Open()
-
-                ## Get the indirect object names & dump them all to file
-                $objects = ((py $pdfp -a $1 | 
-                    sls 'Indirect objects with a stream:') -replace '^.+: ') -split(', ')
-                $indexer = 0
-                $SpacialSweep = foreach($obj in $objects){
-                    $indexer++
-                    ## Runspace template to generate scriptblocks running in parallel:
-                    $RadarLock = [powershell]::Create().AddScript({
-                        param(
-                            $obj,
-                            $dumps,
-                            $pdfp,
-                            $document,
-                            $id
-                        )
-                        
-                        ## Help sorting by making all indexes 4 digits
-                        if($id -lt 10){$id = '000' + [string]$id}
-                        elseif($id -lt 100){$id = '00' + [string]$id}
-                        elseif($id -lt 1000){$id = '0' + [string]$id}
-                        else{$id = [string]$id}
-                        
-                        ## Run the pdf-parser python script with the -o flag to dump objects
-                        py "$pdfp" -o $obj -f -d "$dumps\$('object' + $id + '.dump')" $document
-                        
-                        #$imgs = 0  ## Count extracted images (future feature)
-                        
-                    }).AddParameter(
-                        'obj',$obj
-                    ).AddParameter(
-                        'dumps',$dumps
-                    ).AddParameter(
-                        'pdfp',$pdfp
-                    ).AddParameter(
-                        'document',$1
-                    ).AddParameter(
-                        'id',$indexer
-                    )
+                if($pdfJoin){
+                    Remove-Variable pdfblock -Scope Script
                     
-                    ## Populate the array with $RadarLock scriptblocks
-                    $RadarLock.RunspacePools = $SensorArray; New-Object psObject -Property @{
-                        Instance = $RadarLock
-                        Result = $RadarLock.BeginInvoke()
+                    function highlightMatches{
+                        param(
+                            #[Parameter(Mandatory = $true,ValueFromPipeline = $true)]
+                            [Parameter(Mandatory = $true)]
+                            [string]$textblk,
+                            [Parameter(Mandatory = $true)]
+                            [string]$pattern
+                        )
+    
+                        begin{ 
+                            $r = [regex]$pattern
+                        }
+                        process{
+                            $matched = $r.Matches($textblk)
+                            $Script:m = $matched.count
+                            $startIndex = 0
+    
+                            if($m -gt 0){
+                                $Script:pdfReturn = @()
+                                ## Pull the matching keyword(s) along with some of the surrounding text
+                                foreach($match in $matched){
+                                    $Script:dyrl_eli_CONFIRMED++
+                                    $Global:HOWMANY++                       ## track the total search hits
+                                    $Script:pdfReturn += "$( (($textblk.substring($($match.index - 10))) -split (' '))[0..35])"
+                                }
+                            }
+                            ''
+                        }
+                    }
+                    highlightMatches $pdfJoin $22
+                    if($pdfReturn){
+                        $p = $pdfReturn
+                    }
+    
+                }
+                else{
+                    if($pdfReturn){
+                        $p = $pdfReturn
                     }
                 }
-
-                $searches = 0
-                while( $SpacialSweep | where{ -not $_.Result.IsCompleted } ){
-                    cls
-                    $searches++
-                    w '
-        Quick recon failed for:' 'g'
-        w "        $($1 -replace ".*\\")" 'y'
-        w '        Increasing scanners...' 'g'
-                    w "
+                Remove-Variable m,pdfReturn -Scope Script
+                Return $p
+            }
+            
+    
+            <#======================================================================
+                This method is a "best-effort"; if it doesn't find your keywords,
+                that doesn't mean they aren't present in the document.
+                
+                If content streams could not be decoded with "quickScan", this
+                will dump all the PDF objects to disk & decodes them to plaintext.
+                This is more reliable, but takes a lot longer than quickScan depending
+                on the size of the file, even with runspaces.
+            ========================================================================#>
+            #elseif( (Test-Path -Path "$dumps\$outf") -or (( $3 -ne 'multi' ) -and ! $pdfJoin -and ! $pdfblock) ){
+            else{
+                $outf = $1 -replace ".*\\" -replace "\.\w+$",'-plaintext.txt'
+                ## This section of pdfScan can get called whether or not a dump file exists;
+                ## if dump file does exist, the user is performing a follow-up search on the same dump so we skip this part
+                if( ! (gci -File "$dumps\$outf")){
+    
+                    ## Make sure we have a temp folder to dump into
+                    if( ! (Test-Path -Path $dumps)){
+                        New-Item -ItemType directory -Path "$($dumps -replace "\\pdf-dumps")" -Name 'pdf-dumps'
+                    }
+    
                     
-        Scanners deployed: $([string]$searches)" 'g'
-                    slp 1
-                }
-                
-                ## Power down the sensor arrays
-                $SensorArray.powershell.EndInvoke($RadarLock.Runspace) | Out-Null
-                $RadarLock.powershell.Runspace.Dispose()
-                $RadarLock.powershell.dispose()
-                ## Cleanup the runspace pools
-                $SensorArray.Dispose()
-                Remove-Variable objects,SensorArray,SpacialSweep
-                
-                ''
-                Write-Host '            '; -NoNewline;
-                w " INTEL ASSESSMENT: $((gci "$dumps\*dump").count) potential targets. " 'y' 'bl'
-                w '
-                '
-                
-                
-                ## Extract plaintext from dumps to '-plaintext.txt' & format to remove as much noise
-                ## as possible. I've left a few variations of "-Match" commented so you can tweak if
-                ## you need to, but these are the patterns I usually see in PDF dumps.
-                ##
-                ## This can be hit or miss. It *usually* works, but I know it doesn't account 
-                ## for every kind of formatting that gets spit out by pdf-parser's object dump.
-                ## The "-replace" tasks are set in a specific order to try and make sure I'm only
-                ## cutting the non-plaintext of the document. The very first task is to replace any
-                ## null-bytes (`0).
-                ##
-                ## Sometimes this function only writes one word per line, which is why I started with the 
-                ## commented "-Join" line. But it seems to work better without it more often than not.
-                ##
-                ## REPEATING DISCLAIMER: just because this scan doesn't find a match doesn't mean that
-                ## no match exists!! This is meant for environments where no better option is available
-                ## without just launching a PDF reader and detonating potential malware.
-                ##
-                foreach($file in Get-ChildItem -Path "$dumps\*.dump" | Sort -Property Name){
-                    Write-Host -f YELLOW "  CONVERTING $($file.Name) TO READABLE FORMAT"
-                   (Get-Content $file | where{
-                        #$_ -Match "\(.+\)\-" -and ! ($_ -cMatch $enc)
-                        #$_ -Match "\(.+\)(\-| Tj| Td)" -and ! ($_ -cMatch $enc)
-                        $_ -Match "\[?\(.+\)\]?(\-| ?Tj| Td)" -and ! ($_ -cMatch $enc)
-                        }) `
-                        -replace "`0" `
-                        -replace "(\)\-?\d+\()" `
-                        -replace "\)\]" `
-                        -replace "\[\(" `
-                        -replace "\-?\d+\(" `
-                        -replace "\)$" `
-                        -replace "TJ$" `
-                        -replace "\)\-?\d$" `
-                        -replace "^q .+T(d|j)\s+\(" `
-                        -replace "\) T(d|j).*"`
-                        -replace "\( \)" `
-                        -replace "\)\-?\d+\.\d+ \(" `
-                        -replace "\)\d+ ",' ' | Out-File "$dumps\$outf" -Append  # -Join ' ') | Out-File "$dumps\$outf" -Append
+                    
+                    ## Try to speed things up with some Runspaces (is 20 too much or too little?)
+                    $SensorArray = [runspacefactory]::CreateRunspacePool(2,20)
+                    $SensorArray.Open()
+    
+                    ## Get the indirect object names & dump them all to file
+                    $objects = ((py $pdfp -a $1 | 
+                        sls 'Indirect objects with a stream:') -replace '^.+: ') -split(', ')
+                    $indexer = 0
+                    $SpacialSweep = foreach($obj in $objects){
+                        $indexer++
+                        ## Runspace template to generate scriptblocks running in parallel:
+                        $RadarLock = [powershell]::Create().AddScript({
+                            param(
+                                $obj,
+                                $dumps,
+                                $pdfp,
+                                $document,
+                                $id
+                            )
+                            
+                            ## Help sorting by making all indexes 4 digits
+                            if($id -lt 10){$id = '000' + [string]$id}
+                            elseif($id -lt 100){$id = '00' + [string]$id}
+                            elseif($id -lt 1000){$id = '0' + [string]$id}
+                            else{$id = [string]$id}
+                            
+                            ## Run the pdf-parser python script with the -o flag to dump objects
+                            py "$pdfp" -o $obj -f -d "$dumps\$('object' + $id + '.dump')" $document
+                            
+                            #$imgs = 0  ## Count extracted images (future feature)
+                            
+                        }).AddParameter(
+                            'obj',$obj
+                        ).AddParameter(
+                            'dumps',$dumps
+                        ).AddParameter(
+                            'pdfp',$pdfp
+                        ).AddParameter(
+                            'document',$1
+                        ).AddParameter(
+                            'id',$indexer
+                        )
                         
+                        ## Populate the array with $RadarLock scriptblocks
+                        $RadarLock.RunspacePools = $SensorArray; New-Object psObject -Property @{
+                            Instance = $RadarLock
+                            Result = $RadarLock.BeginInvoke()
+                        }
+                    }
+    
+                    $searches = 0
+                    while( $SpacialSweep | where{ -not $_.Result.IsCompleted } ){
+                        cls
+                        $searches++
+                        w '
+        Quick recon failed for:' 'g'
+            w "        $($1 -replace ".*\\")" 'y'
+            w '        Increasing scanners...' 'g'
+                        w "
+                        
+            Scanners deployed: $([string]$searches)" 'g'
+                        slp 1
+                    }
                     
-                    Set-Content "SEFWRSBBIE5JQ0UgREFZ" $file  ## Sanitize & erase the dumps
-                    Remove-Item -Force $file
+                    ## Power down the sensor arrays
+                    $SensorArray.powershell.EndInvoke($RadarLock.Runspace) | Out-Null
+                    $RadarLock.powershell.Runspace.Dispose()
+                    $RadarLock.powershell.dispose()
+                    ## Cleanup the runspace pools
+                    $SensorArray.Dispose()
+                    Remove-Variable objects,SensorArray,SpacialSweep
                     
+                    ''
+                    Write-Host '            '; -NoNewline;
+                    w " INTEL ASSESSMENT: $((gci "$dumps\*dump").count) potential targets. " 'y' 'bl'
+                    w '
+                    '
+                    
+                    
+                    ## Extract plaintext from dumps to '-plaintext.txt' & format to remove as much noise
+                    ## as possible. I've left a few variations of "-Match" commented so you can tweak if
+                    ## you need to, but these are the patterns I usually see in PDF dumps.
+                    ##
+                    ## This can be hit or miss. It *usually* works, but I know it doesn't account 
+                    ## for every kind of formatting that gets spit out by pdf-parser's object dump.
+                    ## The "-replace" tasks are set in a specific order to try and make sure I'm only
+                    ## cutting the non-plaintext of the document. The very first task is to replace any
+                    ## null-bytes (`0).
+                    ##
+                    ## Sometimes this function only writes one word per line, which is why I started with the 
+                    ## commented "-Join" line. But it seems to work better without it more often than not.
+                    ##
+                    ## REPEATING DISCLAIMER: just because this scan doesn't find a match doesn't mean that
+                    ## no match exists!! This is meant for environments where no better option is available
+                    ## without just launching a PDF reader and detonating potential malware.
+                    ##
+                    foreach($file in Get-ChildItem -Path "$dumps\*.dump" | Sort -Property Name){
+                        Write-Host -f YELLOW "  CONVERTING $($file.Name) TO READABLE FORMAT"
+                       (Get-Content $file | where{
+                            #$_ -Match "\(.+\)\-" -and ! ($_ -cMatch $enc)
+                            #$_ -Match "\(.+\)(\-| Tj| Td)" -and ! ($_ -cMatch $enc)
+                            $_ -Match "\[?\(.+\)\]?(\-| ?Tj| Td)" -and ! ($_ -cMatch $enc)
+                            }) `
+                            -replace "`0" `
+                            -replace "(\)\-?\d+\()" `
+                            -replace "\)\]" `
+                            -replace "\[\(" `
+                            -replace "\-?\d+\(" `
+                            -replace "\)$" `
+                            -replace "TJ$" `
+                            -replace "\)\-?\d$" `
+                            -replace "^q .+T(d|j)\s+\(" `
+                            -replace "\) T(d|j).*"`
+                            -replace "\( \)" `
+                            -replace "\)\-?\d+\.\d+ \(" `
+                            -replace "\)\d+ ",' ' | Out-File "$dumps\$outf" -Append  # -Join ' ') | Out-File "$dumps\$outf" -Append
+                            
+                        
+                        Set-Content "SEFWRSBBIE5JQ0UgREFZ" $file  ## Sanitize & erase the dumps
+                        Remove-Item -Force $file
+                        
+                    }
+    
                 }
-
-            }
-            
-            ## Scan the total plaintext for the user's keywords; collect all matches in a list.
-            ## When a match is found, get the lines before and after the match for context
-            ## Also, exact string searches work fine, but I rarely get results using regular-
-            ## expression searches. I haven't figured out why yet, a pattern is a pattern, right?
-            $finds = New-Object System.Collections.Generic.List[string]
-            $i = 0
-            $pt = Get-Content "$dumps\$outf"
-            $pt | %{
-                if($_ -cMatch "$22"){
-                    $Global:HOWMANY++                       ## Track the MACROSS total
-                    $Script:dyrl_eli_CONFIRMED++            ## Track ELINTS' total
-                    $find = [string]$($pt[$($i-1)..$($i+1)])
-                    $finds += $(($find -join '') -replace "\s{2,}",' ')
+                
+                ## Scan the total plaintext for the user's keywords; collect all matches in a list.
+                ## When a match is found, get the lines before and after the match for context
+                ## Also, exact string searches work fine, but I rarely get results using regular-
+                ## expression searches. I haven't figured out why yet, a pattern is a pattern, right?
+                $finds = New-Object System.Collections.Generic.List[string]
+                $i = 0
+                $pt = Get-Content "$dumps\$outf"
+                $pt | %{
+                    if($_ -cMatch "$22"){
+                        $Global:HOWMANY++                       ## Track the MACROSS total
+                        $Script:dyrl_eli_CONFIRMED++            ## Track ELINTS' total
+                        $find = [string]$($pt[$($i-1)..$($i+1)])
+                        $finds += $(($find -join '') -replace "\s{2,}",' ')
+                    }
+                    $i++
                 }
-                $i++
-            }
-            
-            if($finds.count -gt 0){
-                Return $finds
-            }
+                
+                if($finds.count -gt 0){
+                    Return $finds
+                }
+        }
     }
-}
-}
+    }
 
 
 ####################################
@@ -771,7 +777,7 @@ function fileCopy(){
     
     cls
     if($dyrl_eli_SENSOR1.count -gt 0){
-        screenResults "w~  ELINTS SEARCH RESULTS"
+        screenResults "w~  ELINTS SEARCH RESULTS ($dyrl_eli_CONFIRMED total)"
         $dyrl_eli_SENSOR1.keys | Sort | %{
             $k1 = $_; $dyrl_eli_SENSOR1[$k1] | %{
                 $r = $_ -Split('::')
@@ -1097,7 +1103,6 @@ do{
     ================================================#>
     else{
         $dyrl_eli_Z = $null
-        $dyrl_eli_TARGETS = @()         ## List of keywords
         $Script:dyrl_eli_CTR = 0        ## Track the files searched
         $Global:HOWMANY = 0             ## Track the total MACROSS results for investigation
         $Script:dyrl_eli_CONFIRMED = 0  ## Track the number of matches found by ELINTS
@@ -1112,15 +1117,14 @@ do{
         # Get required vars and run the search
         w '======         ~~ PDF SEARCHES ARE *ALWAYS* CASE-SENSITIVE ~~       ======' 'y' 'bl'
         w '======           ~~ REGEX IS UNRELIABLE FOR PDF SEARCHES ~~         ======' 'y' 'bl'
-        ''
         Write-Host -f GREEN ' Type "regex " (without quotes) followed by your expression to match a'
         Write-Host -f GREEN ' pattern, otherwise just enter your string or comma-separated keywords: '
         Write-Host '  >  ' -NoNewLine; 
-        $tgt = Read-Host 
+        $dyrl_eli_TARGET = Read-Host 
 
         ## Process special chars as literals if user didn't specify 'regex'
-        if($tgt -notMatch "^regex "){
-            $tgt = $tgt -replace '\\','\\' `
+        if($dyrl_eli_TARGET -notMatch "^regex "){
+            $dyrl_eli_TARGET = $dyrl_eli_TARGET -replace '\\','\\' `
                 -replace '\.','\.' `
                 -replace '\*','\*' `
                 -replace '\$','\$' `
@@ -1132,12 +1136,6 @@ do{
                 -replace '\]','\]' `
                 -replace '\{'.'\{' `
                 -replace '\}','\}'
-            if($tgt -Like "*,*"){
-                $tgt -Split "," | %{$dyrl_eli_TARGETS += $($_ -replace "^ ")}
-            }
-            else{
-                $dyrl_eli_TARGETS += $tgt
-            }
             while($dyrl_eli_CASE -notMatch "^(y|n)$"){
                 Write-Host -f GREEN ' Does case matter for non-PDFs? (' -NoNewline;
                 Write-Host -f YELLOW 'y' -NoNewLine;
@@ -1148,10 +1146,10 @@ do{
             }
         }
         else{
-            $dyrl_eli_TARGETS += $($tgt -replace "^regex ")
+            $dyrl_eli_TARGET = $dyrl_eli_TARGET -replace "^regex "
             $dyrl_eli_CASE = 'y'
         }
-        Remove-Variable tgt
+        
 
         ''
 
@@ -1159,9 +1157,7 @@ do{
         slp 1  ## pause script
 
 
-        $dyrl_eli_TARGETS | where{$_ -ne ''} | %{
-            $dyrl_eli_TARGET = $_
-            
+
         #==============================================================
         # Prep the output file, append new results if file already exists
         #==============================================================
@@ -1204,7 +1200,7 @@ do{
                 $Script:dyrl_eli_CTR++                         ## Track the no. of files searched
                 
                 ''
-                w " $HOWMANY MATCHES FOUND ($dyrl_eli_CTR/$dyrl_eli_NUMF files)
+                w " $dyrl_eli_CONFIRMED MATCHES FOUND ($dyrl_eli_CTR/$dyrl_eli_NUMF files)
                 
                 "
                 w " TARGETING $dyrl_eli_BOGEY ($dyrl_eli_FSIZE)" 'c'
@@ -1331,7 +1327,6 @@ do{
                 }
             }
         }
-        }
 
         ## Offer to copy files
         if( ! $dyrl_eli_SINGLE ){
@@ -1347,11 +1342,10 @@ do{
         
         pdfScan 'fin'  ## Ensure temp files get cleaned up
         
-        Remove-Variable dyrl_eli_COLLECTIONS,dyrl_eli_setCase,dyrl_eli_re,dyrl_eli_TARGET,dyrl_eli_CASE
-        $dyrl_eli_TARGETS = @()
+        Remove-Variable dyrl_eli_COLLECTIONS,dyrl_eli_setCase
         ## Offer to perform new search on same files
         while( $dyrl_eli_YN -notMatch "^(y|n)" ){
-            w '
+            Write-Host '
             '
             Write-Host -f GREEN " Do you want to search the same file(s) for a different string?  " -NoNewLine;
                 $dyrl_eli_Z = Read-Host
