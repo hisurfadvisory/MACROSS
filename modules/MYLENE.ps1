@@ -202,7 +202,7 @@ if( $vf19_C8 ){
         $total = ($r).count
 
         screenResults "   Recent activity for user $1 (unsorted; system processes omitted)"
-        screenResults 'red~HOSTNAME' 'red~ACTIVITY' 'red~DATE'
+        screenResults 'r~HOSTNAME' 'r~ACTIVITY' 'r~DATE'
 
         while($ct -lt $total){
             if("$(($r.process_name[$ct]))" -notIn $l){
@@ -241,7 +241,7 @@ if( $vf19_C8 ){
 
         while( $z -ne '' ){
             screenResults "           Activity on host $1 ($type)"
-            screenResults 'red~ACCOUNTS' 'red~RUNNING PROCESSES' 'red~CB GROUP'
+            screenResults 'r~ACCOUNTS' 'r~RUNNING PROCESSES' 'r~CB GROUP'
             screenResults "$($f.username_full.name)" "$($f.process_name.name)" "$($f.group.name)"
             screenResults "Last seen: $(($f.start.name | Sort -Descending)[0])"
             screenResults 'endr'
@@ -541,7 +541,7 @@ if( ! $vf19_ROBOTECH ){
                     $Z = Read-Host
                     if($Z -eq 'm'){
                         $Zu = $null
-                        $d = 'cyan~DERP!'
+                        $d = 'c~DERP!'
                         $uaccts = @{}
                         function showAccts(){
                             $uaccts.keys | %{
@@ -1045,10 +1045,10 @@ else{
                     $dyrl_myl_ipadd2 = $dyrl_myl_ipadd0 + " resolves to " + $dyrl_myl_ipadd1 -replace("Address.*$dyrl_myl_FO","$dyrl_myl_FO")
                     
                     if( $dyrl_myl_ipadd1 ){
-                        screenResults "red~NEW HOST $dyrl_myl_arrayn" $($dyrl_myl_i.Name) $dyrl_myl_ipadd2
+                        screenResults "r~NEW HOST $dyrl_myl_arrayn" $($dyrl_myl_i.Name) $dyrl_myl_ipadd2
                     }
                     else{
-                        screenResults "red~NEW HOST $dyrl_myl_arrayn" $($dyrl_myl_i.Name) 'cyan~DOES NOT RESOLVE'
+                        screenResults "r~NEW HOST $dyrl_myl_arrayn" $($dyrl_myl_i.Name) 'c~DOES NOT RESOLVE'
                     }
                     screenResults 'Operating System' $($dyrl_myl_i.OperatingSystem)
                     screenResults 'Created' $($dyrl_myl_i.whenCreated)
@@ -1056,7 +1056,7 @@ else{
                         screenResults 'Description' $($dyrl_myl_i.Description)
                     }
                     else{
-                        screenResults 'Description' 'cyan~NONE'
+                        screenResults 'Description' 'c~NONE'
                     }
                     if($dyrl_myl_CHECKSENSOR){
                         screenResults 'CB Sensor ID' $($dyrl_myl_CHECKSENSOR[0].id)
@@ -1067,7 +1067,7 @@ else{
                         Remove-Variable -Force dyrl_myl_CHECKSENSOR -Scope Global
                     }
                     else{
-                        screenResults 'cyan~No Carbon Black agent installed!'
+                        screenResults 'c~No Carbon Black agent installed!'
                     }
                     
                     
@@ -1098,7 +1098,7 @@ else{
                                 foreach($key in $dyrl_myl_arrayh.keys){
                                     #$dyrl_myl_arraynn++
                                     if($key -in $dyrl_myl_sensors.keys){
-                                        screenResults "red~NEW HOST $key" $dyrl_myl_arrayh[$key]
+                                        screenResults "r~NEW HOST $key" $dyrl_myl_arrayh[$key]
                                     }
                                     else{
                                         screenResults "NEW HOST $key" ' (no cb agent installed)'
