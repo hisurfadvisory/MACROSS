@@ -771,7 +771,7 @@ function fileCopy(){
     
     cls
     if($dyrl_eli_SENSOR1.count -gt 0){
-        screenResults "white~  ELINTS SEARCH RESULTS"
+        screenResults "w~  ELINTS SEARCH RESULTS"
         $dyrl_eli_SENSOR1.keys | Sort | %{
             $k1 = $_; $dyrl_eli_SENSOR1[$k1] | %{
                 $r = $_ -Split('::')
