@@ -816,7 +816,7 @@ function chooseMod(){
     Write-Host -f YELLOW 'dec' -NoNewline;
     Write-Host -f GREEN ' or ' -NoNewline;
     Write-Host -f YELLOW 'enc' -NoNewline;
-    w ' to do Hex/B64 evals.' 'g'
+    w ' to process Hex/B64 encoding.' 'g'
     Write-Host -f GREEN '   -Type ' -NoNewline;
     Write-Host -f YELLOW 'q' -NoNewline;
     w ' to quit.
@@ -825,14 +825,14 @@ function chooseMod(){
     ## If version control is in use, offer options to pull fresh or updated
     ## copies of all the scripts.
     if( $vf19_VERSIONING ){
-    Write-Host -f GREEN '                               TROUBLESHOOTING:
+        Write-Host -f GREEN '                               TROUBLESHOOTING:
    If the console is misbehaving, you can enter ' -NoNewline;
-    Write-Host -f CYAN 'refresh' -NoNewline;
-    Write-Host -f GREEN ' to automatically
+        Write-Host -f CYAN 'refresh' -NoNewline;
+        Write-Host -f GREEN ' to automatically
    pull down a fresh copy. Or, if one of the tools is not working as you
    expect it to, enter the module # with an ' -NoNewline;
-    Write-Host -f CYAN 'r' -NoNewline;
-    Write-Host -f GREEN " to refresh that script
+        Write-Host -f CYAN 'r' -NoNewline;
+        Write-Host -f GREEN " to refresh that script
    (ex. '3r').
    
    "
