@@ -786,10 +786,10 @@ function chooseMod(){
         $Global:vf19_PAGECT = [math]::Truncate(($toolcount/10) + 1)  ## Generate a new page for every 10 tools in "/modules"
 
         $vf19_MENULIST.GetEnumerator() | Sort -Property Name | Select -Skip $($vf19_PAGE * 10) | %{
-            Write-Host '  ' -NoNewline; sep '=' 70 'c'
+            Write-Host ' ' -NoNewline; sep '=' 70 'c'
             Write-Host -f YELLOW "   $($_.Name -replace "^ 0",'  ') || $($_.Value)"
         }
-        Write-Host '  ' -NoNewline; sep '=' 70 'c'
+        Write-Host ' ' -NoNewline; sep '=' 70 'c'
         ''
 
     SJW 'menu'     ## check user's privilege LOL
