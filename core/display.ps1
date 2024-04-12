@@ -755,7 +755,6 @@ function chooseMod(){
     )
 
     $ct = 1
-    $brdr = '  '; 1..70 | %{$brdr += '='}
     $vf19_MENU.keys | Sort |
         %{
             $k1 = $_
@@ -766,17 +765,17 @@ function chooseMod(){
             $desc = $vf19_MENU[$k1].keys
             $fname = $($vf19_MENU[$k1][$desc].fname)
             
-            $d0 = $k1.Length
             $d1 = " $menuNum" + ". $k1"
+            $d0 = $d1.Length
             if($d0 -lt 15){
                 $d2 = (15 - $d0)
-                while($d2 -gt 0){
+                while($d2 -gt 1){
                     $d1 += ' '
                     $d2--
                 }
             }
             elseif($d0 -gt 15){
-                $d1 = $a.substring(0,15)
+                $d1 = $d1.substring(0,15)
             }
             $Global:vf19_MODULENUM.Add($ct,$fname)
             $Global:vf19_MENULIST.Add($d1,$desc)
@@ -787,11 +786,11 @@ function chooseMod(){
         $Global:vf19_PAGECT = [math]::Truncate(($toolcount/10) + 1)  ## Generate a new page for every 10 tools in "/modules"
 
         $vf19_MENULIST.GetEnumerator() | Sort -Property Name | Select -Skip $($vf19_PAGE * 10) | %{
-            Write-Host -f CYAN $brdr
+            Write-Host '  ' -NoNewline; sep '=' 70 'c'
             Write-Host -f YELLOW "   $($_.Name -replace "^ 0",'  ') || $($_.Value)"
         }
-        Write-Host -f CYAN "$brdr
-        "
+        Write-Host '  ' -NoNewline; sep '=' 70 'c'
+        ''
 
     SJW 'menu'     ## check user's privilege LOL
     if( $PROTOCULTURE ){
