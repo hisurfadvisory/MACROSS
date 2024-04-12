@@ -12,7 +12,8 @@
             hide error messages
 
     Add keywords to the "blacklist" regex variable if you want to prevent users from
-    using the debug function to perform actions you've access-controlled.
+    using the debug function to perform actions you've access-controlled, and then
+    move this blacklist somewhere else that users can't read/modify it.
 #>
 function debugMacross($1){
     splashPage
@@ -23,7 +24,7 @@ function debugMacross($1){
     $blacklist = [regex]".*(usr |n_ |m_ |your keywerdz here|other keywerdz|more keywerdz).*"
     if($1){
         if($1 -notMatch $blacklist){
-            $1 = $1 -replace "^debug "  ## I always mess up hitting the "up" key
+            $1 = $1 -replace "^debug "  ## I always mess up hitting the "up" key to repeat
             iex "$1"
             Write-Host -f GREEN "
             Type another command for testing (don't use 'debug'), or hit ENTER
@@ -38,32 +39,44 @@ function debugMacross($1){
     else{
         $e = @('SilentlyContinue','Continue','Inquire')
         $c = $ErrorActionPreference
-        $m = [regex]"(logs|[1-3])"
-        while($z -notMatch $m){
-            Write-Host -f CYAN "
+        $m = [regex]"(logs|[1-4])"
+        
+        Write-Host -f CYAN "
             Current error display:  $c"
-            Write-Host -f GREEN '
+        Write-Host -f GREEN '
 
             Which error level do you want to set (1-3)?
                 1. Suppress all error messages
                 2. Display errors without stopping scripts
                 3. Pause after each error message with a choice to continue
+                4. Cancel
 
+            OR
+            Enter a command to begin testing/debugging
+            
             OR
             Type "logs" to review MACROSS log files.
 
             >  ' -NoNewline;
-            $z = Read-Host
-        }
+        $z = Read-Host
+        
 
         if($z -ne 'logs'){
-            [int]$z = [int]$z - 1
-            $Script:ErrorActionPreference = $e[$z]
-            splashPage
-            $c = $ErrorActionPreference
-            Write-Host -f CYAN "
-            Error display is now set to:  $c"
-            slp 2
+            if($z -notIn 1..3){
+                cls
+                debugMacross $z
+            }
+            elseif($z -eq 4){
+                Return
+            }
+            else{
+                $Script:ErrorActionPreference = $e[$([int]$z - 1)]
+                splashPage
+                $c = $ErrorActionPreference
+                Write-Host -f CYAN "
+                Error display is now set to:  $c"
+                slp 2
+            }
         }
         else{
             $la = @()
@@ -483,20 +496,20 @@ function getHash(){
 
             $hosts = 'host 1,blue~white~windows,11,192.168.10.10,host2,linux,red~kali,192.168.10.11'
             $headers = 'HOST,OS,VER,IP'
-            sheetz 'myoutput' $hosts 1 $headers
+            sheetz 'myoutput' $hosts 5 $headers
 
-    The above will create (or open) myoutput.xlsx, and then writes 'HOST' to cell A1, 'OS' to B1, 'VER' to C1, and
-    'IP' to D1.
+    The above will create (or open) myoutput.xlsx, and then writes 'HOST' to cell A5, 'OS' to B5, 'VER' to C5, and
+    'IP' to D5.
 
     Next it will go through all the comma-separated values in param 2, writing values into the next row until it reaches
-    column D, then jump to the next row back at column A. And in this example, cell B2 (windows) will be blue with white
-    text while cell C3 (kali) will be in red text.
+    column D, then jump to the next row back at column A. And in this example, cell B6 (windows) will be blue with white
+    text while cell C7 (kali) will be in red text.
 
 
                          A         B       C         D
-            row 1      HOST       OS      VER        IP
-            row 2      host 1   windows   11    192.168.10.10
-            row 3      host 2   linux     kali  192.168.10.11
+            row 5      HOST       OS      VER        IP
+            row 6      host 1   windows   11    192.168.10.10
+            row 7      host 2   linux     kali  192.168.10.11
 
 
 
@@ -506,8 +519,8 @@ function getHash(){
 
         EXAMPLE 3
 
-    Sometimes you don't need headers. You could set param $4 to '6' if you just need to specify that there should be 6
-    columns (A-F):
+    Sometimes you don't need headers. You could set the fourth param to 6 if you just need to specify that there should be
+    6 columns (A-F):
         
             sheetz 'myoutput' $patchInfo 1 6
 
