@@ -264,7 +264,7 @@ function macrossHelp($1){
     w ' From the main menu, type "debug " and any of the above functions with the
  required params to test them.
     ' 'g'
-    w 'Hit ENTER to go back.' 'g'; Read-Host
+    w ' Hit ENTER to go back.' 'g'; Read-Host
     
 }
 
