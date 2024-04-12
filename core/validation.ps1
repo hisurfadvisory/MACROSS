@@ -118,7 +118,7 @@ function SJW($1){
     if( $1 = 'menu' ){
         if( $vf19_ROBOTECH ){
             Write-Host -f YELLOW "                ****YOU ARE NOT LOGGED IN AS ADMIN**** "
-            Write-Host -f YELLOW "      Some of these tools will be nerf'd without elevated privilege.
+            Write-Host -f YELLOW "      Some of these tools may be nerf'd without elevated privilege.
             "
         }
     }
@@ -277,9 +277,9 @@ function setUser($1){
         
         ## $usr is a common var name, so other scripts might try to overwrite it. To prevent automatically 
         ## breaking any such scripts, but also avoid using a "$vf19_" name everwhere, we'll just make  
-        ## a constant var check to reapply the value if necessary. This check is performed in MACROSS.ps1.
+        ## a regular value check to reapply the USR if necessary. This check is performed in MACROSS.ps1.
         $Global:USR = $u -replace "^(.+\\)?"
-        Set-Variable -Name vf19_USRCHK -Value $USR -Scope Global -Option Constant
+        Set-Variable -Name vf19_USRCHK -Value $USR -Scope Global -Option ReadOnly
 
 
         ## Check Active Directory GPO first; I ***hope*** non-admins can't run Active Directory cmdlets!!!!
@@ -301,7 +301,7 @@ function setUser($1){
 
             if($priv | Select -ExpandProperty memberOf | where{$_ -like "*cyber**}){
             
-                Set-Variable -Name vf19_tier1 -Value $true -Scope Global -Option Constant
+                Set-Variable -Name vf19_tier1 -Value $true -Scope Global -Option ReadOnly
                 ## Or... create randomly generated keys as identifiers for each session
                 ## Begin your "Tier 3 ONLY!" scripts with checks like 
 
@@ -309,17 +309,17 @@ function setUser($1){
 
                 ##  which checks if the "tier3" key and the "check" keys match. There's not
                 ##  really a huge difference and isn't "security", just a basic access control
-                ##  if you have nothing else. Enforced code-signing helps, otherwise this can be 
-                ##  bypassed pretty easily.
+                ##  if you have nothing else. Code-signing helps, otherwise this can be bypassed
+                ##  pretty easily.
 
-                #Set-Variable -Name vf19_tier1 -Value $(Get-Random -min 10000000 -max 9999999999) -Scope Global -Option Constant
-                #Set-Variable -Name vf19_modifier -Value $(Get-Random -min 500 -max 50000) -Scope Global -Option Constant
-                #Set-Variable -Name vf19_check -Value $($vf19_tier1 * $vf19_modifier) -Scope Global -Option Constant
+                #Set-Variable -Name vf19_tier1 -Value $(Get-Random -min 10000000 -max 9999999999) -Scope Global -Option ReadOnly
+                #Set-Variable -Name vf19_modifier -Value $(Get-Random -min 500 -max 50000) -Scope Global -Option ReadOnly
+                #Set-Variable -Name vf19_check -Value $($vf19_tier1 * $vf19_modifier) -Scope Global -Option ReadOnly
             }
             elseif($priv | Select -ExpandProperty memberOf | where{$_ -like "*sooper cyber**}){
-                Set-Variable -Name vf19_tier1 -Value $true -Scope Global -Option Constant
-                Set-Variable -Name vf19_tier3 -Value $(Get-Random -min 10000000 -max 9999999999) -Scope Global -Option Constant
-                Set-Variable -Name vf19_check -Value $($vf19_tier1 + 53) -Scope Global -Option Constant
+                Set-Variable -Name vf19_tier1 -Value $true -Scope Global -Option ReadOnly
+                Set-Variable -Name vf19_tier3 -Value $(Get-Random -min 10000000 -max 9999999999) -Scope Global -Option ReadOnly
+                Set-Variable -Name vf19_check -Value $($vf19_tier1 + 53) -Scope Global -Option ReadOnly
             }
             #>
 
@@ -335,7 +335,7 @@ function setUser($1){
         <#
             You may need to change this desktop path as every environment is
             different. You have a few choices commented below but obviously
-            you can set your own if necessary.
+            you can set your own if you're in a weird situation.
             
             This global variable is used by the scripts to write reports/results
             to file when necessary.
