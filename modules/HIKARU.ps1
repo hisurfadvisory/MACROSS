@@ -189,7 +189,7 @@ elseif($dyrl_hik_Z -eq 1){
  You have chosen the quick & dirty:
 
  MACROSS is not a toolset, although it includes several tools you may or may not find useful. 
- It is a (I hate using this word) "framework" for you to easily chain your custom automations 
+ It is a <buzzword>"framework"</buzzword> for you to easily chain your custom automations 
  together, and provides some handy functionality to format the outputs from those automations.
  
  "Why is it in powershell?"
