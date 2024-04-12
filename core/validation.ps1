@@ -328,7 +328,9 @@ function setUser($1){
 
         ## Tag the user as a non-admin lesser being if they can't read AD
         catch{
-            $Global:vf19_ROBOTECH = $true 
+            if($USR -notIn $(Get-LocalGroupMember Administrators).Name -replace "^.+\\"){
+                $Global:vf19_ROBOTECH = $true
+            } 
         }
 
 
