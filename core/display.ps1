@@ -30,8 +30,8 @@ ojilZHilZrilojilojilojilojilojilojilZTilZ3ilojilojilojilojilojilojilojilZHilojil
 jilojilZEKICAgICAgIOKVmuKVkOKVnSAgICAg4pWa4pWQ4pWd4pWa4pWQ4pWdICDilZrilZDilZ0g4pWa4pWQ4pWQ4pWQ4pW
 Q4pWQ4pWd4pWa4pWQ4pWdICDilZrilZDilZ0g4pWa4pWQ4pWQ4pWQ4pWQ4pWQ4pWdIOKVmuKVkOKVkOKVkOKVkOKVkOKVkOKV
 neKVmuKVkOKVkOKVkOKVkOKVkOKVkOKVnQ=='
-    $ip = '10.1.0.3'#$(ipconfig | Select-String "IPv4 Address") -replace "^.* : "
-    $hn = 'vm_guest02'#hostname
+    $ip = $(ipconfig | Select-String "IPv4 Address") -replace "^.* : "
+    $hn = hostname
     $vl = $vf19_VERSION.length; if( $vl -lt 3){$vc=4}elseif( $vl -le 4 ){$vc=3}
     elseif( $vl -le 5 ){$vc=1}else{$vc=0}
     cls
