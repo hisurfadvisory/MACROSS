@@ -39,7 +39,6 @@ function debugMacross($1){
     else{
         $e = @('SilentlyContinue','Continue','Inquire')
         $c = $ErrorActionPreference
-        $m = [regex]"(logs|[1-4])"
         
         Write-Host -f CYAN "
             Current error display:  $c"
