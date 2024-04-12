@@ -1,5 +1,15 @@
 ## Functions controlling MACROSS's display
 
+$Global:vf19_colors = @{
+    'w'='white'
+    'b'='blue'
+    'bl'='black'
+    'g'='green'
+    'r'='red'
+    'y'='yellow'
+    'm'='magenta'
+    'c'='cyan'
+}
 
 ######################################
 ## MACROSS banner
@@ -20,34 +30,26 @@ ojilZHilZrilojilojilojilojilojilojilZTilZ3ilojilojilojilojilojilojilojilZHilojil
 jilojilZEKICAgICAgIOKVmuKVkOKVnSAgICAg4pWa4pWQ4pWd4pWa4pWQ4pWdICDilZrilZDilZ0g4pWa4pWQ4pWQ4pWQ4pW
 Q4pWQ4pWd4pWa4pWQ4pWdICDilZrilZDilZ0g4pWa4pWQ4pWQ4pWQ4pWQ4pWQ4pWdIOKVmuKVkOKVkOKVkOKVkOKVkOKVkOKV
 neKVmuKVkOKVkOKVkOKVkOKVkOKVkOKVnQ=='
-    $ip = $(ipconfig | Select-String "IPv4 Address") -replace "^.* : "
-    $hn = hostname
-    $vl = $vf19_VERSION.length
+    $ip = '10.1.0.3'#$(ipconfig | Select-String "IPv4 Address") -replace "^.* : "
+    $hn = 'vm_guest02'#hostname
+    $vl = $vf19_VERSION.length; if( $vl -lt 3){$vc=4}elseif( $vl -le 4 ){$vc=3}
+    elseif( $vl -le 5 ){$vc=1}else{$vc=0}
     cls
     Write-Host "
     "
     getThis $b
     Write-Host -f CYAN "$vf19_READ"
-    Write-Host -f CYAN "  ======================================================================" 
+    Write-Host ' ' -NoNewline; sep '=' 70 'c'
     Write-Host -f YELLOW "               Welcome to Multi-API-Cross-Search, " -NoNewline;
-    Write-Host -f CYAN "$USR"
-    Write-Host -f YELLOW "             Host: $hn  ||  IP: $ip"
-    Write-Host -f CYAN "  ======================================================================"
-    Write-Host -f CYAN "  ║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║" -NoNewline;
+    Write-Host -f CYAN 'HiSurfAdvisory'#"$USR"
+    Write-Host -f YELLOW "                   Host: $hn  ||  IP: $ip"
+    Write-Host ' ' -NoNewline; sep '=' 70 'c'
+    getThis '4pWR'; $va = ''; $vb = $vf19_READ
+    1..62 | %{$va += $vf19_READ}
+    if($vc -gt 0){1..$vc | %{$vb += $vf19_READ}}
+    Write-Host -f CYAN "  $va" -NoNewline;
     Write-Host -f YELLOW "v$vf19_VERSION" -NoNewline;
-    if( $vl -lt 3){
-        Write-Host -f CYAN "║║║║║"
-    }
-    elseif( $vl -le 4 ){
-        Write-Host -f CYAN "║║║║"
-    }
-    elseif( $vl -le 5 ){
-        Write-Host -f CYAN "║║"
-    }
-    elseif( $vl -ge 6 ){
-        Write-Host '
-        '
-    }
+    Write-Host -f CYAN "$vb"
                                                                      
 }
 
@@ -61,7 +63,7 @@ neKVmuKVkOKVkOKVkOKVkOKVkOKVkOKVnQ=='
 ##
 ##  ** Not supported yet -- underlining: Write-Host "$([char]27)[4m Underlined Word $([char]27)[24m"
 function w($1,$2,$3){
-    $colors = @{
+    $vf19_colors = @{
         'w'='white'
         'b'='blue'
         'bl'='black'
@@ -71,7 +73,7 @@ function w($1,$2,$3){
         'm'='magenta'
         'c'='cyan'
     }
-    $colors.keys | %{
+    $vf19_colors.keys | %{
         if($2 -eq $_){
             $f = $2
         }
@@ -80,10 +82,10 @@ function w($1,$2,$3){
         }
     }
     if($b -and $f){
-        Write-Host -f $colors[$f] -b $colors[$b] "$1"
+        Write-Host -f $vf19_colors[$f] -b $vf19_colors[$b] "$1"
     }
     elseif($f){
-        Write-Host -f $colors[$f] "$1"
+        Write-Host -f $vf19_colors[$f] "$1"
     }
     else{
         Write-Host "$1"
@@ -204,11 +206,11 @@ function sep(){
         [string]$1,
         [Parameter(Mandatory=$true)]
         [int]$2,
-        [string]$3 = 'WHITE'
+        [string]$3 = 'w'
     )
     $b = ' '
     1..$2 | %{$b += $1}
-    Write-Host -f $3 $b
+    Write-Host -f $($vf19_colors[$3]) $b
 }
 
 
@@ -233,7 +235,7 @@ function macrossHelp($1){
         'collab'= @{'d'="Enrich or collect data from other MACROSS scripts. An optional value can be sent as parameter three if the called script's .evalmax value is 2.";'u'='Usage: collab [scriptToCall.extension] [yourScriptName] [optional value]'}
         'getHash'= @{'d'='Get the hash of a file.';'u'='Usage: getHash [filepath] [md5|sha256]'}
         'houseKeeping'= @{'d'="Displays a list of existing reports your script has created, and gives the option of deleting one or more of them if no longer needed.";'u'="Usage: houseKeeping [directory containing your script's report outputs] [yourScriptName]"}
-        'sep'= @{'d'='Create a separator line to write on screen if you want to separate simple outputs being displayed.';'u'='Usage: sep [character you want to create line from] [length you want the line to be] [text color of the line (optional)]'}
+        'sep'= @{'d'='Create a separator line to write on screen if you want to separate simple outputs being displayed.';'u'='Usage: sep [character you want to create line from] [length you want the line to be] [b|bl|c|m|r|y|w (optional)]'}
         'slp'= @{'d'="Alias for 'start-sleep' to pause your scripts. Send the number of seconds to pause as parameter one, and 'm' as the second parameter if you want to pause in milliseconds instead.";'u'='Usage: slp [number of seconds] ["m" (changes seconds to milliseconds)]'}
         'transitionSplash'= @{'d'='This function contains various ASCII art from the MACROSS anime. You can add your own ASCII art here.';'u'='Usage: transitionSplash [1-8]'}
     }
@@ -259,6 +261,9 @@ function macrossHelp($1){
         TL
     }
     ''
+    w ' From the main menu, type "debug " and any of the above functions with the
+ required params to test them.
+    ' 'g'
     w 'Hit ENTER to go back.' 'g'; Read-Host
     
 }
@@ -289,9 +294,9 @@ function screenResults(){
     )
 
     ## Set default colors
-    $ncolor = 'YELLOW'
-    $v2color = 'GREEN'
-
+    $ncolor = 'yellow'
+    $v2color = 'green'
+    $ht = [regex]"^[a-z]{1,2}~"
     ## Set border sizes; resizing with $4 is not implemented yet!
     if($4 -and $4 -gt 90){
         $tw = $4
@@ -303,9 +308,9 @@ function screenResults(){
     $r = $c
     getThis '4omh'
     1..$tw | %{$r = $r + $vf19_READ}; $r = $r + $c
-    if($1 -Match "^[a-z]+~"){
-        $ncolor = $1 -replace "~(.|`n)+"
-        $1 = $1 -replace "^([a-z]+~)?"
+    if($1 -Match $ht){
+        $ncolor = $vf19_colors[$($1 -replace "~(.|`n)+")]
+        $1 = $1 -replace "^([a-z]{1,2}~)?"
     }
     elseif($1 -eq 'endr'){
         Write-Host -f GREEN $r
@@ -403,8 +408,8 @@ function screenResults(){
     $wide1 = $NAME.length
 
     if($2){
-        if($2 -Match "^[a-z]+~"){
-            $v1color = $2 -replace "~(.|`n)+"
+        if($2 -Match $ht){
+            $v1color = $vf19_colors[$($2 -replace "~(.|`n)+")]
             $2 = $2 -replace "^([a-z]+~)?"
         }
         $VAL1 = $2
@@ -412,8 +417,8 @@ function screenResults(){
         
     
         if($3){
-            if($3 -Match "^[a-z]+~"){
-                $v2color = $3 -replace "~(.|`n)+"
+            if($3 -Match $ht){
+                $v2color = $vf19_colors[$($3 -replace "~(.|`n)+")]
                 $3 = $3 -replace "^([a-z]+~)?"
             }
             $VAL2 = $3
@@ -650,21 +655,22 @@ function screenResultsAlt($1,$2,$3){
     $2color = 'GREEN'
     $3color = 'YELLOW'
     $r = '  '
+    $ht = [regex]"^[a-z]{1,2}~"
     foreach($i in 1..76){$r += '='};Remove-Variable i
     getThis '4pWR4pWR4pWR4pWR4pWR4pWR'; $c6 = $vf19_READ
     getThis '4pWR'; $c1 = $vf19_READ
     
 
-    if($1 -Match "^[a-z]+~"){
-        $1color = $1 -replace "~.+"
+    if($1 -Match $ht){
+        $1color = $vf19_colors[$($1 -replace "~.+")]
         $1 = $1 -replace "^([a-z]+~)?"
     }
-    if($2 -Match "^[a-z]+~"){
-        $2color = $2 -replace "~.+"
+    if($2 -Match $ht){
+        $2color = $vf19_colors[$($2 -replace "~.+")]
         $2 = $2 -replace "^([a-z]+~)?"
     }
-    if($3 -Match "^[a-z]+~"){
-        $3color = $3 -replace "~.+"
+    if($3 -Match $ht){
+        $3color = $vf19_colors[$($3 -replace "~.+")]
         $3 = $3 -replace "^([a-z]+~)?"
     }
 
