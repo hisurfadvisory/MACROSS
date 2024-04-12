@@ -19,17 +19,19 @@ function debugMacross($1){
     splashPage
     ''
     Write-Host -f YELLOW '                        MACROSS DEBUG MODE'
-    Write-Host '
+    Write-Host -f YELLOW '       for function help, type the function name and "help"
     '
     $blacklist = [regex]".*(usr |n_ |m_ |your keywerdz here|other keywerdz|more keywerdz).*"
     if($1){
         if($1 -notMatch $blacklist){
+            if($1 -Like "* help"){
+                macrossHelp $($1 -replace " help")
+            }
             $1 = $1 -replace "^debug "  ## I always mess up hitting the "up" key to repeat
             iex "$1"
             Write-Host -f GREEN "
-            Type another command for testing (don't use 'debug'), or hit ENTER
-            to exit debugging:
-            "
+        Type another command for testing, or hit ENTER to exit debugging:
+        "
             $cmd = Read-Host
             if($cmd -ne ''){
                 debugMacross $cmd
