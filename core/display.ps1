@@ -220,7 +220,7 @@ function sep(){
 function macrossHelp($1){
     $helps = @{
         'w'= @{'d'="Alias for 'Write-Host'. Send your string as the first parameter, and the first letter of the color you want to use ('bl' for black, 'b' for blue). Send another letter as the third parameter to set a highlight color. The default text color is white.";'u'='Usage: w "your text" "[b|bl|c|g|m|r|y]" "[b|bl|c|g|m|r|y]"'}
-        'screenResults'= @{'d'="Display large outputs to screen in a table format. Colorize the text by adding '<color>~' to the beginning of your value, i.e. green~$('$'+'value'). Send a single param, 'endr' to create the closing border after your final values.";'u'='Usage: screenResults $VALUE1 $OPTIONAL_VALUE2 $OPTIONAL_VALUE3'}
+        'screenResults'= @{'d'="Display large outputs to screen in a table format. Colorize the text by adding '<color letter>~' to the beginning of your value, i.e. g~$('$'+'value') will write green text. Send a single param, 'endr' to create the closing border after your final values.";'u'='Usage: screenResults $VALUE1 $OPTIONAL_VALUE2 $OPTIONAL_VALUE3'}
         'screenResultsAlt'= @{'d'="Similar to screenResults; send the 'header' items of your list first, followed by $('$'+'KEY1') and $('$'+'VALUE1'). If you have more than 2 key-values under each 'header', make the first parameter of each subsequent call 'next'.";'u'='Usage: screenResultsAlt $HEADER $KEY1 $VALUE1; screenResultsAlt "next" $KEY2 $VALUE2'}
         'ord'= @{'d'='Get the decimal value of a text character';'u'='Usage: ord [text char]'}
         'chr'= @{'d'='Get the text character of a decimal value';'u'='Usage: chr [decimal value]'}
@@ -249,10 +249,10 @@ function macrossHelp($1){
     }
     elseif($1 -eq 'dev'){
         1..33 | %{$m += ' '}
-        screenResults "cyan~$m MACROSS FUNCTIONS"
+        screenResults "c~$m MACROSS FUNCTIONS"
         $helps.keys | Sort | %{
             screenResults $_ $($helps[$_]['d'])
-            screenResults "cyan~$($helps[$_]['u'])"
+            screenResults "c~$($helps[$_]['u'])"
         }
         screenResults 'endr'
         ''
