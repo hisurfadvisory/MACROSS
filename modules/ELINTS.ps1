@@ -1,6 +1,6 @@
 #_sdf1 String-search documents
 #_ver 1.5
-#_class user,document string search,powershell,HiSurfAdvisory,1
+#_class user,string search,powershell,HiSurfAdvisory,1
 
 <#
     Author: HiSurfAdvisory
@@ -1097,6 +1097,7 @@ do{
     ================================================#>
     else{
         $dyrl_eli_Z = $null
+        $dyrl_eli_TARGETS = @()         ## List of keywords
         $Script:dyrl_eli_CTR = 0        ## Track the files searched
         $Global:HOWMANY = 0             ## Track the total MACROSS results for investigation
         $Script:dyrl_eli_CONFIRMED = 0  ## Track the number of matches found by ELINTS
@@ -1111,14 +1112,15 @@ do{
         # Get required vars and run the search
         w '======         ~~ PDF SEARCHES ARE *ALWAYS* CASE-SENSITIVE ~~       ======' 'y' 'bl'
         w '======           ~~ REGEX IS UNRELIABLE FOR PDF SEARCHES ~~         ======' 'y' 'bl'
+        ''
         Write-Host -f GREEN ' Type "regex " (without quotes) followed by your expression to match a'
         Write-Host -f GREEN ' pattern, otherwise just enter your string or comma-separated keywords: '
         Write-Host '  >  ' -NoNewLine; 
-        $dyrl_eli_TARGET = Read-Host 
+        $tgt = Read-Host 
 
         ## Process special chars as literals if user didn't specify 'regex'
-        if($dyrl_eli_TARGET -notMatch "^regex "){
-            $dyrl_eli_TARGET = $dyrl_eli_TARGET -replace '\\','\\' `
+        if($tgt -notMatch "^regex "){
+            $tgt = $tgt -replace '\\','\\' `
                 -replace '\.','\.' `
                 -replace '\*','\*' `
                 -replace '\$','\$' `
@@ -1130,6 +1132,12 @@ do{
                 -replace '\]','\]' `
                 -replace '\{'.'\{' `
                 -replace '\}','\}'
+            if($tgt -Like "*,*"){
+                $tgt -Split "," | %{$dyrl_eli_TARGETS += $($_ -replace "^ ")}
+            }
+            else{
+                $dyrl_eli_TARGETS += $tgt
+            }
             while($dyrl_eli_CASE -notMatch "^(y|n)$"){
                 Write-Host -f GREEN ' Does case matter for non-PDFs? (' -NoNewline;
                 Write-Host -f YELLOW 'y' -NoNewLine;
@@ -1140,10 +1148,10 @@ do{
             }
         }
         else{
-            $dyrl_eli_TARGET = $dyrl_eli_TARGET -replace "^regex "
+            $dyrl_eli_TARGETS += $($tgt -replace "^regex ")
             $dyrl_eli_CASE = 'y'
         }
-        
+        Remove-Variable tgt
 
         ''
 
@@ -1151,14 +1159,17 @@ do{
         slp 1  ## pause script
 
 
-
+        $dyrl_eli_TARGETS | where{$_ -ne ''} | %{
+            $dyrl_eli_TARGET = $_
+            
         #==============================================================
         # Prep the output file, append new results if file already exists
         #==============================================================
         if( ! $dyrl_eli_norecord ){
-                    ## Change this write-to location if you feel the temporary PDF dumps should not be 
-                    ## written to analyst profiles. (But don't change the folder name, "pdf-dumps")
-                    $dumps = "C:\Users\$USR\AppData\Local\Temp\pdf-dumps"
+            
+            ## Change this write-to location if you feel the temporary PDF dumps should not be 
+            ## written to analyst profiles. (But don't change the folder name, "pdf-dumps")
+            $dumps = "C:\Users\$USR\AppData\Local\Temp\pdf-dumps"
                                
             $dyrl_eli_BKMARK = "===== KEYWORD: $dyrl_eli_TARGET SEARCHED: $dyrl_eli_DATE"                   
             $dyrl_eli_LINETOTAL = (Get-Content $dyrl_eli_intelpkg).count        ## Total sum of lines in intelpkg file
@@ -1199,7 +1210,7 @@ do{
                 w " TARGETING $dyrl_eli_BOGEY ($dyrl_eli_FSIZE)" 'c'
                 ## Determine scan method -- MS Office docs and PDFs require different methods
                 if( $dyrl_eli_RADARCONTACT -Match $msx ){
-                    $dyrl_eli_COLLECTIONS.Add($dyrl_eli_RADARCONTACT,$(msOffice $dyrl_eli_RADARCONTACT $dyrl_eli_TARGET)) #1
+                    $dyrl_eli_COLLECTIONS.Add($dyrl_eli_RADARCONTACT,$(msOffice $dyrl_eli_RADARCONTACT $dyrl_eli_TARGET))
                 }
                 
                 ## Use pdf-parser only if python is installed
@@ -1212,7 +1223,7 @@ do{
                             slp 2
                         }
                         else{
-                            $dyrl_eli_COLLECTIONS.Add($dyrl_eli_RADARCONTACT,$(pdfScan $dyrl_eli_RADARCONTACT $dyrl_eli_TARGET)) #'multi'
+                            $dyrl_eli_COLLECTIONS.Add($dyrl_eli_RADARCONTACT,$(pdfScan $dyrl_eli_RADARCONTACT $dyrl_eli_TARGET))
                         }
                     }
                     else{
@@ -1320,6 +1331,7 @@ do{
                 }
             }
         }
+        }
 
         ## Offer to copy files
         if( ! $dyrl_eli_SINGLE ){
@@ -1335,10 +1347,11 @@ do{
         
         pdfScan 'fin'  ## Ensure temp files get cleaned up
         
-        Remove-Variable dyrl_eli_COLLECTIONS,dyrl_eli_setCase
+        Remove-Variable dyrl_eli_COLLECTIONS,dyrl_eli_setCase,dyrl_eli_re,dyrl_eli_TARGET,dyrl_eli_CASE
+        $dyrl_eli_TARGETS = @()
         ## Offer to perform new search on same files
         while( $dyrl_eli_YN -notMatch "^(y|n)" ){
-            Write-Host '
+            w '
             '
             Write-Host -f GREEN " Do you want to search the same file(s) for a different string?  " -NoNewLine;
                 $dyrl_eli_Z = Read-Host
