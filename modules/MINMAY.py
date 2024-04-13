@@ -363,10 +363,9 @@ if PROTOCULTURE:
     from MACROSS using sys.argv.
     
     Now, I'll use the 9th arg passed to me, which in MACROSS is $PROTOCULTURE, to ask a
-    powershell script if it can find
-    
-    """,PROTOCULTURE,"""
-    
+    powershell script if it can find""")
+    mc.w('    ' + PROTOCULTURE,'y')
+    print("""
     in any other directories, as a demonstration of using tools written in powershell asking
     for data from python and vice-versa. 
     """
@@ -381,17 +380,12 @@ if PROTOCULTURE:
     passed me is a commonly seen filename for some trojanized documents. My next step is
     going to be to remove any filepaths or URLS attached to the filename, then pass it
     to another automation that can scan for filenames. The MACROSS "mcdefs" library contains
-    a basic regex function via the "re" library, so let's take a look at that PROTOCULTURE
-    value:
-    
-    """,PROTOCULTURE,"""
+    a basic regex function via the "re" library, so I'll just use some regex magic to strip 
+    out the filepath  via "mcdefs.rgx":
     """)
     Z1 = mc.rgx("^.*\\\\",PROTOCULTURE,'')
     Z2 = CALLER
-    print("""
-    I'll just use some regex magic to strip out the filepath  via "mcdefs.rgx":
-    
-                """,Z1)
+    mc.w('     ' + Z1,'y')
     next(1)
     mc.psc('cls')
     theDemo(Z1,Z2)
