@@ -1,6 +1,5 @@
 ## Functions controlling MACROSS's display
 
-## List of text colors for "write-host" cmdlet
 $Global:vf19_colors = @{
     'w'='white'
     'b'='blue'
@@ -231,7 +230,7 @@ function macrossHelp($1){
         'yorn'= @{'d'='Open a "yes/no" dialog to get response from analysts so your script can perform an action they choose.';'u'='Usage: if( $( yorn "SCRIPTNAME" $CURRENT_TASK ) -eq "No") { $STOP_DOING_TASK }'}
         'pyCross'= @{'d'="Write your powershell script's results to a generic file that can later be read by MACROSS python scripts. This file is written to a folder, 'core\py_classes\garbage_io', that MACROSS regularly empties.";'u'='Usage: pyCross "myScriptName" $VALUES_TO_WRITE'}
         'stringz'= @{'d'="Extract ASCII characters from binary files. Call this function without parameters to open a nav window and select a file. You can also send a filepath as parameter one. If you do not want to keep the output text file, send 1 as parameter two.";'u'="Usage: stringz ['path\to\file' (optional)] [1 (optional)]"}
-        'eMsg'= @{'d'="Send an integer 1-4 as the first parameter to display a canned message, or send your own message as the first parameter.  The second parameter is optional and will change the text color (It must be a color recognized by 'write-host')";'u'='Usage: eMsg [message number|your custom msg] [text color (optional)]'}
+        'eMsg'= @{'d'="Send an integer 0-3 as the first parameter to display a canned message, or send your own message as the first parameter.  The second parameter is optional and will change the text color (send the first letter or 'bl' for black)";'u'='Usage: eMsg [message number|your custom msg] [text color (optional)]'}
         'errLog'= @{'d'="Write messages to MACROSS' log folder. Timestamps are added automatically. You can read these logs by typing 'debug' into MACROSS' main menu.";'u'='Usage: errLog [message level, examples: "INFO"|"WARN"|"ERROR"] [message field 1] [message field 2]'}
         'collab'= @{'d'="Enrich or collect data from other MACROSS scripts. An optional value can be sent as parameter three if the called script's .evalmax value is 2.";'u'='Usage: collab [scriptToCall.extension] [yourScriptName] [optional value]'}
         'getHash'= @{'d'='Get the hash of a file.';'u'='Usage: getHash [filepath] [md5|sha256]'}
