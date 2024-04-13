@@ -140,8 +140,8 @@ if($dyrl_hik_Z -eq 2){
     writeDemo 4
     
     Write-Host -f GREEN "
- Give me a keyword or keywords (something a bit more specific than just 'change' or 'SQL'), or an ID like 
- 5157, and we'll see what GUBABA comes up with: " -NoNewline;
+ Give me a keyword or keywords like 'sql', 'sql audit', or an ID like 24054, and we'll see 
+ what GUBABA comes up with: " -NoNewline;
  $dyrl_hik_Z = Read-Host
  if($dyrl_hik_Z -ne ''){
     $Global:PROTOCULTURE = $dyrl_hik_Z
@@ -249,7 +249,9 @@ elseif($dyrl_hik_Z -eq 1){
     used by MACROSS as an index key for that line. If you have a regularly-used value, like a 
     server IP/hostname, that one or more of your MACROSS scripts requires, you can base64-encode 
     it, add a three-character "key" to the front of that base64 value, add a "@@@" to the front 
-    of that, then add the whole thing to the end of the block in "temp_config.txt".'
+    of that, then add the whole thing to the end of the block in "temp_config.txt".
+    
+    You can type "enc" in the main menu to encode a value.'
     w "
     No, this not for security, but I don't like leaving certain things sitting around hardcoded 
     in plaintext for keyword scanners to find. Don't use this for storing credentials or 
@@ -264,7 +266,7 @@ elseif($dyrl_hik_Z -eq 1){
     next
     splashPage 1
     Write-Host -f GREEN '
- IV. $vf19_MPOD & "getThis"
+ IV. The missile pod (MPOD) & "getThis"
  
     The values you encode in the temp_config file get stored by MACROSS in a hashtable called 
     $vf19_MPOD. When your script needs one of the values, simply select it with its key and 
@@ -312,7 +314,7 @@ elseif($dyrl_hik_Z -eq 1){
     next
     splashPage 1
     Write-Host -f GREEN '
- VI. MACROSS utilities
+ VII. MACROSS utilities
     
     Last but not least, MACROSS provides lots of extras your script can make use of. As this is 
     the "quick & dirty" demo, I will skip describing them and just let you view them from the 
