@@ -231,9 +231,12 @@ function pyATTS(){
 
     setUser() details:
 
-##  Define User Permissions:
+##  Define User Permissions and perform rudimentary access control:
+
     Checks to see if the user can lookup their name via two methods,
-    and set the global $USR value.
+    and set the global $USR value. I use two methods in case there's
+    any weirdness from people messing with $env when customizing their
+    stuff.
 
     First it looks at the logged-in account on the local system.
 
@@ -250,15 +253,20 @@ function pyATTS(){
     you don't have to change anything here. Just be aware you may get 
     annoying messages periodically about not having admin privileges
     because MACROSS doesn't know how to verify that without these checks.
+    Being a local system admin doesn't automatically mean you have Active-
+    Directory read-write permission.
 
     There are better ways to ID your users' access/permissions, but
     they will be unique to your environment. You can modify this
     function however works best on your enterprise. Just know that unless
     you enforce code-signing, all of this can be changed by anybody to 
-    bypass these functions.
+    bypass these functions. (The included script BASARA.ps1 can digitally
+    sign code for you if you have a signing cert.)
 
 ################################>
 function setUser($1){
+    ## This is the basic check your scripts can use to try and keep non-SOC people from
+    ## launching MACROSS tools
     if($1){
         if(($1 / $vf19_modifier) -ne $vf19_check){
         getThis '596f7520646f206e6f7420686176652061636365737320746f2074686973207363726970742e' 1
@@ -272,7 +280,7 @@ function setUser($1){
     else{
         $u = $([System.Security.Principal.WindowsIdentity]::GetCurrent().Name)  ## First attempt
         if( ! $u ){
-            $u = $env:USERNAME
+            $u = $env:USERNAME ## This should be accurate 99.99999999% of the time
         }
         
         ## $usr is a common var name, so other scripts might try to overwrite it. To prevent automatically 
