@@ -138,6 +138,9 @@ function unSign($spath){
         slp 2
     }
     else{
+        if($vf19_MPOD["log"]){  ## If running in MACROSS, log the fails
+            errLog 'ERROR' "$USR/BASARA" "Remove-signature failed for $spath"
+        }
         Write-Host -f CYAN " Whoops! Something went wrong. Better check that script, sorry!
         "
         Write-Host -f GREEN " Running " -NoNewline;
@@ -171,6 +174,9 @@ function certSign($spath,$cert){
                         Write-Host -f GREEN ")?  " -NoNewline;
     }
     else{
+        if($vf19_MPOD["log"]){  ## If running in MACROSS, log the fails
+            errLog 'ERROR' "$USR/BASARA" "Failed to sign $spath"
+        }
         Write-Host -f CYAN " Certificate signing failed! " -NoNewline;
             Write-Host -f GREEN " Do you want to try again?  " -NoNewline;
     }
