@@ -314,7 +314,7 @@ elseif($dyrl_hik_Z -eq 1){
     next
     splashPage 1
     Write-Host -f GREEN '
- VII. MACROSS utilities
+ VI. MACROSS utilities
     
     Last but not least, MACROSS provides lots of extras your script can make use of. As this is 
     the "quick & dirty" demo, I will skip describing them and just let you view them from the 
