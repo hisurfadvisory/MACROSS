@@ -754,11 +754,15 @@ if($MONTY){
 ## $1 is the filepath to search, $2 is the keyword(s)
 ####################################
 function setCase($1,$2){
+    ## Convert comma-separated words to regex "OR" list
+    if($2 -Like "*,*"){
+        $2 = '(' + $($2 -replace ",\s+",'|' -replace ",",'|') + ')'
+    }
     if( $dyrl_eli_CASE -eq 'y' ){
-        $a = Get-Content $1 | Select-String -CaseSensitive $2
+        $a = Get-Content $1 | where{$_ -cMatch $2} 
     }
     else{
-        $a = Get-Content $1 | Select-String $2
+        $a = Get-Content $1 | where{$_ -Match $2} 
     }
     if( $a ){
         $Script:dyrl_eli_CONFIRMED++
