@@ -164,12 +164,12 @@ $Global:M_ = [int[]](($N_ -split '') -ne '')
 
      eMsg()  details:
 
-    Send an integer 1-4 as the first parameter to display a canned message, or
+    Send an integer 0-3 as the first parameter to display a canned message, or
     send your own message as the first parameter. The second parameter is optional
-    and will change the text color (It must be a color recognized by "write-host")
+    and will change the text color (send the first letter or "bl" for black)
 
 ################################>
-function eMsg($1='ERROR: that module is unavailable!',$2='CYAN'){
+function eMsg($1='ERROR: that module is unavailable!',$2='c'){
 
     $msgs = @(
         'You are not in the correct security group. Exiting...',
@@ -188,9 +188,9 @@ function eMsg($1='ERROR: that module is unavailable!',$2='CYAN'){
         slp 2
     }
     else{
-        ## Default error message for failed tool checks; clear out $Z to avoid loops
+        ## Default error message for failed tool checks; clear the user input $Z to avoid loops
         cls
-        Write-Host -f CYAN "
+        Write-Host -f $($vf19_colors[$2]) "
         $1
         "
         $Global:vf19_Z = $null
@@ -231,12 +231,9 @@ function pyATTS(){
 
     setUser() details:
 
-##  Define User Permissions and perform rudimentary access control:
-
+##  Define User Permissions:
     Checks to see if the user can lookup their name via two methods,
-    and set the global $USR value. I use two methods in case there's
-    any weirdness from people messing with $env when customizing their
-    stuff.
+    and set the global $USR value.
 
     First it looks at the logged-in account on the local system.
 
@@ -246,39 +243,52 @@ function pyATTS(){
     loading tasks or functions that won't work for them by just checking
     for whether $vf19_ROBOTECH is 'true'.
 
-    You should change the very first "if" statement to match your
-    analyst's roles, if you want to use that level of access control.
-    The "$1" should match where the "Get-Random" statement calculates
-    generic session keys down below. If you don't care about access control
-    you don't have to change anything here. Just be aware you may get 
-    annoying messages periodically about not having admin privileges
-    because MACROSS doesn't know how to verify that without these checks.
-    Being a local system admin doesn't automatically mean you have Active-
-    Directory read-write permission.
+    You should change the section marked "TWEAK & UNCOMMENT" to match your
+    analyst's roles, if you want to use that level of access control. Again,
+    this requires both Active-Directory read permission, and actual group-
+    policies specific to analyst roles.
+    
+    If you don't care about access control you don't have to change anything 
+    here. Just be aware you may get annoying messages periodically about not 
+    having admin privileges because MACROSS doesn't know how to verify that 
+    without these checks.
 
     There are better ways to ID your users' access/permissions, but
     they will be unique to your environment. You can modify this
     function however works best on your enterprise. Just know that unless
-    you enforce code-signing, all of this can be changed by anybody to 
-    bypass these functions. (The included script BASARA.ps1 can digitally
-    sign code for you if you have a signing cert.)
+    you enforce code-signing, these checks can be altered by anybody to 
+    bypass these functions. If you are adding scripts that access APIs,
+    keep this in mind!!
 
 ################################>
 function setUser($1){
     ## This is the basic check your scripts can use to try and keep non-SOC people from
-    ## launching MACROSS tools
+    ## launching MACROSS tools. If they fail all of the checks, this function returns $false
+    ## and you can use that to auto-kill your script. After setting your GPO names below,
+    ## just add something like this to your code:
+    <#
+        if ( -not setUser $vf19_tier3 ){ Exit }
+    #>
     if($1){
-        if(($1 / $vf19_modifier) -ne $vf19_check){
-        getThis '596f7520646f206e6f7420686176652061636365737320746f2074686973207363726970742e' 1
-            Write-Host -f CYAN '
-        $vf19_READ
-            '
-            slp 2
-            Exit
+        $chk = $true
+        if($vf19_tier1 -eq $true -and $vf19_tier2 -eq $true){
+            if(($vf19_check / $1) -ne $vf19_modifier){
+                $chk = $false
+            }
         }
+        elseif($vf19_tier1 -eq $true){
+            if(($vf19_check / $1) -ne $vf19_modifier){
+                $chk = $false
+            }
+        }
+        elseif(($vf19_check / $1) -ne $vf19_modifier){
+            $chk = $false
+        }
+        if($chk){Return $true}else{eMsg 0; Return $false}
     }
     else{
-        $u = $([System.Security.Principal.WindowsIdentity]::GetCurrent().Name)  ## First attempt
+        ## First attempt to avoid any local weirdness
+        $u = $([System.Security.Principal.WindowsIdentity]::GetCurrent().Name)  
         if( ! $u ){
             $u = $env:USERNAME ## This should be accurate 99.99999999% of the time
         }
@@ -306,39 +316,53 @@ function setUser($1){
 
             <# TWEAK & UNCOMMENT THIS SECTION TO FURTHER ID YOUR USERS FOR SPECIAL FUNCTIONS
              # Obviously you need to change "cyber" and "sooper cyber" to match your SOC's group-policy names
-
+             
             if($priv | Select -ExpandProperty memberOf | where{$_ -like "*cyber**}){
             
-                Set-Variable -Name vf19_tier1 -Value $true -Scope Global -Option ReadOnly
-                ## Or... create randomly generated keys as identifiers for each session
+                ## Create randomly generated keys as identifiers for each session
                 ## Begin your "Tier 3 ONLY!" scripts with checks like 
 
                 ##    try { setUser $vf19_tier3 } catch { Exit }
 
-                ##  which checks if the "tier3" key and the "check" keys match. There's not
-                ##  really a huge difference and isn't "security", just a basic access control
-                ##  if you have nothing else. Code-signing helps, otherwise this can be bypassed
-                ##  pretty easily.
+                ##  which checks if the "tier3" key and the "check" keys match. It's not really
+                ##  "security", just a basic access control if you have nothing else. Code-signing 
+                ##  helps, otherwise this can be bypassed pretty easily.
 
                 #Set-Variable -Name vf19_tier1 -Value $(Get-Random -min 10000000 -max 9999999999) -Scope Global -Option ReadOnly
                 #Set-Variable -Name vf19_modifier -Value $(Get-Random -min 500 -max 50000) -Scope Global -Option ReadOnly
                 #Set-Variable -Name vf19_check -Value $($vf19_tier1 * $vf19_modifier) -Scope Global -Option ReadOnly
+                #Set-Variable -Name vf19_tier2 -Value $false -Scope Global -Option ReadOnly
+                #Set-Variable -Name vf19_tier3 -Value $false -Scope Global -Option ReadOnly
             }
             elseif($priv | Select -ExpandProperty memberOf | where{$_ -like "*sooper cyber**}){
                 Set-Variable -Name vf19_tier1 -Value $true -Scope Global -Option ReadOnly
+                Set-Variable -Name vf19_tier2 -Value $(Get-Random -min 10000000 -max 9999999999) -Scope Global -Option ReadOnly
+                Set-Variable -Name vf19_modifier -Value $(Get-Random -min 500 -max 50000) -Scope Global -Option ReadOnly
+                Set-Variable -Name vf19_check -Value $($vf19_tier2 * $vf19_modifier) -Scope Global -Option ReadOnly
+                Set-Variable -Name vf19_tier3 -Value $false -Scope Global -Option ReadOnly
+            }elseif($priv | Select -ExpandProperty memberOf | where{$_ -like "*sooper dooper cyber**"}){
+                Set-Variable -Name vf19_tier1 -Value $true -Scope Global -Option ReadOnly
+                Set-Variable -Name vf19_tier2 -Value $true -Scope Global -Option ReadOnly
                 Set-Variable -Name vf19_tier3 -Value $(Get-Random -min 10000000 -max 9999999999) -Scope Global -Option ReadOnly
-                Set-Variable -Name vf19_check -Value $($vf19_tier1 + 53) -Scope Global -Option ReadOnly
+                Set-Variable -Name vf19_modifier -Value $(Get-Random -min 500 -max 50000) -Scope Global -Option ReadOnly
+                Set-Variable -Name vf19_check -Value $($vf19_tier3 * $vf19_modifier) -Scope Global -Option ReadOnly
+            }
+            else{
+                Set-Variable -Name vf19_tier1 -Value $false -Scope Global -Option ReadOnly
+                Set-Variable -Name vf19_tier2 -Value $false -Scope Global -Option ReadOnly
+                Set-Variable -Name vf19_tier3 -Value $false -Scope Global -Option ReadOnly
             }
             #>
 
             Remove-Variable priv
         }
 
-        ## Tag the user as a non-admin lesser being if they can't read AD
+        ## Tag the user as a non-admin lesser being if they can't read Active-Directory or perform local
+        ## admin tasks
         catch{
             if($USR -notIn $(Get-LocalGroupMember Administrators).Name -replace "^.+\\"){
                 $Global:vf19_ROBOTECH = $true
-            } 
+            }
         }
 
 
