@@ -468,6 +468,7 @@ function collab(){
 
     if($module -Like "*py"){
         $py = $true
+        $pyATTS = pyATTS
     }
     $Global:CALLER = $C
     
@@ -475,33 +476,38 @@ function collab(){
     $mod = "$vf19_TOOLSDIR\$module"
 
     if( Test-Path -Path $mod ){
-        if( $vf19_NEWWINDOW ){  ## Launches script in new window if user desires; WILL NOT SHARE CORE MACROSS VALUES OR FUNCTIONS!
-            $vf19_NEWWINDOW = $false
-            if($py){
-                #Start-Process powershell.exe "python3 $mod $CALLER $extra"
-                Start-Process powershell.exe "py $mod $CALLER $extra"
+        if($py){
+            if( $vf19_NEWWINDOW ){ 
+                if( $extra -ne $PROTOCULTURE ){
+                    #Start-Process powershell.exe "python3
+                    Start-Process powershell.exe "py $mod $USR $pyATTS $vf19_DEFAULTPATH $vf19_PYPOD $N_ $vf19_pylib $vf19_TOOLSROOT $CALLER $PROTOCULTURE $extra"
+                } 
+                else{
+                    Start-Process powershell.exe "py $mod $USR $pyATTS $vf19_DEFAULTPATH $vf19_PYPOD $N_ $vf19_pylib $vf19_TOOLSROOT $CALLER $PROTOCULTURE"
+                }
             }
             else{
-               Start-Process powershell.exe "$mod $CALLER $extra"
-            }
-        }
-        else{
-            if($py){
-                $pyATTS = pyATTS
-                if( $extra -ne $PROTOCULTURE ){  ## Pass both $extra and $PROTOCULTURE to python if they are different values
-                    #python3 $mod $USR $vf19_DEFAULTPATH $vf19_PYPOD $vf19_numchk $vf19_pylib $vf19_TOOLSROOT $CALLER $PROTOCULTURE $extra
+                if( $extra -ne $PROTOCULTURE ){
+                    #python3 $mod
                     py $mod $USR $pyATTS $vf19_DEFAULTPATH $vf19_PYPOD $N_ $vf19_pylib $vf19_TOOLSROOT $CALLER $PROTOCULTURE $extra
-                }
+                } 
                 else{
-                    #python3 $mod $USR $vf19_DEFAULTPATH $vf19_PYPOD $vf19_numchk $vf19_pylib $vf19_TOOLSROOT $CALLER $PROTOCULTURE
                     py $mod $USR $pyATTS $vf19_DEFAULTPATH $vf19_PYPOD $N_ $vf19_pylib $vf19_TOOLSROOT $CALLER $PROTOCULTURE
                 }
             }
-            else{
-                . $mod $extra
-                Remove-Variable -Force CALLER -Scope Global
-            }
         }
+        else{
+            if( $vf19_NEWWINDOW ){
+                ## Launches script in new window if user desires; WILL NOT SHARE CORE MACROSS VALUES OR FUNCTIONS!
+                Start-Process powershell.exe "$mod $CALLER $extra"
+            }
+            else{
+                . $mod $extra  
+            }
+            Remove-Variable -Force CALLER -Scope Global
+        }
+        
+        $vf19_NEWWINDOW = $false  ## Always reset value
     }
     else{
         eMsg
@@ -583,10 +589,10 @@ function availableMods($1){
     if( $($1).getType().Name -eq 'Int32' ){
 
             # Use the adjusted input as the index for the MODULENUM array
-            $MODULE = $Global:vf19_MODULENUM[$1]
+            $MODULE = "$vf19_TOOLSDIR\$($vf19_MODULENUM[$1])"
 
             # Make sure the script is still valid before trying to run
-            $MODCHK = Test-Path "$vf19_TOOLSDIR\$MODULE" -PathType Leaf
+            $MODCHK = Test-Path $MODULE -PathType Leaf
 
             if( $MODCHK ){
 
@@ -606,36 +612,41 @@ function availableMods($1){
 
                 
                 # Run the script selected by the user
-                if( $MODULE -Match "py$" ){  # MACROSS already checked for python install, ignores if $MONTY is $false
+                if( $MODULE -Like "*py" ){  # MACROSS already checked for python install, ignores if $MONTY is $false
                     cls
                     if( $HELP ){
-                        py "$vf19_TOOLSDIR\$MODULE" 'HELP' '' '' '' $vf19_pylib
+                        py $MODULE 'HELP' '' '' '' $vf19_pylib
                     }
                     else{
 
                         ## Convert [macross] objects for python; python will be able to see each script's
-                        ## .name and .valtype from the $vf19_ATTS hashtable
+                        ## .name and .valtype from the $vf19_LATTS hashtable
                         $pyATTS = pyATTS
 
                         
-                        ## Always send 6 default args for all python scripts to make use of:
-                        ## The user; their desktop; the MPOD hashtable; the numchk integer; the filepath to the MACROSS py library;
-                        ##  and the path to the \resources folder
-                        py "$vf19_TOOLSDIR\$MODULE" $USR $pyATTS $vf19_DEFAULTPATH $vf19_PYPOD $N_ $vf19_pylib $vf19_TOOLSROOT
+                        ## Always send 7 default args for all python scripts to make use of:
+                        ## The user; the LATTS array; their desktop; the MPOD array; the N_ integer; the filepath to the MACROSS py library;
+                        ##  and the path to the MACROSS root folder
+                        if($vf19_NEWWINDOW){
+                            $MODULE = $($MODULE -replace "\\\\",'\')
+                            Start-Process powershell.exe "py $MODULE $USR $pyATTS $vf19_DEFAULTPATH $vf19_PYPOD $N_ $vf19_pylib $vf19_TOOLSROOT"
+                        }
+                        else{
+                            py $MODULE $USR $pyATTS $vf19_DEFAULTPATH $vf19_PYPOD $N_ $vf19_pylib $vf19_TOOLSROOT
+                        }
 
                     }
                 }
                 else{
                     $1 = ''
                     if( $vf19_NEWWINDOW ){  ## Launches script in new window if user desires; WILL NOT SHARE CORE MACROSS FUNCTIONS!
-                        $Global:vf19_NEWWINDOW = $false
-                        Start-Process powershell.exe "$vf19_TOOLSDIR\$MODULE"
+                        Start-Process powershell.exe $MODULE
                     }
                     else{
-                        . "$vf19_TOOLSDIR\$MODULE"
+                        . $MODULE
                     }
-                }  
-                
+                }
+                $Global:vf19_NEWWINDOW = $false  ## Always make sure this is reset
             }
             else{
                 eMsg  # User chose a number outside the range
