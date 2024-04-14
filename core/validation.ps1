@@ -466,24 +466,11 @@ function collab(){
         $extra
     )
 
-    if(-not($module)){
-        Read-Host -f CYAN "
-        A script name wasn't supplied!
-        "
-        Return
-    }
-    elseif($module -Like "*py"){
+    if($module -Like "*py"){
         $py = $true
     }
-    if(-not($C)){
-        Read-Host -f CYAN "
-        A CALLER name wasn't supplied!
-        "
-        Return
-    }
-    else{
-        $Global:CALLER = $C
-    }
+    $Global:CALLER = $C
+    
 
     $mod = "$vf19_TOOLSDIR\$module"
 
