@@ -324,14 +324,15 @@ function setUser($1){
                 ##    try { setUser $vf19_tier3 } catch { Exit }
 
                 ##  which checks if the "tier3" key and the "check" keys match. It's not really
-                ##  "security", just a basic access control if you have nothing else. Code-signing 
-                ##  helps, otherwise this can be bypassed pretty easily.
+                ##  "security", just a basic access control if you have nothing else. Restricting 
+                ##  script execution with signed code helps, otherwise this can be bypassed pretty 
+                ##  easily.
 
-                #Set-Variable -Name vf19_tier1 -Value $(Get-Random -min 10000000 -max 9999999999) -Scope Global -Option ReadOnly
-                #Set-Variable -Name vf19_modifier -Value $(Get-Random -min 500 -max 50000) -Scope Global -Option ReadOnly
-                #Set-Variable -Name vf19_check -Value $($vf19_tier1 * $vf19_modifier) -Scope Global -Option ReadOnly
-                #Set-Variable -Name vf19_tier2 -Value $false -Scope Global -Option ReadOnly
-                #Set-Variable -Name vf19_tier3 -Value $false -Scope Global -Option ReadOnly
+                Set-Variable -Name vf19_tier1 -Value $(Get-Random -min 10000000 -max 9999999999) -Scope Global -Option ReadOnly
+                Set-Variable -Name vf19_modifier -Value $(Get-Random -min 500 -max 50000) -Scope Global -Option ReadOnly
+                Set-Variable -Name vf19_check -Value $($vf19_tier1 * $vf19_modifier) -Scope Global -Option ReadOnly
+                Set-Variable -Name vf19_tier2 -Value $false -Scope Global -Option ReadOnly
+                Set-Variable -Name vf19_tier3 -Value $false -Scope Global -Option ReadOnly
             }
             elseif($priv | Select -ExpandProperty memberOf | where{$_ -like "*sooper cyber**}){
                 Set-Variable -Name vf19_tier1 -Value $true -Scope Global -Option ReadOnly
@@ -357,7 +358,7 @@ function setUser($1){
         }
 
         ## Tag the user as a non-admin lesser being if they can't read Active-Directory or perform local
-        ## admin tasks
+        ## admin tasks. This way, you can restrict or disable admin functions by checking if $vf19_ROBOTECH is true.
         catch{
             if($USR -notIn $(Get-LocalGroupMember Administrators).Name -replace "^.+\\"){
                 $Global:vf19_ROBOTECH = $true
