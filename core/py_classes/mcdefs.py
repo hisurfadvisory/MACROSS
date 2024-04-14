@@ -10,15 +10,15 @@
         [2] $pyATTS -- The macross class .name and .valtype attributes from
                 all of the scripts in the "modules" folder
         [3] $vf19_DEFAULTPATH -- the user's desktop
-        [4] $vf19_PYOPT -- The base64 encoded defaults contained
+        [4] $vf19_PYPOD -- The base64 encoded defaults contained
                 in $vf19_MPOD, but reformatted so python doesn't complain
         [5] $vf19_numchk -- MACROSS' mathing integer
         [6] $vf19_pylib -- the path to the mcdefs.py file
         [7] $vf19_TOOLSROOT -- the path to MACROSS' root folder
         
-    Unless you make this 'mcdefs' library part of your default python env,
+    No need to make this 'mcdefs' library part of your default python env,
     you can simply make use of the $vf19_pylib argument in your scripts
-    to temporarily add the import path. This method works well enough for me.
+    to temporarily add the import path.
     
     By default it should always be the 6th argument sent by the "collab" or
     "availableMods" functions in the validation.ps1 file:
@@ -46,24 +46,21 @@
         
                     mcdefs.getDefaults(<your index>)
                     
-        ...provided you've set it up properly in the MACROSS utility.ps1 file.
+        ...provided you've set it up properly in the MACROSS temp_config.txt file.
         
     Additionally, to aid in sharing query results back and forth between powershell and
     python, the py_classes folder contains a subfolder called 'garbage_io'. MACROSS
-    powershell scripts can write their outputs into this directory, using *.eod files,
-    whenever they get called from python (there is a built-in utility called "pyCross" in
-    the utility.ps1 file specifically to do this). These are plaintext files that you can
-    read() and split() to collect results that might be too large or complex to receive as
-    a simple variable.
+    scripts can write their outputs into this directory, using *.eod files, (there is a 
+    built-in utility called "pyCross" in the utility.ps1 file specifically to do this). 
+    These are plaintext files that you can read() and split() to collect results that 
+    might need to be stored for later in a session.
     
-    MACROSS powershell scripts already know the location of this folder as $vf19_GBIO. You
-    can set the location in python using the sys library, set as
+    MACROSS powershell scripts already know the location of this folder as $vf19_GBIO. 
+    You can set the location in python using the sys library, set as
     
                     vf19_GBIO = sys.argv[6] + '\\core\\py_classes\\garbage_io'
                     
-    These eod files are automatically deleted when MACROSS exits cleanly, or
-    when MACROSS starts after a crash where it did not get to delete them when
-    expected.
+    The garbage_io folder is automatically cleaned up when MACROSS exits.
     
 '''
 
@@ -80,14 +77,13 @@ import array as arr
 from subprocess import run as srun
 from os import system as osys
 from os import popen as osop
-from os import path as path
+from os import path
 from os import remove as osrm
 from time import sleep as ts
 from tkinter import Tk
 from tkinter.filedialog import askopenfilename as peek
 import math
-import sys
-import re
+from re import search,sub
 
 
 ## Enable powershell colors
@@ -137,7 +133,7 @@ def makeM(n):
 def dS(d):
     confirm = input('''
     Are you sure you want to delete''',d)
-    if re.search("^y",confirm):
+    if search("^y",confirm):
         osrm(d)
 
 ## Regex is your friend
@@ -145,9 +141,9 @@ def dS(d):
 ## Pass in a replacement string as a third arg to do basic string edits
 def rgx(pattern,string,replace = None):
     if replace == None:
-        r = re.search(pattern,string)
+        r = search(pattern,string)
     else:
-        r = re.sub(pattern,replace,string)
+        r = sub(pattern,replace,string)
 
     return r
 
@@ -174,15 +170,15 @@ def psc(c,cc = None):
 
 ## Also from the os library, *path* has lots of common uses for MACROSS
 ## Verify the existence of a path, file or directory.
-## "check" is what you're looking to verify, "method" is its type
+## Send what you're looking to verify as arg 1, and its type ("dir" vs. "file") as optional arg 2
 ## This function returns true/false
-def dirfile(check,method = 'exists'):
-    if method == 'exists':
-        a = path.exists(check)
-    elif method == 'isfile':
+def drfl(check,method = 'e'):
+    if method == 'file':
         a = path.isfile(check)
-    elif method == 'isdir':
+    elif method == 'dir':
         a = path.isdir(check)
+    elif method == 'e':
+        a = path.exists(check)
 
     return a
 
@@ -491,7 +487,7 @@ def screenResults(A = 'endr',B = None,C = None):
 
 
 ## Same as MACROSS's "getThis" function, decodes B64 and hex values.
-## !!! However, it returns the decoded value to your call, it does NOT write to "vf19_READ" !!!
+## !!! However, it returns the decoded value to your request, it does NOT write to "vf19_READ" !!!
 ## 'd' is the value to decode;
 ## 'e' is the encoding:
 ##        0 = decode base64
@@ -502,19 +498,19 @@ def screenResults(A = 'endr',B = None,C = None):
 ##  You can pass an optional 3rd arg to specify the out-encoding
 ##  (ascii, ANSI, etc, default is UTF-8).
 ##
-##      MYVAR = mcdefs.getThisPy('base64 string',0)
-##      MYVAR = mcdefs.getThisPy('hex string',1,'ascii')
+##      MYVAR = mcdefs.getThis('base64 string',0)
+##      MYVAR = mcdefs.getThis('hex string',1,'ascii')
 ##
-def getThisPy(d,e,ee = 'utf8'):
-    """This is the same as MACROSS' powershell function 'getThis'. Your first argument is the\nencoded string you want to decode, and your second arg will be:\n(0) if decoding base64,\nor (1) if decoding hexadecimal,\nor (2) if encoding to base64,\nor (3) if encoding to hex.\n\nUsage:  var = mcdefs.getThisPy('base64string',0)\n                OR\nvar = mcdefs.getThisPy('hexstring',1)"""
+def getThis(d,e,ee = 'utf8'):
+    """This is the same as MACROSS' powershell function 'getThis'. Your first argument is the\nencoded string you want to decode, and your second arg will be:\n(0) if decoding base64,\nor (1) if decoding hexadecimal,\nor (2) if encoding to base64,\nor (3) if encoding to hex.\n\nUsage:  var = mcdefs.getThis('base64string',0)\n                OR\nvar = mcdefs.getThis('hexstring',1)"""
     if e == 0:
         newval = b64.b64decode(d)
         newval = newval.decode(ee)
     elif e == 1:
-        if re.search('0x',d):
-            d = re.sub('0x','',d)
-        if re.search(' ',d):
-            d = re.sub(' ','',d)
+        if search('0x',d):
+            d = sub('0x','',d)
+        if search(' ',d):
+            d = sub(' ','',d)
         newval = bytes.fromhex(d).decode(ee)
     elif e == 2:
         newval = b64.b64encode(d)
@@ -531,44 +527,44 @@ def getThisPy(d,e,ee = 'utf8'):
 
 ##    MACROSS calls all python scripts with at least 7 args (8, if you count
 ##    the script itself being called via python). The fourth arg is always
-##    $dash_PYOPT, a string that the getDefaults function can use to create a
+##    $vf19_PYOPT, a string that the getDefaults function can use to create a
 ##    dictionary that lets your python scripts share the same default
 ##    directories/values as MACROSS' $vf19_MPOD hashtable.
 ##    
 ##    Declare a new dictionary by calling this function with sys.argv[3] as
 ##    your first argument (x), and 0 as your second argument (y). After you have
 ##    your dictionary, you can decode its indexes at any time by calling
-##    this function again with a specific index, and (1) as the second arg.
+##    this function again with a specific index, and no second arg.
 ##    
 ##    EXAMPLES:
 ##
 ##
-##        vf19_PYOPT = mcdefs.getDefaults(sys.argv[3],0)
+##        vf19_PYPOD = mcdefs.getDefaults(sys.argv[3],0)
 ##        ^^ This is your dictionary, containing any indexed values you supplied in the
-##        extras.ps1 file as described in the README files.
+##        temp_config.txt file as described in the README files.
 ##        
-##        repo = mcdefs.getDefaults(vf19_PYOPT['nre'],1)
+##        repo = mcdefs.getDefaults(vf19_PYPOD['nre'])
 ##        ^^If you set your master repo location with 'nre' as its index, then calling
 ##        getDefaults again will decode that filepath for you to use anytime in
-##        your python scripts. Make sure to set (1) as the second arg!
+##        your python scripts.
 ##
 ##
-def getDefaults(x,y):
-    """This function is solely for splitting and decoding MACROSS' $vf19_PYOPT list\ninto the encoded default strings your scripts may need to use. To create your\ninitial dictionary, call this function with a (0) for the second arg. After that,\ncall with the specific index needed from your dictionary with a (1) as the second arg.\n\n    Usage:  vf19_PYOPT = mcdefs.getDefaults(sys.argv[3],0)\nNow let's say vf19_PYOPT contains an index 'tbl' with the filepath to some JSON files:\n    JSONdir = mcdefs.getDefaults(vf19_PYOPT['tbl'],1)"""
+def getDefaults(x,y = 1):
+    """This function is solely for splitting and decoding MACROSS' $vf19_PYPOD list\ninto the encoded default strings your scripts may need to use. To create your\ninitial dictionary, call this function with a (0) for the second arg. After that,\ncall with the specific index needed from your dictionary with a (1) as the second arg.\n\n    Usage:  vf19_PYPOD = mcdefs.getDefaults(sys.argv[3],0)\nNow let's say vf19_PYPOD contains an index 'tbl' with the filepath to some JSON files:\n    JSONdir = mcdefs.getDefaults(vf19_PYPOD['tbl'],1)"""
     if y == 0:
         newlist = {}
         w = x.split(',')
         for line in w:
             kkey = line[0:3]
-            kval = re.sub("^.{3}",'',line)
+            kval = sub("^.{3}",'',line)
             kdct = {kkey:kval}
             newlist.update(kdct)
         return newlist
     elif y == 1:
-        DECVAL = getThisPy(x,0)
+        DECVAL = getThis(x,0)
         return DECVAL
 
-## Similar to getDefaults above, but replicates MACROSS' $vf19_ATTS hashtable so that python
+## Similar to getDefaults above, but replicates MACROSS' $vf19_LATTS hashtable so that python
 ## scripts can read the [macross].name and [macross].valtype attributes of other scripts.
 def getATTS(l):
     """MACROSS passes the .name and .valtype attributes from its $vf19_ATTS hashtable via sys.argv[2]\nevery time it calls a python script. Send that value to this function, and you will get a pythonized\n$vf19_ATTS dictionary to do macross attribute evals in your python scripts."""
