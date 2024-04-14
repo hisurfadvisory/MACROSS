@@ -139,7 +139,7 @@ ilZrilZDilZ0g4paI4paI4pWR4paI4paI4pWR4paI4paI4pWRIOKVmuKWiOKWiOKWiOKWiOKVkeKWiOK
 DilZ0g4paI4paI4pWR4paI4paI4pWRICDilojilojilZEgICDilojilojilZEgCiAgICAgICDilZrilZDilZ0gICAgIOKVm\
 uKVkOKVneKVmuKVkOKVneKVmuKVkOKVnSAg4pWa4pWQ4pWQ4pWQ4pWd4pWa4pWQ4pWdICAgICDilZrilZDilZ3ilZrilZDil\
 Z0gIOKVmuKVkOKVnSAgIOKVmuKVkOKVnSA='
-    STR = mc.getThisPy(b,0)
+    STR = mc.getThis(b,0)
     print('''
     ''')
     mc.w(STR,'y')
@@ -175,7 +175,7 @@ def theDemo(Z1 = '',Z2 = None):
             Z1 = input('''
     Keyword: ''')
         Z1 = '\'' + Z1 + '\''
-    Z2 = '                    konig = konig + ' + Z1
+    C = '                    konig = konig + ' + Z1
     print('''
     Let's continue with building a query to get KÖNIG on the launchpad:
     ''')
@@ -187,8 +187,8 @@ def theDemo(Z1 = '',Z2 = None):
     root folder location) was stored in argv[7]. So now python knows how to
     find KÖNIG. Now we can add the input you gave me to search for:
     ''')
-    mc.w(Z2,'y')
-    Z2 = None
+    mc.w(C,'y')
+    del(C)
     print('''
     If you read KÖNIG's documentation, you'll see it needs several parameters passed
     to it if you try to call it without MACROSS, the first param being the value you
@@ -221,6 +221,13 @@ def theDemo(Z1 = '',Z2 = None):
     argv[3] (the current user's desktop, where KÖNIG writes its findings to):
     ''')
     mc.w("            konig = konig + vf19_DEFAULTPATH + '-ErrorAction SilentlyContinue'",'y')
+    gbg = vf19_TOOLSROOT + '\\core\\py_classes\\garbage_io'
+    usrhome = 'C:\\Users\\' + USR
+    usrhome = ' "' + usrhome + '" '
+    konig = vf19_TOOLSROOT + '\\modules\\KONIG.ps1 '
+    konig = 'powershell.exe ' + konig + '"' + Z1 + '"' + ' "pyMINMAY" ' + usrhome
+    konig = konig + '"' + gbg + '" '
+    konig = konig + '"' + vf19_DEFAULTPATH + '"' + ' -ErrorAction SilentlyContinue'
     print('''
     I also added the "ErrorAction" option at the end, because KÖNIG expects certain
     resources from MACROSS that it won't get from me, and we don't want to see all
@@ -236,18 +243,11 @@ def theDemo(Z1 = '',Z2 = None):
     For this demo, I'm using the "psc" function in mcdefs to execute a powershell
     script with the command I just finished building with your $PROTOCULTURE:
     ''')
-    mc.w('            mcdefs.psc(konig)','y')
+    mc.w(' ' + konig,'y')
     print('''
     After KÖNIG finishes its mission and returns to python, I'll explain the "garbage_io".''')
     input('''
     Hit ENTER to launch KÖNIG!''')
-    gbg = vf19_TOOLSROOT + '\\core\\py_classes\\garbage_io'
-    usrhome = 'C:\\Users\\' + USR
-    usrhome = ' "' + usrhome + '" '
-    konig = vf19_TOOLSROOT + '\\modules\\KONIG.ps1 '
-    konig = 'powershell.exe ' + konig + '"' + Z1 + '"' + ' "pyMINMAY" ' + usrhome
-    konig = konig + '"' + gbg + '" '
-    konig = konig + '"' + vf19_DEFAULTPATH + '"' + ' -ErrorAction SilentlyContinue'
     mc.psc(konig)
 
     mc.psc('cls')
@@ -274,10 +274,10 @@ def theDemo(Z1 = '',Z2 = None):
     how it works.
     
     The garbage_io location should still be valid as our variable "gbg" so, let's check using
-    the mcdefs.dirfile() function...
+    the mcdefs.drfl() function...
     ''')
     RCV = '''            konfile = gbg + '\\konig.eod'
-            if mcdefs.dirfile(konfile,'isfile'):
+            if mcdefs.drfl(konfile):
                 chkresults = open(konfile,encoding='utf-8')
                 konhits = chkresults.read()
                 print(konhits)
@@ -286,7 +286,7 @@ def theDemo(Z1 = '',Z2 = None):
     next(1)
     mc.psc('cls')
     konfile = gbg + '\\konig.eod'
-    if mc.dirfile(konfile,'isfile'):
+    if mc.drfl(konfile):
         chkresults = open(konfile,encoding='utf-8')
         konhits = chkresults.read()
         print('''
@@ -363,7 +363,8 @@ if PROTOCULTURE:
     from MACROSS using sys.argv.
     
     Now, I'll use the 9th arg passed to me, which in MACROSS is $PROTOCULTURE, to ask a
-    powershell script if it can find""")
+    powershell script if it can find
+    """)
     mc.w('    ' + PROTOCULTURE,'y')
     print("""
     in any other directories, as a demonstration of using tools written in powershell asking
@@ -381,7 +382,7 @@ if PROTOCULTURE:
     going to be to remove any filepaths or URLS attached to the filename, then pass it
     to another automation that can scan for filenames. The MACROSS "mcdefs" library contains
     a basic regex function via the "re" library, so I'll just use some regex magic to strip 
-    out the filepath  via "mcdefs.rgx":
+    out the filepath via "mcdefs.rgx":
     """)
     Z1 = mc.rgx("^.*\\\\",PROTOCULTURE,'')
     Z2 = CALLER
