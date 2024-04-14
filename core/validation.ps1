@@ -615,7 +615,7 @@ function availableMods($1){
                 if( $MODULE -Like "*py" ){  # MACROSS already checked for python install, ignores if $MONTY is $false
                     cls
                     if( $HELP ){
-                        py $MODULE 'HELP' '' '' '' $vf19_pylib
+                        py $MODULE 'HELP' '' '' '' '' $vf19_pylib
                     }
                     else{
 
@@ -628,7 +628,7 @@ function availableMods($1){
                         ## The user; the LATTS array; their desktop; the MPOD array; the N_ integer; the filepath to the MACROSS py library;
                         ##  and the path to the MACROSS root folder
                         if($vf19_NEWWINDOW){
-                            $MODULE = $($MODULE -replace "\\\\",'\')
+                            $MODULE = $($MODULE -replace "\\\\",'\') ## I don't know why extra slashes get added sometimes
                             Start-Process powershell.exe "py $MODULE $USR $pyATTS $vf19_DEFAULTPATH $vf19_PYPOD $N_ $vf19_pylib $vf19_TOOLSROOT"
                         }
                         else{
