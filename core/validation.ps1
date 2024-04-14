@@ -482,7 +482,7 @@ function collab(){
                 Start-Process powershell.exe "py $mod $CALLER $extra"
             }
             else{
-               Start-Process powershell.exe -File $mod $CALLER $extra
+               Start-Process powershell.exe "$mod $CALLER $extra"
             }
         }
         else{
