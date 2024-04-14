@@ -301,9 +301,8 @@ function setUser($1){
 
 
         ## Check Active Directory GPO first; I ***hope*** non-admins can't run Active Directory cmdlets!!!!
-        if(Get-ADUser -Filter * -Properties memberOf | where{$_.samAccountName -eq $USR}){
-            $priv = Get-ADUser -Filter * -Properties memberOf | where{$_.samAccountName -eq $USR}
-        }
+        $priv = Get-ADUser -Filter * -Properties memberOf | where{$_.samAccountName -eq $USR}
+        
         ## Check local permissions next
         if( ! $priv ){
             if(Get-LocalGroupMember Administrators -Member $USR){
