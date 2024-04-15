@@ -147,18 +147,17 @@ function startUp(){
     ## out the actual integers in plaintext. If you deploy MACROSS for multiple users, delete this
     ## comment section. This is NOT a security feature, but sometimes you just need to obfuscate things.
     ##
-    ## This value is currently calculated using the first line in MACROSS.ps1. However, If you plan
-    ## to perform sensitive mathing, I recommend changing the get-content location to somewhere
+    ## This value is currently calculated using the first line in validation.ps1. However, If you plan
+    ## to perform sensitive mathing, I recommend changing the calculation method to something
     ## external to MACROSS that you control access to.
     ##
     ## To see the default values, from the main menu, enter "debug $N_" or "debug $M_"
     $i = 0
-    $mio = (Get-Content "$vf19_TOOLSROOT\MACROSS.ps1" | Select -Index 2) -replace "^..."
-    $mio = Get-Content "$vf19_TOOLSROOT\MACROSS.ps1" | Select -Index 0
+    $mio = Get-Content "$vf19_TOOLSROOT\core\validation.ps1" | Select -Index 0
     $mio -Split('') | %{
         $i = $i + $(ord "$_")
     }
-    $Global:N_ = 671042 + ($i * 39)
+    $Global:N_ = 671042 + ($i * 39); rv mio
 
 
 
