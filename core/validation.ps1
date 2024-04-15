@@ -1,4 +1,5 @@
-## Functions for MACROSS input validations
+## Functions for MACROSS input validations. You shouldn't need to modify anything here except the "setUser" function if
+## you plan to use the basic access control.
 
 
 
@@ -152,11 +153,7 @@ function SJW($1){
 }
 
 
-##  This is an array of 6 digits created from a calculated integer in
-##  MACROSS.ps1. Use it for mathing obfuscation or anything else
-##  you can think of where you don't want digits written in
-##  plaintext.
-$Global:M_ = [int[]](($N_ -split '') -ne '')
+
 
 
 
@@ -287,6 +284,13 @@ function setUser($1){
         if($chk){Return $true}else{eMsg 0; Return $false}
     }
     else{
+        ##  This is an array of 6 digits created from a calculated integer in
+        ##  MACROSS.ps1. Use it for mathing obfuscation or anything else
+        ##  you can think of where you don't want digits written in
+        ##  plaintext.
+        $mm = [int[]](($N_ -split '') -ne '')
+        Set-Variable -Name M_ -Value $mm -Scope Global -Option ReadOnly; rv mm
+    
         ## First attempt to avoid any local weirdness
         $u = $([System.Security.Principal.WindowsIdentity]::GetCurrent().Name)  
         if( ! $u ){
