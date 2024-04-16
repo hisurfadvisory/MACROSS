@@ -54,7 +54,7 @@ if L >= 7:
     ##  In order, they are:
     USR = argv[1]                   ## The logged-in user
     atts = argv[2]                  ## The $vf19_LATTS hashtable attributes .name and .valtype for each script
-    vf19_LATTS = mc.getATTS(atts)    ## mcdefs.getATTS() can automatically create the dictionary for you   
+    vf19_LATTS = mc.getATTS(atts)   ## mcdefs.getATTS() can automatically create the dictionary for you   
     vf19_DEFAULTPATH = argv[3]      ## USR's desktop filepath
     vf19_PYPOD = argv[4]            ## The encoded array of filepaths/URLs generated from extras.ps1
     N_ = argv[5]                    ## The integer MACROSS uses for common math functions in all the scripts
@@ -149,9 +149,10 @@ Z0gIOKVmuKVkOKVnSAgIOKVmuKVkOKVnSA='
 def theDemo(Z1 = '',Z2 = None):
     splashPage()
     print('''
-    Now, as of MACROSS version 3, the mcdefs python library (covered in a bit) doesn't
-    have a smart way to share goodies like the powershell "collab" function does (because
-    my creator is lazy and not too bright).''')
+    Now, as of MACROSS version 3, the mcdefs python library (covered in a bit) has its own
+    version of MACROSS' collab function. But it will write your PROTOCULTURE to a dictionary
+    .eod file, where the powershell stuff can read and write from. I won't use collab here,
+    we'll just pass the PROTOCULTURE as a powershell parameter. ''')
     if Z1 != '':
         print('''
     I got your value --
@@ -256,7 +257,7 @@ def theDemo(Z1 = '',Z2 = None):
     Okay, welcome back to MINMAY! Let's see if KÖNIG hit your target. Normally, MACROSS is
     able to share everything without much fuss, but only within powershell. That's where
     the garbage_io folder comes in. The mcdefs library will eventually handle things more
-    easily like the "collab" function, but for now, if the powershell response can't be given 
+    cleanly in its "collab" function, but for now, if the powershell response can't be given 
     in a simple variable, MACROSS uses a text file.
     
     Within the MACROSS root folder, inside the "core\py_classes" folder, there is a folder
@@ -448,9 +449,5 @@ else:
     mc.psc('cls')
     theDemo()
 
-x = "\n\n\n\nAnother test"
-mc.screenResults('c~  TEST SCRIPT','Testing 123','r~ another test string')
-mc.screenResults()
-mc.w(x,'y')
 input('exit')
 exit()
