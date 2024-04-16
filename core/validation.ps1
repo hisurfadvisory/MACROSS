@@ -386,8 +386,8 @@ function setUser($1){
             on the desktop to output reports to, so that MACROSS' houseKeeping
             function can tidy them up when necessary.
         #>
-        $Global:vf19_DEFAULTPATH = "$env:HOMEPATH\Desktop"
-        #$Global:vf19_DEFAULTPATH = "$env:USERPROFILE\Desktop"
+        $Global:vf19_DEFAULTPATH = "$env:USERPROFILE\Desktop"
+        #$Global:vf19_DEFAULTPATH = "C:\$env:HOMEPATH\Desktop"
         #$Global:vf19_DEFAULTPATH = "C:\Users\$USR\Desktop"
     }
 }
