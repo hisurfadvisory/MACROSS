@@ -79,6 +79,7 @@ from os import system as osys
 from os import popen as osop
 from os import path
 from os import remove as osrm
+from json import dumps as jdmp
 from time import sleep as ts
 from tkinter import Tk
 from tkinter.filedialog import askopenfilename as peek
@@ -86,9 +87,7 @@ import math
 from re import search,sub
 
 
-## Enable powershell colors
-## Usage: write green text "bar foo" and reset to default color after printing ("rs" resets to default color):
-##                  print(tcolo.g + 'bar foo' + tcolo.ed)
+## Enable terminal colors for w() function
 ##
 osys('color')   ## Colorize the terminal
 tcolo = {
@@ -109,7 +108,7 @@ tcolo = {
 
 ## Alias to write colorized text to screen
 def w(TEXT,C1 = 'rs',C2 = None):
-    '''Pass this function your text/string as arg 1 and the first letter of the color you\nwant ("bl" for black). You can pass "ul" as a second\noption to underline the text.'''
+    ''' Pass this function your text/string as arg 1 and the first letter of the color you\n want ("bl" for black). You can pass "ul" as a second option to underline the text.\n\n Usage: mcdefs.w(text,text_color,'ul')'''
     if C2 != None:
         print(tcolo[C1] + tcolo[C2] + TEXT + tcolo['rs'])
     else:
@@ -118,19 +117,20 @@ def w(TEXT,C1 = 'rs',C2 = None):
 
 ## Sleep function for pausing scripts when needed
 def slp(s):
-    """The 'slp' function will pause your script for the number of seconds you pass to it.\n\nUsage:  mcdefs.slp(3)  << Will pause your script for 3 seconds"""
+    """The 'slp' function will pause your script for the number of seconds you pass to it.\n\n Usage:  mcdefs.slp(3)\n ^^ Will pause your script for 3 seconds\n"""
     ts(s)
 
 
 ## This function can generate the equivalent of MACROSS' $vf19_M value
 def makeM(n):
-    """Passing a large integer to makeM will split it into an array of single-digit integers for mathing.\n\nUsage: var = mcdefs.makeM(123456)  becomes  var == [1,2,3,4,5,6]"""
+    """ Passing a large integer to makeM will split it into an array of single-digit integers for mathing.\n\n Usage: var = mcdefs.makeM(123456)\n ^^ becomes  var == [1,2,3,4,5,6]"""
     a = [int(i) for i in str(n)]
     return a
 
 
 ## Call this function with a filepath (d) to delete a file
 def dS(d):
+    ''' Delete files. Usage:\n dS(path_to_file)'''
     confirm = input('''
     Are you sure you want to delete''',d)
     if search("^y",confirm):
@@ -160,7 +160,7 @@ def rgx(pattern,string,replace = None):
 ##  everyone has different use-cases, especially with python-based APIs! Just make sure to enact your
 ##  changes across ALL of the MACROSS functions and scripts!
 def psc(c,cc = None):
-    """The psc function performs os.system() commands that you pass in. If you pass your command as the *second* arg, the ouput\nwill be read usingos.read().\n\nUsage:  mcdefs.psc('powershell.exe "filepath\\myscript.ps1" "argument 1"') << Will launch your powershell script with args\n         mcdefs.psc('','powershell.exe "filepath\\myscript.ps1" "argument 1"') << Will return the results of your powershell script as usable strings"""
+    """ The psc function performs os.system() commands that you pass in. If you pass your command\n as the *second* arg, the ouput\nwill be read using os.read().\n\n Usage:  mcdefs.psc('powershell.exe "filepath\\myscript.ps1" "argument 1"')\n ^^ Will launch your powershell script with args\n\n mcdefs.psc('','powershell.exe "filepath\\myscript.ps1" "argument 1"')\n ^^ Will return the results of your powershell script as usable strings"""
     if cc == None:
         osys(c)
     else:
@@ -173,6 +173,7 @@ def psc(c,cc = None):
 ## Send what you're looking to verify as arg 1, and its type ("dir" vs. "file") as optional arg 2
 ## This function returns true/false
 def drfl(check,method = 'e'):
+    ''' Check if a path exists. Send "file" or "dir" as the second argument (optional).\n Usage: drfl(path_to_check,optional)'''
     if method == 'file':
         a = path.isfile(check)
     elif method == 'dir':
@@ -186,9 +187,24 @@ def drfl(check,method = 'e'):
 ## This function is just subprocess.run(p)
 ## For when the os lib doesn't have what you need
 def psp(p):
-    """The psp function is simply 'subprocess.run' made readily available to MACROSS python scripts.\n\nUsage:  mcdefs.psp('powershell.exe "filepath\\myscript.ps1" "argument 1"') << Will launch your powershell script with args"""
+    """The psp function is simply 'subprocess.run' made readily available to MACROSS python scripts.\n\nUsage:  mcdefs.psp('powershell.exe "filepath\\myscript.ps1" "argument 1"')\n^^ Will launch your powershell script with args\n"""
     srun(p)
  
+
+## Must pass your argv[7] value (the $vf19_TOOLSROOT path) + the tool you're calling, and the name of your calling script.
+## Have to use the GBIO folder because this opens a new powershell session that won't have all the $vf19_LATTS data.
+def collab(TOOL,CALLER,PROTOCULTURE,extra = None):
+    ''' The python "collab" function writes your PROTOCULTURE value to a dictionary .eod file\n in the GBIO folder for the powershell script to read and write its results to. Make sure to\n add your "sys.argv[7] + \\\\modules" directory to the "tool" argument! USAGE:\n\n        collab(TOOL,CALLER,PROTOCULTURE,optional_value)\n
+    '''
+    gbio = rgx("modules.+",TOOL,'core\\\\py_classes\\\\garbage_io\\\\PROTOCULTURE.eod')
+    proto = {CALLER:{'target':PROTOCULTURE,'result':''}}
+    with open(gbio, 'w') as convert_file: 
+        convert_file.write(jdmp(proto))
+        
+    call = 'powershell.exe ' + TOOL + ' py' + CALLER
+    if extra != None:
+        call = call + ' ' + extra
+    psc(call)
 
 
 ## Same as MACROSS' getFile function; if you do not provide an initial directory,
