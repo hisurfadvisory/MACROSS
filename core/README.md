@@ -33,7 +33,7 @@ The first three lines of your automation script requires these:<br>
 When all these lines are set correctly, MACROSS uses the [macross] class to keep track of the scripts in the "modules" folder. You can see what these look like by typing "debug TL" in the main menu.<br>
 
 FOR YOUR PYTHON SCRIPTS:<br>
-You'll need the argv and path functions from the sys library. MACROSS always passes at least 6 args to any python script it executes (7 if you include the script name). The ncdefs library converts many of the MACROSS powershell functions into python, so I won't describe them here. You can read the notes in \core\py_classes\ncdefs.py. The below example explains how to use them.<br>
+You'll need the argv and path functions from the sys library. MACROSS always passes at least 6 args to any python script it executes (7 if you include the script name). The mcdefs library converts many of the MACROSS powershell functions into python, so I won't describe them here. You can read the notes in \core\py_classes\mcdefs.py. The below example explains how to use them.<br>
 
 	from sys import argv,path
 	L = len(argv)
