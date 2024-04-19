@@ -55,7 +55,7 @@ You'll need the argv and path functions from the sys library. MACROSS always pas
 		vf19_TOOLSROOT = argv[7]    	## The path to the MACROSS folder
 		GBG = argv[6] + '\\garbage_io'  ## Path to the garbage I/O folder.
 
-GBG is a folder your python scripts can write outputs into if you want them available for later use in your MACROSS session. This folder gets cleared out every time MACROSS exits.<br>
+GBG is a folder your python scripts can write outputs into if you want them available for later use in your MACROSS session. It is used by the functions pyCross (powershell ) and ncdefs.collab (python) for this purpose. This folder gets cleared out every time MACROSS exits.<br>
 <br><br>
 
 
