@@ -42,16 +42,15 @@ You'll need the argv and path functions from the sys library. MACROSS always pas
 		path.insert(0,mpath)  	  ## modify the sys path to include the local py_classes folder
 		import mcdefs		       		## this is the custom MACROSS library
 
-		## The other 5 args always passed in by MACROSS can be used or ignored as you like. In order, they are:
+		## The other args always passed in by MACROSS can be used or ignored as you like. In order, they are:
 
 		USR = argv[1]               	## The logged-in user $USR
-		atts = argv[2]              	## The $vf19_ATTS hashtable attributes .name and .valtype for each script,
-										## but you'll need to use "mcdefs.getATTS(atts)" to actually import this
-										## as a dictionary in python.
+		atts = argv[2]              	## The $vf19_LATTS hashtable attributes .name and .valtype for each script,
+						## but you'll need to use "mcdefs.getATTS(atts)" to actually import this
+						## as a dictionary in python.
 		vf19_DEFAULTPATH = argv[3]  	## USR's desktop filepath
 		vf19_PYPOD = argv[4]        	## The encoded array of filepaths/URLs generated from temp_configs.txt
-		N_ = argv[5]                	## The integer MACROSS uses for common math functions in all the scripts
-		M_ = mcdefs.makeM(N_)        	## This function splits the N_ value into 6 digits you can use for mathing
+		N_ = argv[5]                	## An obscured integer MACROSS provides for common math functions in your scripts
 		vf19_TOOLSROOT = argv[7]    	## The path to the MACROSS folder
 		GBG = argv[6] + '\\garbage_io'  ## Path to the garbage I/O folder.
 
