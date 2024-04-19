@@ -299,7 +299,9 @@ At the end of printing your results, call the function again with a single param
 	houseKeeping $filepath 'myscriptname' 
 	
 &emsp;<b>G.</b> cleanGBIO() = The "garbage_io" folder inside of "py_classes" uses .eod files to share outputs from powershell to python. This function ensures the directory gets cleaned out before and after every session. This is a temp fix until the mcdefs library can read-in powershell outputs by default.<br>
-	&emsp;<b>H.</b> pyCross() = This is the function your powershell scripts need to call if passing info *back to* a calling python script. Outputs are written to .eod files.  The 'MINMAY' demo script goes into detail on using .eod files<br>
+	&emsp;<b>H.</b> pyCross() = This is the function your powershell scripts need to call if passing info *back to* a calling python script, or *reading requests from* python. The default file used by both pyCross() and the python ncdefs.collab() functions is "PROTOCULTURE.eod", and it is a simple json file consisting of your script name as the primary key, with "target" and "result" as its subkeys. Alternately, you can send a different filename to use as the 3rd parameter in pyCross, and it will use that filename and write your values as-is instead of creating a json. The 'MINMAY' demo script goes into detail on using .eod files. Usage:<br>
+
+ 	pyCross 'myScriptName' $values $optional_alt_filename
 	
 &emsp;<b>I.</b> TL() = This function quickly displays all available scripts and their attributes. From the main MACROSS menu, you can use it in <i>debug</i> mode:<br>
 
