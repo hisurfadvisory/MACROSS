@@ -22,15 +22,13 @@ The first three lines of your automation script requires these:<br>
 	The "ver" line is the version of your script
 	The "class" line needs you to comma-separate these attributes, in order:
 		1. The LOWEST privilege level your script requires (user, admin, etc.)
-		2. If you have different levels of analysts, use this for access control (Tier 1 or "help desk", etc.)
-			  If not, just put anything in this field.
-		3. What kind of data your script processes (IPs, filescans, etc.). Keep this uniform across your scripts.
-		4. What language your script is (powershell, python)
-		5. The author
-		6. The maximum number of values your script can process
+		2. What kind of data your script processes (IPs, filescans, etc.). Keep this uniform across your scripts.
+		3. What language your script is (powershell, python)
+		4. The author
+		5. The maximum number of values your script can process
 
 		Example class line:
-		#_class User,Common,PDFs,Powershell,HiSurfAdvisory,1
+		#_class user,pdfs,powershell,HiSurfAdvisory,1
 
 When all these lines are set correctly, MACROSS uses the [macross] class to keep track of the scripts in the "modules" folder. You can see what these look like by typing "debug TL" in the main menu.<br>
 
