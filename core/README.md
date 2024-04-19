@@ -72,7 +72,7 @@ This is NOT for security. Do <u>not</u> put credentials in here. The purpose of 
 
 	curl -X GET $(getThis $vf19_MPOD['abc']; $vf19_READ)
 	
-and then modify the temp_config (or whatever file you use) with updated addresses as needed.
+and then modify the temp_config (or whatever file you use) with updated addresses as needed. Details on that "getThis" function come later in this README.
 
 -The file "core/validation.ps1" contains a function at line 199 called "setUser". If your environment uses active directory to set permissions, AND you enforce code-signing, review this function to see how you can use it to restrict MACROSS use to only your SOC users. This is especially important if you will be adding API scripts to MACROSS. You don't want random users to be able to query your firewalls or endpoint agents.
 
