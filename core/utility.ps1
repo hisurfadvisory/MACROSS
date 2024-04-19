@@ -236,6 +236,18 @@ function decodeSomething($1){
         
 }
 
+## These vars & functions need to get loaded when python calls powershell scripts without MACROSS values
+if( ! $vf19_TOOLSROOT){
+    $vf19_TOOLSROOT = '..'
+    $Global:vf19_TOOLSDIR = "$vf19_TOOLSROOT\modules\"
+    . "$vf19_TOOLSROOT\core\display.ps1"
+    . "$vf19_TOOLSROOT\core\validation.ps1"
+}
+
+
+## This is a temp-file dump so MACROSS can hold your script outputs for both powershell and python to share as needed
+## See the "pyCross" function in utility.ps1
+$Global:vf19_GBIO = "$vf19_TOOLSROOT\core\py_classes\garbage_io"
 
 
 <#################################
@@ -313,6 +325,89 @@ function chr($1){
 }
 
 
+
+function errLog(){
+    Param(
+        [Parameter(Mandatory=$true)]
+        $1,
+        $2,
+        $3
+    )
+    
+
+    ## By default, the logs directory is set to your local MACROSS/resources/logs
+    ## folder. You should change this to an alternate location if you don't want
+    ## all users to see these logs. (It is set with $vf19_MPOD['log'], which gets
+    ## set in the "temp_config.txt" file.)
+    
+    $d = $(Get-Date -Format 'yyyy-MM-dd')
+    $t = $(Get-Date -Format 'yyyy-MM-dd hh:mm:ss')
+    [string]$log = $($d) + '.txt'               ## Create the log filename
+    [string]$msg = '[' + $t + ']'               ## Begin the log msg with the timestamp
+
+    if($1 -eq 'read'){
+        if($2){
+            $line = gc -Raw "$vf19_LOG\$($2 + '.txt')"
+            if( ! $line ){
+                Write-Host -f CYAN '
+        That file does not exist!
+                '
+            }
+            else{
+                foreach($l in $line){
+                    $msgs = $l -Split('\|\|')
+                    if($msgs[1] -eq 'ERROR'){
+                        $level = 'derpy' + $msgs[1]
+                    }
+                    else{
+                        $level = $msgs[1]
+                    }
+                    $c = $msgs.count
+                    if($c -eq 4){
+                        screenResults $level
+                        screenResults $msgs[0] $msgs[2] $msgs[3]
+                    }
+                    elseif($c -eq 3){
+                        screenResults $level
+                        screenResults $msgs[0] $msgs[2]
+                    }
+                    elseif($c -eq 2){
+                        screenResults $level
+                        screenResults $msgs[0]
+                    }
+                }
+            }
+        }
+        else{
+            $latest = (gci "$vf19_LOG\*.txt" | Sort -Descending)[0]
+            gc -Raw $latest
+        }
+        Write-Host -f GREEN '
+        Hit ENTER to exit.
+        '
+        Read-Host
+    }
+
+    if($3){
+        $msg = $msg + '||' +$1 + '||' + $2 + '||' + $3
+    }
+    elseif($2){
+        $msg = $msg + '||' +$1 + '||' + $2
+    }
+    else{
+        $msg = $msg + '||' +$1
+    }
+
+    if(Test-Path -Path "$vf19_LOG\$log"){
+        $msg | Out-File "$vf19_LOG\$log" -Append
+    }
+    else{
+        $msg | Out-File "$vf19_LOG\$log"
+    }
+
+}
+
+## Provide additional functions from the main menu
 function extras($1){
     if($1 -eq 'refresh'){dlNew "MACROSS.ps1" $vf19_LVER}  ## Downloads a fresh copy of MACROSS and the core files, then exits
     elseif($1 -eq 'dec'){decodeSomething 0}     ## Decode an encoded string
@@ -344,45 +439,95 @@ function extras($1){
     Return
 }
 
-## This function lets scripts write results to a file in the directory "MACROSS\core\py_classes\garbage_io"
-## so that python & powershell scripts can easily share the same investigation data during a MACROSS
-## session. Eventually MACROSS will improve the way it handles this.
-## 
-## The .eod files are encoded in utf8, not ascii, so plan accordingly.
-##
-##  REQUIRED:  Your script name as the file to write to ($filenm), as well as the value
-##  you want written to that file($val1). Example usage:
-##
-##                    if( $python_called ){
-##
-##                       # Write the location of the powershell script's normal output
-##                       pyCross 'myscriptname' $RESULTFILE
-##
-##                       # Or you can just write all the results the script found
-##                       foreach($line in $eval){
-##                          pyCross 'myscriptname' $line
-##                       }
-##
-##                    }
-##
-##  ...and then your python script can do whatever with it:
-##
-##                  open('PATH\\myscriptname.eod').read()
-##
-##  The file outputs are written with the extension "*.eod" to aid in accurate cleanup
-##  (see the "cleanGBIO" function elsewhere in this file).
+<#
+    #######################################################
+    IMPORTANT: for powershell scripts you write that can respond to being launched from python, you should
+    include this command where appropriate:
+    
+            . '..\core\utility.ps1'
+            
+    That will execute this script file, which will define most (not all) of the variables and functions MACROSS 
+    scripts are used to having access to.
+    #######################################################
+
+    
+    This function lets scripts write results to a file in the directory "MACROSS\core\py_classes\garbage_io"
+    so that python & powershell scripts can easily share the same investigation data during a MACROSS
+    session. Eventually MACROSS will improve the way it handles this.
+    
+    The .eod files are encoded in utf8, so plan accordingly.
+  
+    REQUIRED:  Your script name as the $caller, as well as the value you want written to that file($val1). The
+    default file will be PROTOCULTURE.eod, written as a json string:
+    
+        $caller : { 'target':$value1, 'result': $value2 }
+        
+    If you need something other than this format, you can provide an alternative filename as the 3rd parameter,
+    and write whatever type of data your file is to that.
+    
+    If the PROTOCULTURE.eod file already exists, this function will check to see if the "result" key contains 
+    a non-empty value. If so, it assumes this is a response from python to a query from powershell, and sets
+    that "result" value as $PROTOCULTURE.
+    
+    If "result" is empty, pyCross then assumes you are responding to a python script's request, and will write 
+    your $value to the "result" key of the json. Otherwise it gets written to the "target" key in a new 
+    PROTOCULTURE.eod file.
+    
+    Example usage:
+  
+                      if( $python_called ){
+  
+                         # Write the results of the python script's request
+                         pyCross 'myScriptName' $value
+  
+                         # Or you can just write all the results the script found
+                         foreach($line in $eval){
+                            pyCross 'myScriptName' $line 'myResultFile'
+                         }
+  
+                      }
+  
+    ...and then your python script can do whatever with it:
+                    json.dumps(open('PATH\\PROTOCULTURE.eod).read())
+                    open('PATH\\myResultFile.eod').read()
+  
+    The file outputs are written with the extension "*.eod" (including your custom filenames) to 
+    ensure regular cleanup (see the "cleanGBIO" function elsewhere in this file).
+    
+#>
 function pyCross(){
     Param(
         [Parameter(Mandatory)]
-        [string]$filenm,
+        [string]$caller,
         [Parameter(Mandatory)]
-        $val1
+        $val1,
+        [string]$filenm
     )
-
-    $filenm = $filenm + '.eod'  ## Append custom extension
-
-    $val1 | Out-File -FilePath "$vf19_GBIO\$filenm" -Encoding UTF8 -Append  ## Write results to file
     
+    $s = "$vf19_GBIO\PROTOCULTURE.eod"
+    
+    if($filenm){
+        $filenm = $filenm + '.eod'  ## Append custom extension
+        $val1 | Out-File -FilePath "$vf19_GBIO\$filenm" -Encoding UTF8 -Append  ## Write results to file
+        if(-not(Test-Path -Path "$vf19_GBIO\$filenm")){
+            errLog 'ERROR' "$USR/$caller" "Failed pyCross write-to $filenm"
+            w "r~ERROR! File did not write! "
+            slp 3
+        }
+    }
+    elseif(Get-ChildItem -Path $s){
+        $p = Get-Content $s | ConvertFrom-Json
+        if($p.$((gc $s) -replace "^\W+" -replace "\W.+$").result -ne ''){
+            $PROTOCULTURE = $p.$((gc $s) -replace "^\W+" -replace "\W.+$").result
+        }
+        else{
+            $r = (Get-Content $s) -replace ".result.+:.+\}\]","'result':$val1}]"
+            Set-Content $s $r -Encoding UTF8
+        }
+    }
+    else{
+        Set-Content $s "{'$caller':[{'target':$val1,'result':''}]}" -Encoding UTF8
+    }
 }
 
 
