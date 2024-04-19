@@ -197,7 +197,7 @@ def collab(TOOL,CALLER,PROTOCULTURE,extra = None):
     ''' The python "collab" function writes your PROTOCULTURE value to a dictionary .eod file\n in the GBIO folder for the powershell script to read and write its results to. Make sure to\n add your "sys.argv[7] + \\\\modules" directory to the "tool" argument! USAGE:\n\n        collab(TOOL,CALLER,PROTOCULTURE,optional_value)\n
     '''
     gbio = rgx("modules.+",TOOL,'core\\\\py_classes\\\\garbage_io\\\\PROTOCULTURE.eod')
-    proto = {CALLER:{'target':PROTOCULTURE,'result':''}}
+    proto = {CALLER:[{'target':PROTOCULTURE,'result':''}]}
     with open(gbio, 'w') as convert_file: 
         convert_file.write(jdmp(proto))
         
