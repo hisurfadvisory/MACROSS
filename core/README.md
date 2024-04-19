@@ -35,12 +35,13 @@ When all these lines are set correctly, MACROSS uses the [macross] class to keep
 FOR YOUR PYTHON SCRIPTS:<br>
 You'll need the argv and path functions from the sys library. MACROSS always passes at least 6 args to any python script it executes (7 if you include the script name). The mcdefs library converts many of the MACROSS powershell functions into python, so I won't describe them here. You can read the notes in \core\py_classes\mcdefs.py. The below example explains how to use them.<br>
 
-	from sys import argv,path
+	# The MINMAY.py demo script goes through this in detail, launch her from the MACROSS menu!
+ 	from sys import argv,path
 	L = len(argv)
-	if L >= 7:                  ## make sure MACROSS sent all its default values
+	if L >= 7:                  	  ## make sure MACROSS sent all its default values
 		mpath = argv[6]
 		path.insert(0,mpath)  	  ## modify the sys path to include the local py_classes folder
-		import mcdefs		       		## this is the custom MACROSS library
+		import mcdefs		  ## this is the custom MACROSS library
 
 		## The other args always passed in by MACROSS can be used or ignored as you like. In order, they are:
 
