@@ -279,9 +279,10 @@ function macrossHelp($1){
 ##         foreach($i in $results.keys){ screenResults $i $results[$i] }
 ##         screenResults 'endr'
 ##
-## If you send a value that begins with "red~", for example "red~Windows PC", the
+## If you send a value that begins with "r~", for example "r~Windows PC", the
 ## value "Windows PC" will be written to screen in red-colored text. You can use any
-## color recognized by powershell's "write-host -f" option (green, yellow, cyan, etc.)
+## color recognized by powershell's "write-host -f" option (green, yellow, cyan, etc.,
+## see the $vf19_colors array at the top of this script).
 ##
 function screenResults(){
     Param(
