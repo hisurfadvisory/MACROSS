@@ -287,8 +287,8 @@ function splashPage(){
 function showHelp($1){
     if($1 -eq 1){
         Write-Host -f YELLOW "
-    Author: $($vf19_LATTS['GERWALK'].auth)
-    version $($vf19_LIST0['GERWALK.ps1'])
+    Author: $($vf19_LATTS['GERWALK'].author)
+    version $($vf19_LATTS['GERWALK'].ver)
     This script's primary purpose is to perform Carbon Black lookups
     based on values passed to it from other MACROSS tools, but it can
     also perform a basic CB query for you. This is quicker than logging
