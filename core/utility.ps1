@@ -357,7 +357,7 @@ function errLog(){
                 foreach($l in $line){
                     $msgs = $l -Split('\|\|')
                     if($msgs[1] -eq 'ERROR'){
-                        $level = 'derpy' + $msgs[1]
+                        $level = 'r~' + $msgs[1]
                     }
                     else{
                         $level = $msgs[1]
@@ -375,6 +375,7 @@ function errLog(){
                         screenResults $level
                         screenResults $msgs[0]
                     }
+                    screenResults 'endr'
                 }
             }
         }
