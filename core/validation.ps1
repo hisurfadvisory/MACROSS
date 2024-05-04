@@ -8,7 +8,7 @@ function varCleanup($1){
     Remove-Variable vf19_FILECT,vf19_REPOCT,HELP,CALLHOLD,COMEBACK,`
     GOBACK,RESULTFILE,HOWMANY,CALLER,vf19_READ,dyrl_* -Scope Script
 
-    Remove-Variable vf19_FILECT,vf19_REPOCT,HELP,CALLHOLD,COMEBACK,`
+    Remove-Variable vf19_FILECT,vf19_REPOCT,HELP,CALLHOLD,COMEBACK,vf19_OPT1,`
     GOBACK,RESULTFILE,HOWMANY,CALLER,vf19_READ,dyrl_* -Scope Global
 
     #Remove-Variable PROTOCULTURE -Scope Global  ## Uncomment this to always clear PROTOCULTURE automatically
