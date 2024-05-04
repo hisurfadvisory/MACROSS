@@ -35,8 +35,8 @@ neKVmuKVkOKVkOKVkOKVkOKVkOKVkOKVnQ=='
     $vl = $vf19_VERSION.length; if( $vl -lt 3){$vc=4}elseif( $vl -le 4 ){$vc=3}
     elseif( $vl -le 5 ){$vc=1}else{$vc=0}
     cls
-    Write-Host "
-    "
+    Write-Host '
+    '
     getThis $b
     Write-Host -f CYAN "$vf19_READ"
     Write-Host ' ' -NoNewline; sep '=' 70 'c'
@@ -53,16 +53,24 @@ neKVmuKVkOKVkOKVkOKVkOKVkOKVkOKVnQ=='
                                                                      
 }
 
-## I got sick of typing "Write-Host", gimme a break powershell
-## $1 = the text you want to print to screen
-##
-## $2 = Send a 1 char (or 2 -- "bl" for black) letter to set your preferred 
-## text color (optional, default is white).
-##
-## $3 = your preferred background color (optional)
-##
-##  ** Not supported yet -- underlining: Write-Host "$([char]27)[4m Underlined Word $([char]27)[24m"
+
+
 function w($1,$2,$3){
+    <#
+    .SYNOPSIS
+    I got sick of typing "Write-Host", gimme a break powershell.
+    Send your text as the first param, and the first letter of the text color you want as the second param
+    (or "bl" for black, "b" for blue). The third parameter (optional) can be either background color OR "nl" 
+    for the "-NoNewLine" option.
+    
+    ** Not supported yet -- underlining: Write-Host "$([char]27)[4m Underlined Word $([char]27)[24m"
+    .EXAMPLE
+    Write green text:
+    w "A string of text." 'g'
+    
+    Write a multi-color string:
+    w "A string of" 'g' 'nl'; w "text" 'y'
+    #>
     $vf19_colors = @{
         'w'='white'
         'b'='blue'
@@ -81,7 +89,10 @@ function w($1,$2,$3){
             $b = $3
         }
     }
-    if($b -and $f){
+    if($3 -eq 'nl'){
+        Write-Host -f $vf19_colors[$f] "$1" -NoNewline;
+    }
+    elseif($b -and $f){
         Write-Host -f $vf19_colors[$f] -b $vf19_colors[$b] "$1"
     }
     elseif($f){
@@ -191,15 +202,21 @@ function startUp(){
 }
 
 
-## When writing outputs to screen and you're not using screenResults(), this
-## function can write a simple separator if you need to break up lines.
-## $1 = the character that makes up the separator
-## $2 = the length of the separator line
-## $3 = (optional) the color of the separator
-##
-##  Usage:   sep '*' 16 'yellow'    ## Create a 16 char-length line of "*" in
-##                                     yellow text
+
 function sep(){
+    <#
+    .SYNOPSIS
+    When writing outputs to screen and you're not using screenResults(), this
+    function can write a simple separator if you need to break up lines.
+    $1 = the character that makes up the separator
+    $2 = the length of the separator line
+    $3 = (optional) the color of the separator
+    .EXAMPLE
+    Example use: Create a 16 char-length line of "*" in yellow text
+    
+        sep '*' 16 'yellow'    
+                                        
+    #>
     Param(
         [Parameter(Mandatory=$true)]
         [string]$1,
@@ -213,10 +230,14 @@ function sep(){
 }
 
 
-## Display HELP for internal MACROSS functions. Send the tool name as parameter 1
-## for its details and usage, or send "dev" to get a full list of descriptions.
-## Calling without parameters just lists the Local Attributes table.
+
 function macrossHelp($1){
+    <#
+    .SYNOPSIS
+    Display HELP for internal MACROSS functions. Send the tool name as parameter 1
+    for its details and usage, or send "dev" to get a full list of descriptions.
+    Calling without parameters just lists the Local Attributes table.
+    #>
     $helps = @{
         'w'= @{'d'="Alias for 'Write-Host'. Send your string as the first parameter, and the first letter of the color you want to use ('bl' for black, 'b' for blue). Send another letter as the third parameter to set a highlight color. The default text color is white.";'u'='Usage: w "your text" "[b|bl|c|g|m|r|y]" "[b|bl|c|g|m|r|y]"'}
         'screenResults'= @{'d'="Display large outputs to screen in a table format. Colorize the text by adding '<color letter>~' to the beginning of your value, i.e. g~$('$'+'value') will write green text. Send a single param, 'endr' to create the closing border after your final values.";'u'='Usage: screenResults $VALUE1 $OPTIONAL_VALUE2 $OPTIONAL_VALUE3'}
@@ -238,6 +259,12 @@ function macrossHelp($1){
         'slp'= @{'d'="Alias for 'start-sleep' to pause your scripts. Send the number of seconds to pause as parameter one, and 'm' as the second parameter if you want to pause in milliseconds instead.";'u'='Usage: slp [number of seconds] ["m" (changes seconds to milliseconds)]'}
         'transitionSplash'= @{'d'='This function contains various ASCII art from the MACROSS anime. You can add your own ASCII art here.';'u'='Usage: transitionSplash [1-8]'}
     }
+    if($1 -eq 'show'){
+        screenResults $($helps.keys -join(', '))
+        screenResults 'w~ Type h + one of the above to view details (full README for each is in the \core .ps1 files)'
+        screenResults 'endr'
+        Return
+    }
     cls
     if($1 -in $helps.keys){
         w "`n`n`n`n"
@@ -252,39 +279,46 @@ function macrossHelp($1){
         $helps.keys | Sort | %{
             screenResults $_ $($helps[$_]['d'])
             screenResults "c~$($helps[$_]['u'])"
+            screenResults 'w~ The full README for this function is in the \core .ps1 files (display, utility, and validation)'
         }
         screenResults 'endr'
         ''
+        w ' From the main menu, type "debug " and any of the above functions with the
+  required params to test them.
+        ' 'g'
     }
     else{
         TL
     }
     ''
-    w ' From the main menu, type "debug " and any of the above functions with the
- required params to test them.
-    ' 'g'
     w ' Hit ENTER to go back.' 'g'; Read-Host
     
 }
 
-## Format up to three rows of outputs to the screen; parameters you send will be
-## wrapped to fit in their columns (up to 3 separate columns).
-## Call this function with "endr" as the only parameter to add the final
-## separator $c after all your results have been displayed.
-##
-## $1 is required, $2 and $3 are optional.
-##
-##    Example usage for displaying an array of results:
-##
-##         foreach($i in $results.keys){ screenResults $i $results[$i] }
-##         screenResults 'endr'
-##
-## If you send a value that begins with "r~", for example "r~Windows PC", the
-## value "Windows PC" will be written to screen in red-colored text. You can use any
-## color recognized by powershell's "write-host -f" option (green, yellow, cyan, etc.,
-## see the $vf19_colors array at the top of this script).
-##
+
+
 function screenResults(){
+    <#
+    .SYNOPSIS
+    Format up to three rows of outputs to the screen; parameters you send will be wrapped to fit in their 
+    columns (up to 3 separate columns). Call this function with "endr" as the only parameter to add the final
+    separator $c after all your results have been displayed.
+    
+    $1 is required, $2 and $3 are optional.
+    
+    If you send a value that begins with "r~", for example "r~Windows PC", the value "Windows PC" will be 
+    written to screen in red-colored text. You can use any color recognized by powershell's "write-host -f" 
+    option ("g"reen, "y"ellow, "c"yan, etc.)
+    .EXAMPLE
+    Basic example of usage:
+        screenResults 'Title of first result' 'Title of 2nd result' 'Title of 3rd result'
+        screenResults 'Large paragraph of results 1' 'Large paragraph of results 2' 'Large paragraph of results 3'
+        screenResults 'endr'
+    
+    Example usage for displaying hashtable contents:
+        foreach($i in $results.keys){ screenResults $i $results[$i] }
+        screenResults 'endr'
+    #>
     Param(
         [Parameter(Mandatory=$true)]
         [string]$1,
@@ -616,41 +650,44 @@ function screenResults(){
 }
 
 
-<# Alternate output format for MACROSS results; don't use this for large outputs, use
-        screenResults instead!
 
-    $1 is the header for each item; set it to 'next' if you want to
-    write additional values to the table without a row separator.
-    
-    $2 and $3 are written below the header.
-    $2 will get truncated if longer than 14 chars.
-
-    As with screenResults, send a single parameter, '0', to close out the table.
-
-    Example usage:
-        $1 = 'rundll32.exe'
-        $2 = 'Parent'
-        $3 = 'acrobat.exe'
-        $4 = 'ParentID'
-        $5 = '2351'
-
-    screenResultsAlt $1 $2 $3
-    screenResultsAlt 'next' $4 $5
-    screenResultsAlt 'endr'
-
-        The above will write to screen:
-
-    ║║║║║║ rundll32.exe
-    ============================================================================
-    Parent    ║  acrobat.exe
-    ParentID  ║  2351
-    ============================================================================
-
-    As with the "screenResults" function, use "<COLOR>~" to highlight your values.
-
-#>
 function screenResultsAlt($1,$2,$3){
-    
+    <#
+        .SYNOPSIS
+        Alternate output format for MACROSS results; don't use this for large outputs, use
+            screenResults instead!
+
+        $1 is the header for each item; set it to 'next' if you want to
+        write additional values to the table without a row separator.
+        
+        $2 and $3 are written below the header.
+        $2 will get truncated if longer than 14 chars.
+
+        As with screenResults, send a single parameter, '0', to close out the table.
+        .EXAMPLE
+        Example usage:
+            $1 = 'rundll32.exe'
+            $2 = 'Parent'
+            $3 = 'acrobat.exe'
+            $4 = 'ParentID'
+            $5 = '2351'
+
+        screenResultsAlt $1 $2 $3
+        screenResultsAlt 'next' $4 $5
+        screenResultsAlt 'endr'
+
+            The above will write to screen:
+
+        ║║║║║║ rundll32.exe
+        ============================================================================
+        Parent    ║  acrobat.exe
+        ParentID  ║  2351
+        ============================================================================
+
+        As with the "screenResults" function, use "<COLOR FIRST LETTER>~" to highlight 
+        your values.
+
+    #>
     $1color = 'CYAN'
     $2color = 'GREEN'
     $3color = 'YELLOW'
@@ -751,6 +788,7 @@ function chooseMod(){
         'shell',
         'proto',
         'splash',
+        'strings',
         'refresh'
     )
 
@@ -787,7 +825,7 @@ function chooseMod(){
 
         $vf19_MENULIST.GetEnumerator() | Sort -Property Name | Select -Skip $($vf19_PAGE * 10) | %{
             Write-Host ' ' -NoNewline; sep '=' 70 'c'
-            Write-Host -f YELLOW "   $($_.Name -replace "^ 0",'  ') || $($_.Value)"
+            w "   $($_.Name -replace "^ 0",'  ') || $($_.Value)" 'y'
         }
         Write-Host ' ' -NoNewline; sep '=' 70 'c'
         ''
@@ -796,51 +834,41 @@ function chooseMod(){
     if( $PROTOCULTURE ){
         Write-Host '      ' -NoNewline; w ' PROTOCULTURE IS HOT (enter "proto" to view & clear it) ' 'r' 'bl'
     }
-    Write-Host ''
+    ''
 
     if( $vf19_MULTIPAGE ){
-        Write-Host -f GREEN "   -There are $toolcount tools available. Enter " -NoNewline;
-        Write-Host -f YELLOW 'p' -NoNewline;
-        w ' for the next Page.' 'g'
+        w "   -There are $toolcount tools available. Enter " 'g' 'nl'; w 'p' 'y' 'nl'; w ' for the next Page.' 'g'
     }
-    Write-Host -f GREEN '   -Select the module you want (' -NoNewline;
-    Write-Host -f YELLOW "1 - $toolcount" -NoNewline;
+    w '   -Select the module you want (' 'g' 'nl'; w "1 - $toolcount" 'y' 'nl';
     w ').' 'g'
-    Write-Host -f GREEN '   -Enter "' -NoNewline;
-    Write-Host -f YELLOW 'help' -NoNewline;
+    w '   -Enter "' 'g' 'nl'; w 'help' 'y' 'nl';
     w '" and the number of the tool to view its help page' 'g'
-    Write-Host -f GREEN '   -Type ' -NoNewline;
-    Write-Host -f YELLOW 'shell' -NoNewline;
+    w '   -Type ' 'g' 'nl'; w 'shell' 'y' 'nl';
     w ' to pause and run your own commands' 'g'
-    Write-Host -f GREEN '   -Type ' -NoNewline;
-    Write-Host -f YELLOW 'dec' -NoNewline;
-    Write-Host -f GREEN ' or ' -NoNewline;
-    Write-Host -f YELLOW 'enc' -NoNewline;
-    w ' to process Hex/B64 encoding.' 'g'
-    Write-Host -f GREEN '   -Type ' -NoNewline;
-    Write-Host -f YELLOW 'q' -NoNewline;
-    w ' to quit.
+    w '   -Type ' 'g' 'nl'; w 'strings' 'y' 'nl'; w ' to extract strings from binaries' 'g'
+    w '   -Type ' 'g' 'nl'; w 'dec' 'y' 'nl'; w ' or ' 'g' 'nl'; w 'enc' 'y' 'nl'; w ' to process Hex/B64 encoding.' 'g'
+    w '   -Type ' 'g' 'nl'; w 'q' 'y' 'nl'; w ' to quit.
     ' 'g'
 
     ## If version control is in use, offer options to pull fresh or updated
     ## copies of all the scripts.
     if( $vf19_VERSIONING ){
-        Write-Host -f GREEN '                               TROUBLESHOOTING:
-   If the console is misbehaving, you can enter ' -NoNewline;
-        Write-Host -f CYAN 'refresh' -NoNewline;
-        Write-Host -f GREEN ' to automatically
+        w '                               TROUBLESHOOTING:
+   If the console is misbehaving, you can enter ' 'g' 'nl';
+        w 'refresh' 'c' 'nl';
+        w ' to automatically
    pull down a fresh copy. Or, if one of the tools is not working as you
-   expect it to, enter the module # with an ' -NoNewline;
-        Write-Host -f CYAN 'r' -NoNewline;
-        Write-Host -f GREEN " to refresh that script
+   expect it to, enter the module # with an ' 'g' 'nl';
+        w 'r' 'c' 'nl';
+        w " to refresh that script
    (ex. '3r').
    
-   "
+   " 'g'
    }
 
 
 
-    Write-Host -f GREEN '                        SELECTION: ' -NoNewline;
+    w '                        SELECTION: ' 'g' 'nl'
         $Global:vf19_Z = Read-Host
 
         
