@@ -18,25 +18,32 @@
 function debugMacross($1){
     splashPage
     ''
-    Write-Host -f YELLOW '                        MACROSS DEBUG MODE'
-    Write-Host -f YELLOW '       for function help, type the function name and "help"
+    Write-Host -f YELLOW '                        MACROSS DEBUG MODE
     '
-    $blacklist = [regex]".*(usr |n_ |m_ |your keywerdz here|other keywerdz|more keywerdz).*"
+    macrossHelp 'show'
+    ''
+    $blacklist = [regex]".*(usr |n_ |m_ |(get-variable \*|gv \*)|your keywerdz here|other keywerdz|more keywerdz).*"
     if($1){
         if($1 -notMatch $blacklist){
-            if($1 -Like "* help"){
-                macrossHelp $($1 -replace " help")
+            if($1 -Like "h *"){
+                macrossHelp $($1 -replace "h ")
+                splashPage
+                macrossHelp 'show'
             }
-            $1 = $1 -replace "^debug "  ## I always mess up hitting the "up" key to repeat
-            iex "$1"
-            Write-Host -f GREEN "
-        Type another command for testing, or hit ENTER to exit debugging:
-        "
-            $cmd = Read-Host
-            if($cmd -ne ''){
-                debugMacross $cmd
+            else{
+                $1 = $1 -replace "^debug "  ## I always mess up hitting the "up" key to repeat
+                $cmd = [scriptblock]::Create("$1")
+                . $cmd
             }
         }
+    
+            Write-Host -f GREEN "
+    Type another command for testing, or hit ENTER to exit debugging:
+    "
+            $response = Read-Host
+            if($response -ne ''){
+                debugMacross $response
+            }
     }
     else{
         $e = @('SilentlyContinue','Continue','Inquire')
@@ -51,24 +58,23 @@ function debugMacross($1){
                 2. Display errors without stopping scripts
                 3. Pause after each error message with a choice to continue
                 4. Cancel
-
-            OR
-            Enter a command to begin testing/debugging
             
             OR
             Type "logs" to review MACROSS log files.
+            
+            OR
+            Enter a command to begin testing/debugging
 
             >  ' -NoNewline;
         $z = Read-Host
         
-
         if($z -ne 'logs'){
-            if($z -notIn 1..3){
+            if($z -eq 4){
+                Return
+            }
+            elseif($z -notIn 1..3){
                 cls
                 debugMacross $z
-            }
-            elseif($z -eq 4){
-                Return
             }
             else{
                 $Script:ErrorActionPreference = $e[$([int]$z - 1)]
@@ -180,7 +186,7 @@ function formatDefaults(){
     Read-Host
 }
 
-## Decode base64 or hex string one-offs
+## Decode base64 or hex string one-offs from the main menu
 function decodeSomething($1){
     cls
     Write-Host '
@@ -250,7 +256,10 @@ if( ! $vf19_TOOLSROOT){
 $Global:vf19_GBIO = "$vf19_TOOLSROOT\core\py_classes\garbage_io"
 
 
-<#################################
+
+function getThis($1,$2){
+    <#
+    .SYNOPSIS
     Deobfuscate your encoded value ($1), plaintext gets saved as $vf19_READ
             OR
     Encode your plaintext value ($1) to base64 by making your second param 0 (zero)
@@ -264,10 +273,10 @@ $Global:vf19_GBIO = "$vf19_TOOLSROOT\core\py_classes\garbage_io"
         getThis $base64string
         $plaintext = $vf19_READ
 
-    -To decode a hexadecimal string, call this function with '1' as a second parameter (and
-      your hex string can include spaces and/or '0x' tags, or neither):
+    -To decode a hexadecimal string, call this function with "1" as a second parameter (and
+      your hex string can include spaces and/or "0x" tags, or neither):
 
-        getThis '0x746869732069 730x20 61 200x740x650x7374' 1
+        getThis "0x746869732069 730x20 61 200x740x650x7374" 1
         $plaintext = $vf19_READ
 
     -If you want to ENCODE plaintext to:
@@ -283,9 +292,7 @@ $Global:vf19_GBIO = "$vf19_TOOLSROOT\core\py_classes\garbage_io"
     The reason it always writes to $vf19_READ instead of just returning a value to your script
     is to ensure that decoded plaintext gets wiped from memory every time the MACROSS menu loads.
     Yes, I'm one of those paranoid types, but I can only control my code, not yours!
-
-#################################>
-function getThis($1,$2){
+    #>
     ## Start fresh
     $Global:vf19_READ = $null
 
@@ -327,6 +334,18 @@ function chr($1){
 
 
 function errLog(){
+    <#
+    .SYNOPSIS
+    Have your scripts write to MACROSS logs for troubleshooting/auditing. The default location
+    is $vf19_LOG, wherever you've specified that location to be. The current timestamp automatically
+    gets written to the log, you don't need to send it. Just send at least 2 params, like a log-level
+    (ERROR, INFO, etc.) and the log message. You can also send a 3rd parameter if necessary.
+    
+    These logs can be viewed from MACROSS' debug screen.
+    .EXAMPLE
+    errLog 'WARN' "$USR/$SCRIPT failed to perform $TASK"
+    errLog 'INFO' 'Something else happened blah blah.' $HOWMANY
+    #>
     Param(
         [Parameter(Mandatory=$true)]
         $1,
@@ -357,7 +376,7 @@ function errLog(){
                 foreach($l in $line){
                     $msgs = $l -Split('\|\|')
                     if($msgs[1] -eq 'ERROR'){
-                        $level = 'r~' + $msgs[1]
+                        $level = 'derpy' + $msgs[1]
                     }
                     else{
                         $level = $msgs[1]
@@ -375,7 +394,6 @@ function errLog(){
                         screenResults $level
                         screenResults $msgs[0]
                     }
-                    screenResults 'endr'
                 }
             }
         }
@@ -409,33 +427,34 @@ function errLog(){
 }
 
 ## Provide additional functions from the main menu
+## easterEgg and clearProto are only ever used here.
 function extras($1){
-    if($1 -eq 'refresh'){dlNew "MACROSS.ps1" $vf19_LVER}  ## Downloads a fresh copy of MACROSS and the core files, then exits
-    elseif($1 -eq 'dec'){decodeSomething 0}     ## Decode an encoded string
-    elseif($1 -eq 'enc'){decodeSomething 1}     ## Encode a plaintext string
-    elseif($1 -eq 'shell'){runSomething}        ## Pause MACROSS & launch a temporary shell
-    elseif( $1 -eq 'proto' ){                   ## Clear the primary investigation value
-        $sp = $(Get-Random -min 0 -max 9)
-        transitionSplash $sp 1
-        [string]$proto = $PROTOCULTURE
-        $proto = $proto.Substring(0,200)
-        Write-Host "
-        PROTOCULTURE == $proto...
-        Do you want to clear this value?  " -NoNewline;
-        $z = Read-Host
-        if($z -Match "^y"){
-            $Global:PROTOCULTURE = $null     
-        }
-        Remove-Variable -Force z,sp,proto
-    }elseif( $1 -eq 'splash' ){                 ## Easter egg
-        $cycler = 0
-        $screens = [int](gc "$vf19_TOOLSROOT\core\splashes.ps1" | Select-String 'b =').count
-        while( $cycler -lt $screens ){
-            transitionSplash $cycler
-            $cycler++
-        }
-        Remove-Variable screens,cycler
+    ## Run through all the available splash screens. For funsies.
+    function easterEgg(){
+        1..9 | %{transitionSplash $_}
     }
+    ## Clear out the global PROTOCULTURE value before the next investigation
+    function clearProto(){
+        cls
+        w "PROTOCULTURE = " 'g' 'nl'
+        w "$PROTOCULTURE" 'bl' 'w'
+        ''
+        w 'Hit ENTER to clear it.' 'g'
+        Read-Host; Remove-Variable -Force PROTOCULTURE -Scope Global
+    }
+    $ex = @{
+        'dec'='splashPage;decodeSomething 0'
+        'defs'='cls;formatDefaults'
+        'enc'='splashPage;decodeSomething 1'
+        'proto'='clearProto'
+        'strings'='stringz'
+        'shell'='runSomething'
+        'splash'='easterEgg'
+        'refresh'="dlNew 'MACROSS.ps1' $vf19_LVER"
+    }
+
+    . $([scriptblock]::Create("$($ex[$1])"))
+
     $Global:hk_Z = $null
     Return
 }
@@ -565,11 +584,16 @@ function stringz($f=$(getFile),$noKeep=0){
 }
 
 
-## Get the hash of a file; must pass the filepath and hashing method
-##  Usage:  $var = getHash $filepath 'md5'
-##                       OR
-##          $var = getHash $filepath 'sha256'
+
 function getHash(){
+    <#
+    .SYNOPSIS
+    Get the hash of a file; must pass the filepath and hashing method
+    .EXAMPLE
+    Usage:  $var = getHash $filepath 'md5'
+                           OR
+            $var = getHash $filepath 'sha256'
+    #>
     Param(
         [Parameter(Mandatory)]
         [string]$file,
@@ -590,7 +614,10 @@ function getHash(){
 
 
 
-<# 
+
+function sheetz(){
+    <#
+    .SYNOPSIS
     Output tool values to an Excel spreadsheet on user's desktop
 
     (This is very simplistic at the moment; the goal is to eventually make more useful spreadsheets when
@@ -699,9 +726,7 @@ function getHash(){
         Snot Green: RGB(204,255,204)
 
 
-#>
-function sheetz(){
-
+    #>
     param(
         [Parameter(Mandatory=$true)]
         [string]$1,
@@ -892,12 +917,17 @@ function sheetz(){
 
 
 
-## This func opens a dialog window so the user can specify a filepath to whatever.
-## Param $filter is optional, allows you to specify a filetype to select; default is
-## to show all files for selection
-##    Example usage: $file_to_read = getFile 'Text Document (.txt)|*.txt'
-##                                   ^^ only shows user txt files to select
+
 function getFile($filter){
+    <#
+    .SYNOPSIS
+    This func opens a dialog window so the user can specify a filepath to whatever.
+    Param $filter is optional, allows you to specify a filetype to select; default is
+    to show all files for selection
+    .EXAMPLE
+       Example usage: $file_to_read = getFile 'Text Document (.txt)|*.txt'
+                                      ^^ only shows user .txt files to select
+    #>
     [System.Reflection.Assembly]::LoadWithPartialName("System.windows.forms") | Out-Null
 
     if($filter -eq 'folder'){
@@ -909,7 +939,7 @@ function getFile($filter){
     
     if($f){
         $f.rootfolder = $wherever
-        $f.Description = "Select a folder"
+        $f.SYNOPSIS = "Select a folder"
         $f.SelectedPath = 'C:\'
 
         if($f.ShowDialog() -eq "OK"){
@@ -1053,6 +1083,4 @@ function houseKeeping(){
     
     Remove-Variable -Force fpath,flist
 }
-
-
 
