@@ -1,5 +1,5 @@
 #_sdf1 Front end for MACROSS toolset
-#_ver 3.1
+#_ver 4.0
 
 <#
     Multi-API-Cross-Search (MACROSS) Console
@@ -39,7 +39,7 @@
 
         2b. The third line must contain custom [macross] class attributes in order:
 
-            #_class <PRIVILEGE>,<FUNCTION or WHAT YOUR SCRIPT EVALS>,<LANGUAGE>,<AUTHOR>,<HOW MANY PARAMS CAN BE PROCESSED>
+             #_class <PRIVILEGE>,<FUNCTION or WHAT YOUR SCRIPT EVALS>,<LANGUAGE>,<AUTHOR>,<HOW MANY PARAMS CAN BE PROCESSED>,<RESPONSE TYPE>
 
             This helps MACROSS determine when to provide tools to users. 
                 Privilege: does the script require admin or user priv?
@@ -54,6 +54,7 @@
                 How Many Params: tell MACROSS how many parameters can be passed to the script for evaluation.
                     As of version 2, MACROSS only passes 1 param to any script. See notes in "validation.ps1"
                     under the function "collab" if you need to modify this.
+                Response Type: what kind of data gets sent back -- json, onscreen, none, etc.
 
             Review the "classes.ps1" file for more info!
 
