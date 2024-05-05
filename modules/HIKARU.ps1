@@ -1,6 +1,6 @@
 #_sdf1 Demo - a basic config walkthru (6-8 mins)
 #_ver 0.2
-#_class user,demo script,powershell,HiSurfAdvisory,0
+#_class user,demo script,powershell,HiSurfAdvisory,0,none
 
 <#
 
