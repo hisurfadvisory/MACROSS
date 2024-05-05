@@ -1,6 +1,6 @@
 #_sdf1 Carbon Black EDR Integration
 #_ver 2.1
-#_class user,EDR,powershell,HiSurfAdvisory,1
+#_class user,EDR,powershell,HiSurfAdvisory,1,json
 
 <#
 
