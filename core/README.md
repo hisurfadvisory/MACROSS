@@ -26,9 +26,10 @@ The first three lines of your automation script requires these:<br>
 		3. What language your script is (powershell, python)
 		4. The author
 		5. The maximum number of values your script can process
+  		6. The type of format your script returns
 
 		Example class line:
-		#_class user,pdfs,powershell,HiSurfAdvisory,1
+		#_class user,pdfs,powershell,HiSurfAdvisory,1,json
 
 When all these lines are set correctly, MACROSS uses the [macross] class to keep track of the scripts in the "modules" folder. You can see what these look like by typing "debug TL" in the main menu.<br>
 
