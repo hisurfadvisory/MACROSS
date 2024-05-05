@@ -1,6 +1,6 @@
 #_sdf1 User lookup + audit new accounts
 #_ver 2.1
-#_class user,active-directory lookups,powershell,HiSurfAdvisory,1
+#_class user,active-directory lookups,powershell,HiSurfAdvisory,1,onscreen
 
 <#
     MYLENE: Target recently-created accounts for inspection; look up AD info
