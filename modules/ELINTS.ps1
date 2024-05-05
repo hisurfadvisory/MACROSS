@@ -1,6 +1,6 @@
 #_sdf1 String-search documents
 #_ver 1.5
-#_class user,document string search,powershell,HiSurfAdvisory,1
+#_class user,document string search,powershell,HiSurfAdvisory,1,onscreen
 
 <#
     Author: HiSurfAdvisory
