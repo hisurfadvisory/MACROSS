@@ -540,35 +540,43 @@ function collab(){
 
 #>
 function availableTypes($1,$2,$3){
-    $t = @()
-    if($1 -Match "\w"){
-        $types = ($1 -replace ", ",',') -split(',')
+    $tl = @()
+    if($1 -ne ''){
+        $t = ($1 -replace ", ",',')
+        $ts = $t -split(',')
     }
-    $vf19_ATTS.keys | %{
-        if($3 -and $vf19_ATTS[$_].valtype -eq "$3"){
-            $match += $vf19_ATTS[$_].fname
-        }
-        elseif($types){
-            $types | %{
-                if($vf19_ATTS[$_].valtype -Like "*$1*"){
-                    $match += $vf19_ATTS[$_].fname
+    
+    $vf19_LATTS.keys | %{
+        $k = $_
+        if($2 -and $vf19_LATTS[$k].lang -eq $2){
+            if($3 -and $vf19_LATTS[$k].valtype -eq "$3"){
+                $tl += $vf19_LATTS[$k].fname
+            }
+            elseif($ts){
+                $ts | %{
+                    if($vf19_LATTS[$k].valtype -Like "*$1*"){
+                        $tl += $vf19_LATTS[$k].fname
+                    }
                 }
             }
         }
-
-        if($match -and $2){
-            if($vf19_ATTS[$_].lang -eq $2){
-                $t += $match
+        elseif(! $2 -or $2 -eq ''){
+            if($3 -and $vf19_LATTS[$k].valtype -eq "$3"){
+                $tl += $vf19_LATTS[$k].fname
+            }
+            elseif($ts){
+                $ts | %{
+                    if($vf19_LATTS[$k].valtype -Like "*$1*"){
+                        $tl += $vf19_LATTS[$k].fname
+                    }
+                }
             }
         }
-        elseif($match){
-            $t += $match
-        }
-        Clear-Variable match
     }
-    if($t.count -gt 0){
-        $t = $t | Sort -Unique
-        Return $t
+    
+    if($tl.count -gt 0){
+        $tl = $tl | Sort -Unique
+        Return $tl
     }
 }
 
