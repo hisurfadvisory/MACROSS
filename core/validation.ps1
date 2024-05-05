@@ -536,7 +536,7 @@ function collab(){
     availableTypes  ''  'python'  'firewall api'
 
     Any tools matching your request get added to the response list that your script can iterate 
-    through and send to "collab".
+    through and send to "collab" by using its .fname value.
 
 #>
 function availableTypes($1,$2,$3){
@@ -550,24 +550,24 @@ function availableTypes($1,$2,$3){
         $k = $_
         if($2 -and $vf19_LATTS[$k].lang -eq $2){
             if($3 -and $vf19_LATTS[$k].valtype -eq "$3"){
-                $tl += $vf19_LATTS[$k].fname
+                $tl += $vf19_LATTS[$k]
             }
             elseif($ts){
                 $ts | %{
                     if($vf19_LATTS[$k].valtype -Like "*$1*"){
-                        $tl += $vf19_LATTS[$k].fname
+                        $tl += $vf19_LATTS[$k]
                     }
                 }
             }
         }
         elseif(! $2 -or $2 -eq ''){
             if($3 -and $vf19_LATTS[$k].valtype -eq "$3"){
-                $tl += $vf19_LATTS[$k].fname
+                $tl += $vf19_LATTS[$k]
             }
             elseif($ts){
                 $ts | %{
                     if($vf19_LATTS[$k].valtype -Like "*$1*"){
-                        $tl += $vf19_LATTS[$k].fname
+                        $tl += $vf19_LATTS[$k]
                     }
                 }
             }
