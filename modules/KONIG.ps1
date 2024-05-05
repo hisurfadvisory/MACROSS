@@ -1,6 +1,6 @@
 #_sdf1 Network Fileshare Search
 #_ver 1.1
-#_class user,file search,powershell,HiSurfAdvisory,1
+#_class user,file search,powershell,HiSurfAdvisory,1,onscreen
 
 <#
     KÖNIG fileshare search tool
