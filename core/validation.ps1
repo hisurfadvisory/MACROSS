@@ -5,10 +5,10 @@
 
 ## Don't leave crap in memory when not needed
 function varCleanup($1){
-    Remove-Variable vf19_FILECT,vf19_REPOCT,HELP,CALLHOLD,COMEBACK,`
+    Remove-Variable vf19_FILECT,vf19_REPOCT,HELP,COMEBACK,`
     GOBACK,RESULTFILE,HOWMANY,CALLER,vf19_READ,dyrl_* -Scope Script
 
-    Remove-Variable vf19_FILECT,vf19_REPOCT,HELP,CALLHOLD,COMEBACK,vf19_OPT1,`
+    Remove-Variable vf19_FILECT,vf19_REPOCT,HELP,COMEBACK,vf19_OPT1, `
     GOBACK,RESULTFILE,HOWMANY,CALLER,vf19_READ,dyrl_* -Scope Global
 
     #Remove-Variable PROTOCULTURE -Scope Global  ## Uncomment this to always clear PROTOCULTURE automatically
@@ -22,16 +22,23 @@ function varCleanup($1){
     }
 }
  
-<#
-    yorn() details:
 
+function yorn(){
+    <#
+    ||longhelp||
     Quickly get input from users on whether to continue a task.
-    Opens a "Yes/No" window for the user to click on.
+    
+    Opens a "Yes/No" window for the user to click on. Returns 'Yes' or 'No' so 
+    you can kill tasks or continue as the user chooses.
+    
     You MUST provide the name of your script, AND the task in progress.
 
     You can also provide an optional question as a 3rd parameter ($question)
 
 
+    If you want to modify the window options that get displayed, change
+    these numbers within the function in "validation.ps1".
+    
     ICONS:                   BUTTONS:
     Stop          16         OK               0
     Question      32         OKCancel         1
@@ -39,12 +46,15 @@ function varCleanup($1){
     Information   64         YesNoCancel      3
                              YesNo            4
                              RetryCancel      5
-    Returns 'Yes' or 'No' so you can kill tasks or continue as the
-    user chooses.
-
-    Usage:  if($(yorn 'SCRIPTNAME' '$CURRENT_TASK') -eq 'No'){$STOP_DOING_TASK}
-#>
-function yorn(){
+                            
+    
+    ||examples||
+    
+    if( $(yorn 'SCRIPTNAME' '$CURRENT_TASK') -eq 'No' ){
+        $STOP_DOING_TASK
+    }
+    
+    #>
     param(
         [Parameter(Mandatory)]
         [string]$scriptname,
@@ -99,6 +109,7 @@ function yorn(){
 
  Check your privilege LOL
  Some tools or APIs need admin-level access.
+ 
  Set $1 to 'deny' if your script requires elevated priv, or set
  it to 'pass' if it will kinda-sorta work in userland
 
@@ -112,8 +123,11 @@ function yorn(){
     SJW 'deny'
         
  will tell the user they need to be admin or DA or whatever,
- then return to the console menu. The [macross].priv attribute
- in each script should make this redundant.
+ then return to the console menu. 
+ 
+ The [macross].priv attribute in each script may indicate "user", while
+ certain functions within that script still need admin privilege to work. 
+ Use this check in those cases.
 ################################>
 function SJW($1){
     if( $1 = 'menu' ){
@@ -199,7 +213,7 @@ function eMsg($1='ERROR: that module is unavailable!',$2='c'){
       pyATTS()  details:
 
    Convert the hashtable of macross objects for python, but only
-   includes the .name and .valtype attributes.
+   includes the .fname and .valtype attributes.
    
    Don't want this to be a static global value in case scripts get
    modified/removed/added while MACROSS is active, so this function 
@@ -213,7 +227,7 @@ function eMsg($1='ERROR: that module is unavailable!',$2='c'){
 function pyATTS(){
     $p = @()
     foreach($k in $vf19_ATTS.keys){
-        $n = $vf19_ATTS[$k].name
+        $n = $vf19_ATTS[$k].fname
         $v = $vf19_ATTS[$k].valtype
         $atts = $n + '=' + $v
         $p += $atts
@@ -395,73 +409,90 @@ function setUser($1){
 
 
 
-<#
-    collab() details:
 
-  Call this function from one script to load your current
-  investigation values into another.
-  
-  The 1st param is the script filename you're calling, INCLUDING
-  the extension, and is *required*. The script also needs to be
-  located in the modules folder and recognized by MACROSS, i.e.
-  it has the magic words in the first three lines --
-  
+function collab(){
+    <#
+    ||longhelp||
+    Call this function from one script to load your current investigation values into 
+    another. You can send up to 3 parameters.
+        
+    The 1st param is the script filename you're calling, INCLUDING the extension, 
+    and is *required*. The script also needs to be located in the modules folder 
+    and recognized by MACROSS, i.e. it has the magic words in the first three 
+    lines --
+        
         #_sdf1
         #_ver
         #_class
 
-  If you're calling a python script, all the default MACROSS values
-  will be passed in the standard 6-argument sequence that is used in
-  the availableMods function, but your $CALLER and $PROTOCULTURE values
-  will also be added in as the 7th and 8th args.
-  
-  The 2nd param is the name of the script calling this function
-  ($CALLER) and is required. (I set this to be required so that you
-  always have the option to have your scripts lookup attributes from 
-  the $vf19_LATTS array and determine its .valtype, .lang, etc.)
+    If you're calling a python script, all the default MACROSS values will be passed 
+    in the standard 6-argument sequence that is used in the availableMods function, 
+    but your $CALLER and $PROTOCULTURE values will also be added in as the 7th and 
+    8th args.
+        
+    The 2nd param is the name of the script calling this function ($CALLER) and is 
+    required. (I set this to be required so that you always have the option to have 
+    your scripts lookup attributes from  the $vf19_LATTS array and determine its 
+    .valtype, .lang, etc.)
 
-  The 3rd param is an ***optional*** item you're passing if you
-  want something other than $PROTOCULTURE to be eval'd, or if
-  the script being called requires 2 eval parameters.
+    The 3rd param is an ***optional*** item you're passing if you want something other 
+    than $PROTOCULTURE to be eval'd, or if the script being called requires 2 eval 
+    parameters.
 
-  If you need the called script to launch in a new window, set
+    If you need the called script to launch in a new window, set
 
-                $Global:vf19_NEWWINDOW = $true
+        $Global:vf19_NEWWINDOW = $true
 
-  in the $CALLER script. Be aware that the called script will NOT have
-  access to MACROSS resources if launched in a new window, as it will be
-  its own entirely different session!
+    in the $CALLER script. Be aware that the called script will NOT have access to MACROSS 
+    resources if launched in a new window, as it will be its own entirely different session!
 
-  The $PROTOCULTURE variable should already be globally set by ***your***
-  script. If you pass another value in, make sure the script you are calling
-  has an .evalmax value of 2.
-  
-  For instance, it could be that $PROTOCULTURE is globally set, but you're
-  calling a script that can accept more than one item to evaluate. In this
-  case, you can send a new value to this function to be passed along in 
-  addition to $PROTOCULTURE, if the called script is designed to recognize 
-  when it is receiving a parameter while $PROTOCULTURE also contains a value.
-  
-  Remember that $PROTOCULTURE is meant to be available to all the scripts all
-  the time until *you* decide to overwrite or clear it, or you exit MACROSS
-  cleanly which will delete all related values.
+    The $PROTOCULTURE variable should already be globally set by ***your*** script. If you 
+    pass another value in, make sure the script you are calling has an .evalmax value of 2.
+        
+    For instance, it could be that $PROTOCULTURE is globally set, but you're calling a script 
+    that can accept more than one item to evaluate. In this case, you can send a new value to 
+    this function to be passed along in addition to $PROTOCULTURE, if the called script is 
+    designed to recognize when it is receiving a parameter while $PROTOCULTURE also contains a 
+    value.
+        
+    Remember that $PROTOCULTURE is meant to be available to all the scripts all the time until 
+    *you* decide to overwrite or clear it, or you exit MACROSS cleanly which will delete all 
+    related values.
 
-  (After the called script exits, $CALLER will be erased, but $PROTOCULTURE
-  will remain globally available unless you explicitly remove it; you can force
-  $PROTOCULTURE to always clear when the MACROSS menu loads by modifying the
-  varCleanup function at the top of this script)
+    (After the called script exits, $CALLER will be erased, but $PROTOCULTURE will remain 
+    globally available unless you explicitly remove it; you can force $PROTOCULTURE to always 
+    clear when the MACROSS menu loads by modifying the varCleanup function at the top of this 
+    script)
 
-  Also remember that MACROSS intends for the following variables to be global as 
-  well, *but* they get cleared every time you exit a script back to the MACROSS 
-  menu:
+    Also remember that MACROSS intends for the following variables to be global as well, *but* 
+    they get cleared every time you exit a script back to the MACROSS menu:
 
     1. $RESULTFILE -- any files generated by your scripts that can be used for
         further eval or formatting in other scripts
     2. $HOWMANY -- the number of successful tasks tracked between scripts
-    
-    
-#>
-function collab(){
+            
+    ||examples||
+    Example on how you might use the availableTypes function to search each tool's MACROSS class
+    for tools that look up data on hostnames, and then filtering that list of tools based on
+    their .evalmax and .rtype values to automatically call them via the collab function to collect 
+    data on the hostnames you're investigating:
+        
+        $results = @()
+        $list = availableTypes 'hostname'
+        $hostnames | foreach-object{
+            $PROTOCULTURE = $_
+            foreach( $tool in $list ){
+                if($tool.evalmax -gt 0 ` -and $tool.rtype -ne 'onscreen'){
+                    $results += $(collab $tool.fname 'MyScriptName')
+                }
+            }
+        }
+            
+    ** The .rtype attribute "onscreen" means a script doesn't return data, it only outputs 
+    its results to the screen.
+            
+        
+    #>
     Param(
         [Parameter(Mandatory=$true)]
         [string]$module,
@@ -519,27 +550,32 @@ function collab(){
 
 }
 
-<#
-    availableTypes() details:
 
+function availableTypes($1,$2,$3){
+    <#
+    ||longhelp||
     When you need to use the "collab" function to pass values into other scripts, you can find 
-    relevant tools by calling this function with the .valtypes you want as $1 (comma-separated), 
-    and if necessary, you can pass the language (powershell or python) as the optional param $2.
+    relevant tools by calling this function with the .valtypes you want as parameter $1 (comma-
+    separated), and if necessary, you can pass the language (powershell or python) as the optional 
+    parameter $2.
 
     If you want the .valtype to be an EXACT match, leave $1 empty and send your filter
-    as param $3.
+    as parameter $3.
+    
+    Any tools matching your request get added to the response list, that returns to your script.
+    You can use that list to automatically query other tools via the "collab" function.
 
-    ## Ask for any scripts that process strings:
-    availableTypes  'strings'
+    ||examples||
+    Ask for any scripts that process usernames, including EDR apis:
+    
+        availableTypes  'user, edr'
 
-    ## Ask only for python scripts with .valtype that is "firewall api":
-    availableTypes  ''  'python'  'firewall api'
+    Ask only for python scripts with .valtype that is "firewall api":
+    
+        availableTypes  ''  'python'  'firewall api'
 
-    Any tools matching your request get added to the response list that your script can iterate 
-    through and send to "collab" by using its .fname value.
 
-#>
-function availableTypes($1,$2,$3){
+    #>
     $tl = @()
     if($1 -ne ''){
         $t = ($1 -replace ", ",',')
