@@ -523,8 +523,8 @@ function collab(){
     availableTypes() details:
 
     When you need to use the "collab" function to pass values into other scripts, you can find 
-    relevant tools by calling this function with the .valtype you want as $1, and if necessary,
-    you can pass the language (powershell or python) as the optional param $2.
+    relevant tools by calling this function with the .valtypes you want as $1 (comma-separated), 
+    and if necessary, you can pass the language (powershell or python) as the optional param $2.
 
     If you want the .valtype to be an EXACT match, leave $1 empty and send your filter
     as param $3.
@@ -541,12 +541,19 @@ function collab(){
 #>
 function availableTypes($1,$2,$3){
     $t = @()
+    if($1 -Match "\w"){
+        $types = ($1 -replace ", ",',') -split(',')
+    }
     $vf19_ATTS.keys | %{
         if($3 -and $vf19_ATTS[$_].valtype -eq "$3"){
             $match += $vf19_ATTS[$_].fname
         }
-        elseif($1 -Match "\w" -and $vf19_ATTS[$_].valtype -Like "*$1*"){
-            $match += $vf19_ATTS[$_].fname
+        elseif($types){
+            $types | %{
+                if($vf19_ATTS[$_].valtype -Like "*$1*"){
+                    $match += $vf19_ATTS[$_].fname
+                }
+            }
         }
 
         if($match -and $2){
