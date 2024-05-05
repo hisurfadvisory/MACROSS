@@ -1,6 +1,6 @@
 #_sdf1 Windows Event ID reference
 #_ver 1.0
-#_class user,windows eventID reference,powershell,HiSurfAdvisory,1
+#_class user,windows eventID reference,powershell,HiSurfAdvisory,1,hashtable
 
 <# 
     GUBABA is an offline index of Windows Event IDs. You can perform manual
