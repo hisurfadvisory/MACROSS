@@ -1,6 +1,6 @@
 #_sdf1 Demo - Python integration
 #_ver 0.2
-#_class user,demo script,python,HiSurfAdvisory,2
+#_class user,demo script,python,HiSurfAdvisory,2,onscreen
 
 # By default, MACROSS always passes these vars to any python scripts it loads from the menu:
 # $USR, $pyATTS, $vf19_DEFAULTPATH, $vf19_PYPOD, $vf19_numchk, $vf19_pylib, $vf19_TOOLSROOT
