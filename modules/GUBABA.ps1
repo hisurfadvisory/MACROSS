@@ -35,7 +35,7 @@ param(
 
 ## Gubaba!
 if( ! $PYCALL -and ! $CALLER ){
-    transitionSplash 4
+    transitionSplash 4 2
 }
 
 ## ASCII splashes
