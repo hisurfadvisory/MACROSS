@@ -35,7 +35,7 @@ if($HELP){
     Return
 }
 
-transitionSplash 9
+transitionSplash 9 2
 
 function splashPage(){
     cls
