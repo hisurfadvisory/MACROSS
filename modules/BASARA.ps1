@@ -1,6 +1,6 @@
 #_sdf1 Code-signing & Cert inspection
 #_ver 1.5
-#_class user,digital certificates,powershell,HiSurfAdvisory,1
+#_class user,digital certificates,powershell,HiSurfAdvisory,1,onscreen
 
 ## Watch for alt filenames requested from python scripts via 'collab'
 param(
