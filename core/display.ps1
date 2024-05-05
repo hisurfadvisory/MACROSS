@@ -1,5 +1,7 @@
 ## Functions controlling MACROSS's display
 
+
+## These are the colors used in the w, sep, screenResults and screenResultsAlt functions
 $Global:vf19_colors = @{
     'w'='white'
     'b'='blue'
@@ -57,30 +59,21 @@ neKVmuKVkOKVkOKVkOKVkOKVkOKVkOKVnQ=='
 
 function w($1,$2,$3){
     <#
-    .SYNOPSIS
+    ||longhelp||
     I got sick of typing "Write-Host", gimme a break powershell.
     Send your text as the first param, and the first letter of the text color you want as the second param
     (or "bl" for black, "b" for blue). The third parameter (optional) can be either background color OR "nl" 
     for the "-NoNewLine" option.
     
     ** Not supported yet -- underlining: Write-Host "$([char]27)[4m Underlined Word $([char]27)[24m"
-    .EXAMPLE
+    
+    ||examples||
     Write green text:
     w "A string of text." 'g'
     
     Write a multi-color string:
     w "A string of" 'g' 'nl'; w "text" 'y'
     #>
-    $vf19_colors = @{
-        'w'='white'
-        'b'='blue'
-        'bl'='black'
-        'g'='green'
-        'r'='red'
-        'y'='yellow'
-        'm'='magenta'
-        'c'='cyan'
-    }
     $vf19_colors.keys | %{
         if($2 -eq $_){
             $f = $2
@@ -192,7 +185,7 @@ function startUp(){
         $e = $c -replace "^..."
         $Global:vf19_MPOD.Add($d,$e)
         if($MONTY){
-            $p += $c  ## Create a parallel MPOD list that python can read
+            $p += $c  ## Create a parallel MPOD dictionary that python can read
         }
     }
     if($p.length -gt 0){
@@ -205,13 +198,14 @@ function startUp(){
 
 function sep(){
     <#
-    .SYNOPSIS
+    ||longhelp||
     When writing outputs to screen and you're not using screenResults(), this
     function can write a simple separator if you need to break up lines.
     $1 = the character that makes up the separator
     $2 = the length of the separator line
     $3 = (optional) the color of the separator
-    .EXAMPLE
+    
+    ||examples||
     Example use: Create a 16 char-length line of "*" in yellow text
     
         sep '*' 16 'yellow'    
@@ -233,7 +227,6 @@ function sep(){
 
 function macrossHelp($1){
     <#
-    .SYNOPSIS
     Display HELP for internal MACROSS functions. Send the tool name as parameter 1
     for its details and usage, or send "dev" to get a full list of descriptions.
     Calling without parameters just lists the Local Attributes table.
@@ -252,6 +245,7 @@ function macrossHelp($1){
         'stringz'= @{'d'="Extract ASCII characters from binary files. Call this function without parameters to open a nav window and select a file. You can also send a filepath as parameter one. If you do not want to keep the output text file, send 1 as parameter two.";'u'="Usage: stringz ['path\to\file' (optional)] [1 (optional)]"}
         'eMsg'= @{'d'="Send an integer 0-3 as the first parameter to display a canned message, or send your own message as the first parameter.  The second parameter is optional and will change the text color (send the first letter or 'bl' for black)";'u'='Usage: eMsg [message number|your custom msg] [text color (optional)]'}
         'errLog'= @{'d'="Write messages to MACROSS' log folder. Timestamps are added automatically. You can read these logs by typing 'debug' into MACROSS' main menu.";'u'='Usage: errLog [message level, examples: "INFO"|"WARN"|"ERROR"] [message field 1] [message field 2]'}
+        'availableTypes'= @{'d'='Search MACROSS tools by their .valtype attribute';'u'='Usage: availableTypes [search term(s)] [optional .lang] [optional exact search terms]'}
         'collab'= @{'d'="Enrich or collect data from other MACROSS scripts. An optional value can be sent as parameter three if the called script's .evalmax value is 2.";'u'='Usage: collab [scriptToCall.extension] [yourScriptName] [optional value]'}
         'getHash'= @{'d'='Get the hash of a file.';'u'='Usage: getHash [filepath] [md5|sha256]'}
         'houseKeeping'= @{'d'="Displays a list of existing reports your script has created, and gives the option of deleting one or more of them if no longer needed.";'u'="Usage: houseKeeping [directory containing your script's report outputs] [yourScriptName]"}
@@ -259,18 +253,48 @@ function macrossHelp($1){
         'slp'= @{'d'="Alias for 'start-sleep' to pause your scripts. Send the number of seconds to pause as parameter one, and 'm' as the second parameter if you want to pause in milliseconds instead.";'u'='Usage: slp [number of seconds] ["m" (changes seconds to milliseconds)]'}
         'transitionSplash'= @{'d'='This function contains various ASCII art from the MACROSS anime. You can add your own ASCII art here.';'u'='Usage: transitionSplash [1-8]'}
     }
+    
+    function longHelps($fct){
+        $long = ''; $ex = ''; $cores = @('utility.ps1','display.ps1','validation.ps1','splashes.ps1')
+        foreach($core in $cores){
+            $f = "$vf19_TOOLSROOT\core\$core"
+            $p = (gc $f | Select-String -Pattern "^function $fct\(")
+                
+            if($p){
+                $x = (Select-String -Pattern "^function $fct\(" $f | Select-Object -ExpandProperty LineNumber) + 2
+                Break
+            }
+        }
+        
+        while($g -notlike "*||examples||"){
+            $g = $(Get-Content $f | Select -Index $x)
+            $x++
+            if($g -like "*||examples||"){$long = " $1" + ":`n" + $long}
+            else{$long += "$g`n"}
+        }
+        rv g
+        while($g -notlike "*#>"){
+            $g = $(Get-Content $f | Select -Index $x)
+            $x++
+            $ex += "$g`n"
+        }
+        $ex = $ex -replace "#>"; Return @($long,$ex)
+    }
+    
     if($1 -eq 'show'){
         screenResults $($helps.keys -join(', '))
-        screenResults 'w~ Type h + one of the above to view details (full README for each is in the \core .ps1 files)'
+        screenResults 'w~ Type help, or help + one of the above to view details'
         screenResults 'endr'
         Return
     }
     cls
     if($1 -in $helps.keys){
-        w "`n`n`n`n"
-        screenResults $1 "$($helps[$1]['d'])"
-        screenResults "$($helps[$1]['u'])"
-        screenResults 'endr'
+        ''
+        $lh = longHelps $1
+        $lh[0]
+        w '
+        Hit ENTER for example usage.' 'y'; Read-Host
+        $lh[1]
         ''
     }
     elseif($1 -eq 'dev'){
@@ -279,13 +303,9 @@ function macrossHelp($1){
         $helps.keys | Sort | %{
             screenResults $_ $($helps[$_]['d'])
             screenResults "c~$($helps[$_]['u'])"
-            screenResults 'w~ The full README for this function is in the \core .ps1 files (display, utility, and validation)'
+            screenResults 'endr'
         }
-        screenResults 'endr'
         ''
-        w ' From the main menu, type "debug " and any of the above functions with the
-  required params to test them.
-        ' 'g'
     }
     else{
         TL
@@ -299,20 +319,21 @@ function macrossHelp($1){
 
 function screenResults(){
     <#
-    .SYNOPSIS
-    Format up to three rows of outputs to the screen; parameters you send will be wrapped to fit in their 
-    columns (up to 3 separate columns). Call this function with "endr" as the only parameter to add the final
-    separator $c after all your results have been displayed.
+    ||longhelp||
+    Format up to three rows of outputs to the screen; parameters you send will be wrapped 
+    to fit in their columns (up to 3 separate columns). Call this function with "endr" as 
+    the only parameter to add the final separator $c after all your results have been displayed.
     
     $1 is required, $2 and $3 are optional.
     
-    If you send a value that begins with "r~", for example "r~Windows PC", the value "Windows PC" will be 
-    written to screen in red-colored text. You can use any color recognized by powershell's "write-host -f" 
-    option ("g"reen, "y"ellow, "c"yan, etc.)
-    .EXAMPLE
+    If you send a value that begins with "r~", for example "r~Windows PC", the value 
+    "Windows PC" will be written to screen in red-colored text. You can use any color recognized 
+    by powershell's "write-host -f" option ("g"reen, "y"ellow, "c"yan, etc.)
+    
+    ||examples||
     Basic example of usage:
         screenResults 'Title of first result' 'Title of 2nd result' 'Title of 3rd result'
-        screenResults 'Large paragraph of results 1' 'Large paragraph of results 2' 'Large paragraph of results 3'
+        screenResults 'Large 1' 'Large paragraph 2' 'Large paragraph 3'
         screenResults 'endr'
     
     Example usage for displaying hashtable contents:
@@ -653,30 +674,32 @@ function screenResults(){
 
 function screenResultsAlt($1,$2,$3){
     <#
-        .SYNOPSIS
-        Alternate output format for MACROSS results; don't use this for large outputs, use
-            screenResults instead!
+    ||longhelp||
+    Alternate output format for MACROSS results; don't use this for large outputs, use
+    screenResults instead!
 
-        $1 is the header for each item; set it to 'next' if you want to
-        write additional values to the table without a row separator.
+    The first parameter is the header for each item; set it to 'next' if you want to
+    write additional values to the table without a row separator.
+
+    Parameters $2 and $3 are written below the header like a key-value pair.
+    $2 will get truncated if longer than 14 chars.
+
+    As with screenResults, you can use "<COLOR FIRST LETTER>~" to highlight your values. 
+    Send a single parameter, 'endr', to close out the table.
         
-        $2 and $3 are written below the header.
-        $2 will get truncated if longer than 14 chars.
-
-        As with screenResults, send a single parameter, '0', to close out the table.
-        .EXAMPLE
-        Example usage:
-            $1 = 'rundll32.exe'
-            $2 = 'Parent'
-            $3 = 'acrobat.exe'
-            $4 = 'ParentID'
-            $5 = '2351'
+    ||examples||
+    Example usage:
+        $1 = 'rundll32.exe'
+        $2 = 'Parent'
+        $3 = 'r~acrobat.exe'
+        $4 = 'ParentID'
+        $5 = '2351'
 
         screenResultsAlt $1 $2 $3
         screenResultsAlt 'next' $4 $5
         screenResultsAlt 'endr'
 
-            The above will write to screen:
+    The above will write to screen, with acrobat.exe in red:
 
         ║║║║║║ rundll32.exe
         ============================================================================
@@ -684,8 +707,7 @@ function screenResultsAlt($1,$2,$3){
         ParentID  ║  2351
         ============================================================================
 
-        As with the "screenResults" function, use "<COLOR FIRST LETTER>~" to highlight 
-        your values.
+
 
     #>
     $1color = 'CYAN'
@@ -749,9 +771,20 @@ function screenResultsAlt($1,$2,$3){
 
 
 
-## Function to pause your scripts for $1 seconds
-##  Send 'm' as a second parameter if you want to change the span to milliseconds
 function slp(){
+    <#
+    ||longhelp||
+    Function to pause your scripts for $1 seconds
+    Send 'm' as a second parameter if you want to change the span to milliseconds
+    
+    ||examples||
+    Pause for 10 seconds:
+        slp 10
+    
+    Pause for 500 milliseconds
+        slp 500 'm'
+        
+    #>
     param(
         [Parameter(Mandatory=$true)]
         [int]$sec,
