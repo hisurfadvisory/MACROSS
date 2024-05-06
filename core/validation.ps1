@@ -5,20 +5,18 @@
 
 ## Don't leave crap in memory when not needed
 function varCleanup($1){
-    Remove-Variable vf19_FILECT,vf19_REPOCT,HELP,COMEBACK,`
+    Remove-Variable -Force vf19_FILECT,vf19_REPOCT,HELP,COMEBACK,`
     GOBACK,RESULTFILE,HOWMANY,CALLER,vf19_READ,dyrl_* -Scope Script
 
-    Remove-Variable vf19_FILECT,vf19_REPOCT,HELP,COMEBACK,vf19_OPT1, `
+    Remove-Variable -Force vf19_FILECT,vf19_REPOCT,HELP,COMEBACK,vf19_OPT1, `
     GOBACK,RESULTFILE,HOWMANY,CALLER,vf19_READ,dyrl_* -Scope Global
 
-    #Remove-Variable PROTOCULTURE -Scope Global  ## Uncomment this to always clear PROTOCULTURE automatically
+    #Remove-Variable -Force PROTOCULTURE -Scope Global  ## Uncomment this to always clear PROTOCULTURE automatically
 
     ## Erase everything when quitting MACROSS
     if( $1 -eq 1 ){
-
         cleanGBIO  ## Don't leave eod files sitting around, it might interfere with python tools
-
-        Remove-Variable M_,N_,PROTOCULTURE,MONTY,SHARK,USR,vf19_*,dyrl_* -Scope Global
+        Remove-Variable -Force M_,N_,PROTOCULTURE,MAPPER,MONTY,SHARK,USR,vf19_*,dyrl_* -Scope Global
     }
 }
  
@@ -238,14 +236,9 @@ function pyATTS(){
 
 
 
-<################################
-
-    setUser() details:
-
-##  Define User Permissions:
-    Checks to see if the user can lookup their name via two methods,
-    and set the global $USR value.
-
+function setUser($1){
+    <#
+    ||longhelp||
     First it looks at the logged-in account on the local system.
 
     Next, it makes an Active-Directory query for $USR. If that fails, 
@@ -261,24 +254,26 @@ function pyATTS(){
     
     If you don't care about access control you don't have to change anything 
     here. Just be aware you may get annoying messages periodically about not 
-    having admin privileges because MACROSS doesn't know how to verify that 
+    having admin privileges because MACROSS doesn't know how to verify it 
     without these checks.
 
     There are better ways to ID your users' access/permissions, but
-    they will be unique to your environment. You can modify this
-    function however works best on your enterprise. Just know that unless
-    you enforce code-signing, these checks can be altered by anybody to 
-    bypass these functions. If you are adding scripts that access APIs,
-    keep this in mind!!
-
-################################>
-function setUser($1){
-    ## This is the basic check your scripts can use to try and keep non-SOC people from
-    ## launching MACROSS tools. If they fail all of the checks, this function returns $false
-    ## and you can use that to auto-kill your script. After setting your GPO names below,
-    ## just add something like this to your code:
-    <#
+    they will be unique to your environment. This is just the easiest method
+    I could think of that could be used almost anywhere. You can modify this
+    function however works best on your enterprise. 
+    
+    Just know that unless you enforce code-signing, these checks can be altered 
+    by anybody to bypass these functions. If you are adding scripts that access 
+    sensitive APIs, keep this in mind!!
+    
+    ||examples||
+    This is the basic check your scripts can use to try and keep non-SOC people from
+    launching MACROSS tools. If they fail all of the checks, this function returns $false
+    and you can use that to auto-kill your script. After setting your GPO names in the
+    setUser function, just add something like this to your scripts:
+    
         if ( -not setUser $vf19_tier3 ){ Exit }
+        
     #>
     if($1){
         $chk = $true
@@ -345,7 +340,19 @@ function setUser($1){
                 ##  "security", just a basic access control if you have nothing else. Restricting 
                 ##  script execution with signed code helps, otherwise this can be bypassed pretty 
                 ##  easily.
-
+                
+                ## OLD METHOD, DON'T UNCOMMENT THIS SECTION.
+                #$alpha = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#&!@?%'
+                #$gen = ''
+                #1..67 | %{
+                #    $gen += $($alpha[$(get-random -min 0 -max 66)] + $alpha[$(get-random -min 0 -max 66)])
+                #}
+                #Set-Variable -Name vf19_tier1 -Value $gen -Scope Global -Option ReadOnly
+                #Set-Variable -Name vf19_check -Value $gen -Scope Global -Option ReadOnly
+                #Set-Variable -Name vf19_tier2 -Value $false -Scope Global -Option ReadOnly
+                #Set-Variable -Name vf19_tier3 -Value $false -Scope Global -Option ReadOnly
+                ## UNCOMMENT OKAY AFTER THIS LINE.
+                
                 Set-Variable -Name vf19_tier1 -Value $(Get-Random -min 10000000 -max 9999999999) -Scope Global -Option ReadOnly
                 Set-Variable -Name vf19_modifier -Value $(Get-Random -min 500 -max 50000) -Scope Global -Option ReadOnly
                 Set-Variable -Name vf19_check -Value $($vf19_tier1 * $vf19_modifier) -Scope Global -Option ReadOnly
