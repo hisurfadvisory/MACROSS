@@ -161,7 +161,8 @@ function startUp(){
     $mio -Split('') | %{
         $i = $i + $(ord "$_")
     }
-    $Global:N_ = 671042 + ($i * 39); rv mio
+    Set-Variable -Name N_ -Value $(671042 + ($i * 39)) -Scope Global -Option ReadOnly; rv mio
+    #$Global:N_ = 671042 + ($i * 39); rv mio
 
 
 
