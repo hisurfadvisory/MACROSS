@@ -317,9 +317,9 @@ At the end of printing your results, call the function again with a single param
 	This file should be reserved for any custom classes your scripts need, especially if they could be useful for other scripts to make use of.<br>
 	&emsp;<b>A.</b> macross = A custom powershell class that tags every script in the \nmods folder with specific attributes that you MUST include on the third line of your scripts, tagged with "#\_class" so that MACROSS will parse it correctly. In this example:<br>
 	<br>
-	`#_class  User,syslogs,Python3,SuzyQ,1`
+	`#_class  User,syslogs,Python,SuzyQ,1,list`
 	<br>
-	The first value <b>User</b> is the .priv attribute, or the level of privilege required to run your script (will typically be User vs. Admin). Next, the <b>syslogs</b> value will be assigned to the .valtype attribute, describing what kind of data your script processes/returns, or what kind of actions it performs. The third value, <b>Python3</b>, is the .lang attribute while the fourth, <b>SuzyQ</b>, is the .author attribute. Finally, "<b>1</b>" is the .evalmax attribute, which is the maximum number of parameters that your script can accept for processing. The attributes tracked in this class are:<br>
+	The first value <b>User</b> is the .priv attribute, or the level of privilege required to run your script (will typically be User vs. Admin). Next, the <b>syslogs</b> value will be assigned to the .valtype attribute, describing what kind of data your script processes/returns, or what kind of actions it performs. The third value, <b>Python3</b>, is the .lang attribute while the fourth, <b>SuzyQ</b>, is the .author attribute. The fifth, "<b>1</b>" is the .evalmax attribute, which is the maximum number of parameters that your script can accept for processing. And finally, the value <b>list</b> is the type of response your script provides. The attributes tracked in this class are:<br>
 	
 	.name
 	.priv
@@ -327,6 +327,7 @@ At the end of printing your results, call the function again with a single param
 	.lang
 	.author
 	.evalmax
+ 	.rtype
 	
 <br>
 This is used for:<br>
@@ -345,16 +346,18 @@ This is used for:<br>
 	     Author:                      HiSurfAdvisory
 	     Evaluates:                   demo script
 	     Privilege required:          User
-	     Language:                    python
+	     Language:                    Python
 	     Max # of simultaneous evals: 2
+		 Response Type:               onscreen
 	
 	[macross]$vf19_ATTS['MINMAY']
 	name    : MINMAY
 	priv    : User
 	valtype : demo script
-	lang    : python
+	lang    : Python
 	author  : HiSurfAdvisory
 	evalmax : 2
+	rtype   : onscreen
 	ver     : 0.1
 	
 <br>
