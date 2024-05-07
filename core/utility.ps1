@@ -65,10 +65,10 @@ function debugMacross($1){
                 3. Pause after each error message with a choice to continue
                 4. Cancel
             
-            OR Type "logs" to review MACROSS log files,
-            
-            OR Type "python" to open a MACROSS python session for testing,
-            
+            OR Type "logs" to review MACROSS log files,'
+            if($MONTY){ Write-Host -f GREEN '
+            OR Type "python" to open a MACROSS python session for testing,'}
+            Write-Host -f GREEN '
             OR Enter any command to begin testing/debugging within powershell
 
             >  ' -NoNewline;
