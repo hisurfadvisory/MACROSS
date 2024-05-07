@@ -23,7 +23,7 @@ function debugMacross($1){
     '
     macrossHelp 'show'
     ''
-    $blacklist = [regex]".*(usr |n_ |m_ |(get-variable \*|gv \*)|your keywerdz here|other keywerdz|more keywerdz).*"
+    $blacklist = [regex]".*(usr | (get-variable \*|gv \*)|your keywerdz here|other keywerdz|more keywerdz).*"
     if($1){
         if($1 -notMatch $blacklist){
             if($1 -eq 'help'){
