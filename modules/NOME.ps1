@@ -186,17 +186,19 @@ function searchAD($1,$2){
         w "
     Enter the number for each property you want to search, followed by
     a colon and the value you're filtering on. for multiple filters,
-    separate each with a comma. Regex can be used for the non-boolean &
-    non-integer properties. Type 'q' to quit.
-    " 'g'
+    separate each with a comma. 
     
+    -Regex can be used for the non-boolean properties
+    -Operators > and < can be used for integer properties
+    " 'g'
         w '   Example filters --' 'g'
         w '
-    9:someValue
-    16:"some other values",19:true,11:1/15/2024
+    9:some value                               (search a single property)
+    3:>10                                      (search an int property for more than 10)
+    16:some other values,19:true,11:1/15/2024  (search multiple properties)
         ' 'c'
-        w '     > ' 'g' 'nl'
-
+        w '
+    Enter your filters, or "q" to quit: ' 'g' 'nl'
 
         $Z = Read-Host
         if($Z -eq 'q'){
@@ -227,6 +229,17 @@ function searchAD($1,$2){
             }
             else{
                 $filterstring = $filterstring + '$_.' + $($property -replace " \(b\)$")
+            }
+        }
+        elseif($property -in $dyrl_sn_intlist){
+            if($filter.values -Match "^<\d+$"){
+                $filterstring = $filterstring + '$_.' + $property + ' -lt ' + [string]$($filter.values -replace "<")
+            }
+            elseif($filter.values -Match "^>\d+$"){
+                $filterstring = $filterstring + '$_.' + $property + ' -gt ' + [string]$($filter.values -replace ">")
+            }
+            elseif($filter.values -Match "^\d+$"){
+                $filterstring = $filterstring + '$_.' + $property + ' -eq ' + [string]$filter.values
             }
         }
         else{
@@ -263,6 +276,9 @@ function searchAD($1,$2){
 
     if(! $matches){ 
         $matches = 0
+    }
+    elseif($matches.getType().basetype -ne 'System.Array'){
+        $matches = @($matches)
     }
 
     Return @($matches,$specific,$Z[1])
@@ -409,9 +425,10 @@ while($Z -ne 'c'){
             $Z = Read-Host
 
             if($Z -eq ''){
-                Break
+                $quit = $true; Break
             }
-            elseif($([int]$Z - 1) -lt $total){
+            else{
+                
                 $focus = $list[$([int]$Z - 1)]
                 $focus
                 ''
@@ -477,18 +494,9 @@ while($Z -ne 'c'){
                         "
                     }
                 }
-                else{
-                    $quit = $true
-                    cv
-                }
                 $Z = $null
                 cv
             }
-            else{
-                $quit = $true
-                cv
-            }
-
         }
         cv
         Remove-Variable accounts
