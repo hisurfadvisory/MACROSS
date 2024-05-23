@@ -10,8 +10,8 @@
     not always want to do so!
     
     Launching this with the 's' option (like "9s" from the main menu) enables the 
-    debugger line that allows you to run commands after the active-directory command
-    executes, so that you can view the output of your searches.
+    debugger line that allows you to run commands after the active-directory search
+    executes, so that you can view the raw outputs.
     
 #>
 
