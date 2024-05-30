@@ -102,18 +102,19 @@ if( $HELP ){
  
  
  
- MYLENE's Recent Account Search lets you perform user lookups by name or creation date.
- As an admin, you can query Active Directory for partial name matches. If you 
+ MYLENE's Recent Account Search lets you perform user lookups by name or creation 
+ date. As an admin, you can query Active Directory for partial name matches. If you 
  don't know the entire username, you can search with wildcards (*), but it might 
  return several results. If you wildcard the front  of your searches, you must 
  wildard the end (ex. *partname will not work, but *partname* and partname* will).
  
  When searching for recently created users, you can:
-    -forward search results to the KONIG tool to perform a filesearch on those profiles.
+    -forward search results to the KONIG tool to perform a filesearch on those 
+        profiles.
     -do a quick keyword search on all of the new accounts' GPO assignments
     -get a quickview of all the GPO assignments for specific new accounts
-    -get a quick alert for non-standard attributes on any new accounts (i.e. things like
-        'null password' will be highlighted in red)
+    -get a quick alert for non-standard attributes on any new accounts (i.e. things 
+        like 'null password' will be highlighted in red)
  
  MYLENE also lets you search for new hosts recently added to the network.
 
@@ -124,8 +125,8 @@ if( $HELP ){
 
 
  If you are logged in as admin and select MYLENE with the "s" option (example "12s" 
- from the main menu), you can search for keywords and creation dates instead of usernames
- in Active-Directory GPO.
+ from the main menu), you can search for keywords and creation dates instead of 
+ usernames in Active-Directory GPO.
 
  
  Hit ENTER to return.
