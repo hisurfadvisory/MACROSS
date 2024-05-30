@@ -78,7 +78,7 @@ if($dyrl_myl_CALLER){
     if($dyrl_mypy_QNAME -Match "\w"){
     if($dyrl_mypy_DESKTOP -Match "\w"){
     if($dyrl_mypy_GBIO -Match "\w"){
-        $CALLER = $dyrl_mypy_CALLER
+        $CALLER = $dyrl_mypy_CALLER -replace "^py"
         $PROTOCULTURE = $dyrl_mypy_QNAME
         $vf19_DEFAULTPATH = $dyrl_mypy_DESKTOP
         $vf19_GBIO = $dyrl_mypy_GBIO
