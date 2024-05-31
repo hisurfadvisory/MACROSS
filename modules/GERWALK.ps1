@@ -333,7 +333,9 @@ function splashPage(){
 }
 
 
-
+function eReset(){
+    $Script:ErrorActionPreference = 'SilentlyContinue'
+}
 
 function showHelp($1){
     if($1 -eq 1){
@@ -1189,6 +1191,7 @@ function findThese($1,$2){
     
             ## Clean exit for CANCEL button
             $f_quit.Add_Click({
+                eReset
                 $f_te1.Text = $null
                 $f_val1 = $null
             })
@@ -1408,6 +1411,7 @@ function findThese($1,$2){
             }
             elseif($Z1 -eq 'q'){
                Remove-Variable -Force dyrl_ger_* -Scope Global
+               eReset
                Exit
             }
             elseif($Z1 -eq 'carbon fiber'){
@@ -1421,6 +1425,7 @@ function findThese($1,$2){
                $f_val1 = $true
             }
             else{
+               eReset
                Exit
             }
         }
@@ -1430,6 +1435,7 @@ function findThese($1,$2){
 
     if( ! $f_val1 ){
         Remove-Variable f_*,dyrl_ger_* -Scope Global
+        eReset
         Exit
     }
     
@@ -1546,6 +1552,7 @@ function craftQuery($1,$2,$3,$4){
             $z = Read-Host '  Hit ENTER to execute curl or "q" to quit'
             if($z -eq 'q'){
                 Remove-Variable dyrl_ger_*
+                eReset
                 Exit
             }
             Clear-Variable z
@@ -1571,6 +1578,7 @@ function craftQuery($1,$2,$3,$4){
 
                 if($c -eq 'q'){
                     Remove-Variable -Force dyrl_ger_* -Scope Global
+                    eReset
                     Exit
                 }
                 elseif($c -Match $no){
@@ -1618,6 +1626,7 @@ function searchAgain($1){
     cls
 
     if( $1 -eq 1 ){
+        eReset
         Exit
     }
 }
@@ -1715,6 +1724,7 @@ while($r -Match "[0-9]"){
                     ''
                     Write-Host -f CYAN '    Action cancelled. Hit ENTER to exit.'
                     Read-Host
+                    eReset
                     Exit
                 }
                 while($Z2 -notMatch "^(md5|sha256)$"){
@@ -2147,6 +2157,7 @@ while($r -Match "[0-9]"){
                 $dyrl_ger_Z = 'f'
                 if(! $CALLER){
                     Remove-Variable dyrl_ger_*
+                    eReset
                     Exit
                 }
             }
@@ -2166,6 +2177,7 @@ while($r -Match "[0-9]"){
                 Write-Host -f GREEN '   Hit ENTER to exit.
                 '
                 Read-Host
+                eReset
                 Exit
             }
             else{
