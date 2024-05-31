@@ -1,5 +1,5 @@
 #_sdf1 Carbon Black EDR Integration
-#_ver 2.1
+#_ver 2.2
 #_class user,EDR,powershell,HiSurfAdvisory,1,json
 
 <#
@@ -25,7 +25,7 @@
 
     You will need to develop a secure method for passing in your API keys,
     this script does not contain any built-in methods for you. Look for line
-    1623, "$Script:dyrl_ger_MARK = $SETYOURKEYHERE", creating/passing in your
+    1629, "$Script:dyrl_ger_MARK = $SETYOURKEYHERE", creating/passing in your
     key here ensures it can be reused for multiple queries in one session.
     You may want to do this in another way that creates and destroys the key
     for every single query, it's up to you.
