@@ -1239,6 +1239,7 @@ function findThese($1,$2){
                     if($f_key3.SelectedItem -eq 'website'){
                         if($f_te3.Text -eq 'debug'){
                             $dyrl_ger_DEBUG = $true
+                            $Script:ErrorActionPreference = 'Continue'
                         }
                         else{
                             $f_val3 = [string]"domain:$($f_te3.Text)"
@@ -1412,6 +1413,7 @@ function findThese($1,$2){
             elseif($Z1 -eq 'carbon fiber'){
                 $Z1 = ''
                 $dyrl_ger_DEBUG = $true
+                $Script:ErrorActionPreference = 'Continue'
                 w ' Debugging  mode enabled.'; slp 2; splashPage; findThese
             }
             elseif($Z1 -Match "\w"){
