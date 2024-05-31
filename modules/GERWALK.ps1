@@ -25,19 +25,25 @@
 
     You will need to develop a secure method for passing in your API keys,
     this script does not contain any built-in methods for you. Look for line
-    1567, "$Script:dyrl_ger_MARK = $SETYOURKEYHERE", creating/passing in your
+    1623, "$Script:dyrl_ger_MARK = $SETYOURKEYHERE", creating/passing in your
     key here ensures it can be reused for multiple queries in one session.
     You may want to do this in another way that creates and destroys the key
     for every single query, it's up to you.
 
     Please do not hardcode your keys and passwords in your scripts.
 
+    Look for the commented lines in this script beginning "MPOD ALERT!", they
+    will give tips on modifying that particular section to fit your needs.
+
+
 
     ===================================================
     CALLING GERWALK FROM OTHER SCRIPTS:
 
+    The main purpose of GERWALK is to enrich other scripts.
+
     GERWALK automatically looks for $PROTOCULTURE when called via MACROSS' collab function,
-    as long as you've set $PROTOCULTURE as a global variable in your script. Your script
+    so you need to set $PROTOCULTURE as a global variable in your script. Your script
     can also send one additional parameter, which will be used to determine which
     API gets called, OR the maximum number of responses you want to receive from
     Carbon Black.
@@ -60,41 +66,70 @@
 
     How to specify your search -------------------
 
-    See the section within the "findThese" function below that checks for "$CALLER",
+    See the section within the "findThese" function that checks for "$CALLER",
     $dyrl_ger_alternate is the optional value you can send, with these values:
 
+        -'sensor' -- If you set a hostname as $PROTOCULTURE, you can get all the system
+            info Carbon Black has on that host. Example
+
+            $Global:PROTOCULTURE = desktop1
+            $var = collab 'GERWALK.ps1' 'MyScript' 'sensor'
+
         -'usrlkup' -- specifies $PROTOCULTURE is a username, and sets the time window
-            to search the last 2 days
+            to search the last 2 days. Example
+
+            $Global:PROTOCULTURE = 'Roy'; $var = collab 'GERWALK.ps1' 'MyScript' 'usrlkup'
+
         -'usrloggedin' -- tells GERWALK to just find out what host the $PROTOCULTURE
-            value last logged in to
+            username last logged in to. Example
+
+            $Global:PROTOCULTURE = 'Roy'; $var = collab 'GERWALK.ps1' 'MyScript' 'usrloggedin'
+
         -Sending a number as your optional parameter will perform a host lookup
             using $PROTOCULTURE as the hostname, and your number value as the number
-            of hours back to search for that host
-        -Sending a number with the word "results" (example: "75results") tells
-            GERWALK to send you back up to 75 events (if it finds that many).
-        -'greedy' sets the above to 250 results, and increases the time window
-            to 9999 hours (use this sparingly!)
-        -Sending a specific Carbon Black event ID will query the process/event API for a
-            **single** event, which you have to set as $PROTOCULTURE. Querying single 
-            events will grab you all the filenames/regkeys/netconns associated with that 
-            event, which can't be viewed in normal process searches
+            of hours back to search for that host. Example
 
-    (GERWALK checks for what kind of MACROSS .eval attribute your script has, i.e. IP
+            $Global:PROTOCULTURE = 'desktop1'; $var = collab 'GERWALK.ps1' 'MyScript' 5
+
+        -Sending a number with the word "results" tells GERWALK to send you a maximum 
+            of N events. Example to get back up to 50 events:
+
+            $Global:PROTOCULTURE = 'Roy'; $var = collab 'GERWALK.ps1' 'MyScript' '50results'
+
+        -'greedy' sets the above to 250 results, and increases the time window to
+            9999 hours (use this sparingly!)
+
+            $Global:PROTOCULTURE = 'Roy'; $var = collab 'GERWALK.ps1' 'MyScript' 'greedy'
+
+        -Sending a Carbon Black event ID will query the event API for a single event. Querying 
+            single events will grab you all the filenames/regkeys/netconns associated with that 
+            event, which can't be viewed in normal process searches. Example
+
+            $ID = '01234567-0123-4567-8901-123456789012'      ## Set the Event ID
+            $var = collab 'GERWALK.ps1' 'MyScript' $ID        ## Call GERWALK
+
+
+    (GERWALK checks for what kind of MACROSS .valtype attribute your script has, i.e. IP
     addresses or usernames or whatever, but passing these optional parameters makes
     sure there's no confusion, and also will automatically set things like time windows).
 
 
     
     
-    Usage examples to call GERWALK from your script:
+    More usage examples to call GERWALK from your script:
 
         $Global:PROTOCULTURE = 'Roy'
         $events = collab 'GERWALK.ps1' 'MyScript' 'usrlkup'   # GERWALK will look for events with username 'Roy'
+        $events = $events | convertfrom-json                  # Convert the results to a powershell object to make it easy
 
         $events[0].results  # This is the Carbon Black event list
         $events[0].facets   # This is a NON-sorted list of usernames, hostnames, processes and process paths that
                             #   appear in .results
         $events[1]          # This is the list of processes you can filter out if there are too many instances
+                            #  (I've found stuff like firefox.exe and svchost.exe can clutter up the screen)
+
+   Again, GERWALK *may* insert a result count as the first item in the json. If so, you'll need to shift keys,
+   i.e. instead of $events[0].results, it will be $events[1].results, etc.
 
 
    # Example viewing user activity from the above results while filtering out the noisy stuff:
@@ -138,11 +173,12 @@
                                                         ## It will act on this instead of $PROTOCULTURE
 
         $e.process.username     ## You'll still get the same data as normal queries, like usernames
-        $e.process.hostname     ##    and hostnames
+        $e.process.hostname     ##    and hostnames, but more of it, for example...
 
-        $e.process.filemod_complete  ## This gives you a list of timestamps and filepaths to files that were accessed
-        $e.process.netconn_complete  ## List of timestamps and websites/hosts visited
-        $e.process.regmod_complete   ## List of timestamps and registry keys modified
+        $e.process.filemod_complete  ## This gives you a list of filepaths that were accessed, with timestamps
+        $e.process.netconn_complete  ## List of websites/hosts visited with timestamps
+        $e.process.regmod_complete   ## List of registry keys modified with timestamps
+        $e.process.cmdline           ## List of cli arguments used with each process
 
 
 
@@ -150,13 +186,22 @@
     ===================================================
     KNOWN ISSUES:
 
+        BEST PRACTICE ISN'T FOLLOWED:
+        I mean to get around to fixing it eventually, but the debugging and craftQuery functions
+        make use of "iex" or "Invoke-Expression". It always makes my eye twitch when I see other
+        people doing it, but I got lazy with this one and needed some quick curl generators. Not
+        a big deal to me on my networks, but you're getting this off the internet, so...
+        I just wanted to make you're aware these exist, sorry. Make sure you review everything to
+        make sure there's no evil going on.
+
         USING "collab" TO CALL PROCESS API SEARCHES (/v1/process?q=):
         -Sometimes a useless header informing you of the max results gets attached along
-        with the json object and "dontCare" list. When this happens, the array will contain
-        3 items instead of 2, with the useless header in the [0] spot. If your script is
-        erroring with no returns after calling GERWALK, check and see if you are getting
-        this header in your response, and modify your functions to look at items [1] and
-        [2] instead of [0] and [1].
+        with the json object and "dontCare" list (a list of the noisiest processes that
+        would dominate the screen if you displayed them). When this happens, the response array 
+        will contain 3 items instead of 2, with the useless header in the [0] spot. If your 
+        script is erroring with no returns after calling GERWALK, check and see if you are 
+        getting this header in your response, and modify your functions to look at items 
+        [1] and [2] instead of [0] and [1].
 
         USING THE SEARCH WIZARD:
         -There is a bug that breaks performing new searches after using the automatic 
@@ -166,23 +211,29 @@
     ===================================================
     DEBUGGING/TROUBLESHOOTING:
 
-        In the query wizard, type 'debug' into the 3rd "website" menu box to run in
-        debug mode, and add some random value to the first or second search boxes
-        that you know will find results. This tests your full curl commands*, converts
-        the JSON response into a powershell object, and lets you manipulate that object
-        to view the different data that gets returned by your search. If you need to,
-        just convert it back with "$DEBUGSPACE = $DEBUGSPACE | ConvertTo-Json" for your
-        testing.
+        In the query wizard, add some random value to the first or second search boxes that you 
+        know will find results, then type 'debug' into the 3rd "website" menu box and click SEARCH.
+        OR, call GERWALK with the 's' option to open the non-wizard query, and enter "carbon fiber"
+        as your query. Doing either of these will turn on debugging.
+        
+        Debugging will display your full curl commands*, converts the JSON response into a powershell 
+        object, and lets you manipulate that object to view the different data that gets returned by 
+        your search. If you need the raw JSON, just convert it back with 
+        "$DEBUGSPACE = $DEBUGSPACE | ConvertTo-Json" for your testing.
 
         All of MACROSS' functions are available, so while debugging you can play with using
-        "screenResults", "sheetResults", "pyCross", etc. to manipulate the JSON.
+        "screenResults", "sheetResults", "pyCross", etc. to manipulate the $DEBUGSPACE object.
 
-        *When your curl command gets written to screen, the API key will be redacted.
+        *NOTE: When your curl command gets printed to screen, the API key will be masked,
+        and attempts to call variables from command line will be restricted to prevent 
+        displaying the key onscreen. If you need to force curl to be more verbose, copy the
+        command that gets displayed onscreen and add the key in, and replace the "--silent"
+        option with "-v".
 
     ===================================================
 
 
-    v2.1
+    v2.2
     Added more detail to the comments and notes
 
 
@@ -462,33 +513,22 @@ function reviewResults($1,$2,$3){
         $rt = $r.registration_time
         $un = $r.uninstalled
 
-        Write-Host -f YELLOW '  ================================================'
-        Write-Host '   HOST:       ' -NoNewline;
-        Write-Host "$cn"
-        Write-Host '   IP:         ' -NoNewline;
-        Write-Host "$na"
-        Write-Host '   WIN SID:    ' -NoNewline;
-        Write-Host "$si"
-        Write-Host '   CBLIVE:     ' -NoNewline;
-        Write-Host "$sc"
-        Write-Host '   LAST SEEN:  ' -NoNewline;
-        Write-Host "$lc (UTC)"
-        Write-Host '   HEALTH:     ' -NoNewline;
-        Write-Host "$sh"
-        Write-Host '   STATUS:     ' -NoNewline;
-        Write-Host "$st"
-        Write-Host '   OS:         ' -NoNewline;
-        Write-Host "$os"
-        Write-Host '   MEM SIZE:   ' -NoNewline;
-        Write-Host "$pm"
-        Write-Host '   REGISTERED: ' -NoNewline;
-        Write-Host "$rt"
-        Write-Host '   UNINSTALLED:' -NoNewline;
-        Write-Host "$un
-        
-        
-        
-        "
+        screenResultsAlt "$cn" 'IP' $na
+        screenResultsAlt 'next' 'WIN SID' $si
+        screenResultsAlt 'next' 'CBLIVE' $sc
+        screenResultsAlt 'next' 'LAST SEEN' "$lc (UTC)"
+        screenResultsAlt 'next' 'HEALTH' $sh
+        screenResultsAlt 'next' 'STATUS' $st
+        screenResultsAlt 'next' 'OS' $os
+        screenResultsAlt 'next' 'MEM SIZE' $pm
+        screenResultsAlt 'next' 'REGISTERED' $rt
+        screenResultsAlt 'next' 'UNINSTALLED' $un
+        screenResultsAlt 'endr' 
+
+        w '
+
+
+        '
     }
 
 }
@@ -598,27 +638,29 @@ function adjustTime($1,$2){
 
 
 
-<#
-    IF "findThese" IS CALLED WHEN "$CALLER" IS SET:
-    $1 is the $CALLER value, $2 is the $PROTOCULTURE value to be queried
-    $dyrl_ger_alternate is the optional param any script can send. Currently:
 
-        'usrlkup' sets time window to 12 hours
-        'usrloggedin' will only return usernames (if any) for the given hostname
-        'hlkup' lets scripts with multiple attributes specify a hostname search for the
-            $PROTOCULTURE value
-        '[0-9]results' sets the number of events to fetch
-        '[0-9]' sets the time window to the past x amount of days
-
-    IF "findThese" IS CALLED WITHOUT $CALLER:
-    $1 is the API to query, $2 is the value to be queried, OR
-    leave $1 and $2 empty to load the wizard menu for users to
-    enter their own queries.
-
-#>
 function findThese($1,$2){
 
-    <# The default will grab all facets, which can be parsed separate from the results, for example:
+    <#
+        IF "findThese" IS CALLED WHEN "$CALLER" IS SET:
+        $1 is the $CALLER value, $2 is the $PROTOCULTURE value to be queried
+        $dyrl_ger_alternate is the optional param any script can send. Currently:
+
+            'usrlkup' sets time window to 12 hours
+            'usrloggedin' will only return usernames (if any) for the given hostname
+            'hlkup' lets scripts with multiple attributes specify a hostname search for the
+                $PROTOCULTURE value
+            '[0-9]results' sets the number of events to fetch
+            '[0-9]' sets the time window to the past x amount of days
+
+        IF "findThese" IS CALLED AND $CALLER IS NULL:
+        $1 is the API to query, $2 is the value to be queried, OR
+        leave $1 and $2 empty to load the wizard menu for users to
+        enter their own queries.
+    
+        -------------------------------------------------------------------------------
+    
+        The default will grab all facets, which can be parsed separate from the results, for example:
 
             $dyrl_ger_WORKSPACE.facets.process_name
 
@@ -627,7 +669,7 @@ function findThese($1,$2){
         within the "$dyrl_ger_WORKSPACE.results" object.
 
         EXISTING FACET FIELDS:
-        -process_md5: the top unique process_md5s for the processes matching the search
+        -process_md5: the top unique md5s for the processes matching the search
         -hostname: the top unique hostnames matching the search
         -group: the top unique host groups for hosts matching this search
         -path_full: the top unique paths for the processes matching this search
@@ -638,7 +680,7 @@ function findThese($1,$2){
         -hour_of_day: the distribution of process start times by hour of day in computer local time
         -day_of_week: the distribution of process start times by day of week in computer local time
         -start: the distribution of process start times by day for the last 30 days
-        -username_full: the username context associated with the process
+        -username_full: the top unique usernames associated with the event
     #>
 
     $defh = '-168h'                      ## Default time window is 1 week; can be changed based on other inputs below
@@ -646,10 +688,11 @@ function findThese($1,$2){
     $qsection = 'v1/process?facet=true'  ## Default API call
     $res = '&rows=10'
     $eventID = [regex]"^\w+\-\w+\-\w+\-\w+\-\w+$"
+    
 
     ## This string will only query non-system accounts if user chooses:
     $onlyusers = '-(username:*SERVICE OR username:root OR username:*SYSTEM OR username:svc* OR username:Window*) '
-
+    $Script:no = [regex]".*(_MARK|get-variable|gv|::).*"
     if($CALLER){
 
         ## Script sent 'usrlkup' as the optional param
@@ -876,11 +919,18 @@ function findThese($1,$2){
         }
     }
     else{
-        if( ! $vf19_OPT1){  ## Use query wizard by default; skip wizard if user launched GERWALK with the 's' option
+
+        ## Use query wizard by default; skip wizard if user launched GERWALK with the 's' option (sets $vf19_OPT1 to 'true')
+
+        if( ! $vf19_OPT1){  
             $Script:dyrl_ger_DEBUG = $false
             $f_eicon = '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'
             $f_dicon = [Convert]::FromBase64String($f_eicon)
             $f_menulist = @('user','file','host','ip','process','website','email','attachment','cmdline')
+
+
+            ## MPOD ALERT! This variable will tell Carbon Black to ignore system/root accounts. Add more name
+            ## patterns here as necessary.
             $f_omits = ' -(username:*SYSTEM OR username:*SERVICE OR username:root OR username:Window*)'
 
             Add-Type -AssemblyName System.Windows.Forms
@@ -1340,11 +1390,15 @@ function findThese($1,$2){
         } ## End the "! $vf19_OPT" check
 
         else{
-            $valid = [regex]"^(\w|-|*|:| )$"
             $oneuser = $true; $skipsys = $true
             ''
-            Write-Host -f GREEN ' Enter your query, "?" for help, or "q" to quit:
-            '
+            if($dyrl_ger_DEBUG){
+                w '                 DEBUGGING MODE
+                
+                ' 'c'
+            }
+            w ' Enter your query, "?" for help, or "q" to quit:
+            ' 'g'
             Write-Host ' > ' -NoNewline;
             $Z1 = Read-Host
             if($Z1 -eq '?'){
@@ -1355,7 +1409,12 @@ function findThese($1,$2){
                Remove-Variable -Force dyrl_ger_* -Scope Global
                Exit
             }
-            elseif($Z1 -Match $valid){
+            elseif($Z1 -eq 'carbon fiber'){
+                $Z1 = ''
+                $dyrl_ger_DEBUG = $true
+                w ' Debugging  mode enabled.'; slp 2; splashPage; findThese
+            }
+            elseif($Z1 -Match "\w"){
                $qbuild = $qbuild + $Z1
                $f_val1 = $true
             }
@@ -1374,7 +1433,9 @@ function findThese($1,$2){
     
     
     
-
+    ## I set the max results to 75 out of personal preference. If there was any significant
+    ## event to investigate, I wouldn't use GERWALK, I'd just log into Carbon Black. GERWALK
+    ## is meant for supplying quick enrichment/confirmation & context to other MACROSS tools.
     if( ! $skipres ){
         Write-Host -f GREEN "
         By default I'll only grab the 10 most recent results for you, and unless you are
@@ -1422,7 +1483,7 @@ function findThese($1,$2){
 
 
 ## Take user inputs to build query
-## $1 = cb queries from "findThese" function
+## $1 = CB queries from "findThese" function
 ## $2 = the CB module to query, passed from "findThese"
 ## $3 is the close-off section
 ## $4 limits the # of results returned
@@ -1435,11 +1496,15 @@ function craftQuery($1,$2,$3,$4){
     $ua = 'MACROSS'      ## Help track the use of this script in logs/events by setting
                          ## a unique user-agent
 
-    getThis $vf19_MPOD['ger']
+    ## MPOD ALERT! This $vf19_MPOD['ger'] value can be found in the core/temp_config.txt file.
+    ## Replace the base64 string beginning "@@@ger" with your own base64-encoded URL for your
+    ## Carbon Black Response EDR server.
+    getThis $vf19_MPOD['ger']          
     $SRV1 = "$vf19_READ"
+
+
     getThis 'IC1IICdYLUF1dGgtVG9rZW46IA=='
     $SRV2 = $vf19_READ
-
     $qopen = "curl.exe --silent -k -A '$ua' $SRV1"
 
 
@@ -1472,7 +1537,7 @@ function craftQuery($1,$2,$3,$4){
             '
         }
         elseif( $dyrl_ger_DEBUG ){
-            $debugResults = "$qopen$2$1' -H 'accept: application/json' $SRV2 (+key)'"
+            $debugResults = "$qopen$2$1' -H 'accept: application/json' $SRV2 ****key*masked****'"
             $debugResults
             ''
             ''
@@ -1495,7 +1560,6 @@ function craftQuery($1,$2,$3,$4){
             Remove-Variable -Force dyrl_ger_DEBUG -Scope Global
             $DEBUGSPACE = iex "$getResults" -ErrorAction Inquire | ConvertFrom-Json
             $c = 'continue'
-            $no = [regex]".*(_MARK|get-variable|gv|::).*"
 
             while($c -ne ''){
                 Write-Host '  "$DEBUGSPACE" is your JSON response converted to a powershell object.'
@@ -1671,7 +1735,7 @@ while($r -Match "[0-9]"){
             findThese $CALLER $PROTOCULTURE  ## Send imported query params to the builder function
         }
         else{
-            eMsg 5  # Inform user they're missing something
+            eMsg 3  # Inform user they're missing something
         }
 
     }
@@ -1939,7 +2003,8 @@ while($r -Match "[0-9]"){
                             $cmdmail = $cmdmail -replace "^.+PREPREPRE" -replace "POSTPOSTPOST.*"
                         }
 
-                    
+                        $bar = chr 9553
+                        $bars = $bar + $bar + $bar + $bar
 
 
                         ## Create menus dynamically based on API called
@@ -1967,11 +2032,11 @@ while($r -Match "[0-9]"){
                             Write-Host -f YELLOW "$md5"
                         }
                         elseif($dyrl_ger_attch){
-                            Write-Host -f CYAN "║║║║║  $dyrl_ger_EVENTT   $hname  '$htype'   '$grp'"
+                            Write-Host -f CYAN "$bars  $dyrl_ger_EVENTT   $hname  '$htype'   '$grp'"
                             showFULLEVENT $EVENTLISTING["$eid"]
                         }
                         else{
-                            Write-Host -f CYAN "║║║║║  $dyrl_ger_EVENTT   $hname  '$htype'   '$grp'"
+                            Write-Host -f CYAN "$bars  $dyrl_ger_EVENTT   $hname  '$htype'   '$grp'"
                             if($dyrl_ger_emails){
                                 if($cmdmail){
                                     $mailstrings++
@@ -1992,7 +2057,7 @@ while($r -Match "[0-9]"){
                                     screenResults 'Parent' $daddy
                                 }
                                 screenResults 'endr'
-                                Write-Host -f GREEN '║ ' -NoNewline;
+                                Write-Host -f GREEN '$bar ' -NoNewline;
                                 Write-Host " $cmdline"
                                 screenResults 'endr'
                                 Write-Host '
@@ -2002,9 +2067,9 @@ while($r -Match "[0-9]"){
                                 Write-Host -f YELLOW ' File was found, but filenames cannot be shown in this view.'
                                 Write-Host -f YELLOW " Showing the file's process path and command line values instead:"
                                 screenResults 'endr'
-                                Write-Host -f GREEN "║ $ppath"
+                                Write-Host -f GREEN "$bar $ppath"
                                 screenResults 'endr'
-                                Write-Host -f GREEN "║ $cmdline"
+                                Write-Host -f GREEN "$bar $cmdline"
                                 screenResults 'endr'
                                 Write-Host '
                                 '
@@ -2079,7 +2144,7 @@ while($r -Match "[0-9]"){
                 )
                 $dyrl_ger_Z = 'f'
                 if(! $CALLER){
-                    Remove-Variable tw_c8_*
+                    Remove-Variable dyrl_ger_*
                     Exit
                 }
             }
@@ -2135,7 +2200,7 @@ while($r -Match "[0-9]"){
                     $Script:dyrl_ger_hname = $RESULTS[[int]$dyrl_ger_Z].hostname
                 }
 
-                $dyrl_ger_IDSELECT = $RESULTS[[int]$dyrl_ger_Z].id   ## Get the event ID for the item chosen by the user
+                $dyrl_ger_IDSELECT = $RESULTS[[int]$dyrl_ger_Z].id      ## Get the event ID for the item chosen by the user
                 #craftQuery "v1/$dyrl_ger_IDSELECT/event"               ## Run another CB query for that specific event ID
                 
                 while($dyrl_ger_ZZ -ne ''){
@@ -2203,23 +2268,8 @@ while($r -Match "[0-9]"){
                     $dyrl_ger_ZZ = Read-Host
 
 
-                    if($dyrl_ger_ZZ -eq 'd'){
-                        showFULLEVENT $dyrl_ger_SINGLEEVENT[0] 'd'
-                    }
-                    elseif($dyrl_ger_ZZ -eq 'n'){
-                        showFULLEVENT $dyrl_ger_SINGLEEVENT[0] 'n'
-                    }
-                    elseif($dyrl_ger_ZZ -eq 'k'){
-                        showFULLEVENT $dyrl_ger_SINGLEEVENT[0] 'k'
-                    }
-                    elseif($dyrl_ger_ZZ -eq 'r'){
-                        showFULLEVENT $dyrl_ger_SINGLEEVENT[0] 'r'
-                    }
-                    elseif($dyrl_ger_ZZ -eq 'e'){
-                        showFULLEVENT $dyrl_ger_SINGLEEVENT[0] 'e'
-                    }v
-                    elseif($dyrl_ger_ZZ -eq 'c'){
-                        showFULLEVENT $dyrl_ger_SINGLEEVENT[0] 'c'
+                    if( $dyrl_ger_ZZ -in @('d','n','k','r','e','c') ){
+                        showFULLEVENT $dyrl_ger_SINGLEEVENT[0] $dyrl_ger_ZZ
                     }
                     elseif( $dyrl_ger_ZZ -eq 's' ){
                         $ssiidd = $RESULTS[[int]$dyrl_ger_Z].sensor_id
@@ -2230,12 +2280,12 @@ while($r -Match "[0-9]"){
                     else{
                         $dyrl_ger_ZZ = ''
                     }
-                    Write-Host '
+                    w '
                     '
 
                     if($dyrl_ger_ZZ -ne ''){
                         ''
-                        Write-Host -f GREEN '  Hit ENTER to continue.'
+                        w '  Hit ENTER to continue.' 'g'
                         Read-Host
                     }
                 }
