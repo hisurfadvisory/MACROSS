@@ -61,11 +61,12 @@ function w($1,$2,$3){
     <#
     ||longhelp||
     I got sick of typing "Write-Host", gimme a break powershell.
-    Send your text as the first param, and the first letter of the text color you want as the second param
-    (or "bl" for black, "b" for blue). The third parameter (optional) can be either background color OR "nl" 
-    for the "-NoNewLine" option.
+    Send your text as the first param, and the first letter of the text color you 
+    want as the second param (or "bl" for black, "b" for blue). The third parameter 
+    (optional) can be either background color OR "nl" for the "-NoNewLine" option.
     
-    ** Not supported yet -- underlining: Write-Host "$([char]27)[4m Underlined Word $([char]27)[24m"
+    ** Not implemented yet -- underlining: 
+    Write-Host "$([char]27)[4m Underlined Word $([char]27)[24m"
     
     ||examples||
     Write green text:
@@ -207,9 +208,9 @@ function sep(){
     $3 = (optional) the color of the separator
     
     ||examples||
-    Example use: Create a 16 char-length line of "*" in yellow text
+    Example use: Create a 28 char-length line of "*" in yellow text
     
-        sep '*' 16 'yellow'    
+        sep '*' 28 'y'    
                                         
     #>
     Param(
@@ -321,15 +322,16 @@ function macrossHelp($1){
 function screenResults(){
     <#
     ||longhelp||
-    Format up to three rows of outputs to the screen; parameters you send will be wrapped 
+    Write outputs to the screen in a formatted table; parameters you send will be wrapped 
     to fit in their columns (up to 3 separate columns). Call this function with "endr" as 
-    the only parameter to add the final separator $c after all your results have been displayed.
+    the only parameter to add the final separator $c after all your results have been 
+    displayed.
     
-    $1 is required, $2 and $3 are optional.
+    Parameter $1 is required, $2 and $3 are optional.
     
     If you send a value that begins with "r~", for example "r~Windows PC", the value 
-    "Windows PC" will be written to screen in red-colored text. You can use any color recognized 
-    by powershell's "write-host -f" option ("g"reen, "y"ellow, "c"yan, etc.)
+    "Windows PC" will be written to screen in red-colored text. You can use any color 
+    recognized by powershell's "write-host -f" option ("g"reen, "y"ellow, "c"yan, etc.)
     
     ||examples||
     Basic example of usage:
@@ -854,7 +856,7 @@ function chooseMod(){
             $ct++
         }
     
-        $toolcount = $vf19_MENULIST.count
+        $toolcount = $vf19_MENULIST.count; if($toolcount -gt 10){$vf19_MULTIPAGE=$true}
         $Global:vf19_PAGECT = [math]::Truncate(($toolcount/10) + 1)  ## Generate a new page for every 10 tools in "/modules"
 
         $ti = 1
