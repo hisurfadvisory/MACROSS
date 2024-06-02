@@ -1,5 +1,5 @@
 #_sdf1 Demo - Python integration
-#_ver 0.2
+#_ver 0.3
 #_class user,demo script,python,HiSurfAdvisory,2,onscreen
 
 # By default, MACROSS always passes these vars to any python scripts it loads from the menu:
@@ -49,7 +49,7 @@ if L >= 7:
     path.insert(0,mpath)  ## modify the sys path to include the py_classes folder
     import mcdefs as mc
 
-    ## The other 5 args can be used or ignored as you like. For this demo I'll assign
+    ## The other args can be used or ignored as you like. For this demo I'll assign
     ##  each of the arguments for you, named the same way that MACROSS names them.
     ##  In order, they are:
     USR = argv[1]                   ## The logged-in user
@@ -191,23 +191,23 @@ def theDemo(Z1 = '',Z2 = None):
     mc.w(C,'y')
     del(C)
     print('''
-    If you read KÖNIG's documentation, you'll see it needs several parameters passed
-    to it if you try to call it without MACROSS, the first param being the value you
-    supplied,''',Z1 + '.',''' Next it needs the name of the script calling it. If it's a 
-    python script like me, the name needs to begin with "py" so that KÖNIG loads some 
-    extra functions:
+    If you read KÖNIG's documentation, you'll see it needs several parameters 
+    passed to it if you try to call it without MACROSS, the first param being 
+    the value you supplied,''',Z1 + '.','''
+    
+    Next it needs the name of the script calling it. If it's a python script 
+    like me, the name needs to begin with "py" so that KÖNIG loads some extra 
+    functions:
     ''')
     mc.w('                konig = konig + "pyMINMAY"','y')
     print('''
-    Adding a simple "py" here is much easier than trying to recreate all the [macross]
-    powershell objects in their entirety everytime a python script runs.
     ''')
     next(1)
     mc.psc('cls')
     print('''
     Finally, let's finish up by adding in the rest of KÖNIG's requirements: the location
-    to search (I'm just going to set it to your local home folders. The value for USR was 
-    sent to me in argv[1]):
+    to search (I'm just going to set it to your local home folders. Your username was 
+    sent to me in argv[1] which I'll plug in here):
     ''')
     u = '            usrhome = "C:\\Users\\" + ' + USR + '\n            konig = konig + usrhome'
     mc.w(u,'y')
@@ -225,8 +225,9 @@ def theDemo(Z1 = '',Z2 = None):
     gbg = vf19_TOOLSROOT + '\\core\\py_classes\\garbage_io'
     usrhome = 'C:\\Users\\' + USR
     usrhome = ' "' + usrhome + '" '
+    Z11 = mc.rgx("\s",Z1,'*') ## Sometimes powershell ignores whitespaces in quotes
     konig = vf19_TOOLSROOT + '\\modules\\KONIG.ps1 '
-    konig = 'powershell.exe ' + konig + '"' + Z1 + '"' + ' "pyMINMAY" ' + usrhome
+    konig = 'powershell.exe ' + konig + '"' + Z11 + '"' + ' "pyMINMAY" ' + usrhome
     konig = konig + '"' + gbg + '" '
     konig = konig + '"' + vf19_DEFAULTPATH + '"' + ' -ErrorAction SilentlyContinue'
     print('''
@@ -236,17 +237,19 @@ def theDemo(Z1 = '',Z2 = None):
     some adjustments to its functions. You can use another method in your scripts if 
     you want.
     
-    Now, previously I left notes saying "more on that later"-- one for the mcdefs library,
-    and another for MACROSS' garbage_io folder. The provided python library, mcdefs, is
-    just a basic collection of other library resources that are used to offer some of the
-    same common functions as MACROSS' utility.ps1 and display.ps1 scripts.
+    Now, previously I left notes saying "more on that later"-- one for the mcdefs 
+    library, and another for MACROSS' garbage_io folder. The provided python library, 
+    mcdefs, is just a basic collection of other library resources that are used to 
+    offer some of the same common functions as MACROSS' utility.ps1 and display.ps1 
+    scripts.
     
     For this demo, I'm using the "psc" function in mcdefs to execute a powershell
     script with the command I just finished building with your $PROTOCULTURE:
     ''')
     mc.w(' ' + konig,'y')
     print('''
-    After KÖNIG finishes its mission and returns to python, I'll explain the "garbage_io".''')
+    After KÖNIG finishes its mission and returns to python, I'll explain the 
+    "garbage_io".''')
     input('''
     Hit ENTER to launch KÖNIG!''')
     mc.psc(konig)
@@ -254,28 +257,30 @@ def theDemo(Z1 = '',Z2 = None):
     mc.psc('cls')
     splashPage()
     print('''
-    Okay, welcome back to MINMAY! Let's see if KÖNIG hit your target. Normally, MACROSS is
-    able to share everything without much fuss, but only within powershell. That's where
-    the garbage_io folder comes in. The mcdefs library will eventually handle things more
-    cleanly in its "collab" function, but for now, if the powershell response can't be given 
-    in a simple variable, MACROSS uses a text file.
+    Okay, welcome back to MINMAY! Let's see if KÖNIG hit your target. Normally, 
+    MACROSS is able to share everything without much fuss, but only within powershell. 
+    That's where the garbage_io folder comes in. The mcdefs library will eventually 
+    handle things more cleanly in its "collab" function, but for now, if the powershell 
+    response can't be given in a simple variable, MACROSS uses a text file.
     
-    Within the MACROSS root folder, inside the "core\py_classes" folder, there is a folder
-    called garbage_io. It's not really for garbage, though. Its contents are very valuable!
+    Within the MACROSS root folder, inside the "core\py_classes" folder, there is a 
+    folder called garbage_io. It's not really for garbage, though. Its contents are 
+    very valuable!
     
-    Part of the MACROSS framework you'll need to follow is to include checks for your scripts
-    so that if they need to retain data for the duration of a MACROSS session that might be
-    needed by both python and powershell tools, they send their results to MACROSS' pyCross 
-    function (or you can use some other method that works best for your purpose). pyCross will 
-    record whatever data a script generated, into an "eod" file that will be put in garbage_io.
+    Part of the MACROSS framework you'll need to follow is to include checks for your 
+    scripts so that if they need to retain data for the duration of a MACROSS session 
+    that might be needed by both python and powershell tools, they send their results 
+    to MACROSS' pyCross function (or you can use some other method that works best for 
+    your purpose). pyCross will record whatever data a script generated, into an "eod" 
+    file that will be put in garbage_io.
     
-    If KÖNIG found anything for you, it should have written the location of its $RESULTFILE
-    report, along with the number of results it got, to "konig.eod". The 'pyCross' function
-    can write all that automatically for you. See the utility.ps1 and KONIG.ps1 scripts to see
-    how it works.
+    If KÖNIG found anything for you, it should have written the location of its 
+    $RESULTFILE report, along with the number of results it got, to "konig.eod". The 
+    'pyCross' function can write all that automatically for you. Review the utility.ps1 
+    and KONIG.ps1 scripts to see how it works.
     
-    The garbage_io location should still be valid as our variable "gbg" so, let's check using
-    the mcdefs.drfl() function...
+    The garbage_io location should still be valid as our variable "gbg" so, let's check 
+    using the mcdefs.drfl() function...
     ''')
     RCV = '''            konfile = gbg + '\\konig.eod'
             if mcdefs.drfl(konfile):
@@ -291,9 +296,9 @@ def theDemo(Z1 = '',Z2 = None):
         chkresults = open(konfile,encoding='utf-8')
         konhits = chkresults.read()
         print('''
-    Hey! It looks like we got the path to KÖNIG's $RESULTFILE, and the total hits for your search!
-    The mcdefs library has a python version of MACROSS' "screenResults" function, I'll use it
-    to write your results out in columns:
+    Hey! It looks like we got the path to KÖNIG's $RESULTFILE, and the total hits for 
+    your search! The mcdefs library has a python version of MACROSS' "screenResults" 
+    function, I'll use it to write your results out in columns:
         ''')
         i = 0
         mc.screenResults('FILE/LINE','CONTENTS')
@@ -350,26 +355,26 @@ if PROTOCULTURE:
     
     Okay, let me see... you have sent me exactly""",L - 1,"""arguments.
     
-    MACROSS will *always* send at least 7 args by default -- I used #6 to automatically import
-    the MACROSS python library (and if you launch me from the MACROSS menu I talk a little
-    bit more about that). But MACROSS has a built-in function called "collab" for powershell
-    scripts, and it is designed to pass the additional values of $CALLER and $PROTOCULTURE,
-    along with one additional argument if needed.
+    MACROSS will *always* send at least 7 args by default -- I used #6 to automatically 
+    import the MACROSS python library (and if you launch me from the MACROSS menu I talk a 
+    little bit more about that). But MACROSS has a built-in function called "collab" for 
+    powershell scripts, and it is designed to pass the additional values of $CALLER and 
+    $PROTOCULTURE, along with one additional argument if needed.
     
     Because of that default behavior, your python scripts will always need the sys library
-    (or at least its argv functionality) to be able to recognize all the values MACROSS sends
-    over. In keeping with the framework's guidelines, I make a habit of keeping the same
-    variable names. It's not really necessary, but it makes things easier to track. If you
-    see me referencing "vf19_" variables later, it's because I converted a "$vf19_" variable
-    from MACROSS using sys.argv.
+    (or at least its argv functionality) to be able to recognize all the values MACROSS 
+    sends over. In keeping with the framework's guidelines, I make a habit of keeping the 
+    same variable names. It's not really necessary, but it makes things easier to track. If 
+    you see me referencing "vf19_" variables later, it's because I converted a "$vf19_" 
+    variable from MACROSS using sys.argv.
     
     Now, I'll use the 9th arg passed to me, which in MACROSS is $PROTOCULTURE, to ask a
     powershell script if it can find
     """)
     mc.w('    ' + PROTOCULTURE,'y')
     print("""
-    in any other directories, as a demonstration of using tools written in powershell asking
-    for data from python and vice-versa. 
+    in any other directories, as a demonstration of using tools written in powershell 
+    asking for data from python and vice-versa. 
     """
     )
 
