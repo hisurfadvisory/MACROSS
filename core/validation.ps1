@@ -169,17 +169,22 @@ function SJW($1){
 
 
 
-<################################
-
-     eMsg()  details:
-
+function eMsg($1='ERROR: that module is unavailable!',$2='c'){
+    <#
+    ||longhelp||
     Send an integer 0-3 as the first parameter to display a canned message, or
     send your own message as the first parameter. The second parameter is optional
     and will change the text color (send the first letter or "bl" for black)
 
-################################>
-function eMsg($1='ERROR: that module is unavailable!',$2='c'){
+    ||examples||
+    Display the default security-error message in red text:
 
+        eMsg 0 'r'
+
+    
+    #>
+
+    ## These are default messages you can select. Change or add more as you like.
     $msgs = @(
         'You are not in the correct security group. Exiting...',
         'Unknown error! You may need to exit this script and restart it.',
@@ -207,22 +212,26 @@ function eMsg($1='ERROR: that module is unavailable!',$2='c'){
     }
 }
 
-<#
-      pyATTS()  details:
 
-   Convert the hashtable of macross objects for python, but only
-   includes the .fname and .valtype attributes.
-   
-   Don't want this to be a static global value in case scripts get
-   modified/removed/added while MACROSS is active, so this function 
-   will create a new value everytime a python script is launched from
-   the "collab" or "availableMods" functions.
-   
-   Your python scripts can iterate through this comma-separated string,
-   each item is "script1"="script1's .valtype","script2"="script2's .valtype"...
-   
-#>
 function pyATTS(){
+    <#
+    ||longhelp||
+    Convert the hashtable of macross objects for python, but only
+    includes the .fname and .valtype attributes.
+    
+    Don't want this to be a static global value in case scripts get
+    modified/removed/added while MACROSS is active, so this function 
+    will create a new value everytime a python script is launched from
+    the "collab" or "availableMods" functions.
+    
+    Your python scripts can iterate through this comma-separated string,
+    each item is 
+    
+    "script1"="script1's .valtype","script2"="script2's .valtype"...
+
+    ||examples||
+    module scripts don't need this, it's only used by the collab function.
+    #>
     $p = @()
     foreach($k in $vf19_ATTS.keys){
         $n = $vf19_ATTS[$k].fname
@@ -239,6 +248,9 @@ function pyATTS(){
 function setUser($1){
     <#
     ||longhelp||
+    Determines user %HOME% and permissions. Use this fct to change the
+    $vf19_DEFAULTPATH if you don't want to use the profile/desktop.
+
     First it looks at the logged-in account on the local system.
 
     Next, it makes an Active-Directory query for $USR. If that fails, 
@@ -313,7 +325,7 @@ function setUser($1){
         Set-Variable -Name vf19_USRCHK -Value $USR -Scope Global -Option ReadOnly
 
 
-        ## Check Active Directory GPO first; I ***hope*** non-admins can't run Active Directory cmdlets!!!!
+        ## Check Active Directory GPO first; I ***hope*** non-admins can't run Active Directory commands!!!!
         $priv = Get-ADUser -Filter * -Properties memberOf | where{$_.samAccountName -eq $USR}
         
         ## Check local permissions next
@@ -327,7 +339,8 @@ function setUser($1){
             [void]$priv[0] ## Verify if anything got written during admin checks
 
             <# TWEAK & UNCOMMENT THIS SECTION TO FURTHER ID YOUR USERS FOR SPECIAL FUNCTIONS
-             # Obviously you need to change "cyber" and "sooper cyber" to match your SOC's group-policy names
+             # Obviously you need to change "cyber" and "sooper cyber" to match your SOC's 
+             # group-policy names.
              
             if($priv | Select -ExpandProperty memberOf | where{$_ -like "*cyber**}){
             
@@ -383,7 +396,8 @@ function setUser($1){
         }
 
         ## Tag the user as a non-admin lesser being if they can't read Active-Directory or perform local
-        ## admin tasks. This way, you can restrict or disable admin functions by checking if $vf19_ROBOTECH is true.
+        ## admin tasks. This way, you can restrict or disable admin functions by checking if $vf19_ROBOTECH 
+        ## is true.
         catch{
             if($USR -notIn $(Get-LocalGroupMember Administrators).Name -replace "^.+\\"){
                 $Global:vf19_ROBOTECH = $true
