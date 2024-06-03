@@ -41,15 +41,15 @@
         RSRCS = MACROOT + '\\resources'   -> set the location of the resources folder*
         PYLIB = MACROOT + '\\py_classes'  -> set the location of your python stuff
         
-        * You may want to keep the resources folder somewhere other than the MACROSS root
-        folder. In that case, you can set its location using...
+        * You may want to keep the resources folder somewhere other than the MACROSS
+        root folder. In that case, you can set its location using...
         
                     mcdefs.getDefaults(<your index>)
                     
         ...provided you've set it up properly in the MACROSS temp_config.txt file.
         
-    Additionally, to aid in sharing query results back and forth between powershell and
-    python, the py_classes folder contains a subfolder called 'garbage_io'. MACROSS
+    Additionally, to aid in sharing query results back and forth between powershell
+    and python, the py_classes folder contains a subfolder called 'garbage_io'. MACROSS
     scripts can write their outputs into this directory, using *.eod files, (there is a 
     built-in utility called "pyCross" in the utility.ps1 file specifically to do this). 
     These are plaintext files that you can read() and split() to collect results that 
@@ -77,6 +77,7 @@ import array as arr
 from subprocess import run as srun
 from os import system as osys
 from os import popen as osop
+from os import getcwd as pwd
 from os import path
 from os import remove as osrm
 from json import dumps as jdmp
@@ -108,7 +109,11 @@ tcolo = {
 
 ## Alias to write colorized text to screen
 def w(TEXT,C1 = 'rs',C2 = None):
-    ''' Pass this function your text/string as arg 1 and the first letter of the color you\n want ("bl" for black). You can pass "ul" as a second option to underline the text.\n\n Usage: mcdefs.w(text,text_color,'ul')'''
+    '''Pass this function your text/string as arg 1 and the first letter of the
+color you want ("bl" for black). You can pass "ul" as a second option to
+underline the text. Usage:
+
+    mcdefs.w(text,text_color,'ul')'''
     if C2 != None:
         print(tcolo[C1] + tcolo[C2] + TEXT + tcolo['rs'])
     else:
@@ -117,13 +122,29 @@ def w(TEXT,C1 = 'rs',C2 = None):
 
 ## Sleep function for pausing scripts when needed
 def slp(s):
-    """The 'slp' function will pause your script for the number of seconds you pass to it.\n\n Usage:  mcdefs.slp(3)\n ^^ Will pause your script for 3 seconds\n"""
+    """The 'slp' function will pause your script for the number of seconds you
+pass to it. Usage:
+
+    mcdefs.slp(3)
+    ^^ Will pause your script for 3 seconds\n"""
     ts(s)
 
 
-## This function can generate the equivalent of MACROSS' $vf19_M value
+## This function can generate the equivalent of MACROSS' $M_ value
 def makeM(n):
-    """ Passing a large integer to makeM will split it into an array of single-digit integers for mathing.\n\n Usage: var = mcdefs.makeM(123456)\n ^^ becomes  var == [1,2,3,4,5,6]"""
+    """Passing a large integer to makeM will split it into an array of single-
+digit integers for obscure mathing. Usage:
+
+    var = mcdefs.makeM(123456)
+    ^^ becomes  var == [1,2,3,4,5,6]
+
+Your script can use this along with chr and ord as one of many methods 
+to create hexadecimal strings, IP addresses, keys, etc. without hard-
+coding such things in plaintext. Instead of string "A3", for example 
+you could use 
+    
+    hex_pos1 = str(chr((M_[5] + M_[5] + M_[0]) * M_[4])) + str(M_[2])
+    """
     a = [int(i) for i in str(n)]
     return a
 
@@ -160,7 +181,15 @@ def rgx(pattern,string,replace = None):
 ##  everyone has different use-cases, especially with python-based APIs! Just make sure to enact your
 ##  changes across ALL of the MACROSS functions and scripts!
 def psc(c,cc = None):
-    """ The psc function performs os.system() commands that you pass in. If you pass your command\n as the *second* arg, the ouput\nwill be read using os.read().\n\n Usage:  mcdefs.psc('powershell.exe "filepath\\myscript.ps1" "argument 1"')\n ^^ Will launch your powershell script with args\n\n mcdefs.psc('','powershell.exe "filepath\\myscript.ps1" "argument 1"')\n ^^ Will return the results of your powershell script as usable strings"""
+    """The psc function performs os.system() commands that you pass in. If
+you pass your command as the *second* arg, the ouput\nwill be read
+using os.read(). Usage:
+
+    mcdefs.psc('powershell.exe "filepath\\myscript.ps1" "argument 1"')
+    ^^ Will launch your powershell script with args
+    
+    mcdefs.psc('','powershell.exe "filepath\\myscript.ps1" "argument 1"')
+    ^^ Will return the results of your powershell script as usable strings"""
     if cc == None:
         osys(c)
     else:
@@ -173,7 +202,10 @@ def psc(c,cc = None):
 ## Send what you're looking to verify as arg 1, and its type ("dir" vs. "file") as optional arg 2
 ## This function returns true/false
 def drfl(check,method = 'e'):
-    ''' Check if a path exists. Send "file" or "dir" as the second argument (optional).\n Usage: drfl(path_to_check,optional)'''
+    '''Check if a path exists. Send "file" or "dir" as the second argument
+(optional). Usage:
+
+    drfl(path_to_check,optional)'''
     if method == 'file':
         a = path.isfile(check)
     elif method == 'dir':
@@ -187,19 +219,32 @@ def drfl(check,method = 'e'):
 ## This function is just subprocess.run(p)
 ## For when the os lib doesn't have what you need
 def psp(p):
-    """The psp function is simply 'subprocess.run' made readily available to MACROSS python scripts.\n\nUsage:  mcdefs.psp('powershell.exe "filepath\\myscript.ps1" "argument 1"')\n^^ Will launch your powershell script with args\n"""
+    """The psp function is simply 'subprocess.run' made readily available 
+to MACROSS python scripts. Usage:
+
+    mcdefs.psp('powershell.exe "filepath\\myscript.ps1" "argument 1"')
+    ^^ Will launch your powershell script with args
+    """
     srun(p)
- 
+
 
 ## Must pass your argv[7] value (the $vf19_TOOLSROOT path) + the tool you're calling, and the name of your calling script.
 ## Have to use the GBIO folder because this opens a new powershell session that won't have all the $vf19_LATTS data.
 def collab(TOOL,CALLER,PROTOCULTURE,extra = None):
-    ''' The python "collab" function writes your PROTOCULTURE value to a dictionary .eod file\n in the GBIO folder for the powershell script to read and write its results to. Make sure to\n add your "sys.argv[7] + \\\\modules" directory to the "tool" argument! USAGE:\n\n        collab(TOOL,CALLER,PROTOCULTURE,optional_value)\n
-    '''
+    '''The python "collab" function writes your PROTOCULTURE value to a dictionary .eod file
+in the GBIO folder for the powershell script to read and write its results to. Make
+sure to add your "sys.argv[7] + \\\\modules" directory to the "tool" argument! USAGE:
+         
+        collab(TOOL,CALLER,PROTOCULTURE,optional_value)
+        
+where TOOL is the powershell script you're calling, and CALLER is the name of your
+python script. PROTOCULTURE.eod contains the key-values CALLER.target (the PROTOCULTURE
+value) and CALLER.result (where the powershell script will write its response so your
+python script can retrieve it.)'''
     gbio = rgx("modules.+",TOOL,'core\\\\py_classes\\\\garbage_io\\\\PROTOCULTURE.eod')
     proto = {CALLER:[{'target':PROTOCULTURE,'result':''}]}
-    with open(gbio, 'w') as convert_file: 
-        convert_file.write(jdmp(proto))
+    with open(gbio, 'w') as outf: 
+        outf.write(jdmp(proto))
         
     call = 'powershell.exe ' + TOOL + ' py' + CALLER
     if extra != None:
@@ -212,7 +257,13 @@ def collab(TOOL,CALLER,PROTOCULTURE,extra = None):
 ## argument (opendir). The second optional arg (filter) can limit by file
 ## extensions; default is to list all files. This arg has to be passed as a list.
 def getFile(opendir = 'C:\\',filter = (('All files', '*.*'),('All files', '*.*'))):
-    """The getFile function opens a dialog window for users to select a file. You can\npass in optional arguments 1) to set the default location for the dialog, and 2) limit the selection\nby file extension.\n\nUsage:  VAR = getFile('your\\directory\\to\\file',(('Adobe Acrobat Document', '*.pdf'),('All files', '*.*'))) """
+    """The getFile function opens a dialog window for users to select a file. You
+can pass in optional arguments 1) to set the default location for the dialog,
+and 2) limit the selection\nby file extension. Usage: 
+
+    VAR = getFile('your\\directory\\to\\file',(('Adobe Acrobat Document', '*.pdf'),('All files', '*.*')))
+    
+    """
     Tk().withdraw()
     if filter:
         chooser = peek(initialdir=opendir,filetypes=filter)
@@ -233,7 +284,16 @@ def getFile(opendir = 'C:\\',filter = (('All files', '*.*'),('All files', '*.*')
 ## Your mileage may vary depending on the strings that get passed in; I sometimes
 ## get a display with broken columns. It usually works pretty well, though.
 def screenResults(A = 'endr',B = None,C = None):
-    '''Usage: screenResults(value1,value2,value3)\n\nEach value is optional, and will be written to screen in separate rows & columns.\nYou can send the first letter of a color ("bl" for black) and "~" to colorize text,\nfor example "c~Value" to write "Value" in cyan.\nColors:(c)yan, (bl)ack, (b)lue, (r)ed, (y)ellow, (w)hite, (m)agenta, and (ul) for underline.\nTo finish your outputs, call the function again without any values to write the closing row boundary.'''
+    '''Usage: screenResults(value1,value2,value3)
+Each value is optional, and will be written to screen in separate rows
+& columns.\nYou can send the first letter of a color ("bl" for black)
+and "~" to colorize text, for example "c~Value" to write "Value" in cyan.
+
+Colors:(c)yan, (bl)ack, (b)lue, (r)ed, (y)ellow, (w)hite, (m)agenta, and
+(ul) for underline.
+
+To finish your outputs, call the function again without any values to
+write the closing row boundary.'''
     atc = btc = ctc = None      ## Default text color
     c = chr(8214)
     RC = chr(8801)
@@ -518,7 +578,24 @@ def screenResults(A = 'endr',B = None,C = None):
 ##      MYVAR = mcdefs.getThis('hex string',1,'ascii')
 ##
 def getThis(d,e,ee = 'utf8'):
-    """This is the same as MACROSS' powershell function 'getThis'. Your first argument is the\nencoded string you want to decode, and your second arg will be:\n(0) if decoding base64,\nor (1) if decoding hexadecimal,\nor (2) if encoding to base64,\nor (3) if encoding to hex.\n\nUsage:  var = mcdefs.getThis('base64string',0)\n                OR\nvar = mcdefs.getThis('hexstring',1)"""
+    """This is the same as MACROSS' powershell function 'getThis'. Your
+first argument is the encoded string you want to decode, and your
+second arg will be:
+    (0) if decoding base64, or
+    (1) if decoding hexadecimal, or
+    (2) if encoding to base64, or
+    (3) if encoding to hex.
+Unlike the powershell function, this function does NOT write to
+"vf19_READ", it just returns your decoded plaintext.
+
+You can pass an optional 3rd arg to specify the out-encoding (ascii,
+ANSI, etc, default is UTF-8).
+
+Usage:
+       
+    var = mcdefs.getThis('base64string',0)
+OR
+    var = mcdefs.getThis('hexstring',1)"""
     if e == 0:
         newval = b64.b64decode(d)
         newval = newval.decode(ee)
@@ -566,7 +643,18 @@ def getThis(d,e,ee = 'utf8'):
 ##
 ##
 def getDefaults(x,y = 1):
-    """This function is solely for splitting and decoding MACROSS' $vf19_PYPOD list\ninto the encoded default strings your scripts may need to use. To create your\ninitial dictionary, call this function with a (0) for the second arg. After that,\ncall with the specific index needed from your dictionary with a (1) as the second arg.\n\n    Usage:  vf19_PYPOD = mcdefs.getDefaults(sys.argv[3],0)\nNow let's say vf19_PYPOD contains an index 'tbl' with the filepath to some JSON files:\n    JSONdir = mcdefs.getDefaults(vf19_PYPOD['tbl'],1)"""
+    """This function is solely for splitting and decoding MACROSS' $vf19_PYPOD list
+into the encoded default strings your scripts may need to use. To create your
+initial dictionary, call this function with a (0) for the second arg. After
+that, call with the specific index needed from your dictionary with a (1) as
+the second arg. Usage:
+       
+    vf19_PYPOD = mcdefs.getDefaults(sys.argv[3],0)
+       
+Now let's say vf19_PYPOD contains an index 'tbl' with the filepath to some JSON
+files:
+       
+    JSONdir = mcdefs.getDefaults(vf19_PYPOD['tbl'],1)"""
     if y == 0:
         newlist = {}
         w = x.split(',')
@@ -582,15 +670,24 @@ def getDefaults(x,y = 1):
 
 ## Similar to getDefaults above, but replicates MACROSS' $vf19_LATTS hashtable so that python
 ## scripts can read the [macross].name and [macross].valtype attributes of other scripts.
-def getATTS(l):
-    """MACROSS passes the .name and .valtype attributes from its $vf19_ATTS hashtable via sys.argv[2]\nevery time it calls a python script. Send that value to this function, and you will get a pythonized\n$vf19_ATTS dictionary to do macross attribute evals in your python scripts."""
-    ls = l.split(',') ## separate each script entry
-    dict0 = {}
-    for atts in ls:
-        vals = atts.split('=')
-        dict0[vals[0]] = vals[1]
+def getATTS(L):
+    """MACROSS passes the .fname and .valtype attributes from its $vf19_ATTS
+hashtable via sys.argv[2] every time it calls a python script. Send
+that value to this function, and you will get a pythonized $vf19_ATTS
+dictionary to do macross attribute evals in your python scripts.
        
-    return dict0
+For example, if you have MACROSS scripts with the .valtype "ip addresses",
+you can auto-scan for them with
+
+    vf19_ATTS = getATTS(sys.argv[2])
+    for i in vf19_ATTS:
+        if i['valtype'] == 'ip addresses':
+            collab i['fname'] 'MyScript'
+    """
+    list = []
+    for atts in L.split(','):
+        list.append({'fname':(atts.split('=')[0]),'valtype':(atts.split('=')[1])})
+    return list
     
     
     
