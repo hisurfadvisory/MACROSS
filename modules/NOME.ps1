@@ -25,8 +25,8 @@ if($HELP){
     contain dozens of search choices.
 
     This tool does NOT search or display GPO information, though it can send
-    your findings to RACS and CARBON8 to give you more data. Use RACS if you
-    need to search specific GPO memberships.
+    your findings to MYLENE and GERWALK to give you more data. Use MYLENE if
+    you need to search specific GPO memberships.
 
     Hit ENTER to go back.
     "
