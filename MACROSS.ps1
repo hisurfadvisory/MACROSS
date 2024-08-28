@@ -45,7 +45,7 @@
             An example from my ELINTS tool:
 
                      FIELD1,FIELD2,     FIELD3,           FIELD4,     FIELD5, FIELD6, FIELD7
-             #_class anybody,user,document string search,powershell,HiSurfAdvisory,1,onscreen
+             #_class 0,user,document string search,powershell,HiSurfAdvisory,1,onscreen
 
             This helps MACROSS determine when to provide tools to users. 
                 FIELD1 (Access): if your SOC has different levels of users (analysts vs. investigators),
