@@ -8,11 +8,13 @@
     HiSurfAdvisory 9NOV2022
 
     This script is provided mainly as an example, but if you have Carbon Black
-    running in your environment, give this a spin!
+    running in your environment, give this a spin! EDRs are a great tool for
+    threat-hunting, but GERWALK's purpose is enriching other MACROSS tools quickly,
+    not threat-hunting. You will be disappointed if you try to use it that way.
 
 
     ***************!!! AUTHENTICATION !!!***************
-    Type "config" into the MACROSS menu to open the config wizard and add the
+    1. Type "config" into the MACROSS menu to open the config wizard and add the
     key "ger", with the value being your Carbon Black server's API URL (something
     like "hxxps://your.cblackserver.local/api/process?"). Then this script, or
     one you write, can reference it with:
@@ -23,9 +25,9 @@
     See the "craftQuery" function later in this script to see where this decoding 
     happens.
 
-    You will need to develop a secure method for passing in your API keys,
+    2. You will need to develop a secure method for passing in your API keys,
     this script does not contain any built-in methods for you. Look for line
-    1629, or the line "$Script:dyrl_ger_MARK = $SETYOURKEYHERE", creating/passing 
+    1597, or the line "$Script:dyrl_ger_MARK = $SETYOURKEYHERE", creating/passing 
     in your key here ensures it can be reused for multiple queries in one session,
     but only after users have passed all the permisson/access checks.
 
@@ -35,10 +37,6 @@
     Please do not hardcode your keys and passwords in your scripts. I also do not
     recommend storing them in MACROSS' config.conf file, its encryption is fairly
     weak.
-
-    Look for the commented lines in this script beginning "MPOD ALERT!", they
-    will give tips on modifying that particular section to fit your needs.
-
 
 
     ===================================================
@@ -650,7 +648,7 @@ function adjustTime($1,$2){
 
 
         # time format for queries windows = start:[2022-11-12T23:01:12 TO 2022-11-15T23:01:12]
-        # ^^ formatted:  start%3A%5B2022-11-12T23%3A01%3A12%20TO%202022-11-15T23%3A01%3A12%5D
+        # ^^ url-formatted:  start%3A%5B2022-11-12T23%3A01%3A12%20TO%202022-11-15T23%3A01%3A12%5D
         # time format for same-day searches = start:-14m
 
         $Script:tw = 'start:[' + $year + $day_diff + 'T' + $hour_diff + ':00:00 TO ' + $local + ']'
@@ -663,13 +661,13 @@ function adjustTime($1,$2){
 
 <#
     +++++++++++++++++++++++++++++++++++++++++++++++
-    IF "findThese" IS CALLED WHEN $CALLER IS SET:
+    IF "findThese" IS CALLED WHEN GLOBAL $CALLER IS SET BY MACROSS:
     +++++++++++++++++++++++++++++++++++++++++++++++
     $1 is the $CALLER value, $2 is the $PROTOCULTURE value to be queried.
     $dyrl_ger_ALT is the optional param any script can send to via "collab" be evaluated
     along with $PROTOCULTURE.
 
-    Currently:
+    Currently $dyrl_ger_ALT can be one of these:
 
         'usrlkup' sets time window to 2 weeks to search for username $PROTOCULTURE
         'usrloggedin' will only return usernames (if any) for the given $PROTOCULTURE hostname
@@ -680,11 +678,11 @@ function adjustTime($1,$2){
         '[0-9]' sets the time window to the past x amount of days
 
     +++++++++++++++++++++++++++++++++++++++++++++++
-    IF "findThese" IS CALLED WITHOUT $CALLER:
+    IF "findThese" IS CALLED WHNE THERE IS NO $CALLER:
     +++++++++++++++++++++++++++++++++++++++++++++++
-    $1 is the API to query, $2 is the value to be queried, OR
-    leave $1 and $2 empty to load the main menu for users to
-    enter their own queries.
+    $1 is the API to query, $2 is the value to be queried; OR
+    leave $1 and $2 empty to load the query screens for users to
+    enter their own search filters.
 
 #>
 function findThese($1,$2){
@@ -720,7 +718,7 @@ function findThese($1,$2){
     $res = $null
 
     ## This string will only query non-system accounts if user chooses:
-    $onlyusers = '-(username:*SERVICE OR username:root OR username:*SYSTEM OR username:svc* OR username:Window* OR username:*Font*) '
+    $onlyusers = '-(username:*SERVICE OR username:root OR username:*SYSTEM OR username:Window* OR username:*Font*) '
 
     if($CALLER){
         if($dyrl_ger_ALT -eq 'usrlkup'){  ## The calling script wants to view user activity (set to 2 days)
@@ -776,7 +774,7 @@ function findThese($1,$2){
         if($2){
             if( $1 -Match '/v1/' ){         ## Indicates an API change
                 $qsection = $1              ## Use this API instead of default
-                $qbuild = $qbuild + $2      ## Second param should be the value being queried by the new API
+                $qbuild = $qbuild + $2      ## Second param should be the value being queried by the alternate API
             }
             else{                         ## If not API, the $2 value should be $PROTOCULTURE
             
@@ -853,8 +851,6 @@ function findThese($1,$2){
                     $qbuild = $qbuild + $startt + "username:$2 "
                 }
                 ## Check if value is a filename
-                ## MANTIS uses the largest time window;
-                ## WERDZ & MANTIS don't want root/system results
                 elseif($valtype -Like "*file*"){
 
                     $qbuild = $qbuild + $onlyusers
@@ -1403,14 +1399,15 @@ function findThese($1,$2){
         Exit
     }
     
-    ## You can adjust the max results $resmaximum higher than 250 if you need to
+    ## You can adjust the max results $resmaximum higher than 250 if you need to, but
+    ## by that point you're better off just logging in to the EDR.
     $resmaximum = 250
     if( ! $skipres ){
         w "
         By default I'll only grab the 10 most recent results for you, and unless you are
         searching for a process, each process will only be displayed once (otherwise you'd 
-        end up with a screen full of svchost and firefox). Enter a new max threshold up to
-        $resmaximum, or ENTER to keep the default:  " g -i
+        end up with a screen full of svchost and web browsers). Enter a new max threshold
+        up to $resmaximum, or ENTER to keep the default:  " g -i
         $Z = Read-Host
 
         if($Z -Match "\d{1,3}"){
@@ -1452,17 +1449,17 @@ function findThese($1,$2){
 }
 
 
-## Take user inputs to build query
-## $1 = cb queries from "findThese" function
-## $2 = the CB module to query, passed from "findThese"
+## Take user inputs to build their query
+## $1 = Carbon Black queries from "findThese" function
+## $2 = the Carbon Black module to query, passed from "findThese"
 ## $3 is the close-off section
 ## $4 limits the # of results returned
-## If only param $1 is passed in, it should be a CB event ID number. This function will
-##  then perform a query for that specific event, which will include all details not
+## If only param $1 is passed in, **it should be a Carbon Black event ID number**. This function 
+##  will then perform a query for that specific event, which will include all details not
 ##  available in a standard query.
 function craftQuery($1,$2,$3,$4){
     
-    $ua = 'MACROSS'
+    $ua = 'MACROSS' ## If making curl requests generates alerts on your network, you can whitelist MACROSS user-agent strings
 
     getThis $vf19_DEFSLIST['vcb']
     $SRV1 = "$vf19_READ"
@@ -1490,12 +1487,7 @@ function craftQuery($1,$2,$3,$4){
         $getResults = "$qopen$2$1' -H 'accept: application/json' $SRV2$3'"
 
         if( $CALLER ){
-            if( $CALLER -eq 'MACROSS'){
-                $dyrl_ger_VAL = $dyrl_ger_file
-            }
-            else{
-                $dyrl_ger_VAL = $PROTOCULTURE
-            }
+            $dyrl_ger_VAL = $PROTOCULTURE
             w '
         Searching on ' g -i
             w "$dyrl_ger_VAL" y -i
@@ -1503,7 +1495,9 @@ function craftQuery($1,$2,$3,$4){
             ' g
         }
         elseif( $dyrl_ger_DEBUG ){
-            $debugResults = "$qopen$1' -H 'accept: application/json' $SRV2 (+key)'"
+            ## While debugging, your curl request is echoed to screen but the API key will NOT be displayed!
+            ## This is because any user who can access GERWALK can also use the debug feature.
+            $debugResults = "$qopen$1' -H 'accept: application/json' $SRV2 (REDACTED KEY)'"
             $debugResults
             ''
             ''
@@ -1519,13 +1513,14 @@ function craftQuery($1,$2,$3,$4){
 
         if( $dyrl_ger_DEBUG ){
             Remove-Variable -Force dyrl_ger_DEBUG -Scope Script
-            $DEBUGSPACE = iex "$getResults" -ErrorAction Inquire | ConvertFrom-Json
-            $c = 'continue'
-            $no = [regex]".*(CONCHK|get-variable|gv|::).*"
+            $dbg = iex "$getResults" -ErrorAction Inquire | ConvertFrom-Json
+            $c = 'continue'; getThis -h 2E2A28434F4E43484B7C6765742D7661726961626C657C67767C3A3A292E2A
+            $srch0 = [regex]"$vf19_READ"
 
             while($c -ne ''){
-                Write-Host '  "$DEBUGSPACE" is your JSON response converted to a powershell object.'
-                Write-Host '  When finished testing, hit ENTER to continue without debugging, or "q" to quit.
+                Write-Host '  "$dbg" is your JSON response converted to a powershell object. This debugger'
+                Write-Host '  only allows you to read the different elements of the $dbg object for trouble-'
+                Write-Host '  shooting. When finished viewing, hit ENTER to continue normally, or "q" to quit.
                 '
                 $c = Read-Host '  Parse'
 
@@ -1533,12 +1528,8 @@ function craftQuery($1,$2,$3,$4){
                     Remove-Variable -Force dyrl_ger_* -Scope Global
                     Exit
                 }
-                elseif($c -Match $no){
-                    $c = $null
-                }
-                elseif($c -Match "^[$]DEBUGSPACE"){
-                    iex "$c"
-                }
+                elseif($c -Match $srch0){ $c = $null }
+                elseif($c -Match "^[$]dbg"){ iex "$c" }
             }
         }
         if(! $CALLER){
@@ -1551,9 +1542,9 @@ function craftQuery($1,$2,$3,$4){
         else{
             $Script:dyrl_ger_WORKSPACE = iex "$getResults" #| ConvertFrom-Json
 
-            ## 'curl' should typically only be grep'able in the response if the curl request fails.
+            ## You should typically only be able to grep "curl" in the response if the curl request fails.
             if( $dyrl_ger_WORKSPACE | Select-String 'curl' ){
-                errLog 'ERROR' 'GERWALK' 'curl request to Carbon Black failed.'
+                errLog 'ERROR' 'GERWALK' "$dyrl_ger_WORKSPACE"
             }
             else{
                 errLog 'INFO' $USR "GERWALK:  $displayq"
@@ -1564,7 +1555,7 @@ function craftQuery($1,$2,$3,$4){
 
 
 ## Loop standalone searches until user quits
-##  $1 is automatically passed if $CALLER has any value
+##  $1 is automatically passed in if Global $CALLER has any value
 function searchAgain($1){
     ''
     $Script:EVENTLISTING = $false
@@ -1606,12 +1597,15 @@ $Script:dyrl_ger_MARK = $SETYOURKEYHERE
 
 
 $Script:r = 0
-## Don't display these procs on screen, or they will be the only things anyone sees
+
+
+## This is a list of the noisiest processes I regularly saw. GERWALK uses this
+## to filter them out of results, otherwise you would only ever see these procs.
+## Add your own noisy processes as necessary. I know that sometimes you want to
+## see things like svchost getting spammed, but GERWALK is only meant to give
+## quick looks at a host to confirm or enrich $PROTOCULTURE.
 $dyrl_ger_dontCare = @(
-    'cb-service.exe',
     'explorer.exe',
-    'mcshield.exe',
-    'mctray.exe',
     'onedrive.exe',
     'searchindexer.exe',
     'searchprotocolhost.exe',
@@ -1652,7 +1646,8 @@ function quickList($1,$2){
 }
 
 
-
+## The query wizard has a button called "Who's Logged In" if the user just needs to find
+## out who's on the host.
 ## List the logged in user(s), offer MYLENE output if applicable, then cleanly exit
 function whosOnFirst($1){
     $names = ''
@@ -1708,16 +1703,19 @@ function whosOnFirst($1){
 
 
 
+######################################################
+##  MAIN
+######################################################
 
 
 
 
-
-
-
-## Check if another tool is requesting an alt API call. Add more values as necessary. Currently, the 'sensor'
-## call will grab sensor IDs from hostnames, all other values go through the 'process' api in the 
-## "findThese" function.
+## Check if another tool is requesting an alt API call. You can add more values as necessary. 
+## The $dyrl_ger_ALT var only gets a value if MACROSS has set a Global $CALLER or $PROTOCULTURE
+## and the $CALLER is not performing the default process search.
+##
+## Currently, the 'sensor' call will grab sensor IDs from hostnames, all other values go 
+## through the 'process' api in the "findThese" function.
 if($dyrl_ger_ALT -eq 'sensor'){
     $dyrl_ger_XOBJ = $PROTOCULTURE
     inspectSID '' $dyrl_ger_XOBJ
@@ -1754,17 +1752,6 @@ elseif($dyrl_ger_ALT){
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
 ## Proceed with the regular proc search types
 else{
 while($r -Match "[0-9]"){
@@ -1774,35 +1761,7 @@ while($r -Match "[0-9]"){
     ## Import values from other tools
     if( $CALLER ){
 
-        ## If the user types "file" in the MACROSS menu, search the 'binary' API for 
-        ## file/hash info
-        if( $CALLER -eq 'MACROSS' ){
-            Write-Host -f GREEN "
-            Type in a filename for a general search, or hit ENTER
-            to open a file window to select a specific file: " -NoNewline;
-            $Z1 = Read-Host
-
-            if( $Z1 -eq '' ){
-                $Z1 = getFile
-                if( $Z1 -eq '' ){
-                    ''
-                    Write-Host -f CYAN '    Action cancelled. Hit ENTER to exit.'
-                    Read-Host
-                    Exit
-                }
-                while($Z2 -notMatch "^(md5|sha256)$"){
-                    Write-Host -f GREEN "
-                    MD5 or SHA256? " -NoNewline;
-                    $Z2 = Read-Host
-                }
-            }
-            else{
-                $Z2 = $null
-            }
-
-            inspectBin $Z1 $Z2
-        }
-        elseif( $PROTOCULTURE ){
+        if( $PROTOCULTURE ){
             Write-Host -f GREEN "                        $CALLER searching " -NoNewline;
             Write-Host -f YELLOW "$PROTOCULTURE" -NoNewline;
             Write-Host '...
@@ -1814,7 +1773,7 @@ while($r -Match "[0-9]"){
         }
 
     }
-    # Run GERWALK by itself with user inputs
+    # If there is no $CALLER, get user inputs to create a search filter
     else{
         findThese
     }
@@ -1841,7 +1800,7 @@ while($r -Match "[0-9]"){
             }
             else{
                 ## If user's search is something like "*.doc\ " to exclude ".docx" files, the result
-                ## is not going to contain "\" or " ". Need to adjust the search to grab the filename.
+                ## is not going to end with "\" or " ". This adjusts the search to grab the filename.
                 if($srch -Match "\\ $"){
                     $srch = $srch -replace "\\ $"
                 }
@@ -1857,7 +1816,8 @@ while($r -Match "[0-9]"){
             $bexec = @()
             $1.process.modload_complete | %{
                 $bx = $_ -Split('\|')
-                if($bx[2] -notMatch "(activclient|appsense|syswow64|microsoft|windows|mcafee|cb-service|vmware)"){
+                ## Ignore common procs; if you're looking for injects or masquerades, log in to the EDR
+                if($bx[2] -notMatch "(appsense|syswow64|microsoft|windows|mcafee|symantec|clamav|vmware)"){
                     $bexec += $bx[2]
                 }
             }
@@ -2057,7 +2017,7 @@ while($r -Match "[0-9]"){
                     $cmdline = $rv.cmdline
                     $hname = $rv.hostname
                     $htype = $rv.host_type
-                    $uname = $rv.username -replace "^ENT."
+                    $uname = $rv.username -replace "^\w+\\"  ## Remove domain from username
                     $proc = [string]$rv.process_name
                     $ppath = $rv.path
                     $daddy = $rv.parent_name
@@ -2286,17 +2246,6 @@ while($r -Match "[0-9]"){
             }
             else{
                 w "    Select a result (1 - $rr) to drill down, " g -i
-                if( $dyrl_ger_ip ){
-                    $dyrl_ger_i1 = [string]($vf19_M[3] + $vf19_M[1]) + '.' + [string]($vf19_M[3] + $vf19_M[1])
-                    $dyrl_ger_i2 = $vf19_numchk - 5183
-                    if( $dyrl_ger_ip -Match "^($dyrl_ger_i1|$dyrl_ger_i2)" ){
-                        w "'" g -i
-                        w 'i' y -i
-                        w "' to query C2FID for $dyrl_ger_ip," g
-                        w '    ' -i
-                    }
-
-                }
                 w ' "' g -i
                 w 'p' y -i
                 w '"' g
@@ -2315,15 +2264,7 @@ while($r -Match "[0-9]"){
             
 
             
-            if($dyrl_ger_Z -eq 'i'){
-                $Global:PROTOCULTURE = $dyrl_ger_ip
-                $c2fd = $(collab 'C2FID.ps1' 'GERWALK' 'sendback')
-                screenResults $c2fd.HOST $c2fd.TYPE $c2fd.IP
-                screenResults -e
-                Remove-Variable -Force PROTOCULTURE -Scope Global
-                Remove-Variable -Force c2fd
-            }
-            elseif($dyrl_ger_Z -eq 'u'){
+            if($dyrl_ger_Z -eq 'u'){
                 quickList $dyrl_ger_WORKSPACE1 'u'
             }
             elseif($dyrl_ger_Z -eq 'p'){
@@ -2392,13 +2333,6 @@ while($r -Match "[0-9]"){
                         Write-Host -f YELLOW 'e' -NoNewline;
                         Write-Host -f GREEN "' to list binary execution" -NoNewline;
                     }
-                    if($dyrl_ger_hname){
-                        Write-Host -f GREEN ', or'
-                        Write-Host -f GREEN "       -Type '" -NoNewline;
-                        Write-Host -f YELLOW 'h' -NoNewline;
-                        Write-Host -f GREEN "' to query C2FID for " -NoNewline;
-                        Write-Host -f GREEN "$dyrl_ger_hname" -NoNewline;
-                    }
                     if( $getSID ){  ## Not implemented yet
                         Write-Host -f GREEN ', or '
                         Write-Host -f GREEN "       -Type '" -NoNewline;
@@ -2428,14 +2362,6 @@ while($r -Match "[0-9]"){
                     }
                     elseif($dyrl_ger_ZZ -eq 'c'){
                         showFULLEVENT $dyrl_ger_SINGLEEVENT[0] 'c'
-                    }
-                    elseif( $dyrl_ger_ZZ -eq 'h' ){
-                        $Global:PROTOCULTURE = $dyrl_ger_hname
-                        $c2fd = $(collab 'C2FID.ps1' 'GERWALK' 'sendback')
-                        screenResults $c2fd.HOST $c2fd.TYPE $c2fd.IP
-                        screenResults -e
-                        Remove-Variable -Force PROTOCULTURE -Scope Global
-                        Remove-Variable c2fd,dyrl_ger_hname
                     }
                     elseif( $dyrl_ger_ZZ -eq 's' ){
                         $ssiidd = $RESULTS[[int]$dyrl_ger_Z].sensor_id
