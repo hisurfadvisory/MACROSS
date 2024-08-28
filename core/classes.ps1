@@ -18,94 +18,92 @@ class macross {
                 #_ver <your script version number>
                 #_class <your script's attributes> 
         
-        The 'macross' class relies on the third line of each script in the nmods folder, it must begin with
-        "#_class " followed by a comma separated string of attributes for your script. Example:
+        The 'macross' class relies on the third line of each script in the nmods folder, it must begin 
+        with "#_class " followed by a comma separated string of attributes for your script. Example:
 
-            #_class User,file hashes,Python3,HiSurfAdvisory,2
+            #_class tier1,user,file hashes,python3,HiSurfAdvisory,2
 
             IN ORDER, these attributes are applied for MACROSS to recognize:
+                the level of access,*
                 level of privilege required,
                 the type of data it works with,
                 the script's language,
                 the script's author,
                 the number of values it can handle being passed
-                the type of response it gives back*
+                the type of response it gives back**
 
-            In addition, the script's name and version are automatically applied.
+            All 7 of these fields are REQUIRED. In addition, the script's name and version are 
+            automatically applied when MACROSS starts up.
 
-            *Suggested ".rtype" values are "onscreen" for results that only show on screen,
+            * MACROSS only recognizes three ".access" types: tiers 1, 2, & 3, with "tier 1" 
+            being reserved for the most junior analysts, "tier3" the most senior. Putting 
+            anything else in this field tells MACROSS that everyone can execute the script. 
+            The tier1 - tier3 attributes are determined by the user's GPO membership; if you 
+            want to use a different method than GPO, you'll need to modify the "setUser" 
+            function in validation.ps1.
+
+            ** Suggested .rtype values are "onscreen" for results that only show on screen,
             "file" if your script outputs results to any kind of file, where you store the
             filepath as $global:RESULTFILE, and "none" if your script just performs a task
             without responding. Other than those, specify json, txt, or whatever else your 
             script creates.
+
+            
+        Example .access attribute that ignores tier restrictions:
+
+            #_class allusers,user,file hashes,python3,HiSurfAdvisory,2,
+        
+        You need to specify the GPO names by running "config" from the main menu, and specifying
+        the name of the groups your analysts belong to ("SOC", "Incident-Responder", etc.).
             
         You should not need to worry about generating objects in the macross class, MACROSS does it
         automatically every time it builds out its menu. You just need to make sure you're following
         the commenting convention described above in the first three lines of your scripts.
-    
+
         
 
-        !!! If you'd like to include more granular user descriptions, uncomment all the "$access" lines
-        in this script, and uncomment/modify the "access" section in the update.ps1 script's "toolCount"
-        function. Then start using the third field in your scripts' #_class lines to tag them like
-        'junior analyst' or 'Tier2' or whatever you need. Example $access attribute:
 
-            #_class User,file hashes,Allusers,Python3,HiSurfAdvisory,2,
-        
-        'Allusers' might be used to let everyone load your script, while 'Tier2' could limit the script to
-        just senior SOC analysts. Your analysts' permissions get set in the validation.ps1 script's "setUser"
-        function, (which you'll need to tweak however you need) and would typically work by using either
-        Active Directory GPO or a list you maintain elsewhere.
          .example
         Examples for manually classifying MACROSS tools (you shouldn't ever need to do manually this):
 
-            $gerwalk = [macross]::new('GERWALK,Admin,Tier3,endpoint artifacts,Powershell,HiSurfAdvisory,1,json,4.5,GERWALK.ps1')
-                                    ^^ The GERWALK script now gets described with all of these attributes
+            $gerwalk = [macross]::new('tier3','GERWALK,Admin,Tier3,endpoint artifacts,Powershell,
+            HiSurfAdvisory,1,json,4.5,GERWALK.ps1')
+
+            ^^ The GERWALK script now gets described with all of these attributes
 
         Example of the above macross class "$gerwalk" in use:
 
-            $gerwalk.access   --> will return 'Tier3', meaning only forensics people can execute it
+            $gerwalk.access   --> will return 'tier3', meaning only your Tier 3 people can execute it
             $gerwalk.priv     --> will return 'admin', meaning it will only be visible to someone logged in
-                                    with admin credentials (provided you are using a master repo and version checks)
+                                    with admin credentials (provided you are using a master repo and version 
+                                    checks)
 
-        You can then craft your scripts to search through the $vf19_ATTS hashtable to find
-        relevant tools to perform further evals, for example:
+        You can then craft your scripts to search through the $vf19_LATTS hashtable to find relevant tools 
+        to perform further evals, using MACROSS' availableTypes function. For example:
 
                 $PROTOCULTURE = '9.9.9.9'
-                Get-ChildItem -file $vf19_TOOLSDIR | %{
-                foreach($tool in $vf19_ATTS.keys){
-                    if($vf19_ATTS[$tool].lang -eq 'Powershell' -and `
-                        $vf19_ATTS[$tool].evals -Like '*ip address*'){
-                        if((Read-Host 'Do you want to pass $PROTOCULTURE to $tool for processing') -eq 'yes'){
-                            collab "$tool.ps1" 'Myscript'
-                        }
-
-                    }
-                }
-                }
-                .ver
-
-                The above scriptblock would iterate through all the MACROSS tools listed in $vf19_ATTS, and if the
-                tool is a powershell script that focuses on processing IP addresses, the user is asked if they want
-                to pass their current IOC ($PROTOCULTURE) to that script.
+                $tools = availableTypes 'ip, firewall api' 
+            
+                The above scriptblock would iterate through all the MACROSS tools listed in $vf19_ATTS, and 
+                returns a list of tools matching the .valtype 'ip' or 'firewall api'. That list can then be 
+                used to auto-execute MACROSS' collab function to further process the $PROTOCULTURE value.
 
         Reference the "toolCount" and "look4New" functions in updates.ps1 if you want to see how MACROSS
         automatically classifies scripts for you.
     #>
 
     [string]$name     ## Attribute 1: Name of the script
-    [string]$priv     ## Attribute 2: Privilege level required, admin vs. user
-    #[string]$access   ## Level of analyst access; use if you want to further control access by tiers
-    [string]$valtype  ## Attribute 3: What kind of values the script can accept (strings, filenames, etc).
-    [string]$lang     ## Attribute 4: The script language
-    [string]$author   ## Attribute 5: Script author
-    [int]$evalmax     ## Attribute 6: How many values a script can accept from other tools
-    [string]$rtype    ## The type response your script returns (onscreen, json, etc.)
-    [string]$ver      ## Attribute 7: The script version
-    [string]$fname    ## The full filename for use with MACROSS' collab function
+    [string]$access   ## Attribute 2:Level of analyst access (Tier 1, Tier 2, or Tier 3)
+    [string]$priv     ## Attribute 3: Privilege level required, admin vs. user
+    [string]$valtype  ## Attribute 4: the type of data processed, or type of task performed
+    [string]$lang     ## Attribute 5: The script language
+    [string]$author   ## Attribute 6: Script author
+    [int]$evalmax     ## Attribute 7: How many values a script can accept from other tools
+    [string]$rtype    ## Attribute 8:The type response your script returns (onscreen, json, etc.)
+    [string]$ver      ## Attribute 9: The script version
+    [string]$fname    ## Attribute 10:The full filename for use with MACROSS' collab function
 
 
-    ## Constructor
     macross($scriptvalues){
         $this.setAttributes($scriptvalues)
     }
@@ -116,31 +114,32 @@ class macross {
     ## script distribution
     [void]setAttributes($scriptvalues){
         $this.name = ($scriptvalues -Split ',')[0]
-        $this.priv = ($scriptvalues -Split ',')[1]
-        #$this.access = ($scriptvalues -Split ',')[2] ## You'll need to adjust the below indexes if you uncomment this!
-        $this.valtype = ($scriptvalues -Split ',')[2]
-        $this.lang = ($scriptvalues -Split ',')[3]
-        $this.author = ($scriptvalues -Split ',')[4]
-        $this.evalmax = ($scriptvalues -Split ',')[5]
-        $this.rtype = ($scriptvalues -Split ',')[6]
-        $this.ver = ($scriptvalues -Split ',')[7]
-        $this.fname = ($scriptvalues -Split ',')[8]
+        $this.access = ($scriptvalues -Split ',')[1]
+        $this.priv = ($scriptvalues -Split ',')[2]
+        $this.valtype = ($scriptvalues -Split ',')[3]
+        $this.lang = ($scriptvalues -Split ',')[4]
+        $this.author = ($scriptvalues -Split ',')[5]
+        $this.evalmax = ($scriptvalues -Split ',')[6]
+        $this.rtype = ($scriptvalues -Split ',')[7]
+        $this.ver = ($scriptvalues -Split ',')[8]
+        $this.fname = ($scriptvalues -Split ',')[9]
     }
 
     [void]setAttributes(
             [string]$name,
+            [string]$access,
             [string]$priv,
-            #[string]$access,
             [string]$valtype,
             [string]$lang,
             [string]$author,
             [int]$evalmax,
             [string]$rtype,
             [string]$ver,
-            [string]$fname){
+            [string]$fname
+            ){
         $this.name = $name
+        $this.access = $access
         $this.priv = $priv
-        #$this.access = $access
         $this.valtype = $valtype
         $this.lang = $lang
         $this.author = $author
@@ -153,7 +152,6 @@ class macross {
 
     ## Method checks to automatically divvy out the tools to appropriate users
     [string]toolInfo(){
-        #$(' Tier:          ' + $this.access)
         $info = "
     MACROSS: $($this.name)
         $(' Version:       ' + $this.ver)
@@ -162,6 +160,7 @@ class macross {
         $(' Max arguments: ' + [string]$this.evalmax)
         $(' Response type: ' + $this.rtype)
         $(' Privilege:     ' + $this.priv)
+        $(' Tier:          ' + $this.access)
         $(' Language:      ' + $this.lang)
         $(' Filename:      ' + $this.fname)
         "
