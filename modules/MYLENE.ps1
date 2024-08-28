@@ -1,6 +1,6 @@
 #_sdf1 User lookup + audit new accounts
 #_ver 2.5
-#_class user,active-directory lookups,powershell,HiSurfAdvisory,1,onscreen
+#_class 0,user,active-directory user lookups,powershell,HiSurfAdvisory,1,onscreen
 
 <#
     MYLENE: Target recently-created accounts for inspection; look up AD info
@@ -11,9 +11,8 @@
     that are newly-joined to your domain.
 
     MYLENE is part of the MACROSS framework, so many tasks or functions may
-    not be available to a user if they've been ID'd as not having admin-
-    level privilege to perform these lookups. This is determined at startup
-    in the "validation.ps1" file's function "setUser".
+    not be available to a user if MACROSS has determined they do not have
+    admin-level privileges.
 
     If MYLENE is run with admin- or Active Directory read-permissions:
     1) AD Objects will be collected based on:
@@ -23,26 +22,23 @@
         -keywords to match against Group-Policy names
 
     2) Anomalous attributes can be highlighted by modifying the function "cleanList".
-        Look for line 725, or the section labeled
+        Look for the section labeled:
         "Add other values here to highlight deviations from standard account attributes"
 
-    3) Results will output to screen and to your Desktop in a folder called
+    3) Results will output to screen AND to your Desktop in a folder called
         "NewUserSearches" when searching for newly-created accounts.
 
     4) Standard user searches will have summaries printed to screen, with
-        options to display more info as needed. Future updates will have
-        improved outputs for $CALLER scripts.
+        options to display more info as needed.
     
     5) This script was written in an environment that used VMWare's Carbon Black as an
         Endpoint Detection (EDR) solution, which this script would use to perform user
         activity lookups to aid analyst investigations. If your environment uses something
-        else, you can modify the EDR/Carbon Black sections of this script to fit your needs.
-        You may also find it useful to write your own EDR API script in powershell or
-        python so that it can be used within MACROSS with your other scripts.
+        else and you write a MACROSS tool to access its API, you can modify the EDR/Carbon 
+        Black sections of this script to parse its output as necessary.
 
-        If there is no EDR, don't worry. If you delete GERWALK from the "modules" folder,
-        MACROSS will know there is no EDR-specific script and won't offer the option to this
-        or any other tool.
+        If there is no EDR, don't worry. If the "modules" folder doesn't contain any scripts
+        with 'EDR' as a .valtype, MYLENE won't offer the option.
 
     ---------------------------------------------------
     If calling MYLENE from your script via the "collab" function, MYLENE
@@ -62,33 +58,23 @@
 ## Watch for python scripts making queries:
 ## First param needs to be your script's name, prefixed with "py"
 param(
-    [Parameter(position = 0)]
-    [string[]]$dyrl_mypy_CALLER,  ## The calling script
-    [Parameter(position = 1)]
-    [string[]]$dyrl_mypy_QNAME,   ## The username being queried
-    [Parameter(position = 2)]
-    [string[]]$dyrl_mypy_DESKTOP, ## The user's desktop path
-    [Parameter(position = 3)]
-    [string]$dyrl_mypy_GBIO       ## The garbage_io folder path
+    [string]$pythonsrc=$null
 )
+if($pythonsrc){
+    $Script:ErrorActionPreference = 'SilentlyContinue'
+    $p_ = @(); $b_ = @{}
+    $pythonsrc -Split '~' | %{$p_ += $_}
+    $PYCALL = $p_[0]; $d_ = $env:MACROSS -Split ';'
+    $env:MPOD -Split ';' | %{$b_.Add($($_ -Split ':')[0],$($_ -Split ':')[1])}
+    $Global:vf19_TOOLSROOT = $d_[0]; $Global:vf19_TOOLSDIR = $d_[1]; $Global:vf19_DTOP = $d_[2]
+    $Global:vf19_GBIO = "$vf19_TOOLSROOT\core\py_classes\garbage_io"; $Global:vf19_MPOD = $b_
+    1..3 | %{$core = $p_[$_]; . "$vf19_TOOLSROOT\core\$core"}
+    $Global:PROTOFILE = "$vf19_GBIO\PROTOCULTURE.eod"
+    $Global:PROTOCULTURE = $((Get-Content $PROTOFILE | ConvertFrom-Json)."$PYCALL".target)
 
-## Python scripts must call MYLENE with all 4 params.
-if($dyrl_myl_CALLER){
-    if($dyrl_myl_CALLER -Match "^py"){
-    if($dyrl_mypy_QNAME -Match "\w"){
-    if($dyrl_mypy_DESKTOP -Match "\w"){
-    if($dyrl_mypy_GBIO -Match "\w"){
-        $CALLER = $dyrl_mypy_CALLER -replace "^py"
-        $PROTOCULTURE = $dyrl_mypy_QNAME
-        $vf19_DEFAULTPATH = $dyrl_mypy_DESKTOP
-        $vf19_GBIO = $dyrl_mypy_GBIO
-    }}}}
-    else{
-        Read-Host " 
-        You are missing arguments, I can't perform the query. Hit ENTER to quit."
-        Exit
-    }
-    Remove-Variable -Force dyrl_mypy_*
+    ## If you write a script that can accept a value in addition to (or instead of) $PROTOCULTURE,
+    ## then add a line like this:
+    #  if($p_[4]){ $optional_var = $p_[4] }
 }
 
 
@@ -101,7 +87,6 @@ if( $HELP ){
  version $($vf19_LATTS['MYLENE'].ver)
  
  
- 
  MYLENE's Recent Account Search lets you perform user lookups by name or creation 
  date. As an admin, you can query Active Directory for partial name matches. If you 
  don't know the entire username, you can search with wildcards (*), but it might 
@@ -109,8 +94,6 @@ if( $HELP ){
  wildard the end (ex. *partname will not work, but *partname* and partname* will).
  
  When searching for recently created users, you can:
-    -forward search results to the KONIG tool to perform a filesearch on those 
-        profiles.
     -do a quick keyword search on all of the new accounts' GPO assignments
     -get a quickview of all the GPO assignments for specific new accounts
     -get a quick alert for non-standard attributes on any new accounts (i.e. things 
@@ -123,12 +106,10 @@ if( $HELP ){
     Write-Host -f YELLOW ' utility, and
  you cannot wildcard. You must search for exact names.
 
-
  If you are logged in as admin and select MYLENE with the "s" option (example "12s" 
  from the main menu), you can search for keywords and creation dates instead of 
  usernames in Active-Directory GPO.
 
- 
  Hit ENTER to return.
  '
 
@@ -189,18 +170,18 @@ function rvf(){
 
 <#####################################################################################
     MPOD ALERT!
-    The $vf19_C8 variable is set to $true when you have a Carbon Black EDR deployment
-    and the GERWALK script in the modules folder. It enables analysts to automatically
+    The $dyrl_myl_EDR variable will contain the name of any scripts in the module folder
+    with "EDR" as their .valtype value. This enables analysts to automatically
     pull logged-in activity from the EDR for any username they find with MYLENE.
 
-    If you have a different EDR and script you've created for MACROSS, make sure to 
-    modify this section to make use of those instead. 
+    It assumes you only have one EDR, if any, so it always references $dyrl_myl_EDR[0]
+
 #####################################################################################>
 ## GERWALK plugin function
-if( $vf19_C8 ){
-    function uActivity($1){  ## Send a username to Carbon Black
+if( $dyrl_myl_EDR ){
+    function uActivity($1){  ## Send a username to EDR
         $Global:PROTOCULTURE = $1
-        $activityu = collab 'GERWALK.ps1' 'MYLENE' 'usrlkup'
+        $activityu = collab $($dyrl_myl_EDR[0]) 'MYLENE' 'usrlkup'
         rvf
 
 
@@ -230,7 +211,7 @@ if( $vf19_C8 ){
             $ct++
         }
 
-        screenResults 'endr'
+        screenResults -e
         hetc
         ''
         Remove-Variable -Force activityu
@@ -240,14 +221,14 @@ if( $vf19_C8 ){
         $Global:PROTOCULTURE = $1
 
         if( ! $activityh ){
-            $activityh = collab 'GERWALK.ps1' 'MYLENE' 'hlkup'
+            $activityh = collab $($dyrl_myl_EDR[0]) 'MYLENE' 'hlkup'
             rvf
         }
 
         ## GERWALK randomly sends a useless header with the max results,
         ## need to ignore when it does this
         if(($activityh).count -gt 2){
-            $f = $($activityh[1] | ConvertFrom-Json).facets   # CB results
+            $f = $($activityh[1] | ConvertFrom-Json).facets   # EDR results
             $l = $activityh[2]                                # Noisy proc lists
         }
         else{
@@ -255,36 +236,26 @@ if( $vf19_C8 ){
             $l = $activityh[1]
         }
 
-        ## Query C2EFFD to see if it has host descriptions
-        if($1 -Like "*-*"){
-            $Global:PROTOCULTURE = $($1 -replace "^.*\-",'-' -replace "\.ent.*$" -replace "\d{3,4}$")
-        }
-        $type = (collab 'C2EFFD.ps1' 'MYLENE' 'sendback').TYPE
-        rvf
-
 
         while( $z -ne '' ){
             screenResults "           Activity on host $1 ($type)"
             screenResults 'c~ACCOUNTS' 'c~RUNNING PROCESSES' 'c~CB GROUP'
             screenResults "$($f.username_full.name)" "$($f.process_name.name)" "$($f.group.name)"
             screenResults "Last seen: $(($f.start.name | Sort -Descending)[0])"
-            screenResults 'endr'
+            screenResults -e
             ''
-            w ' Type a username to view their recent activity, or hit ENTER to continue.' 'g'
-            Write-Host -f GREEN ' Username: ' -NoNewline;
+            w ' Type a username to view their recent activity, or hit ENTER to continue.' g
+            w ' Username: ' g -i
             $z = Read-Host
             if( $z -ne ''){
-                if($z -notLike '*\*'){
-                    $z = 'ENT\' + $z  ## try to be helpful
-                }
                 if($z -in $($f.username_full.name)){
                     $z = $z -replace "^.*\\"
                     uActivity $z
                 }
-                elseif($z -Match "\w"){   ## Might be another domain other than "ENT"
+                elseif($z -Match "\w"){
                     ''
                     w " That name isn't listed. Try adding the domain.
-                    " 'c'
+                    " c
                 }
             }
         }
@@ -336,30 +307,30 @@ function detailGroups($1){
 ## username, or empty space to separate each user entry)
 function w2f($1,$2){
     if($2){
-        $2 | Out-File -Filepath "$vf19_DEFAULTPATH\NewUserSearches\$dyrl_myl_OUTNAME" -Append
+        $2 | Out-File -Filepath "$vf19_DTOP\NewUserSearches\$dyrl_myl_OUTNAME" -Append
     }
-    $1 | Out-File -Filepath "$vf19_DEFAULTPATH\NewUserSearches\$dyrl_myl_OUTNAME" -Append
+    $1 | Out-File -Filepath "$vf19_DTOP\NewUserSearches\$dyrl_myl_OUTNAME" -Append
 }
 
 
 ## Provide examples to noobs on how they can query active-directory themselves
 function selfService(){
-    Write-Host -f GREEN '
+    w '
     Here are some examples for searching users with the "get-aduser" cmdlet (not case-sensitive):
-    '
+    ' g
     ''
-    "   Return a limited set of attributes for a specific account:"
-    Write-Host -f YELLOW $(" get-aduser -filter 'samaccountname -eq " + '"USERNAME"' + " '")
+    w "   Return a limited set of attributes for a specific account:"
+    w " get-aduser -filter 'samaccountname -eq `"USERNAME`"'" y
     ''
-    Write-Host "   Return all of the account's attributes. Take note of all the attribute keys (on the left when
+    w "   Return all of the account's attributes. Take note of all the attribute keys (on the left when
     your search gives back results) and use them to refine your searches:"
-    Write-Host -f YELLOW $("get-aduser -filter 'samaccountname -eq " + '"USERNAME"' + "' -properties *")
+    w "get-aduser -filter 'samaccountname -eq `"USERNAME`"' -properties *" y
     ''
-    '   Return all account names that are disabled:'
-    Write-Host -f YELLOW $(' (get-aduser -filter * -properties * | where {$_.enabled -eq "false"}).samaccountname')
+    w '   Return all account names that are disabled:'
+    w ' (get-aduser -filter * -properties * | where {$_.enabled -eq "false"}).samaccountname' y
     ''
-    '   Search for accounts with "j63" in the description, and show you only their names & descriptions:'
-    Write-Host -f YELLOW $(' get-aduser -filter * -properties * | where {$_.description -like "*j63*"} | select samaccountname,displayname,description')
+    '   Search for accounts with "help desk" in the description, and show you only their names & descriptions:'
+    w ' get-aduser -filter * -properties * | where {$_.description -like "*help desk*"} | select samaccountname,displayname,description' y
     ''
 }
 
@@ -403,13 +374,13 @@ if( ! $vf19_ROBOTECH ){
                     screenResultsAlt $item 'CREATED' $crlo
                     screenResultsAlt 'next' 'LASTLOGON' $llogon
                     screenResultsAlt 'next' 'INFO' $d
-                    screenResultsAlt 'endr'
+                    screenResultsAlt -e
                 }
                 else{
                     screenResults $item $d
                 }
             }
-            screenResults 'endr'
+            screenResults -e
             ''
         }
         ''
@@ -449,7 +420,7 @@ if( ! $vf19_ROBOTECH ){
         if($getad){
             while($Z -ne ''){
                 if($obj -eq 2){
-                    screenResultsAlt 'endr'
+                    screenResultsAlt -e
                 }
                 else{
                     screenResults 'ACCOUNT' '   OFFICE | ORG'
@@ -573,14 +544,14 @@ if( ! $vf19_ROBOTECH ){
                     screenResults '  GROUP' '  DESC' '  CREATED'
                     screenResults $gname $gdesc $gcreated
                     if($gman -or $changed){
-                        screenResults 'endr'
-                        screenResults 'endr'
-                        screenResults 'endr'
+                        screenResults -e
+                        screenResults -e
+                        screenResults -e
                         screenResults '  MANAGED BY' $gman
                         screenResults '  UPDATED' $changed
                     }
                 }
-                screenResults 'endr'
+                screenResults -e
                 ''
                 while($Z -ne 'q'){
                     Write-Host -f GREEN ' Enter "' -NoNewline;
@@ -630,7 +601,7 @@ if( ! $vf19_ROBOTECH ){
                                 $fn = $uaccts[$_]
                                 screenResults $_ $fn
                             }
-                            screenResults 'endr'
+                            screenResults -e
                         }
                         $gmembers | %{
                             $fullname = $_ -replace "^..=" -replace ",OU=.+$" -replace "\\"
@@ -765,7 +736,7 @@ if( ! $vf19_ROBOTECH ){
             screenResultsAlt $n 'NAME' $dyrl_myl_0cn
         }
         else{
-            screenResultsAlt 'endr'
+            screenResultsAlt -e
             screenResultsAlt 'next' 'NAME' $dyrl_myl_0cn
         }   
         screenResultsAlt 'next' 'CREATED    ' "$dyrl_myl_0wcreated " ## Add whitespace so values are never empty
@@ -787,7 +758,7 @@ if( ! $vf19_ROBOTECH ){
         if( $dyrl_myl_0lockedout -eq $true){
             screenResultsAlt 'next' 'STATUS     ' "w~ACCOUNT IS LOCKED ($dyrl_myl_0locktime)"
         }
-        screenResultsAlt 'endr'
+        screenResultsAlt -e
 
         if($dyrl_myl_wf){
             w2f "Username: $dyrl_myl_0username   ||   Fullname: $dyrl_myl_0propername"
@@ -831,7 +802,7 @@ if( ! $vf19_ROBOTECH ){
                 }
                 ''
                 w '  Type one of the usernames above, or hit ENTER for a new search:' 'g'
-                w '   > ' 'g' 'nl'; $Z = Read-Host
+                w '   > ' 'g' -i; $Z = Read-Host
                 if( $Z -in $sU_Q0.samAccountName ){
                     Remove-Variable sU_*
                     singleUser $Z
@@ -850,10 +821,10 @@ if( ! $vf19_ROBOTECH ){
             function listGPO(){
                 $sU_GPO | %{
                     if($_ -Like "*admin*" -and $1 -notLike "*admin*"){
-                        Write-Host -f RED "   $_"
+                        w "   $_" r
                     }
                     else{
-                        Write-Host -f YELLOW "   $_"
+                        w "   $_" y
                     }
                 }
             }
@@ -866,33 +837,33 @@ if( ! $vf19_ROBOTECH ){
             Remove-Variable g
             ''
             if( $sU_SPECIFIC -and -not $PROTOCULTURE ){
-                Write-Host -f GREEN ' Do you need extra domain details for this user (y/n)?  ' -NoNewline;
+                w ' Do you need extra domain details for this user (y/n)?  ' g -i
                 $Z = Read-Host
             }
 
 
             if( $Z -like "y*"){
                 $Z = $null
-                while($Z -notMatch "^(A|C|G|S)$"){
-                    Write-Host -f GREEN " -Enter 'A' for Active-Directory info"
-                    if($vf19_C8){
-                        Write-Host -f GREEN " -Enter 'C' for a Carbon Black lookup"  ## MPOD ALERT! If you are using another EDR script, you should modify this check
+                while($Z -notMatch "^(A|E|G|S)$"){
+                    w " -Enter 'A' for Active-Directory info" g
+                    if($dyrl_myl_EDR){
+                        w " -Enter 'E' for EDR lookup" g
                     }
-                    Write-Host -f GREEN " -Enter 'G' for GPO details"
-                    Write-Host -f GREEN " -Enter 'S' to skip"
-                    Write-Host -f GREEN '  >  ' -NoNewline; $Z = Read-Host
+                    w " -Enter 'G' for GPO details" g
+                    w " -Enter 'S' to skip" g
+                    w '  >  ' g -i; $Z = Read-Host
                 }
                 if( $Z -eq 'A' ){
                     $sU_Q1
                 }
-                elseif($Z -eq 'C'){
+                elseif($Z -eq 'E'){
                     uActivity "$1"
                     splashPage
                 }
                 elseif($Z -eq 'G'){
                     while($Z -ne ''){
                         ''
-                        Write-Host -f GREEN ' Type the GPO name to view or hit ENTER to cancel: ' -NoNewline;
+                        w ' Type the GPO name to view or hit ENTER to cancel: ' g -i
                         $Z = Read-Host
                         if($Z -in $sU_GPO){
                             3gpo $Z 2
@@ -930,21 +901,23 @@ if( ! $vf19_ROBOTECH ){
 ############################################
 
 
+$dyrl_myl_EDR = availableTypes -e EDR  ## If a script for accessing EDR APIs is present, make it available to MYLENE
+
 
 if( $vf19_ROBOTECH ){
     while( $dyrl_myl_Z -ne 'q' ){
         splashPage
-        Write-Host -f GREEN ' What username are you searching on? Enter ' -NoNewline;
-        Write-Host -f YELLOW 'q' -NoNewline;
-        Write-Host -f GREEN ' to quit:  ' -NoNewline;
+        w ' What username are you searching on? Enter ' g -i
+        w 'q' y -i
+        w ' to quit:  ' g -i
         $dyrl_myl_Z = Read-Host
         if( $dyrl_myl_Z -ne 'q' ){
             $dyrl_myl_U = net user $dyrl_myl_Z /domain
             if( $dyrl_myl_U ){
                 $dyrl_myl_U
-                if( $vf19_C8 ){  ## MPOD ALERT! This is another function linking to EDR
+                if( $dyrl_myl_EDR[0] ){  ## MPOD ALERT! This is another function linking to EDR
                     ''
-                    Write-Host -f GREEN " Do you want to see this user's most recent login(s)? " -NoNewline;
+                    w " Do you want to see this user's most recent login(s)? " g -i
                     $dyrl_myl_CQ = Read-Host
                     if($dyrl_myl_CQ -Match "^y"){
                         uActivity $dyrl_myl_Z
@@ -968,7 +941,7 @@ if( $vf19_ROBOTECH ){
 }
 else{
 
-    $dyrl_usage = 1   ## Skip some menus when multiple searches are performed
+    $dyrl_usage = 1   ## Increments each search. Skip some menus when multiple searches are performed
 
     do{
 
@@ -983,9 +956,9 @@ else{
         if($vf19_OPT1){
             ''
             while($dyrl_myl_Z -ne 'q'){
-                Write-Host -f GREEN ' Enter a keyword to search for matching Group Policy names, OR a MM/YYYY'
-                Write-Host -f GREEN ' date to view Group Policies by creation times (searches 2 months before and'
-                Write-host -f GREEN ' after the date you enter), OR "q" to quit: ' -NoNewline;
+                w ' Enter a keyword to search for matching Group Policy names, OR a MM/YYYY' g
+                w ' date to view Group Policies by creation times (searches 2 months before and' g
+                w ' after the date you enter), OR "q" to quit: ' g -i
                 [string]$dyrl_myl_Z = Read-Host
                 if($dyrl_myl_Z -ne 'q'){
                     if($dyrl_myl_Z -Match "\d{1,2}/\d{4}"){
@@ -1000,7 +973,7 @@ else{
                     $dyrl_myl_Z = ''
                     ''
                     ''
-                    Write-Host -f GREEN " Hit ENTER to search again, or 'q' to quit: " -NoNewline;
+                    w " Hit ENTER to search again, or 'q' to quit: " g -i
                     $dyrl_myl_Z = Read-Host
                 }
             }
@@ -1012,26 +985,27 @@ else{
         ## MPOD ALERT!
         ## If you have service accounts that have standard naming, modify the $dyrl_myl_NOSVC variable below!
         ## Set default vars
-        $dyrl_myl_FTMP = "C:\Users\$USR\AppData\Local\Temp\7370617761727375636b73.txt"    ## Temp file gets passed to KONIG then sanitized and deleted
+        $dyrl_myl_FTMP = "$vf19_TMP\6d6163726f737364656c7461737578.txt"    ## Temp file gets passed to KONIG then sanitized and deleted
         $dyrl_myl_CHKWRITE = Test-Path $dyrl_myl_FTMP -PathType Leaf
-        $dyrl_myl_NOSVC = [regex]"[^service]*"
-        $dyrl_myl_SINGLENAME = [regex]"[a-zA-Z][a-zA-Z0-9].*"
-        $dyrl_myl_WILDC = [regex]"^*?.*\*$"
+        $dyrl_myl_NOSVC = [regex]"^service\S*"
+        $dyrl_myl_SINGLENAME = [regex]"[a-zA-Z][a-zA-Z0-9]\S*"
+        $dyrl_myl_WILDC = [regex]"^*?\S*\*$"
 
         ## Verify paths
-        $dyrl_myl_DIREXISTS = Test-Path "$vf19_DEFAULTPATH\NewUserSearches\"
-        $dyrl_myl_REPORTS = "$vf19_DEFAULTPATH\NewUserSearches\*.txt"
+        $dyrl_myl_DIREXISTS = Test-Path "$vf19_DTOP\NewUserSearches\"
+        $dyrl_myl_REPORTS = "$vf19_DTOP\NewUserSearches\*.txt"
 
         
         
         ##### EXTERNAL SCRIPTS #########################################
-        ## When calling from other scripts, send multiple usernames as comma-space-separated string ", "
+        ## When calling from other scripts, send multiple usernames as comma-space-separated string
+        ## Results only print to screen, they do not write to file!
         if($CALLER -and $PROTOCULTURE){
-            $PROTOCULTURE -Split ', ' | %{
+            ($PROTOCULTURE -replace ', ',',') -Split ',' | %{
                 singleUser $_
             }
             ''
-            w '  Hit ENTER to continue.' 'g'
+            w '  Hit ENTER to continue.' g
             Read-Host; Exit
         }
         ################################################################
@@ -1052,7 +1026,7 @@ else{
         if($dyrl_usage -eq 1){  ## Only run this option once, ignore it for subsequent searches
             ''
             w ' Before searching for user accounts, would you like a list of any recent' 'c'
-            w ' hosts joined to the domain?  ' 'c' 'nl'
+            w ' hosts joined to the domain?  ' c -i
             $dyrl_myl_Z1 = Read-Host
 
             if( $dyrl_myl_Z1 -Match "^y" -or $dyrl_myl_Z1 -Match "^[0-9]+$"){
@@ -1062,7 +1036,7 @@ else{
                 ''
                 if($dyrl_myl_Z1 -Match "^y"){
                     while($dyrl_myl_Z1 -notMatch "^[0-9]{1,2}$"){
-                        w ' How many days back?  ' 'g' 'nl'
+                        w ' How many days back?  ' g -i
                         $dyrl_myl_Z1 = Read-Host
                     }
                 }
@@ -1088,11 +1062,12 @@ else{
 
 
                     ## MPOD ALERT!
-                    ## Here's another Carbon-Black specific check.
-                    if($vf19_C8){
-                        ## See if CB has a sensor for the host in question
+                    ## Here's another EDR-specific check. You'll probably need to modify it specifically for
+                    ## your EDR's output (this was written for Carbon Black JSON files)
+                    if($dyrl_myl_EDR){
+                        ## See if EDR has a sensor for the host in question
                         $Global:PROTOCULTURE = $dyrl_myl_in
-                        $dyrl_myl_CHECKSENSOR = $(collab 'GERWALK.ps1' 'MYLENE' 'sensor' | ConvertFrom-Json)
+                        $dyrl_myl_CHECKSENSOR = $(collab $($dyrl_myl_EDR[0]) 'MYLENE' 'sensor' | ConvertFrom-Json)
                         rvf
                         
                         if( $dyrl_myl_CHECKSENSOR[0].id ){
@@ -1127,19 +1102,19 @@ else{
 
                     ## MPOD ALERT!  --- EDR results check. It continues to the next section "if( $dyrl_myl_arrayn -gt 0"
                     if($dyrl_myl_CHECKSENSOR){
-                        screenResults 'CB Sensor ID' $($dyrl_myl_CHECKSENSOR[0].id)
-                        screenResults 'CB Registered' $($($dyrl_myl_CHECKSENSOR[0].registration_time) -replace "\..*")
-                        screenResults 'CB Last Checkin' $($($dyrl_myl_CHECKSENSOR[0].last_checkin_time) -replace "\..*")
-                        screenResults 'CB OS Check' $($dyrl_myl_CHECKSENSOR[0].os_environment_display_string)
-                        screenResults 'CB Status' $($dyrl_myl_CHECKSENSOR[0].status)
+                        screenResults 'Sensor ID' $($dyrl_myl_CHECKSENSOR[0].id)
+                        screenResults 'Registered' $($($dyrl_myl_CHECKSENSOR[0].registration_time) -replace "\..*")
+                        screenResults 'Last Checkin' $($($dyrl_myl_CHECKSENSOR[0].last_checkin_time) -replace "\..*")
+                        screenResults 'OS Check' $($dyrl_myl_CHECKSENSOR[0].os_environment_display_string)
+                        screenResults 'Status' $($dyrl_myl_CHECKSENSOR[0].status)
                         Remove-Variable -Force dyrl_myl_CHECKSENSOR -Scope Global
                     }
                     else{
-                        screenResults 'c~No Carbon Black agent installed!'
+                        screenResults 'c~No EDR agent installed!'
                     }
                     
                     
-                    screenResults 'endr'
+                    screenResults -e
                     
                 }
                 
@@ -1148,12 +1123,12 @@ else{
                 ''
                 Write-Host -f GREEN ' ...search complete.
                 '
-                if( $dyrl_myl_arrayn -gt 0 ){  ## If hosts were found and CB script exists, offer to search CB
+                if( $dyrl_myl_arrayn -gt 0 ){  ## If hosts were found and EDR script exists, offer to search EDR
                     if($dyrl_myl_SENSOR){
                     while( $dyrl_myl_Z -ne 'skip' ){
-                        w ' Select a' 'g' 'nl'
-                        w ' NEW HOST #' 'c' 'nl'
-                        w ' to query Carbon Black, or hit ENTER to skip: ' 'g' 'nl'
+                        w ' Select a' 'g' -i
+                        w ' NEW HOST #' 'c' -i
+                        w ' to query EDR, or hit ENTER to skip: ' 'g' -i
                         $dyrl_myl_Z1 = Read-Host
                         if($dyrl_myl_Z1 -Match "^[0-9]+$"){
 
@@ -1164,7 +1139,6 @@ else{
                                 w '
                                 '
                                 foreach($key in $dyrl_myl_arrayh.keys){
-                                    #$dyrl_myl_arraynn++
                                     if($key -in $dyrl_myl_sensors.keys){
                                         screenResults "c~NEW HOST $key" $dyrl_myl_arrayh[$key]
                                     }
@@ -1172,11 +1146,11 @@ else{
                                         screenResults "c~NEW HOST $key" 'r~ (no cb agent installed)'
                                     }
                                 }
-                                screenResults 'endr'
+                                screenResults -e
                                 ''
                             }
                             else{
-                                w ' That host does not have CB installed.' 'c'
+                                w ' That host does not have an agent installed.' 'c'
                             }
                         }
                         else{
@@ -1192,7 +1166,7 @@ else{
                 w '
                 '
 
-                w '  Continue to new user search? (y/n) ' 'g' 'nl'
+                w '  Continue to new user search? (y/n) ' 'g' -i
                 $dyrl_myl_Z1 = Read-Host
 
                 if( $dyrl_myl_Z1 -Match "^n" ){
@@ -1210,8 +1184,8 @@ else{
         while( $dyrl_myl_loop ){
             ''
             w '  OPTIONS:' 'g'
-            w '    -Enter a username (you can wildcard' 'g' 'nl'
-            w ' *' 'y' 'nl'
+            w '    -Enter a username (you can wildcard' 'g' -i
+            w ' *' 'y' -i
             w " if you don't have the full name)" 'g'
             Write-Host -f GREEN '    -Enter "' -NoNewline;
             Write-Host -f YELLOW 'd' -NoNewline;
@@ -1226,7 +1200,7 @@ else{
             Write-Host -f GREEN '    -Enter "' -NoNewline;
             Write-Host -f YELLOW 'q' -NoNewline;
             Write-Host -f GREEN '" to quit'
-            w ' > ' 'g' 'nl'
+            w ' > ' 'g' -i
             $dyrl_myl_Z = Read-Host
     
             
@@ -1265,7 +1239,7 @@ else{
             elseif( $dyrl_myl_Z -Match "^[0-9]+$" ){
                 if( $dyrl_myl_Z.toString.Length -ne 1 ){
                     while( $dyrl_myl_Z -gt 30 ){
-                        w "  $dyrl_myl_Z is not less than 30. Please enter a new number:  " 'c' 'nl'
+                        w "  $dyrl_myl_Z is not less than 30. Please enter a new number:  " 'c' -i
                         $dyrl_myl_Z = Read-Host
                     }
                 }
@@ -1292,7 +1266,7 @@ else{
                             $dyrl_myl_REPNO2 = $dyrl_myl_REPNO + 1
                             $dyrl_myl_OUTNAME = 'MYLENE_' + $dyrl_myl_FDATE + $dyrl_myl_REPAL[$dyrl_myl_REPNO] + $dyrl_myl_REPAL[$dyrl_myl_REPNO2] + '.txt'
                         }
-                    }while( Test-Path "$vf19_DEFAULTPATH\NewUserSearches\$dyrl_myl_OUTNAME*" )
+                    }while( Test-Path "$vf19_DTOP\NewUserSearches\$dyrl_myl_OUTNAME*" )
                     $dyrl_myl_FO = ($vf19_M[2] * $vf19_M[1]) * ($vf19_M[1] + $vf19_M[0]) - 2
                     $dyrl_myl_FO = [string]$dyrl_myl_FO
                 }
@@ -1335,7 +1309,7 @@ else{
         ## Make sure we have a directory to collect search result files into
         ##########
         if( ! $dyrl_myl_DIREXISTS ){
-            New-Item -Path $vf19_DEFAULTPATH -Name 'NewUserSearches' -ItemType 'directory'
+            New-Item -Path $vf19_DTOP -Name 'NewUserSearches' -ItemType 'directory'
         }
 
 
@@ -1375,12 +1349,12 @@ else{
         
             listAccounts
 
-            if( $dyrl_myl_wf -and (Test-Path -Path "$vf19_DEFAULTPATH\NewUserSearches\$dyrl_myl_OUTNAME") ){
+            if( $dyrl_myl_wf -and (Test-Path -Path "$vf19_DTOP\NewUserSearches\$dyrl_myl_OUTNAME") ){
                 w '  Search results (if any) have been written to' 'g'
-                w " $vf19_DEFAULTPATH\NewUserSearches\$dyrl_myl_OUTNAME"
+                w " $vf19_DTOP\NewUserSearches\$dyrl_myl_OUTNAME"
             }
             elseif($dyrl_myl_wf){
-                $ermsg = "Failed to write $vf19_DEFAULTPATH\NewUserSearches\$dyrl_myl_OUTNAME"
+                $ermsg = "Failed to write $vf19_DTOP\NewUserSearches\$dyrl_myl_OUTNAME"
                 errLog $ermsg
                 w $ermsg 'c'; Remove-Variable -Force ermsg
             }
@@ -1400,7 +1374,7 @@ else{
          -Enter a NEW ACCOUNT number to view that specific user's GPO assignments
          -Enter a keyword to search existing Group Policies for these users
           (example: 'admin', 'Temp', etc.)
-         -Hit ENTER to skip:  " 'g' 'nl'
+         -Hit ENTER to skip:  " 'g' -i
             Return $(Read-Host)
         }
 
@@ -1434,7 +1408,7 @@ else{
                 w '    -"gpo" to view details for a specific group policy' 'g'
                 w '    -hit ENTER to reload the user list' 'g'
                 w '    -"q" to quit' 'g'
-                w '  > ' 'g' 'nl'
+                w '  > ' 'g' -i
                 Return $(Read-Host)
             }
 
@@ -1464,7 +1438,7 @@ else{
                 
             }
             elseif($dyrl_myl_Z -Match "[a-z]"){
-                screenResultsAlt 'endr'
+                screenResultsAlt -e
                 $dyrl_myl_MULTIACCT | %{
                     $dyrl_myl_UGPO = $_ | Select -ExpandProperty memberOf
                     Write-Host -f CYAN "  Searching $($_.samAccountName) for " -NoNewline;
@@ -1554,7 +1528,7 @@ else{
     
             '
             w "   Do you want to search for the presence of any files in these users'" 'g'
-            w '   home directories? (y/n) ' 'g' 'nl' 
+            w '   home directories? (y/n) ' 'g' -i 
             $dyrl_myl_Z = Read-Host
             
 
@@ -1565,10 +1539,10 @@ else{
                     slp 1
                     collab 'KONIG.ps1' 'MYLENE'
                     $dyrl_myl_GETNEWFILE = Split-Path $RESULTFILE -leaf
-                    Move-Item -Path "$RESULTFILE" -Destination "$vf19_DEFAULTPATH\NewUserSearches\$dyrl_myl_GETNEWFILE"
+                    Move-Item -Path "$RESULTFILE" -Destination "$vf19_DTOP\NewUserSearches\$dyrl_myl_GETNEWFILE"
                     Remove-Variable -Force RESULTFILE -Scope Global
                 }
-                $dyrl_myl_KONIGFILES = Get-ChildItem "$vf19_DEFAULTPATH\NewUserSearches\*"
+                $dyrl_myl_KONIGFILES = Get-ChildItem "$vf19_DTOP\NewUserSearches\*"
                 $dyrl_myl_Z = $null
                 rvf
 
@@ -1586,14 +1560,14 @@ else{
 
         $dyrl_myl_Z = $null
         ''
-        if( $vf19_C8 ){
+        if( $dyrl_myl_EDR ){
             if( ! $dyrl_myl_SKIP2 ){
                 splashPage
                 listAccounts
             }
             while($dyrl_myl_Z -ne ''){
-                w '  Enter a NEW ACCOUNT number for a quick host/process lookup on' 'g'
-                w '  that username, or hit ENTER to skip: ' 'g' 'nl' 
+                w '  Enter a NEW ACCOUNT number for a quick host/process lookup on' g
+                w '  that username, or hit ENTER to skip: ' g -i 
                 $dyrl_myl_Z = Read-Host
                 if($dyrl_myl_Z -Match "^\d+$"){
                     $dyrl_myl_Z = $dyrl_myl_Z - 1
@@ -1615,22 +1589,18 @@ else{
         $dyrl_myl_Z = $null
 
         if( $dyrl_myl_GETNEWFILE ){
-            w '  Search results (if any) have been written to text files on your Desktop' 'g'
-            w '  in the folder' 'g' 'nl'
-            w ' target-pkgs' 'y' 'nl'
-            Write-Host -f GREEN '.
-            '
+            w '  Search results (if any) have been written to text files on your Desktop' g
+            w '  in the folder ' g -i
+            w 'target-pkgs' y -i
+            w '.
+            ' g
         }
 
 
         ## Prevent user accidentally clearing the screen if they've been hitting ENTER during slow searches
-        while( $dyrl_myl_Z -notMatch "^(c|q)$" ){
-            Write-Host -f GREEN '  Type "' -NoNewline;
-            Write-Host -f YELLOW 'c' -NoNewline;
-            Write-Host -f GREEN '" to continue, or "' -NoNewline;
-            Write-Host -f YELLOW 'q' -NoNewline;
-            Write-Host -f GREEN '" to quit:   ' -NoNewline;
-            $dyrl_myl_Z = Read-Host
+        while( $dyrl_myl_Z -notMatch "^[cq]$" ){
+            w '  Type "' g -i; w 'c' y -i; w '" to continue, or "' g -i; w 'q' y -i
+            w '" to quit:   ' g -i; $dyrl_myl_Z = Read-Host
         }
 
         if($dyrl_myl_Z -eq 'c'){
@@ -1641,3 +1611,4 @@ else{
     }while($dyrl_myl_Z -ne 'q') 
 
 }
+
