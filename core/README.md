@@ -39,30 +39,28 @@ The first three lines of your automation script require these:<br>
 When all these lines are set correctly, MACROSS uses the \[macross\] class to keep track of the scripts in the "modules" folder and the central repository (if you're using one). You can see what these look like by typing "debug TL" in the main menu.<br>
 
 FOR YOUR PYTHON SCRIPTS:<br>
-You'll need the argv and path functions from the sys library. MACROSS always passes at least 6 args to any python script it executes (7 if you include the script name). The below example explains how to use them.<br>
+You'll need the argv and path functions from the sys library. MACROSS always passes at least 1 arg to any python script it executes, which will be the path to the mcdefs library in the core\py_classes folder. The below example explains how to import this.<br>
 
 	from sys import argv,path
 	L = len(argv)
-	if L >= 7:                    ## make sure MACROSS sent all its default values
-		mpath = argv[6]
+	if L >= 1:                    ## make sure MACROSS sent all its default values
+		mpath = argv[1]
 		path.insert(0,mpath)  	  ## modify the sys path to include the local py_classes folder
 		import mcdefs		      ## this is the custom MACROSS library that contains most of the functions in utilities.ps1
 								  ## and display.ps1
 
-		## The other 5 args always passed in by MACROSS can be used or ignored as you like. In order, they are:
+Along with utility functions, the mcdefs library will convert these MACROSS powershell values for your python use:
 
-		USR = argv[1]               	## The logged-in user $USR
-		latts = argv[2]              	## The $vf19_LATTS hashtable attributes .name and .valtype for each script,
-										## but you'll need to use "mcdefs.getATTS(latts)" to actually import this
-										## as a dictionary in python.
-		vf19_DTOP = argv[3]  	## USR's desktop filepath
-		vf19_PYPOD = argv[4]        	## The encoded array of filepaths/URLs generated from temp_configs.txt
-		N_ = argv[5]                	## The integer MACROSS uses for common math functions in all the scripts
-		M_ = mcdefs.makeM(N_)        	## This function splits the N_ value into 6 digits you can use for mathing
-		vf19_TOOLSROOT = argv[7]    	## The path to the MACROSS folder
-		GBG = argv[6] + '\\garbage_io'  ## Path to the garbage I/O folder.
+	mcdefs.USR = $USR            # Your username
+	mcdefs.DTOP = $vf19_DTOP     # Your desktop path
+	mcdefs.MPOD = $vf19_MPOD     # The list of encoded values you set in the MACROSS config.conf file
+	mcdefs.TABLES = $vf19_TABLES # The location of your enrichment folder (set in config.conf)
+	mcdefs.PROTOCULTURE = $vf19_PROTOCULTURE
+	mcdefs.HELP = $HELP              # Used to display your python script's help file to users
 
-GBG is a folder your python scripts can write outputs into if you want them available for later use in your MACROSS session. This folder gets cleared out every time MACROSS exits.<br>
+
+
+Within the core\py_classes folder is a folder called garbage_io, where your python scripts can write outputs into if you want them available for later use in your MACROSS session. the mcdefs.collab() function performs this very action for you. This folder gets cleared out every time MACROSS exits.<br>
 
 
 
