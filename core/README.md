@@ -70,7 +70,7 @@ Within the core\py_classes folder is a folder called garbage_io, where your pyth
 
 
 <b><u>RUN THE CONFIGURATION WIZARD:</u></b><br>
--If you are writing automations that will be used by other people, change the default config location! In the MACROSS.ps1 file, look for line 189. Change the "$vf19_CONFIG" value to a filepath external to MACROSS (someplace access-controlled). If you are only using MACROSS yourself, or you don't really care, you don't need to change anything.
+-If you are writing automations that will be used by other people, change the default config location! In the MACROSS.ps1 file, look for line 195. Change the "$vf19_CONFIG" value to a filepath external to MACROSS (someplace access-controlled). If you are only using MACROSS yourself, or you don't really care, you don't need to change anything.
 
 -When you first launch MACROSS, it does not have a configration file. You'll be prompted to create a password, then you'll need to enter values for the required configuration defaults. After that, you can enter additional configurations which are values that you want all of your scripts to have regular access to (stuff like server addresses, file locations, etc.).
 
