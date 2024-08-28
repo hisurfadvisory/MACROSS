@@ -1,1 +1,2 @@
-Change this to a centralized location you control, and update the path in utility.ps1, under the "errLog" function.
+You can change this to a centralized location you control. 
+Just update the path in the configuration wizard (type "config" in the main menu to make the change).
