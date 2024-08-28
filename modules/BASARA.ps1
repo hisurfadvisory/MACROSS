@@ -51,9 +51,9 @@ if( $HELP ){
      Simply put your script in the \modules folder, or let BASARA prompt you
      for the file location.
  
-     If you run BASARA with the 's' option (ex '1s'), it disables the code-
-     signing function and instead lets you inspect the details for a file's
-     digital signature.
+     If you run BASARA with the 's' option (ex '1s' from the main menu if BASARA is
+     #1), it disables the code-signing function and instead lets you inspect the 
+     details for a file's digital signature.
 
      BASARA can also be sent the filepath to a signed binary from other scripts,
      scan it and then report the digital cert information to you.
@@ -168,17 +168,17 @@ function certSign($spath,$cert){
     "
     if( (Get-AuthenticodeSignature -FilePath $spath).status -eq 'Valid' ){
         Write-Host -f GREEN " Success! Do you need to sign another (" -NoNewline;
-            Write-Host -f YELLOW "y" -NoNewline;
-                Write-Host -f GREEN "/" -NoNewline;
-                    Write-Host -f YELLOW "n" -NoNewline;
-                        Write-Host -f GREEN ")?  " -NoNewline;
+        Write-Host -f YELLOW "y" -NoNewline;
+        Write-Host -f GREEN "/" -NoNewline;
+        Write-Host -f YELLOW "n" -NoNewline;
+        Write-Host -f GREEN ")?  " -NoNewline;
     }
     else{
         if($vf19_MPOD["log"]){  ## If running in MACROSS, log the fails
             errLog 'ERROR' "$USR/BASARA" "Failed to sign $spath"
         }
         Write-Host -f CYAN " Certificate signing failed! " -NoNewline;
-            Write-Host -f GREEN " Do you want to try again?  " -NoNewline;
+        Write-Host -f GREEN " Do you want to try again?  " -NoNewline;
     }
      
 
