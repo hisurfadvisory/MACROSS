@@ -1,6 +1,6 @@
 #_sdf1 Code-signing & Cert inspection
 #_ver 1.5
-#_class user,digital certificates,powershell,HiSurfAdvisory,1,onscreen
+#_class 0,user,digital certificates,powershell,HiSurfAdvisory,1,onscreen
 
 ## Watch for alt filenames requested from python scripts via 'collab'
 param(
@@ -184,6 +184,27 @@ function certSign($spath,$cert){
 
 }
 
+<#
+## WORK IN PROGRESS -- sign python code
+function pySign($spath,$cert){
+    $pathToScript = "C:\path\to\your_script.py"
+    $timestampServer = "http://local.ntp.server"  # Example timestamp server
+    $certificateThumbprint = "YOUR_CERTIFICATE_THUMBPRINT"
+    if(Test-Path 'C:\Program Files (x86)\Windows Kits\10\bin\<SDKVersion>\x64\SignTool.exe'){
+        ST = 'C:\Program Files (x86)\Windows Kits\10\bin\<SDKVersion>\x64\SignTool.exe'
+    }
+    else{
+        ST = $(Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits" -Recurse -Filter "SignTool.exe")
+    }
+    try{
+        SignTool sign /tr $timestampServer /td SHA256 /fd SHA256 /a /sm /s "My" /n "Your Certificate Name" /t $timestampServer $pathToScript
+    }
+    catch{
+        ST sign /tr $timestampServer /td SHA256 /fd SHA256 /a /sm /s "My" /n "Your Certificate Name" /t $timestampServer $pathToScript
+    }
+        
+}#>
+
 
 
 
@@ -242,8 +263,8 @@ while ( $dyrl_bas_Z -ne 'c' ){
             while( $dyrl_bas_Z -notMatch $dyrl_bas_YN ){
                 Write-Host ""
                 Write-Host -f CYAN " Warning! " -NoNewline;
-                    Write-Host -f GREEN "The file you entered is already signed!
-                    "
+                Write-Host -f GREEN "The file you entered is already signed!
+                "
                 Write-Host -f GREEN " Overwrite the existing cert (y/n)?  " -NoNewline;
                 $dyrl_bas_Z = Read-Host
                 $dyrl_bas_A = $true
@@ -284,3 +305,6 @@ while ( $dyrl_bas_Z -ne 'c' ){
         Clear-Variable -Force dyrl_bas_Z
     }
 }
+
+
+
