@@ -43,15 +43,20 @@ You'll need the argv and path functions from the sys library. MACROSS always pas
 
 	from sys import argv,path
 	L = len(argv)
-	if L >= 1:                    ## make sure MACROSS sent all its default values
+ 
+	## Make sure MACROSS sent the lib path
+	if L >= 1:					
 		mpath = argv[1]
-		path.insert(0,mpath)  	  ## modify the sys path to include the local py_classes folder
-		import mcdefs		      ## this is the custom MACROSS library that contains most of the functions in utilities.ps1
-								  ## and display.ps1
+
+		## Modify the sys path to include the local py_classes folder
+		path.insert(0,mpath)
+
+		## This is the custom MACROSS library that contains most of the functions in utilities.ps1 and display.ps1
+		import mcdefs			
 
 Along with utility functions, the mcdefs library will convert these MACROSS powershell values for your python use:
 
-	mcdefs.USR = $USR            # Your username
+	mcdefs.USR = $USR            # Your username<br>
 	mcdefs.DTOP = $vf19_DTOP     # Your desktop path
 	mcdefs.MPOD = $vf19_MPOD     # The list of encoded values you set in the MACROSS config.conf file
 	mcdefs.TABLES = $vf19_TABLES # The location of your enrichment folder (set in config.conf)
