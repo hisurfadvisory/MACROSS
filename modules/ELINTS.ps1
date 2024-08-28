@@ -12,8 +12,7 @@
 	and detect vbs macros.
 	
     Can work with single files, or a list of files from a .txt that
-    was generated beforehand (this script was created alongside KONIG.ps1
-    for that purpose).
+    was generated beforehand.
 	
     ================= Note on PDFs =================
     This script does NOT incorporate iTextSharp for scanning PDF files
@@ -204,7 +203,7 @@ function completeMsg (){
         '
         }
         else{
-            w "    Nothing found for $($dyrl_eli_TARGET + '.')" 'c'
+            w "    Nothing found for $($dyrl_eli_TARGET + '.')" c
         }
     }
 }
@@ -673,7 +672,7 @@ if($MONTY){
                     
                     ''
                     Write-Host '            '; -NoNewline;
-                    w " INTEL ASSESSMENT: $((gci "$dumps\*dump").count) potential targets. " 'y' 'bl'
+                    w " INTEL ASSESSMENT: $((gci "$dumps\*dump").count) potential targets. " -f y -b bl
                     w '
                     '
                     
@@ -793,7 +792,7 @@ function fileCopy(){
     }
     else{
         w ' 
-    No results found. Hit ENTER to continue.' 'c'
+    No results found. Hit ENTER to continue.' c
         Read-Host
     }
 
@@ -864,7 +863,7 @@ function fileCopy(){
     if( ! $dyrl_eli_JUSTCOPY ){
         w ' Large strings are truncated for readability, and decoding PDFs can introduce weirdness, so ' g
         w ' you may not see your exact match above (but the match does exist).' g
-        Write-Host -f GREEN ' Do you want to copy any of these files to your desktop for further investigation (y/n)?  ' -NoNewline;
+        w ' Do you want to copy any of these files to your desktop for further investigation (y/n)?  ' g -i
         $COPYIT = Read-Host
     }
 
@@ -873,7 +872,7 @@ function fileCopy(){
         while( $WRITE ){
             ''
             while( $Z -notMatch "^\d{1,4}$" ){
-                Write-Host -f GREEN ' Enter the # of the file you want to copy, or "n" to cancel:  ' -NoNewline;
+                w ' Enter the # of the file you want to copy, or "n" to cancel:  ' g -i
                 $Z = Read-Host
                 if( $Z -eq 'n' ){
                     Return
@@ -918,7 +917,7 @@ function fileCopy(){
             }
             else{
                 w " That file doesn't exist...
-                " 'c'
+                " c
             }
                 
         }
@@ -949,13 +948,13 @@ if( ! $RESULTFILE -and ! $PROTOCULTURE){
     splashPage 'img'
     ''
     w ' ELINTS can search multiple files if you have a list of filepaths in a txt' g
-    Write-Host -f GREEN ' file. Do you have a txt? Type ' -NoNewLine;
-    Write-Host -f YELLOW 'y' -NoNewLine;
-    Write-Host -f GREEN ', ' -NoNewline;
-    Write-Host -f YELLOW 'n' -NoNewline;
-    Write-Host -f GREEN ' or ' -NoNewLine;
-    Write-Host -f YELLOW 'c' -NoNewline;
-    Write-Host -f GREEN ' to cancel:  ' -NoNewline;
+    w ' file. Do you have a txt? Type ' g -i
+    w 'y' y -i
+    w ', ' g -i
+    w 'n' y -i
+    w ' or ' g -i
+    w 'c' y -i
+    w ' to cancel:  ' g -i
     $dyrl_eli_YNC = Read-Host
 
     w '
@@ -1119,8 +1118,8 @@ do{
 
 
         # Get required vars and run the search
-        w '======         ~~ PDF SEARCHES ARE *ALWAYS* CASE-SENSITIVE ~~       ======' 'y' 'bl'
-        w '======           ~~ REGEX IS UNRELIABLE FOR PDF SEARCHES ~~         ======' 'y' 'bl'
+        w '======         ~~ PDF SEARCHES ARE *ALWAYS* CASE-SENSITIVE ~~       ======' -f y -b bl
+        w '======           ~~ REGEX IS UNRELIABLE FOR PDF SEARCHES ~~         ======' -f y -b bl
         Write-Host -f GREEN ' Type "regex " (without quotes) followed by your expression to match a'
         Write-Host -f GREEN ' pattern, otherwise just enter your string or comma-separated keywords:'
         Write-Host '  >  ' -NoNewLine; 
@@ -1208,7 +1207,7 @@ do{
                 w " $dyrl_eli_CONFIRMED MATCHES FOUND ($dyrl_eli_CTR/$dyrl_eli_NUMF files)
                 
                 "
-                w " TARGETING $dyrl_eli_BOGEY ($dyrl_eli_FSIZE)" 'c'
+                w " TARGETING $dyrl_eli_BOGEY ($dyrl_eli_FSIZE)" c
                 ## Determine scan method -- MS Office docs and PDFs require different methods
                 if( $dyrl_eli_RADARCONTACT -Match $msx ){
                     $dyrl_eli_COLLECTIONS.Add($dyrl_eli_RADARCONTACT,$(msOffice $dyrl_eli_RADARCONTACT $dyrl_eli_TARGET))
@@ -1301,7 +1300,7 @@ do{
             elseif($dyrl_eli_PATH -Like "*pdf" -and $MONTY){
                 ''
                 w ' Matching plaintext within PDF streams is touch & go; your results may vary...
-                ' 'y'
+                ' y
                 slp 1
                 $dyrl_eli_setCase = pdfScan $dyrl_eli_PATH $dyrl_eli_TARGET
             }
@@ -1381,7 +1380,7 @@ pdfScan 'fin'  ## Make sure temp files get deleted
 if( $GOBACK ){
     ''
     Write-Host -f GREEN ' Hit ENTER to return to ' -NoNewLine;
-    w $CALLER 'c'
+    w $CALLER c
     Read-Host
 }
 Remove-Variable dyrl_eli_*,GOBACK,COMEBACK
