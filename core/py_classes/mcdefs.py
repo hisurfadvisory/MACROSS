@@ -1,3 +1,7 @@
+VF19_MPOD = {}
+PROTO = ""
+MACROSS = ""
+
 """The mcdefs library is a set of MACROSS functions converted from powershell to python."""
 # Put your custom MACROSS-specific classes at the bottom of this file (or anywhere in the py_classes
 # folder)
@@ -9,7 +13,7 @@
         [1] $USR -- the logged in user
         [2] $pyATTS -- The macross class .name and .valtype attributes from
                 all of the scripts in the "modules" folder
-        [3] $vf19_DEFAULTPATH -- the user's desktop
+        [3] $vf19_DTOP -- the user's desktop
         [4] $vf19_PYPOD -- The base64 encoded defaults contained
                 in $vf19_MPOD, but reformatted so python doesn't complain
         [5] $vf19_numchk -- MACROSS' mathing integer
@@ -79,13 +83,33 @@ from os import system as osys
 from os import popen as osop
 from os import getcwd as pwd
 from os import path
+from os import getenv
 from os import remove as osrm
-from json import dumps as jdmp
+from json import dumps,load
 from time import sleep as ts
 from tkinter import Tk
 from tkinter.filedialog import askopenfilename as peek
 import math
 from re import search,sub
+
+
+## Set default MACROSS values
+PROTOCULTURE = getenv('PYPROTO')
+MACROSS = getenv('MACROSS').split(';')
+HELP = getenv('HELP')
+USR = MACROSS[6]
+CALLER = MACROSS[7]
+VF19_TOOLSROOT = MACROSS[0]
+VF19_TOOLSDIR = MACROSS[1]
+VF19_DTOP = MACROSS[2]
+VF19_TABLES = MACROSS[3]
+VF19_LOGS = MACROSS[4]
+N_ = MACROSS[5]
+for missile in getenv('MPOD').split(';'):
+    payload = missile.split(':')[0]
+    fuel = missile.split(':')[1]
+    VF19_MPOD[payload] = fuel
+del missile,payload,fuel
 
 
 ## Enable terminal colors for w() function
@@ -108,17 +132,35 @@ tcolo = {
 ################################################################
 
 ## Alias to write colorized text to screen
-def w(TEXT,C1 = 'rs',C2 = None):
+def w(TEXT,C1 = 'rs',C2 = None,i = False):
     '''Pass this function your text/string as arg 1 and the first letter of the
 color you want ("bl" for black). You can pass "ul" as a second option to
-underline the text. Usage:
+underline the text. Set i to True to write the next line of your text on the
+same line as the last.
 
-    mcdefs.w(text,text_color,'ul')'''
-    if C2 != None:
-        print(tcolo[C1] + tcolo[C2] + TEXT + tcolo['rs'])
+Colors: (c)yan, (g)reen, (y)ellow, (r)ed, (m)agenta, (bl)ack, (b)lue
+(default is white)
+
+Usage:
+
+For green text underlined:
+    mcdefs.w(text,'g','ul')
+
+For yellow text followed by white text on the same line:
+    mcdefs.w(text,'y',i=True)
+    mcdefs.w(text,'w')
+
+    '''
+    if i == True:
+        if C2 != None:
+            print(tcolo[C1] + tcolo[C2] + TEXT + tcolo['rs'],end="")
+        else:
+            print(tcolo[C1] + TEXT + tcolo['rs'],end="")
     else:
-        print(tcolo[C1] + TEXT + tcolo['rs'])
-
+        if C2 != None:
+            print(tcolo[C1] + tcolo[C2] + TEXT + tcolo['rs'])
+        else:
+            print(tcolo[C1] + TEXT + tcolo['rs'])
 
 ## Sleep function for pausing scripts when needed
 def slp(s):
@@ -170,8 +212,8 @@ def rgx(pattern,string,replace = None):
 
 
 ##  Run windows commands when needed using os lib
-##  Typically, I call this function with one arg -- a powershell command to launch
-##  one of the MACROSS *.ps1 scripts and whatever parameters that powershell script requires.
+##  Typically, I call this function with one arg -- a powershell command to launch one of
+##  the MACROSS *.ps1 scripts and whatever parameters that powershell script requires.
 ##  If you need to collect values from the script, or from a quick command like "hostname" or 
 ##  "ping", call mcdefs.psc() with an empty value as the first arg, and your command as the second:
 
@@ -228,28 +270,50 @@ to MACROSS python scripts. Usage:
     srun(p)
 
 
-## Must pass your argv[7] value (the $vf19_TOOLSROOT path) + the tool you're calling, and the name of your calling script.
-## Have to use the GBIO folder because this opens a new powershell session that won't have all the $vf19_LATTS data.
-def collab(TOOL,CALLER,PROTOCULTURE,extra = None):
-    '''The python "collab" function writes your PROTOCULTURE value to a dictionary .eod file
-in the GBIO folder for the powershell script to read and write its results to. Make
-sure to add your "sys.argv[7] + \\\\modules" directory to the "tool" argument! USAGE:
+## Must pass your argv[7] value (the $vf19_TOOLSROOT or MACROSS root folder path) + the tool you're calling, and the name of your 
+## calling script. We have to use the GBIO folder because this opens a new powershell session that won't have all the $vf19_LATTS data.
+def collab(TOOL,CALLER,PROTOCULTURE,OPT = None):
+    '''The python "collab" function writes your PROTOCULTURE value to an ".eod"
+file in the GBIO folder for the powershell script to read and write its results to. You
+*must* send the full filepath for TOOL, i.e.
+
+    TOOL = sys.argv[7] + "\\\\modules" + TOOL + ".ps1"
+
+USAGE:
          
         collab(TOOL,CALLER,PROTOCULTURE,optional_value)
         
-where TOOL is the powershell script you're calling, and CALLER is the name of your
-python script. PROTOCULTURE.eod contains the key-values CALLER.target (the PROTOCULTURE
-value) and CALLER.result (where the powershell script will write its response so your
-python script can retrieve it.)'''
-    gbio = rgx("modules.+",TOOL,'core\\\\py_classes\\\\garbage_io\\\\PROTOCULTURE.eod')
-    proto = {CALLER:[{'target':PROTOCULTURE,'result':''}]}
+where TOOL is the powershell script you're calling, CALLER is the name of your python
+script, and PROTOCULTURE is the value you need powershell to evaluate. You can also 
+send an additional parameter (OPT) if the powershell script accepts one.
+
+"py_classes\gbio\PROTOCULTURE.eod" is a json file that contains the key-values CALLER.target 
+(the PROTOCULTURE value) and CALLER.result. If the powershell script has a response for
+your python script, it will be written to the CALLER.result field of PROTOCULTURE.eod,
+where this function will retrieve it and forward it to your script.
+'''
+
+    gbio = VF19_TOOLSROOT + '\\\\core\\\\py_classes\\\\garbage_io\\\\PROTOCULTURE.eod'
+    fullpath = VF19_TOOLSROOT + '\\modules\\' + TOOL
+    cores = 'display.ps1~utility.ps1~validation.ps1'
+    empty = ''
+    proto = {CALLER:{'target':PROTOCULTURE,'result':empty}}
     with open(gbio, 'w') as outf: 
-        outf.write(jdmp(proto))
+        outf.write(dumps(proto))
         
-    call = 'powershell.exe ' + TOOL + ' py' + CALLER
-    if extra != None:
-        call = call + ' ' + extra
+    outf.close()
+    call = 'powershell.exe ' + fullpath + ' -pythonsrc ' + CALLER + '~' + cores
+    if OPT != None:
+        call = OPT + '~' + call
     psc(call)
+
+    with open(gbio) as r:
+        res = load(r)
+
+    if res[CALLER]['result'] != empty:
+        return res[CALLER]['result']
+    else:
+        return False
 
 
 ## Same as MACROSS' getFile function; if you do not provide an initial directory,
@@ -284,9 +348,12 @@ and 2) limit the selection\nby file extension. Usage:
 ## Your mileage may vary depending on the strings that get passed in; I sometimes
 ## get a display with broken columns. It usually works pretty well, though.
 def screenResults(A = 'endr',B = None,C = None):
-    '''Usage: screenResults(value1,value2,value3)
-Each value is optional, and will be written to screen in separate rows
-& columns.\nYou can send the first letter of a color ("bl" for black)
+    '''Usage: 
+    
+    screenResults(string1,g~string2,string3)
+
+Each string value is optional, and will be written to screen in separate
+rows & columns.\nYou can send the first letter of a color ("bl" for black)
 and "~" to colorize text, for example "c~Value" to write "Value" in cyan.
 
 Colors:(c)yan, (bl)ack, (b)lue, (r)ed, (y)ellow, (w)hite, (m)agenta, and
@@ -577,14 +644,16 @@ write the closing row boundary.'''
 ##      MYVAR = mcdefs.getThis('base64 string',0)
 ##      MYVAR = mcdefs.getThis('hex string',1,'ascii')
 ##
-def getThis(d,e,ee = 'utf8'):
+def getThis(d,e = 0,ee = 'utf8'):
     """This is the same as MACROSS' powershell function 'getThis'. Your
 first argument is the encoded string you want to decode, and your
 second arg will be:
-    (0) if decoding base64, or
+
+    (0) if decoding base64 (default action), or
     (1) if decoding hexadecimal, or
     (2) if encoding to base64, or
-    (3) if encoding to hex.
+    (3) if encoding to hexadecimal.
+
 Unlike the powershell function, this function does NOT write to
 "vf19_READ", it just returns your decoded plaintext.
 
@@ -592,10 +661,12 @@ You can pass an optional 3rd arg to specify the out-encoding (ascii,
 ANSI, etc, default is UTF-8).
 
 Usage:
-       
-    var = mcdefs.getThis('base64string',0)
-OR
-    var = mcdefs.getThis('hexstring',1)"""
+    PLAINTEXTASCII = mcdefs.getThis(base64string,0,'ascii')
+    PLAINTEXT = mcdefs.getThis(hexstring,1)
+    HEX = mcdefs.getThis('plaintext',1)
+    BASE64 = mcdefs.getThis('plaintext',0)
+
+    """
     if e == 0:
         newval = b64.b64decode(d)
         newval = newval.decode(ee)
