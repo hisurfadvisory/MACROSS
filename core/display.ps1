@@ -1,7 +1,11 @@
+
 ## Functions controlling MACROSS's display
 
+<#
+$vf19_CONSOLEH = (Get-Host).UI.RawUI.MaxWindowSize.Height
+$vf19_CONSOLEW = (Get-Host).UI.RawUI.MaxWindowSize.Width
+#>
 
-## These are the colors used in the w, sep, screenResults and screenResultsAlt functions
 $Global:vf19_colors = @{
     'w'='white'
     'b'='blue'
@@ -17,338 +21,184 @@ $Global:vf19_colors = @{
 ## MACROSS banner
 ######################################
 function splashPage(){
-$b = 'ICAgICAgIOKWiOKWiOKWiOKVlyAgIOKWiOKWiOKWiOKVlyDilojilojilojilojilojilZcgIOKWiOKWiOKWiOKWiOK
-WiOKWiOKVl+KWiOKWiOKWiOKWiOKWiOKWiOKVlyAg4paI4paI4paI4paI4paI4paI4pWXIOKWiOKWiOKWiOKWiOKWiOKWiOKW
-iOKVl+KWiOKWiOKWiOKWiOKWiOKWiOKWiOKVlwogICAgICAg4paI4paI4paI4paI4pWXIOKWiOKWiOKWiOKWiOKVkeKWiOKWi
-OKVlOKVkOKVkOKWiOKWiOKVl+KWiOKWiOKVlOKVkOKVkOKVkOKVkOKVneKWiOKWiOKVlOKVkOKVkOKWiOKWiOKVl+KWiOKWiO
-KVlOKVkOKVkOKVkOKWiOKWiOKVl+KWiOKWiOKVlOKVkOKVkOKVkOKVkOKVneKWiOKWiOKVlOKVkOKVkOKVkOKVkOKVnQogICA
-gICAg4paI4paI4pWU4paI4paI4paI4paI4pWU4paI4paI4pWR4paI4paI4paI4paI4paI4paI4paI4pWR4paI4paI4pWRICAg
-ICDilojilojilojilojilojilojilZTilZ3ilojilojilZEgICDilojilojilZHilojilojilojilojilojilojilojilZfil
-ojilojilojilojilojilojilojilZcKICAgICAgIOKWiOKWiOKVkeKVmuKWiOKWiOKVlOKVneKWiOKWiOKVkeKWiOKWiOKVlO
-KVkOKVkOKWiOKWiOKVkeKWiOKWiOKVkSAgICAg4paI4paI4pWU4pWQ4pWQ4paI4paI4pWX4paI4paI4pWRICAg4paI4paI4pW
-R4pWa4pWQ4pWQ4pWQ4pWQ4paI4paI4pWR4pWa4pWQ4pWQ4pWQ4pWQ4paI4paI4pWRCiAgICAgICDilojilojilZEg4pWa4pWQ
-4pWdIOKWiOKWiOKVkeKWiOKWiOKVkSAg4paI4paI4pWR4pWa4paI4paI4paI4paI4paI4paI4pWX4paI4paI4pWRICDilojil
-ojilZHilZrilojilojilojilojilojilojilZTilZ3ilojilojilojilojilojilojilojilZHilojilojilojilojilojilo
-jilojilZEKICAgICAgIOKVmuKVkOKVnSAgICAg4pWa4pWQ4pWd4pWa4pWQ4pWdICDilZrilZDilZ0g4pWa4pWQ4pWQ4pWQ4pW
-Q4pWQ4pWd4pWa4pWQ4pWdICDilZrilZDilZ0g4pWa4pWQ4pWQ4pWQ4pWQ4pWQ4pWdIOKVmuKVkOKVkOKVkOKVkOKVkOKVkOKV
-neKVmuKVkOKVkOKVkOKVkOKVkOKVkOKVnQ=='
-    $ip = $(ipconfig | Select-String "IPv4 Address") -replace "^.* : "
-    $hn = hostname
-    $vl = $vf19_VERSION.length; if( $vl -lt 3){$vc=4}elseif( $vl -le 4 ){$vc=3}
-    elseif( $vl -le 5 ){$vc=1}else{$vc=0}
-    cls
-    Write-Host '
-    '
-    getThis $b
-    Write-Host -f CYAN "$vf19_READ"
-    Write-Host ' ' -NoNewline; sep '=' 70 'c'
-    Write-Host -f YELLOW "               Welcome to Multi-API-Cross-Search, " -NoNewline;
-    Write-Host -f CYAN "$USR"
-    Write-Host -f YELLOW "                   Host: $hn  ||  IP: $ip"
-    Write-Host ' ' -NoNewline; sep '=' 70 'c'
-    getThis '4pWR'; $va = ''; $vb = $vf19_READ
-    1..62 | %{$va += $vf19_READ}
-    if($vc -gt 0){1..$vc | %{$vb += $vf19_READ}}
-    Write-Host -f CYAN "  $va" -NoNewline;
-    Write-Host -f YELLOW "v$vf19_VERSION" -NoNewline;
-    Write-Host -f CYAN "$vb"
-                                                                     
-}
-
-
-
-function w($1,$2,$3){
-    <#
-    ||longhelp||
-    I got sick of typing "Write-Host", gimme a break powershell.
-    Send your text as the first param, and the first letter of the text color you 
-    want as the second param (or "bl" for black, "b" for blue). The third parameter 
-    (optional) can be either background color OR "nl" for the "-NoNewLine" option.
-    
-    ** Not implemented yet -- underlining: 
-    Write-Host "$([char]27)[4m Underlined Word $([char]27)[24m"
-    
-    ||examples||
-    Write green text:
-    w "A string of text." 'g'
-    
-    Write a multi-color string:
-    w "A string of" 'g' 'nl'; w "text" 'y'
-    #>
-    $vf19_colors.keys | %{
-        if($2 -eq $_){
-            $f = $2
-        }
-        if($3 -eq $_){
-            $b = $3
-        }
-    }
-    if($3 -eq 'nl'){
-        Write-Host -f $vf19_colors[$f] "$1" -NoNewline;
-    }
-    elseif($b -and $f){
-        Write-Host -f $vf19_colors[$f] -b $vf19_colors[$b] "$1"
-    }
-    elseif($f){
-        Write-Host -f $vf19_colors[$f] "$1"
-    }
-    else{
-        Write-Host "$1"
-    }
-}
-
-
-
-<######################################
-## Set the default startup object
-    When you have resources like tables/arrays to be built from text or
-    JSON or whatever files, you can base64 encode the file path, add a
-    3-letter identifier so that you can easily decode them when necessary,
-    then add them to the opening comments in 'utility.ps1'. Make sure to
-    separate your strings using '@@@' as delimiters. (or come up with a
-    better way to store your default values outside of MACROSS, see the
-    utility.ps1 readme).
-
-    The startUp function reads the opening comment from 'utility.ps1' and creates 
-    an array of base64 values with the 3-letter identifier as its index. When you
-    need to call your encoded filepath, you use the 'getThis' function,
-    which returns $vf19_READ as your decoded filepath:
-
-        getThis $vf19_MPOD['abc']
-        $your_variable = $vf19_READ
-
-    Additionally, it reads the registry to look for the presence of Wireshark,
-    Nmap, and Python. You can add your own checks for programs your scripts
-    may require to function.
-######################################>
-function startUp(){
-    ## Check if necessary programs are available; add as many as you need
-    #$INST = Get-ChildItem 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall'
-    $INST = Get-ChildItem 'HKLM:Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall'
-    foreach($i in $INST){
-        $prog = $i.GetValue('DisplayName')
-        if($prog -match 'python'){
-            $Global:MONTY = $true
-            $Global:vf19_pylib = "$vf19_TOOLSROOT" + '\core\py_classes'
-            $Global:vf19_GBIO = "$vf19_pylib\garbage_io"      ## Set the garbage-in-garbage-out directory for python scripts
-            $Global:vf19_PYPOD = ''                             ## Prep string values for passing to python scripts
-            $p = @()
-        }
-        if($prog -match 'nmap'){
-            $Global:MAPPER = $true      ## Can use nmap, yay!
-        }
-        if($prog -match 'wireshark'){
-            $Global:SHARK = $true       ## Can use wireshark, yay!
-        }
-        if($prog -Match 'excel'){
-            $Global:MSXL = $true        ## Can use excel for MACROSS' sheetResults function, yay!
-        }
-    }
-
-
-    
-    ## Use the integer $N_ in conjunction with $M_ (see validation.ps1) for performing
-    ## math, permission checks, obfuscating values, writing hexadecimal strings, etc. without writing
-    ## out the actual integers in plaintext. If you deploy MACROSS for multiple users, delete this
-    ## comment section. This is NOT a security feature, but sometimes you just need to obfuscate things.
-    ##
-    ## This value is currently calculated using the first line in validation.ps1. However, If you plan
-    ## to perform sensitive mathing, I recommend changing the calculation method to something
-    ## external to MACROSS that you control access to.
-    ##
-    ## To see the default values, from the main menu, enter "debug $N_" or "debug $M_"
-    $i = 0
-    $mio = Get-Content "$vf19_TOOLSROOT\core\validation.ps1" | Select -Index 0
-    $mio -Split('') | %{
-        $i = $i + $(ord "$_")
-    }
-    Set-Variable -Name N_ -Value $(671042 + ($i * 39)) -Scope Global -Option ReadOnly; rv mio
-    #$Global:N_ = 671042 + ($i * 39); rv mio
-
-
-
-    ## Arm the missile pod (although Basara's VF-19 only carried missiles once);
-    ## populate this global array with any Base64-encoded filepaths that you want shared with your scripts
-    ## The contents of vf19_MPOD get read in from the opening comments in temp_config.txt; I recommend
-    ## you create your own file to store your values and keep it in a better-secured location. Don't forget
-    ## to modify the lines below with your new filepath!
-    $Global:vf19_MPOD = @{}
-    $a = ''
-    $x = Select-String $vf19_TAG "$vf19_TOOLSROOT\core\temp_config.txt" |
-        Select-Object -ExpandProperty LineNumber
-    while($aa -ne "~~~#>"){
-        $aa = $(Get-Content "$vf19_TOOLSROOT\core\temp_config.txt" | Select -Index $x)
-        $x++
-        $a += $aa
-    }
-    $b = $($a -replace "~~~#>$") -Split '@@@'
-    foreach($c in $b){
-        $d = $c.substring(0,3)
-        $e = $c -replace "^..."
-        $Global:vf19_MPOD.Add($d,$e)
-        if($MONTY){
-            $p += $c  ## Create a parallel MPOD dictionary that python can read
-        }
-    }
-    if($p.length -gt 0){
-        $Global:vf19_PYPOD = $p -join(',')
-    }
-
-}
-
-
-
-function sep(){
-    <#
-    ||longhelp||
-    When writing outputs to screen and you're not using screenResults(), this
-    function can write a simple separator if you need to break up lines.
-    $1 = the character that makes up the separator
-    $2 = the length of the separator line
-    $3 = (optional) the color of the separator
-    
-    ||examples||
-    Example use: Create a 28 char-length line of "*" in yellow text
-    
-        sep '*' 28 'y'    
-                                        
-    #>
-    Param(
-        [Parameter(Mandatory=$true)]
-        [string]$1,
-        [Parameter(Mandatory=$true)]
-        [int]$2,
-        [string]$3 = 'w'
-    )
-    $b = ' '
-    1..$2 | %{$b += $1}
-    Write-Host -f $($vf19_colors[$3]) $b
-}
-
-
-
-function macrossHelp($1){
-    <#
-    Display HELP for internal MACROSS functions. Send the tool name as parameter 1
-    for its details and usage, or send "dev" to get a full list of descriptions.
-    Calling without parameters just lists the Local Attributes table.
-    #>
-    $helps = @{
-        'w'= @{'d'="Alias for 'Write-Host'. Send your string as the first parameter, and the first letter of the color you want to use ('bl' for black, 'b' for blue). Send another letter as the third parameter to set a highlight color. The default text color is white.";'u'='Usage: w "your text" "[b|bl|c|g|m|r|y]" "[b|bl|c|g|m|r|y]"'}
-        'screenResults'= @{'d'="Display large outputs to screen in a table format. Colorize the text by adding '<color letter>~' to the beginning of your value, i.e. g~$('$'+'value') will write green text. Send a single param, 'endr' to create the closing border after your final values.";'u'='Usage: screenResults $VALUE1 $OPTIONAL_VALUE2 $OPTIONAL_VALUE3'}
-        'screenResultsAlt'= @{'d'="Similar to screenResults; send the 'header' items of your list first, followed by $('$'+'KEY1') and $('$'+'VALUE1'). If you have more than 2 key-values under each 'header', make the first parameter of each subsequent call 'next'.";'u'='Usage: screenResultsAlt $HEADER $KEY1 $VALUE1; screenResultsAlt "next" $KEY2 $VALUE2'}
-        'ord'= @{'d'='Get the decimal value of a text character';'u'='Usage: ord [text char]'}
-        'chr'= @{'d'='Get the text character of a decimal value';'u'='Usage: chr [decimal value]'}
-        'sheetz'= @{'d'="Output results to an excel worksheet. First parameter is the name of your spreadsheet. Second parameter is the values you're writing, separated by commas. Third parameter is the row to start writing in. If you are adding values to an existing sheet, set this to the next empty row, otherwise set to 1. -Fourth parameter is comma-separated column names, OR if you are editing an existing sheet/don't need column headers, you can send the number of columns you require. -You can colorize text by adding a 'color~' to the beginning of any field in the first parameter's comma-separated list, or colorize the cell by adding 'cellColor~textColor~' to the value.";'u'='Usage: sheetz "myspreadsheet.xlsx"  [comma separated values]  [the next empty row number]  [total number of columns to write|comma-separated column names]'}
-        'getThis'= @{'d'="Decode base64 and hex values to plaintext in the global variable $('$'+'vf19_READ'); encode plaintext to base64 string";'u'='Usage: getThis $string [1 to decode hex|0 to encode base64|none to decode base64]'}
-        'getFile'= @{'d'='Open a dialog window to let analysts select a file from any local/network location';'u'='Usage: $file = getFile'}
-        'yorn'= @{'d'='Open a "yes/no" dialog to get response from analysts so your script can perform an action they choose.';'u'='Usage: if( $( yorn "SCRIPTNAME" $CURRENT_TASK ) -eq "No") { $STOP_DOING_TASK }'}
-        'pyCross'= @{'d'="Write your powershell script's results to a json file (PROTOCULTURE.eod) that can later be read by MACROSS python scripts. This file is written to a folder, 'core\py_classes\garbage_io', that MACROSS regularly empties. You only need to send the name of your script as param1 and your values as param2. If you need to write something other than the default json, send an alternate filename in param3, and your data will be written as-is to another .eod file.";'u'='Usage: pyCross "myScriptName" $VALUES_TO_WRITE $optional_alt_filename'}
-        'stringz'= @{'d'="Extract ASCII characters from binary files. Call this function without parameters to open a nav window and select a file. You can also send a filepath as parameter one. If you do not want to keep the output text file, send 1 as parameter two.";'u'="Usage: stringz ['path\to\file' (optional)] [1 (optional)]"}
-        'eMsg'= @{'d'="Send an integer 0-3 as the first parameter to display a canned message, or send your own message as the first parameter.  The second parameter is optional and will change the text color (send the first letter or 'bl' for black)";'u'='Usage: eMsg [message number|your custom msg] [text color (optional)]'}
-        'errLog'= @{'d'="Write messages to MACROSS' log folder. Timestamps are added automatically. You can read these logs by typing 'debug' into MACROSS' main menu.";'u'='Usage: errLog [message level, examples: "INFO"|"WARN"|"ERROR"] [message field 1] [message field 2]'}
-        'availableTypes'= @{'d'='Search MACROSS tools by their .valtype attribute';'u'='Usage: availableTypes [search term(s)] [optional .lang] [optional exact search terms]'}
-        'collab'= @{'d'="Enrich or collect data from other MACROSS scripts. An optional value can be sent as parameter three if the called script's .evalmax value is 2.";'u'='Usage: collab [scriptToCall.extension] [yourScriptName] [optional value]'}
-        'getHash'= @{'d'='Get the hash of a file.';'u'='Usage: getHash [filepath] [md5|sha256]'}
-        'houseKeeping'= @{'d'="Displays a list of existing reports your script has created, and gives the option of deleting one or more of them if no longer needed.";'u'="Usage: houseKeeping [directory containing your script's report outputs] [yourScriptName]"}
-        'sep'= @{'d'='Create a separator line to write on screen if you want to separate simple outputs being displayed.';'u'='Usage: sep [character you want to create line from] [length you want the line to be] [b|bl|c|m|r|y|w (optional)]'}
-        'slp'= @{'d'="Alias for 'start-sleep' to pause your scripts. Send the number of seconds to pause as parameter one, and 'm' as the second parameter if you want to pause in milliseconds instead.";'u'='Usage: slp [number of seconds] ["m" (changes seconds to milliseconds)]'}
-        'transitionSplash'= @{'d'='This function contains various ASCII art from the MACROSS anime. You can add your own ASCII art here.';'u'='Usage: transitionSplash [1-8]'}
+    $vr = (Get-Content "$vf19_TOOLSROOT\MACROSS.ps1" | Select -Index 1) -replace "^#_ver "
+    $b = 'ICAgICAgIOKWiOKWiOKWiOKVlyAgIOKWiOKWiOKWiOKVlyDilojilojilojilojilojilZcgIOKWiOKWiOKWiOKWiOK
+    WiOKWiOKVl+KWiOKWiOKWiOKWiOKWiOKWiOKVlyAg4paI4paI4paI4paI4paI4paI4pWXIOKWiOKWiOKWiOKWiOKWiOKWiOKW
+    iOKVl+KWiOKWiOKWiOKWiOKWiOKWiOKWiOKVlwogICAgICAg4paI4paI4paI4paI4pWXIOKWiOKWiOKWiOKWiOKVkeKWiOKWi
+    OKVlOKVkOKVkOKWiOKWiOKVl+KWiOKWiOKVlOKVkOKVkOKVkOKVkOKVneKWiOKWiOKVlOKVkOKVkOKWiOKWiOKVl+KWiOKWiO
+    KVlOKVkOKVkOKVkOKWiOKWiOKVl+KWiOKWiOKVlOKVkOKVkOKVkOKVkOKVneKWiOKWiOKVlOKVkOKVkOKVkOKVkOKVnQogICA
+    gICAg4paI4paI4pWU4paI4paI4paI4paI4pWU4paI4paI4pWR4paI4paI4paI4paI4paI4paI4paI4pWR4paI4paI4pWRICAg
+    ICDilojilojilojilojilojilojilZTilZ3ilojilojilZEgICDilojilojilZHilojilojilojilojilojilojilojilZfil
+    ojilojilojilojilojilojilojilZcKICAgICAgIOKWiOKWiOKVkeKVmuKWiOKWiOKVlOKVneKWiOKWiOKVkeKWiOKWiOKVlO
+    KVkOKVkOKWiOKWiOKVkeKWiOKWiOKVkSAgICAg4paI4paI4pWU4pWQ4pWQ4paI4paI4pWX4paI4paI4pWRICAg4paI4paI4pW
+    R4pWa4pWQ4pWQ4pWQ4pWQ4paI4paI4pWR4pWa4pWQ4pWQ4pWQ4pWQ4paI4paI4pWRCiAgICAgICDilojilojilZEg4pWa4pWQ
+    4pWdIOKWiOKWiOKVkeKWiOKWiOKVkSAg4paI4paI4pWR4pWa4paI4paI4paI4paI4paI4paI4pWX4paI4paI4pWRICDilojil
+    ojilZHilZrilojilojilojilojilojilojilZTilZ3ilojilojilojilojilojilojilojilZHilojilojilojilojilojilo
+    jilojilZEKICAgICAgIOKVmuKVkOKVnSAgICAg4pWa4pWQ4pWd4pWa4pWQ4pWdICDilZrilZDilZ0g4pWa4pWQ4pWQ4pWQ4pW
+    Q4pWQ4pWd4pWa4pWQ4pWdICDilZrilZDilZ0g4pWa4pWQ4pWQ4pWQ4pWQ4pWQ4pWdIOKVmuKVkOKVkOKVkOKVkOKVkOKVkOKV
+    neKVmuKVkOKVkOKVkOKVkOKVkOKVkOKVnQ=='
+        ## $ip ignores the local APIPA range
+        $ip = $(ipconfig | Select-String "IPv4 Address" | where{$_ -notLike "* 169.254*"}) -replace "^.* : "
+        $hn = hostname
+        $vl = $vr.length; if( $vl -lt 3){$vc=4}elseif( $vl -le 4 ){$vc=3}
+        elseif( $vl -le 5 ){$vc=1}else{$vc=0}
+        cls
+        Write-Host '
+        '
+        getThis $b
+        Write-Host -f CYAN "$vf19_READ"
+        Write-Host ' ' -NoNewline; sep '=' 70 'c'
+        Write-Host -f YELLOW "               Welcome to Multi-API-Cross-Search, " -NoNewline;
+        Write-Host -f CYAN "$USR"
+        Write-Host -f YELLOW "                   Host: $hn  ||  IP: $ip"
+        Write-Host ' ' -NoNewline; sep '=' 70 'c'
+        getThis 4pWR; $va = ''; $vb = $vf19_READ
+        1..62 | %{$va += $vf19_READ}
+        if($vc -gt 0){1..$vc | %{$vb += $vf19_READ}}
+        Write-Host -f CYAN "  $va" -NoNewline;
+        Write-Host -f YELLOW "v$vr" -NoNewline;
+        Write-Host -f CYAN "$vb"
+                                                                         
     }
     
-    function longHelps($fct){
-        $long = ''; $ex = ''; $cores = @('utility.ps1','display.ps1','validation.ps1','splashes.ps1')
-        foreach($core in $cores){
-            $f = "$vf19_TOOLSROOT\core\$core"
-            $p = (gc $f | Select-String -Pattern "^function $fct\(")
-                
-            if($p){
-                $x = (Select-String -Pattern "^function $fct\(" $f | Select-Object -ExpandProperty LineNumber) + 2
-                Break
-            }
+    
+
+    function macrossHelp($1){
+        <#
+        Display HELP for internal MACROSS functions. Send the tool name as parameter 1
+        for its details and usage, or send "dev" to get a full list of descriptions.
+        Calling without parameters just lists the Local Attributes table.
+        #>
+        $helps = @{
+            'w'= @{'d'="Alias for 'Write-Host'. Send your string as the first parameter, and the first letter of the color you want to use ('bl' for black, 'b' for blue). The default text color is white. Send another letter as the third parameter to set a highlight color. If you want to set the 'NoNewline' option, use -i. Underline with -u.";'u'='Usage: w "your text" "[b|bl|c|g|m|r|y]" "[b|bl|c|g|m|r|y]"'}
+            'screenResults'= @{'d'="Display large outputs to screen in a table format. Colorize the text by adding '<color letter>~' to the beginning of your value, i.e. g~$('$'+'value') will write green text. Send a single param, -e to create the closing border after your final values.";'u'='Usage: screenResults $VALUE1 $OPTIONAL_VALUE2 $OPTIONAL_VALUE3'}
+            'screenResultsAlt'= @{'d'="Similar to screenResults; send the 'header' items of your list first, followed by $('$'+'KEY1') and $('$'+'VALUE1'). If you have more than 2 key-values under each 'header', make the first parameter of each subsequent call 'next'.";'u'='Usage: screenResultsAlt $HEADER $KEY1 $VALUE1; screenResultsAlt "next" $KEY2 $VALUE2'}
+            'ord'= @{'d'='Get the decimal value of a text character';'u'='Usage: ord [text char]'}
+            'chr'= @{'d'='Get the text character of a decimal value';'u'='Usage: chr [decimal value]'}
+            'sheetz'= @{'d'="Output results to an excel worksheet. First parameter is the name of your spreadsheet. Second parameter is the values you're writing, separated by commas. Third parameter is the row to start writing in. If you are adding values to an existing sheet, set this to the next empty row, otherwise set to 1. -Fourth parameter is comma-separated column names, OR if you are editing an existing sheet/don't need column headers, you can send the number of columns you require. -You can colorize text by adding a 'color~' to the beginning of any field in the first parameter's comma-separated list, or colorize the cell by adding 'cellColor~textColor~' to the value.";'u'='Usage: sheetz "myspreadsheet.xlsx"  [comma separated values]  [the next empty row number]  [total number of columns to write|comma-separated column names]'}
+            'getThis'= @{'d'="Decode base64 and hex values to plaintext in the global variable $('$'+'vf19_READ'); encode plaintext to base64 string";'u'='Usage: getThis $string [1 to decode hex|0 to encode base64|none to decode base64]'}
+            'getFile'= @{'d'='Open a dialog window to let analysts select a file from any local/network location';'u'='Usage: $file = getFile'}
+            'yorn'= @{'d'='Open a "yes/no" dialog to get response from analysts so your script can perform an action they choose.';'u'='Usage: if( $( yorn "SCRIPTNAME" $CURRENT_TASK ) -eq "No") { $STOP_DOING_TASK }'}
+            'pyCross'= @{'d'="Write your powershell script's results to a json file (PROTOCULTURE.eod) that can later be read by MACROSS python scripts. This file is written to a folder, 'core\py_classes\garbage_io', that MACROSS regularly empties. You only need to send the name of your script as param1 and your values as param2. If you need to write something other than the default json, send an alternate filename in param3, and your data will be written as-is to another .eod file.";'u'='Usage: pyCross "myScriptName" $VALUES_TO_WRITE $optional_alt_filename'}
+            'stringz'= @{'d'="Extract ASCII characters from binary files. Call this function without parameters to open a nav window and select a file. You can also send a filepath as parameter one. If you do not want to keep the output text file, send 1 as parameter two.";'u'="Usage: stringz ['path\to\file' (optional)] [1 (optional)]"}
+            'eMsg'= @{'d'="Send an integer 0-3 as the first parameter to display a canned message, or send your own message as the first parameter.  The second parameter is optional and will change the text color (send the first letter or 'bl' for black)";'u'='Usage: eMsg [message number|your custom msg] [text color (optional)]'}
+            'errLog'= @{'d'="Write messages to MACROSS' log folder. Timestamps are added automatically. You can read these logs by typing 'debug' into MACROSS' main menu.";'u'='Usage: errLog [message level, examples: "INFO"|"WARN"|"ERROR"] [message field 1] [message field 2]'}
+            'availableTypes'= @{'d'='Search MACROSS tools by their .valtype attribute';'u'='Usage: availableTypes [search term(s)] [optional .lang] [optional exact search terms]'}
+            'collab'= @{'d'="Enrich or collect data from other MACROSS scripts. An optional value can be sent as parameter three if the called script's .evalmax value is 2.";'u'='Usage: collab [scriptToCall.extension] [yourScriptName] [optional value]'}
+            'getHash'= @{'d'='Get the hash of a file.';'u'='Usage: getHash [filepath] [md5|sha256]'}
+            'houseKeeping'= @{'d'="Displays a list of existing reports your script has created, and gives the option of deleting one or more of them if no longer needed.";'u'="Usage: houseKeeping [directory containing your script's report outputs] [yourScriptName]"}
+            'sep'= @{'d'='Create a separator line to write on screen if you want to separate simple outputs being displayed.';'u'='Usage: sep [character(s) you want to create line from] [length you want the line to be] [-c b|bl|c|m|r|y|w (optional color)]'}
+            'slp'= @{'d'="Alias for 'start-sleep' to pause your scripts. Send the number of seconds to pause as parameter one. Use -m if you want to pause in milliseconds instead.";'u'='Usage: slp [number of seconds] [-m milliseconds]'}
+            'transitionSplash'= @{'d'='This function contains various ASCII art from the MACROSS anime. You can add your own ASCII art here.';'u'='Usage: transitionSplash [1-8]'}
         }
         
-        while($g -notlike "*||examples||"){
-            $g = $(Get-Content $f | Select -Index $x)
-            $x++
-            if($g -like "*||examples||"){$long = " $1" + ":`n" + $long}
-            else{$long += "$g`n"}
+        function longHelps($fct){
+            $long = ''; $ex = ''; $cores = @('utility.ps1','display.ps1','validation.ps1','splashes.ps1')
+            foreach($core in $cores){
+                $f = "$vf19_TOOLSROOT\core\$core"
+                $p = (gc $f | Select-String -Pattern "^function $fct\(")
+                    
+                if($p){
+                    $x = (Select-String -Pattern "^function $fct\(" $f | Select-Object -ExpandProperty LineNumber) + 2
+                    Break
+                }
+            }
+            
+            while($g -notlike "*||examples||"){
+                $g = $(Get-Content $f | Select -Index $x)
+                $x++
+                if($g -like "*||examples||"){$long = " $1" + ":`n" + $long}
+                else{$long += "$g`n"}
+            }
+            rv g
+            while($g -notlike "*#>"){
+                $g = $(Get-Content $f | Select -Index $x)
+                $x++
+                $ex += "$g`n"
+            }
+            $ex = $ex -replace "#>"; Return @($long,$ex)
         }
-        rv g
-        while($g -notlike "*#>"){
-            $g = $(Get-Content $f | Select -Index $x)
-            $x++
-            $ex += "$g`n"
+        
+        if($1 -eq 'show'){
+            screenResults 'UTILITIES LIST' $(($helps.keys | Sort) -join(', '))
+            screenResults "w~Type help, or help + one of the above to view details. Type TL to view all MACROSS tool attributes."
+            screenResults -e
+            Return
         }
-        $ex = $ex -replace "#>"; Return @($long,$ex)
+        if($1 -in $helps.keys){
+            ''
+            $lh = longHelps $1
+            $lh[0]
+            w '
+            Hit ENTER for example usage.' 'y'; Read-Host
+            $lh[1]
+            ''
+        }
+        elseif($1 -eq 'dev'){
+            1..33 | %{$m += ' '}
+            screenResults "c~$m MACROSS FUNCTIONS"
+            $helps.keys | Sort | %{
+                screenResults $_ $($helps[$_]['d'])
+                screenResults "c~$($helps[$_]['u'])"
+                screenResults -e
+            }
+            ''
+        }
+        else{
+            w "`n`n"
+            screenResults 'c~     MACROSS Tool' 'c~          Tool Function'
+            $vf19_LATTS.keys | %{
+                screenResults $_ $($vf19_LATTS[$_].valtype)
+            }
+            screenResults -e
+    
+            w '
+      If MACROSS crashes or you kill the session with CTRL+C, you may need to
+      close the powershell window and open a new one to launch MACROSS again.
+      
+      ' 'g'
+        }
+        ''
+        w ' Hit ENTER to continue.' g; Read-Host
+        
     }
     
-    if($1 -eq 'show'){
-        screenResults $($helps.keys -join(', '))
-        screenResults 'w~ Type help, or help + one of the above to view details'
-        screenResults 'endr'
-        Return
-    }
-    cls
-    if($1 -in $helps.keys){
-        ''
-        $lh = longHelps $1
-        $lh[0]
-        w '
-        Hit ENTER for example usage.' 'y'; Read-Host
-        $lh[1]
-        ''
-    }
-    elseif($1 -eq 'dev'){
-        1..33 | %{$m += ' '}
-        screenResults "c~$m MACROSS FUNCTIONS"
-        $helps.keys | Sort | %{
-            screenResults $_ $($helps[$_]['d'])
-            screenResults "c~$($helps[$_]['u'])"
-            screenResults 'endr'
-        }
-        ''
-    }
-    else{
-        TL
-    }
-    ''
-    w ' Hit ENTER to go back.' 'g'; Read-Host
-    
-}
-
-
 
 function screenResults(){
     <#
     ||longhelp||
-    Write outputs to the screen in a formatted table; parameters you send will be wrapped 
-    to fit in their columns (up to 3 separate columns). Call this function with "endr" as 
-    the only parameter to add the final separator $c after all your results have been 
-    displayed.
-    
-    Parameter $1 is required, $2 and $3 are optional.
+
+    screenResults [-c1 STRING] [-c2 STRING] [-c3 STRING] [-e END ROW]
+
+    Format up to three columns of outputs to the screen; parameters you send will be wrapped 
+    to fit in their columns. Call this function with -e as the *only* parameter to write the 
+    closing "end of row" after all your results have been displayed.
     
     If you send a value that begins with "r~", for example "r~Windows PC", the value 
-    "Windows PC" will be written to screen in red-colored text. You can use any color 
-    recognized by powershell's "write-host -f" option ("g"reen, "y"ellow, "c"yan, etc.)
+    "Windows PC" will be written to screen in red-colored text. Available colors are:
+     
+    "g"reen, "y"ellow, "c"yan, "m"agenta, "b"lue, "bl"ack, and "r"ed
+
     
     ||examples||
     Basic example of usage:
-        screenResults 'Title of first result' 'Title of 2nd result' 'Title of 3rd result'
-        screenResults 'Large 1' 'Large paragraph 2' 'Large paragraph 3'
-        screenResults 'endr'
+
+        screenResults -c1 'Title of first result' -c2 'Title of 2nd result' -c3 'Title of 3rd result'
+        screenResults -c1 'First large paragraph' -c2 'Second large paragraph' -c3 'Third large paragraph'
+        screenResults -e
     
     Example usage for displaying hashtable contents:
-        foreach($i in $results.keys){ screenResults $i $results[$i] }
-        screenResults 'endr'
+
+        foreach($i in $results.keys){ screenResults -c1 $i -c2 $results[$i] }
+        screenResults -e
+
     #>
     Param(
-        [Parameter(Mandatory=$true)]
-        [string]$1,
-        [string]$2,
-        [string]$3,
-        [int]$4
+        [string]$c1,
+        [string]$c2,
+        [string]$c3,
+        [switch]$e=$false,
+        [int]$L
     )
 
     ## Set default colors
@@ -362,18 +212,19 @@ function screenResults(){
     else{
         $tw = 90
     }
-    getThis '4oCW'; $c = $vf19_READ
+    getThis 4pWR; $c = $vf19_READ
     $r = $c
-    getThis '4omh'
+    getThis 4omh
     1..$tw | %{$r = $r + $vf19_READ}; $r = $r + $c
-    if($1 -Match $ht){
-        $ncolor = $vf19_colors[$($1 -replace "~(.|`n)+")]
-        $1 = $1 -replace "^([a-z]{1,2}~)?"
-    }
-    elseif($1 -eq 'endr'){
+    if($e){
         Write-Host -f GREEN $r
         Return
     }
+    if($c1 -Match $ht){
+        $ncolor = $vf19_colors[$($c1 -replace "~(.|`n)+")]
+        $c1 = $c1 -replace "^([a-z]{1,2}~)?"
+    }
+    
 
     
     ## This function counts characters to create borders based on string-length
@@ -462,25 +313,25 @@ function screenResults(){
         Return $o2
     }
 
-    $NAME = $1
+    $NAME = $c1
     $wide1 = $NAME.length
 
-    if($2){
-        if($2 -Match $ht){
-            $v1color = $vf19_colors[$($2 -replace "~(.|`n)+")]
-            $2 = $2 -replace "^([a-z]+~)?"
+    if($c2){
+        if($c2 -Match $ht){
+            $v1color = $vf19_colors[$($c2 -replace "~(.|`n)+")]
+            $c2 = $c2 -replace "^([a-z]{1,2}~)?"
         }
-        $VAL1 = $2
-        $wide2 = $2.length
+        $VAL1 = $c2
+        $wide2 = $c2.length
         
     
-        if($3){
-            if($3 -Match $ht){
-                $v2color = $vf19_colors[$($3 -replace "~(.|`n)+")]
-                $3 = $3 -replace "^([a-z]+~)?"
+        if($c3){
+            if($c3 -Match $ht){
+                $v2color = $vf19_colors[$($c3 -replace "~(.|`n)+")]
+                $c3 = $c3 -replace "^([a-z]{1,2}~)?"
             }
-            $VAL2 = $3
-            $wide3 = $3.length
+            $VAL2 = $c3
+            $wide3 = $c3.length
         }
         
         
@@ -675,150 +526,327 @@ function screenResults(){
 
 
 
-function screenResultsAlt($1,$2,$3){
+
+function screenResultsAlt($h,$k,$v,[switch]$e=$false){
     <#
     ||longhelp||
-    Alternate output format for MACROSS results; don't use this for large outputs, use
-    screenResults instead!
 
-    The first parameter is the header for each item; set it to 'next' if you want to
-    write additional values to the table without a row separator.
+    screenResultsAlt [-h HEADER] [-k ITEM NAME] [-v ITEM VALUE]
 
-    Parameters $2 and $3 are written below the header like a key-value pair.
-    $2 will get truncated if longer than 14 chars.
+    Alternate output format for MACROSS results; don't use this for outputs with long
+    string values; use screenResults instead!
+
+    The first parameter -h is the header for each item. When beginning your output,
+    send the -h, -k and -v values together. Subsequent outputs under the same header
+    should only contain -k and -v.
+
+    The second and third parameters (-k and -v) are written below the header like a 
+    key-value pair. The -k value will get truncated if longer than 14 chars.
 
     As with screenResults, you can use "<COLOR FIRST LETTER>~" to highlight your values. 
-    Send a single parameter, 'endr', to close out the table.
+    Send a single parameter, -e, to close out the table.
         
     ||examples||
     Example usage:
-        $1 = 'rundll32.exe'
-        $2 = 'Parent'
-        $3 = 'r~acrobat.exe'
-        $4 = 'ParentID'
-        $5 = '2351'
+        $process = 'rundll32.exe'
+        $name1 = 'Parent'
+        $value1 = 'r~acrobat.exe'
+        $name2 = 'ParentID'
+        $value2 = '2351'
 
-        screenResultsAlt $1 $2 $3
-        screenResultsAlt 'next' $4 $5
-        screenResultsAlt 'endr'
+        screenResultsAlt -h $process -k $name1 -v $value1
+        screenResultsAlt -k $name2 -v $value2
+        screenResultsAlt -e
 
     The above will write to screen, with acrobat.exe in red:
 
-        ║║║║║║ rundll32.exe
+        |||||| rundll32.exe
         ============================================================================
-        Parent    ║  acrobat.exe
-        ParentID  ║  2351
+        Parent    |  acrobat.exe
+        ParentID  |  2351
         ============================================================================
 
 
 
     #>
-    $1color = 'CYAN'
-    $2color = 'GREEN'
-    $3color = 'YELLOW'
+    $hcolor = 'CYAN'
+    $kcolor = 'GREEN'
+    $vcolor = 'YELLOW'
     $r = '  '
     $ht = [regex]"^[a-z]{1,2}~"
-    foreach($i in 1..76){$r += '='};Remove-Variable i
-    getThis '4pWR4pWR4pWR4pWR4pWR4pWR'; $c6 = $vf19_READ
-    getThis '4pWR'; $c1 = $vf19_READ
+    1..76 | %{$r += '='}
+    getThis 4pWR4pWR4pWR4pWR4pWR4pWR; $c6 = $vf19_READ
+    getThis 4pWR; $c1 = $vf19_READ
     
 
-    if($1 -Match $ht){
-        $1color = $vf19_colors[$($1 -replace "~.+")]
-        $1 = $1 -replace "^([a-z]+~)?"
+    if($h -Match $ht){
+        $hcolor = $vf19_colors[$($h -replace "~.+")]
+        $h = $h -replace "^([a-z]+~)?"
     }
-    if($2 -Match $ht){
-        $2color = $vf19_colors[$($2 -replace "~.+")]
-        $2 = $2 -replace "^([a-z]+~)?"
+    if($k -Match $ht){
+        $kcolor = $vf19_colors[$($k -replace "~.+")]
+        $k = $k -replace "^([a-z]+~)?"
     }
-    if($3 -Match $ht){
-        $3color = $vf19_colors[$($3 -replace "~.+")]
-        $3 = $3 -replace "^([a-z]+~)?"
+    if($v -Match $ht){
+        $vcolor = $vf19_colors[$($v -replace "~.+")]
+        $v = $v -replace "^([a-z]+~)?"
     }
 
 
 
-    if($1 -eq 'endr'){
+    if($e){
         Write-Host -f GREEN $r
     }
     else{
-        [string]$2 = '  ' + $2
-        if($3){
-            [int]$2l = $($2.length)
-            if($2l -gt 19){
-                $2 = $2.Substring(0,15)
-                $2 = $2 + '... '
+        [string]$k = '  ' + $k
+        if($v){
+            [int]$kl = $($k.length)
+            if($kl -gt 19){
+                $k = $k.Substring(0,15)
+                $k = $k + '... '
             }
             else{
-                while($2l -ne 19){
-                    $2 = $2 + ' '
-                    $2l++
+                while($kl -ne 19){
+                    $k = $k + ' '
+                    $kl++
                 }
             }
         }
-        if($1 -ne 'next'){
-            Write-Host -f $1color "  $c6 $1"
+        if($h){
+            Write-Host -f $hcolor "  $c6 $h"
             Write-Host -f GREEN $r
         }
-        if($3){
-            Write-Host -f $2color "$2" -NoNewline;
+        if($k -and $v){
+            Write-Host -f $kcolor "$k" -NoNewline;
             Write-Host -f GREEN "$c1" -NoNewline;
-            Write-Host -f $3color " $3"
+            Write-Host -f $vcolor " $v"
         }
-        else{
-            Write-Host -f $2color "$2"
-        }
+        elseif($k){ Write-Host -f $kcolor "$k" }
+        elseif($v){ Write-Host -f $kcolor "$v" }
     }
 }
 
 
 
-
-function slp(){
+function sep(){
     <#
     ||longhelp||
-    Function to pause your scripts for $1 seconds
-    Send 'm' as a second parameter if you want to change the span to milliseconds
+
+    sep -a [char/string] -L [count] -c [text color]
+
+    When writing outputs to screen and you're not using screenResults(), this
+    function can write a simple separator if you need to break up lines.
+
     
     ||examples||
-    Pause for 10 seconds:
-        slp 10
+    Examples -- Create a 72 char-length line of "*":
     
-    Pause for 500 milliseconds
-        slp 500 'm'
-        
+        sep * 72
+
+    Create 16 blocks of "~ * ~" in yellow text:
+
+        sep -a "~ * ~" -L 72 -c y
+
+        OR
+
+        sep "~ * ~" 72 y
+
+                                        
+    #>
+    Param(
+        [Parameter(Mandatory=$true)]
+        [string]$a,
+        [Parameter(Mandatory=$true)]
+        [int]$L,
+        [string]$c = 'w'
+    )
+    $b = ' '
+    1..$L | %{$b += $a}
+    Write-Host -f $($vf19_colors[$c]) $b
+}
+
+
+
+function w(){
+    <#
+    ||longhelp||
+
+    w [-t TEXT] [-f TEXT COLOR] [-b BACKGROUND COLOR] [-i INLINE] [-u UNDERLINE]
+
+    I got sick of typing "Write-Host", gimme a break powershell.
+
+    Send your text as the first param, and the **first letter** of the text color you 
+    want to colorize with ("bl" for black, "b" for blue) with -f.
+    
+    You can set the background color for the text with -b, and use -i to set the 
+    "-NoNewLine" option (continue writing more text on the same line).
+    
+    
+    ||examples||
+    Write green text:
+    
+        w "A string of text." g
+    
+    Write a multi-color string where "test" is yellow and underlined with red background:
+    
+        w "A string of " g -i; w 'test' -f y -b r -u -i; w "words" g
+
+    Set background color to black with default text color white:
+    
+        w "A string of text." -b bl
+
+
     #>
     param(
-        [Parameter(Mandatory=$true)]
-        [int]$sec,
-        [string]$span
+        [Parameter(Mandatory=$true)]$t,
+        [string]$f='w',
+        [string]$b=$null,
+        [switch]$i=$false,
+        [switch]$u=$false
     )
-    if($span -eq 'm'){
-        Start-Sleep -Milliseconds $sec
+    $fg = $($vf19_colors[$f])
+    if($f -in $vf19_colors.keys){ $fg = $($vf19_colors[$f]) }
+    if($b -in $vf19_colors.keys){ $bg = $($vf19_colors[$b]) }
+    if($i -and $u -and $bg){
+        Write-Host -b $bg -f $fg "$([char]27)[4m$t$([char]27)[24m" -NoNewline;
+    }
+    elseif($i -and $bg){
+        Write-Host -b $bg -f $fg "$t" -NoNewline;
+    }
+    elseif($u -and $bg){
+        Write-Host -b $bg -f $fg "$([char]27)[4m$t$([char]27)[24m"
+    }
+    elseif($bg){
+        Write-Host -f $fg -b $bg "$t"
+    }
+    elseif($i -and $u){
+        Write-Host -f $fg "$([char]27)[4m$t$([char]27)[24m" -NoNewline;
+    }
+    elseif($u){
+        Write-Host -f $fg "$([char]27)[4m$t$([char]27)[24m"
+    }
+    elseif($i){
+        Write-Host -f $fg "$t" -NoNewline;
     }
     else{
-        Start-Sleep -Seconds $sec
+        Write-Host -f $fg "$t"
+    }
+
+
+}
+
+
+
+function slp($s,[switch]$m=$false){
+    <#
+    ||longhelp||
+
+    slp [number of seconds] -m
+
+    Alias for "start-sleep". Pass a number of seconds as your first parameter, and
+    -m if you want to pause in milliseconds instead.
+
+    ||examples||
+    Pause for 5 seconds:
+
+        slp 5
+    
+    Pause for 500 milliseconds:
+
+        slp 500 -m
+
+
+    #>
+    if($m){
+        Start-Sleep -Milliseconds $s
+    }
+    else{
+        Start-Sleep -Seconds $s
     }
 }
 
+
+
+
+######################################
+## Perform startup checks
+######################################
+function startUp([switch]$init=$false){
+    if($init){
+        function e(){ Return $(Get-Random -min 10000000000000 -max 99999999999999)}
+        if(! (Test-Path "$env:LOCALAPPDATA\Temp\MACROSS")){
+            New-Item -Path "$env:LOCALAPPDATA\Temp\" -Type Directory -Name MACROSS | Out-Null
+        }$ml=setML;getThis -h $ml[13]; . $([scriptblock]::Create("$vf19_READ"))
+        battroid -n vf19_TMP -v "$([string]$env:LOCALAPPDATA)\Temp\MACROSS"
+        battroid -n vf19_GPOD -v $([System.Tuple]::Create($(e),$(e)))
+        
+        ## Verify required config file
+        if(! (Test-Path $($vf19_CONFIG[0]))){ setConfig }
+
+        ####################################################################################################
+        ## Check if necessary programs are available; add as many as you need below after the 'excel' check
+        ####################################################################################################
+        #$INST = Get-ChildItem 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall'
+        $INST = Get-ChildItem 'HKLM:Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall'
+        foreach($i in $INST){
+            $prog = $i.GetValue('DisplayName')
+            if($prog -Like 'python*'){
+                $Global:MONTY = $true
+                battroid -n vf19_pylib -v "$vf19_TOOLSROOT\core\py_classes"
+                cleanGBIO                                               ## Make sure any temp .eod files are disposed of
+            }
+            if($prog -match 'nmap'){ $Global:MAPPER = $true }        ## Can use nmap, yay!
+            if($prog -match 'wireshark'){ $Global:SHARK = $true }    ## Can use wireshark, yay!
+            if($prog -Match 'excel'){ $Global:MSXL = $true }         ## Can use excel for MACROSS' sheetz function, yay!
+
+        }; rv i,INST,prog
+    }
+
+
+	## Arm the missile pod $vf19_MPOD (although Basara's VF-19 only carried missiles once):
+    ## The contents of $vf19_MPOD are the values you added to the config.conf file via the
+    ## MACROSS configuration wizard (which runs the first time you load MACROSS or when
+    ## you type "config" in the main menu). When your script needs one of these values,
+    ## you can access it via
+    ##
+    ##       getThis vf19_MPOD['key']; $value = $vf19_READ
+    ##
+    ## where 'key' is the 3-character ID you created when adding values to the config.conf
+    ## file.
+    ##
+    if(! $vf19_GBIO){
+        battroid -n vf19_GBIO -v "$vf19_pylib\garbage_io"       ## Set the garbage-in-garbage-out directory for python scripts
+        battroid -n vf19_PROTO -v "$vf19_GBIO\PROTOCULTURE.eod"
+    }
+    if(! $vf19_MPOD){
+        $defs=@{};$Global:vf19_PYPOD='';getThis -h $((setML)[14])
+        . $([scriptblock]::Create("$vf19_READ"));$p=@()
+        $y = setCC -c; getThis QEBA; $9d = "$vf19_READ"
+        $j = setCC
+        $b = $(setReset -d $y $j) -Split $9d
+
+        foreach($c in $b){
+            $d = $c.substring(0,3)
+            $e = $c -replace "^..."
+            $defs.Add($d,$e)
+            if($MONTY){ $p += $c }
+        }
+        battroid -n vf19_MPOD -v $defs; getThis $vf19_MPOD['int']
+        battroid -n N_ -v @($vf19_READ,$([int[]](($vf19_READ -split '') -ne '')))
+        if($p.length -gt 0){ $Global:vf19_PYPOD = $p -join(',') }
+    }
+    
+}
 
 
 <################################
-## Display tool menu to user
-    The planned improvement is to rewrite this function so it can
-    accomodate more than 20 scripts in the /modules folder. Right
-    now, for example, if you have 40 scripts in /modules, the
-    scrollPage function will show the first 9 tools in $FIRSTPAGE,
-    but would show tools 10-40 in $NEXTPAGE because chooseMods
-    only generates two hashtables based on the modules folder file-count
-    (single-digit vs. double-digit).
-    I also need to standardize scripts' filename length to keep the menu uniform.
-    Currently, it only adds whitespace to names less than 7 characters long.
+## Generate dynamic menu for tool selection
 ################################>
 function chooseMod(){
     $Global:vf19_MENULIST = @{}
     $Global:vf19_MODULENUM = @{}
     $extralist = @(
+        'config',
         'dec',
         'enc',
         'shell',
@@ -860,56 +888,57 @@ function chooseMod(){
         $Global:vf19_PAGECT = [math]::Truncate(($toolcount/10) + 1)  ## Generate a new page for every 10 tools in "/modules"
 
         $ti = 1
+        getThis 4pWR
         $vf19_MENULIST.GetEnumerator() | Sort -Property Name | Select -Skip $($vf19_PAGE * 10) | %{
             if($ti -le 10){
-            Write-Host ' ' -NoNewline; sep '=' 70 'c'
-            w "   $($_.Name -replace "^ 0",'  ') || $($_.Value)" 'y'
+            w ' ' -i; sep '=' 70 c
+            w "   $($_.Name -replace "^ 0") " y -i; w $vf19_READ c -i; w " $($_.Value)" y
             }
             $ti++
         }
         rv ti
-        Write-Host ' ' -NoNewline; sep '=' 70 'c'
+        Write-Host ' ' -NoNewline; sep '=' 70 c
         ''
 
-    SJW 'menu'     ## check user's privilege LOL
+    SJW -menu     ## check user's privilege LOL
     if( $PROTOCULTURE ){
-        Write-Host '      ' -NoNewline; w ' PROTOCULTURE IS HOT (enter "proto" to view & clear it) ' 'r' 'bl'
+        w '      ' -i; w ' PROTOCULTURE IS HOT (enter "proto" to view & clear it) ' r bl
     }
     ''
 
     if( $vf19_MULTIPAGE ){
-        w "   -There are $toolcount tools available. Enter " 'g' 'nl'; w 'p' 'y' 'nl'; w ' for the next Page.' 'g'
+        w "   -There are $toolcount tools available. Enter " g -i; w 'p' 'y' -i; w ' for the next Page.' g
     }
-    w '   -Select the module you want (' 'g' 'nl'; w "1 - $toolcount" 'y' 'nl';
-    w ').' 'g'
-    w '   -Enter "' 'g' 'nl'; w 'help' 'y' 'nl';
-    w '" and the number of the tool to view its help page' 'g'
-    w '   -Type ' 'g' 'nl'; w 'shell' 'y' 'nl';
-    w ' to pause and run your own commands' 'g'
-    w '   -Type ' 'g' 'nl'; w 'strings' 'y' 'nl'; w ' to extract strings from binaries' 'g'
-    w '   -Type ' 'g' 'nl'; w 'dec' 'y' 'nl'; w ' or ' 'g' 'nl'; w 'enc' 'y' 'nl'; w ' to process Hex/B64 encoding.' 'g'
-    w '   -Type ' 'g' 'nl'; w 'q' 'y' 'nl'; w ' to quit.
-    ' 'g'
+    w '   -Select the module you want (' g -i; w "1 - $toolcount" 'y' -i;
+    w ').' g
+    w '   -Enter "' g -i; w 'help' 'y' -i;
+    w '" and the number of the tool to view its help page' g
+    w '   -Type ' g -i; w 'shell' 'y' -i;
+    w ' to pause and run your own commands' g
+    w '   -Type ' g -i; w 'strings' 'y' -i; w ' to extract strings from binaries' g
+    w '   -Type ' g -i; w 'dec' 'y' -i; w ' or ' g -i; w 'enc' 'y' -i; w ' to process Hex/B64 encoding.' g
+    w '   -Type ' g -i; w 'q' 'y' -i; w ' to quit.
+    ' g
 
     ## If version control is in use, offer options to pull fresh or updated
     ## copies of all the scripts.
     if( $vf19_VERSIONING ){
         w '                               TROUBLESHOOTING:
-   If the console is misbehaving, you can enter ' 'g' 'nl';
-        w 'refresh' 'c' 'nl';
+   If the console is misbehaving, you can enter ' g -i;
+        w 'refresh' 'c' -i;
         w ' to automatically
    pull down a fresh copy. Or, if one of the tools is not working as you
-   expect it to, enter the module # with an ' 'g' 'nl';
-        w 'r' 'c' 'nl';
+   expect it to, enter the module # with an ' g -i;
+        w 'r' 'c' -i;
         w " to refresh that script
    (ex. '3r').
    
-   " 'g'
+   " g
    }
 
 
 
-    w '                        SELECTION: ' 'g' 'nl'
+    w '                        SELECTION: ' g -i
         $Global:vf19_Z = Read-Host
 
         
@@ -951,7 +980,7 @@ function chooseMod(){
             $Global:vf19_Z = $null  ## scrollPage only works if there's more than 9 tools in the modules folder
         }
         elseif( $vf19_Z -eq 'q' ){
-            varCleanup 1
+            varCleanup -c
             Exit                    ## User chose to quit MACROSS
         }
         elseif( $vf19_Z -Match "^debug" ){
@@ -967,15 +996,15 @@ function chooseMod(){
 
 }
 
+
 ################################
-## Menu will dynamically add a page for every 10 tools
-## This function lets users sequentially "flip pages"
+## If more than 9 tools available, allow changing menu pages
 ################################
 function scrollPage(){
-    if( $vf19_PAGECT -gt 1 ){
-        $Global:vf19_PAGE++
-        if( $vf19_PAGE -ge $vf19_PAGECT ){
-            $Global:vf19_PAGE = 0
+    if($vf19_pagecount -gt 1){
+        $Global:vf19_MPAGE = $vf19_MPAGE + 1
+        if($vf19_MPAGE -ge $vf19_pagecount){
+            $Global:vf19_MPAGE = 0
         }
         splashPage
         chooseMod
