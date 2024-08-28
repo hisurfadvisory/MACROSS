@@ -76,7 +76,7 @@ Within the core\py_classes folder is a folder called garbage_io, where your pyth
 
 After you've entered the default configuration, you'll be asked if you want to use access control. In an active-directory environment, assuming your SOC analysts have different tiers of permissions, you can enter the group-policy names that you want MACROSS to identify for allowing or denying execution of scripts. You can enter up to 3 group-policy names, the first for tier1 analysts/investigators, then tier2, and tier3. Alternatively, you can supply text files with usernames for each tier to achieve the same result. *If you skip this configuration, MACROSS will allow everybody to execute any tool.*
 
-Once your config file is generated, MACROSS will exit. Move config.conf (and analyst.conf if you created one) from the root MACROSS folder to the location specified in MACROSS.ps1 line 189 (again, by default it is the MACROSS\core folder), then launch MACROSS again. Congrats, you're ready to go! Any custom scripts you drop into the modules folder will become available in the menu.
+Once your config file is generated, MACROSS will exit. Move config.conf (and analyst.conf if you created one) from the root MACROSS folder to the location specified in MACROSS.ps1 line 195 (again, by default it is the MACROSS\core folder), then launch MACROSS again. Congrats, you're ready to go! Any custom scripts you drop into the modules folder will become available in the menu.
 
 If you need to change or add more configurations, type "config" into the main menu and follow the instructions. A new configuration file will be generated with your changes (you should backup the old one, but remember that if you changed the admin password, the old file will still be encrypted with your old password*!).
 
@@ -84,7 +84,7 @@ If you need to change or add more configurations, type "config" into the main me
 
 
 <b><u>MANUAL CONFIGURATION CHANGES:</u></b><br>
-MACROSS.ps1 line 189 -- In this section, you can change the location for the config.conf file (the default is your local core folder). The access controls work best if you can place this file in a centralized location reachable by your SOC teams, instead of having copies installed to each user's core folder.
+MACROSS.ps1 line 195 -- In this section, you can change the location for the config.conf file (the default is your local core folder). The access controls work best if you can place this file in a centralized location reachable by your SOC teams, instead of having copies installed to each user's core folder.
 
 display.ps1 line 800 -- You can add checks for MACROSS to determine if specific programs are installed that your automations can use. Just copy line 799, which is checking for MS Excel. (The MACROSS function "sheetz" can create excel spreadsheets for you)
 
