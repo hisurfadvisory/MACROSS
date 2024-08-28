@@ -1,6 +1,6 @@
 #_sdf1 Windows Event ID reference
 #_ver 1.0
-#_class user,windows eventID reference,powershell,HiSurfAdvisory,1,hashtable
+#_class 0,user,windows eventID reference,powershell,HiSurfAdvisory,1,hashtable
 
 <# 
     GUBABA is an offline index of Windows Event IDs. You can perform manual
@@ -22,16 +22,28 @@
 #>
 
 
-## Accept values from other scripts
-param(
-    [Parameter(position = 0)]
-    [string]$PYCALL,
-    [Parameter(position = 1)]
-    [string]$dyrl_gub_TABLE,
-    [Parameter(position = 2)]
-    $DECULTURE
-)
 
+## If you want your powershell scripts to by callable by MACROSS python scripts,
+## Copy-Paste this check anf make use o f th globaal vars it sets.
+param(
+    [string]$pythonsrc=$null
+)
+if($pythonsrc){
+    $Script:ErrorActionPreference = 'SilentlyContinue'
+    $p_ = @(); $b_ = @{}
+    $pythonsrc -Split '~' | %{$p_ += $_}
+    $PYCALL = $p_[0]; $d_ = $env:MACROSS -Split ';'
+    $env:MPOD -Split ';' | %{$b_.Add($($_ -Split ':')[0],$($_ -Split ':')[1])}
+    $Global:vf19_TOOLSROOT = $d_[0]; $Global:vf19_TOOLSDIR = $d_[1]; $Global:vf19_DTOP = $d_[2]
+    $Global:vf19_GBIO = "$vf19_TOOLSROOT\core\py_classes\garbage_io"; $Global:vf19_MPOD = $b_
+    1..3 | %{$core = $p_[$_]; . "$vf19_TOOLSROOT\core\$core"}
+    $Global:PROTOFILE = "$vf19_GBIO\PROTOCULTURE.eod"
+    $Global:PROTOCULTURE = $((Get-Content $PROTOFILE | ConvertFrom-Json)."$PYCALL".target)
+
+    ## If you write a script that can accept a value in addition to (or instead of) $PROTOCULTURE,
+    ## then add a line like this:
+    #  if($p_[4]){ $optional_var = $p_[4] }
+}
 
 ## Gubaba!
 if( ! $PYCALL -and ! $CALLER ){
@@ -85,15 +97,13 @@ if( $HELP ){
     }
     Write-Host -f YELLOW "
     
-    A quick offline reference for researching Windows Events.
-    It includes IDs for Windows, SQL server, Sysmon, Exchange,
-    and Sharepoint.
+    GUBABA is a quick offline reference for researching Windows Events.
+    It includes IDs for Windows, SQL server, Sysmon, Exchange, and Sharepoint.
 
     You can search by keywords or ID numbers. Example:
     
-    Find an ID number for events that have to do with the user
-    account changes, then search your logs for that ID to begin
-    your threat-hunting.
+    Find an ID number for events that have to do with the user account changes,
+    then search your logs for that ID to begin your threat-hunting.
 
     Hit ENTER to continue.
     "
@@ -133,7 +143,7 @@ function idLookup($1){
                     }
                     else{
                         screenResults $type "Event $1" $a
-                        screenResults 'endr'
+                        screenResults -e
                     }
                 }
             }
@@ -174,7 +184,7 @@ function idLookup($1){
                     
                 }
                 if($match){
-                    $matched_event = [string]$type + ' Event: ' + $a
+                    $matched_event = [string]$type + ' Event || ' + $a
                     $c.Add($b,$matched_event)
                 }
             }
@@ -191,7 +201,7 @@ function idLookup($1){
                 $eiv = $c[$_]
                 screenResults $_ $eiv
             }
-            screenResults 'endr'
+            screenResults -e
         }
     
     }
@@ -209,12 +219,12 @@ $dyrl_gub_VALIDWD = [regex]"^[a-zA-Z][a-zA-Z0-9 ,-]+"
 
 
 if( $PYCALL ){
+    $Global:CALLER = $PYCALL
+    getThis $vf19_MPOD['enr']; $dyrl_gub_TABLE = "$vf19_READ\gubaba.json"
     if( ! (Test-Path "$dyrl_gub_TABLE") ){
         Read-Host '  Error... you did not pass me a file location to build my reference table.'
+        slp 2
         Exit
-    }
-    else{
-        $CALLER = $PYCALL
     }
 }
 elseif( Test-Path "$vf19_TABLES\gubaba.json" ){  ## Check if there is an alternate path to the resources folder
@@ -235,9 +245,6 @@ else{
 if($PROTOCULTURE){
     $dyrl_gub_QUERY = $PROTOCULTURE
 }
-elseif($DECULTURE){
-    $dyrl_gub_QUERY = $DECULTURE
-}
 
 
     ## Collect the list of Event IDs into a lookup table
@@ -247,9 +254,13 @@ elseif($DECULTURE){
 
 ## Accept ID or descriptor from other MACROSS tools to perform automatic lookups
 if( $dyrl_gub_QUERY ){
-
     ## Make sure your script knows it is getting back a hashtable result!
-    Return $(idLookup $dyrl_gub_QUERY) 
+    if($PYCALL){
+        pyCross GUBABA $(idLookup $dyrl_gub_QUERY)
+    }
+    else{
+        Return $(idLookup $dyrl_gub_QUERY)
+    }
 }
 else{
     if( ! $PYCALL ){  ## No python, go ahead and throw the ascii up
