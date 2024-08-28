@@ -310,10 +310,10 @@ function showAccounts($1,$2,$3){
     $1 | %{
         $U = $_
         if($computer){
-            screenResultsAlt $([string]$i + '. ' + $U.Name) 'SYSTEM' $U.OS
+            screenResultsAlt -h $([string]$i + '. ' + $U.Name) -k 'SYSTEM' -v $U.OS
         }
         else{
-            screenResultsAlt $([string]$i + '. ' + $U.displayName) 'ACCOUNT' $U.samAccountName
+            screenResultsAlt -h $([string]$i + '. ' + $U.displayName) -k 'ACCOUNT' -v $U.samAccountName
         }
         screenResultsAlt -k 'DESCRIPTION' -v $U.description
         $2 | %{
@@ -360,7 +360,7 @@ function showAccounts($1,$2,$3){
             ########   MODIFY THIS BLOCK IF YOU USE A SPECIFIC EDR SOLUTION
             if((TL $z).valtype -eq 'EDR'){
                 if($dyrl_sn_EDRQ -and $dyrl_sn_computer){
-                    $Global:PROTOCULTURE = $focus.name -replace "\..+"            ## Remove domain from local FQDN
+                    $Global:PROTOCULTURE = $focus.name -replace "\..+"            ## Remove domain from local hostname
                     $qtype = 'hlkup'                                              ## Tell GERWALK to search by hostname
                 }
                 elseif($dyrl_sn_EDRQ){
@@ -374,7 +374,7 @@ function showAccounts($1,$2,$3){
                     $Global:PROTOCULTURE = $focus.samAccountName -replace "\\\w"
                 }
                 else{
-                    $Global:PROTOCULTURE = $focus.name -replace "\..+"   ## Remove domain from FQDN
+                    $Global:PROTOCULTURE = $focus.name -replace "\..+"   ## Remove domain from hostname
                 }
                 $ar = collab $z 'NOME'
             }
