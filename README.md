@@ -1,6 +1,6 @@
 
 
-TL;DR -- A "no-command-line-necessary" powershell menu to link multiple automation scripts together for blue-team investigators. When you run MACROSS for the first time, select the HIKARU demo to get a quick walkthru on configuring your defaults. From the main menu, you can type "help" and any tool number to get that tool's help page, or type "help dev" to get the usage and descriptions of MACROSS functions your scripts can make use of.<br><br>
+TL;DR -- A "no-command-line-necessary" powershell menu to link multiple automation scripts together for blue-team investigators. When you run MACROSS for the first time, select the HIKARU demo to get a quick walkthru on how to make scripts talk to each other. From the main menu, you can type "help" and any tool number to get that tool's help page, or type "help dev" to get the usage and descriptions of MACROSS functions your scripts can make use of.<br><br>
 
 <img src="https://raw.githubusercontent.com/hisurfadvisory/MACROSS/main/mscr.PNG">
 
@@ -28,11 +28,11 @@ See the full README inside the core folder for function details, but here's the 
 <br><br>
 &emsp;-MACROSS provides several built-in functions to make your life easy, like printing your outputs to screen in pretty tables, writing reports to colorized excel spreadsheets, performing basic decoding tasks, and showing lists of stale reports that may need to be deleted from your report folders. The secondary reason for many of these functions is that by using them, you tie them directly to MACROSS: for scripts that may be able to gather sensitive info, if someone attempts to execute them outside of MACROSS and its (admittedly basic) access controls, the script will fail. See the "core/utility.ps1" file for details on these and more, or type "debug" into the main menu.
 <br><br>
-&emsp;-Core functions are kept in scripts within the "core" folder, and you're unlikely to need to modify any of these.
+&emsp;-Core functions are kept in scripts within the "core" folder, and you're unlikely to need to modify any of these. But they contain comments to help to tweak things if you want to.
 <br><br>
 &emsp;-Files that can be used for enrichment across multiple scripts (xml, json, txt) are kept in the "resources" folder. This folder is currently in the MACROSS root folder, but can be placed anywhere you want. The MACROSS configuration wizard will ask you for the folder path to your chosen location.
 <br><br>
-&emsp;-There are several global variables used within MACROSS that your scripts will need to recognize. These are explained in the core folder's README, and the HIKARU demo script.
+&emsp;-There are several global variables used within MACROSS that your scripts will need to recognize. These are explained in the core folder's README.
 <br><br>
 &emsp;-If you want your script to be part of MACROSS, it *requires* special tags in the first 3 lines of your script (even the python scripts). These lines are read by MACROSS and used to classify each script by its language and what it does.
 <br><br>
