@@ -1,14 +1,12 @@
 #_sdf1 String-search documents
 #_ver 1.5
-#_class user,document string search,powershell,HiSurfAdvisory,1,onscreen
+#_class 0,user,document string search,powershell,HiSurfAdvisory,1,onscreen
 
 <#
     Author: HiSurfAdvisory
     ELINT-SEEKER (Automated String Search): Part of the MACROSS blue-team
     automation framework
     
-    -- *REQUIRES* being launched from the MACROSS console! --
-	
     Uses Get-Content and/or .NET methods to search files for user-supplied
     keywords; automatically uncompresses MS Office documents to scan XML files
 	and detect vbs macros.
@@ -17,15 +15,17 @@
     was generated beforehand (this script was created alongside KONIG.ps1
     for that purpose).
 	
+    ================= Note on PDFs =================
     This script does NOT incorporate iTextSharp for scanning PDF files
-    at this time, instead it uses Didier Stevens' pdf-parser (see the 
-	pdfScan function later in this script for details.)
+    at this time, instead it uses Didier Stevens' pdf-parser python
+    script (see the pdfScan function later in this script for details.)
 	
 	Many customer networks I investigate do not have access to whatever
     3rd-party utilities that make life easy, so MACROSS tries to work
-    with what's available or what can be copy-pasted rather than
+    with what's available, or what can be copy-pasted rather than
     installed.
 	
+    ================= Note on unused settings =================
     There are a few variables in this script that are not used by
     default. They exist for infosec purposes. You can tweak this script
     to set them based on inputs from your own scripts:
@@ -654,12 +654,12 @@ if($MONTY){
                         cls
                         $searches++
                         w '
-        Quick recon failed for:' 'g'
+        Quick recon failed for:' g
             w "        $($1 -replace ".*\\")" 'y'
-            w '        Increasing scanners...' 'g'
+            w '        Increasing scanners...' g
                         w "
                         
-            Scanners deployed: $([string]$searches)" 'g'
+            Scanners deployed: $([string]$searches)" g
                         slp 1
                     }
                     
@@ -759,10 +759,10 @@ function setCase($1,$2){
         $2 = '(' + $($2 -replace ",\s+",'|' -replace ",",'|') + ')'
     }
     if( $dyrl_eli_CASE -eq 'y' ){
-        $a = Get-Content $1 | where{$_ -cMatch $2} 
+        $a = Get-Content $1 | where{$_ -cMatch $2} #| Select-String -CaseSensitive $2
     }
     else{
-        $a = Get-Content $1 | where{$_ -Match $2} 
+        $a = Get-Content $1 | where{$_ -Match $2} #| Select-String $2
     }
     if( $a ){
         $Script:dyrl_eli_CONFIRMED++
@@ -862,8 +862,8 @@ function fileCopy(){
     else{
     ##  Skip this notice if string search wasn't needed
     if( ! $dyrl_eli_JUSTCOPY ){
-        w ' Large strings are truncated for readability, and decoding PDFs can introduce weirdness, so ' 'g'
-        w ' you may not see your exact match above (but the match does exist).' 'g'
+        w ' Large strings are truncated for readability, and decoding PDFs can introduce weirdness, so ' g
+        w ' you may not see your exact match above (but the match does exist).' g
         Write-Host -f GREEN ' Do you want to copy any of these files to your desktop for further investigation (y/n)?  ' -NoNewline;
         $COPYIT = Read-Host
     }
@@ -884,11 +884,11 @@ function fileCopy(){
                 $COPYFROM = $dyrl_eli_SENSOR2[$Z]
                 $dyrl_eli_j = $COPYFROM -replace "^.*\\"
 
-                w ' Copying...' 'g'
+                w ' Copying...' g
                 slp 2
 
                 try{
-                    Copy-Item -Path "$COPYFROM" "$vf19_DEFAULTPATH\$dyrl_eli_j"
+                    Copy-Item -Path "$COPYFROM" "$vf19_DTOP\$dyrl_eli_j"
                 }
                 catch{
                     $dyrl_eli_FAIL = $true
@@ -948,7 +948,7 @@ if( ! $RESULTFILE -and ! $PROTOCULTURE){
     $dyrl_eli_DELTA = $null
     splashPage 'img'
     ''
-    w ' ELINTS can search multiple files if you have a list of filepaths in a txt' 'g'
+    w ' ELINTS can search multiple files if you have a list of filepaths in a txt' g
     Write-Host -f GREEN ' file. Do you have a txt? Type ' -NoNewLine;
     Write-Host -f YELLOW 'y' -NoNewLine;
     Write-Host -f GREEN ', ' -NoNewline;
@@ -1045,7 +1045,7 @@ do{
             Write-Host -f GREEN 'needs to search thru ' -NoNewLine;
             Write-Host -f CYAN "$dyrl_eli_RFNAME" -NoNewLine;
             w '...
-            ' 'g'
+            ' g
         }
         else{
             $dyrl_eli_FLIST = Get-Content $dyrl_eli_ULIST   ## Set a user-supplied list
@@ -1114,7 +1114,7 @@ do{
             $dyrl_eli_intelpkg = $null
         }
         else{
-            $dyrl_eli_intelpkg = "$vf19_DEFAULTPATH\strings-found.txt"  ## Output all results to this file
+            $dyrl_eli_intelpkg = "$vf19_DTOP\strings-found.txt"  ## Output all results to this file
         }
 
 
@@ -1122,7 +1122,7 @@ do{
         w '======         ~~ PDF SEARCHES ARE *ALWAYS* CASE-SENSITIVE ~~       ======' 'y' 'bl'
         w '======           ~~ REGEX IS UNRELIABLE FOR PDF SEARCHES ~~         ======' 'y' 'bl'
         Write-Host -f GREEN ' Type "regex " (without quotes) followed by your expression to match a'
-        Write-Host -f GREEN ' pattern, otherwise just enter your string or comma-separated keywords: '
+        Write-Host -f GREEN ' pattern, otherwise just enter your string or comma-separated keywords:'
         Write-Host '  >  ' -NoNewLine; 
         $dyrl_eli_TARGET = Read-Host 
 
@@ -1140,6 +1140,7 @@ do{
                 -replace '\]','\]' `
                 -replace '\{'.'\{' `
                 -replace '\}','\}'
+            
             while($dyrl_eli_CASE -notMatch "^(y|n)$"){
                 Write-Host -f GREEN ' Does case matter for non-PDFs? (' -NoNewline;
                 Write-Host -f YELLOW 'y' -NoNewLine;
@@ -1192,7 +1193,7 @@ do{
             $dyrl_eli_COLLECTIONS = @{}
             $dyrl_eli_NUMF = ($dyrl_eli_FLIST).count   ## How many files are in the list supplied?
             w " Scanning $dyrl_eli_NUMF files...
-            " 'g'
+            " g
             slp 2
             foreach( $dyrl_eli_RADARCONTACT in $dyrl_eli_FLIST ){
                 ## Cut the path from the filename for display
