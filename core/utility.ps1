@@ -1,63 +1,75 @@
 ## MACROSS shared utilities
 
-<###############################################################
-   Unlisted MACROSS menu option --
-   Change the message output for errors so you can 
-   troubleshoot scripts. Type 'debug' in the MACROSS
-   menu to call this function; enter a command to test your scripts or
-   functions. Example:
-        debug getThis $dyrl_MYVARIABLE; $vf19_READ
-        ^^ This will decode some base64 value and display it onscreen for you
-        debug
-        ^^ This will just open the menu that lets you choose whether to show or
-            hide error messages
+## These values can only be set after all initializations have finished
+function finalSet(){   
+    getThis $vf19_MPOD['enr']
+    battroid -n vf19_TABLES -v $vf19_READ
+    getThis $vf19_MPOD['log']
+    battroid -n vf19_LOG -v $vf19_READ
+    getThis $vf19_MPOD['rep']
+    battroid -n vf19_REPOCORE -v $vf19_READ
+    if(Test-Path $vf19_REPOCORE){
+        ## If you want to control tier-level access, change the $vf19_REPOCORE location and store  
+        ## master copies of your tools there. That way, MACROSS will be able to auto-download tier- 
+        ## appropriate tools to each analyst. You can use the configuration wizard to store the
+        ## location of your master copies, and modify the vf19_REPOTOOLS line below using the same 
+        ## method seen above:
 
-    Add keywords to the "blacklist" regex variable if you want to prevent users from
-    using the debug function to perform actions you've access-controlled, and then
-    move this blacklist somewhere else that users can't read/modify it.
+        ##     getThis $vf19_MPOD[your_key]; battroid -n vf19_REPOTOOLS -v $vf19_READ
+
+        battroid -n vf19_REPOTOOLS -v "$vf19_REPOCORE\modules"
+        $vf19_VERSIONING = $true
+    }
+}
+
+<###############################################################
+    Unlisted MACROSS menu option --
+    Change the message output for errors so you can troubleshoot scripts, and
+    view helpfiles for all the core MACROSS functions.
+   
+    Type 'debug' in the MACROSS menu to launch this debugger. From here,
+    you can access all MACROSS resources and run test commands to develop
+    your MACROSS scripts.
+
+    Use the MACROSS config wizard to add terms or patterns to the blacklist
+    regex key (bl0). All users have access to the debug menu, but any commands 
+    they run that match the blacklist will require the MACROSS admin password.
+
 ################################################################>
-function debugMacross($1){
-    splashPage
-    ''
-    Write-Host -f YELLOW '                        MACROSS DEBUG MODE
-    '
+function debugMacross($1,[switch]$continue=$true){
+    if($continue){
+        splashPage
+        ''
+        w '                        MACROSS DEBUG MODE
+        ' y
+    }
     macrossHelp 'show'
     ''
-    $blacklist = [regex]".*(usr | (get-variable \*|gv \*)|your keywerdz here|other keywerdz|more keywerdz).*"
+    #getThis -h $(setCC -b); getThis $vf19_READ; $rst = [regex]$vf19_READ
+    $rst = $(setCC -b); getThis IFRoYXQgaXMgYSBwcml2aWxlZ2VkIGNvbW1hbmQu; $bm = $vf19_READ
+    
     if($1){
-        if($1 -notMatch $blacklist){
-            if($1 -eq 'help'){
-                macrossHelp 'dev'
-                splashPage
-                macrossHelp 'show'
-            }
-            elseif($1 -Like "help *"){
-                macrossHelp $($1 -replace "help ")
-                splashPage
-                macrossHelp 'show'
-            }
-            else{
-                $1 = $1 -replace "^debug "  ## I always mess up hitting the "up" key to repeat
-                $cmd = [scriptblock]::Create("$1")
-                . $cmd
-            }
+        if($1 -Match $rst -and ! $ad){w "$bm`n`n" 'r' 'bl'; $ad = setConfig -a}
+        if(($ad -eq $vf19_GPOD.Item1) -or ($1 -notMatch $rst)){
+            startUp;if($1 -eq 'help'){macrossHelp 'dev';macrossHelp 'show'}
+            elseif($1 -Like "help *"){macrossHelp $($1 -replace "help ");macrossHelp 'show'}
+            else{$1=$1 -replace "^debug ";$cmd = [scriptblock]::Create("$1");. $cmd};varCleanup
         }
     
-            Write-Host -f GREEN "
-    Type another command for testing, or hit ENTER to exit debugging:
-    "
+            w "
+ Type another command for testing, `"d`" to load the debugging menu, or hit ENTER to close:
+    " g
             $response = Read-Host
-            if($response -ne ''){
-                debugMacross $response
-            }
+            if($response -eq 'd'){ rv 1,response; debugMacross -c }
+            elseif($response -ne ''){ debugMacross $response -c }
     }
     else{
         $e = @('SilentlyContinue','Continue','Inquire')
         $c = $ErrorActionPreference
         
-        Write-Host -f CYAN "
-            Current error display:  $c"
-        Write-Host -f GREEN '
+        w "
+            Current error display:  $c" c
+        w '
 
             Which error level do you want to set (1-3)?
                 1. Suppress all error messages
@@ -65,13 +77,13 @@ function debugMacross($1){
                 3. Pause after each error message with a choice to continue
                 4. Cancel
             
-            OR Type "logs" to review MACROSS log files,'
-            if($MONTY){ Write-Host -f GREEN '
-            OR Type "python" to open a MACROSS python session for testing,'}
-            Write-Host -f GREEN '
+            OR Type "logs" to review MACROSS log files,' g
+            if($MONTY){ w '
+            OR Type "python" to open a MACROSS python session for testing,' g}
+            w '
             OR Enter any command to begin testing/debugging within powershell
 
-            >  ' -NoNewline;
+            >  ' g -i
         $z = Read-Host
         
         if($z -ne 'logs'){
@@ -79,8 +91,10 @@ function debugMacross($1){
                 Return
             }
             elseif($z -eq 'python'){
-                $pyATTS = pyATTS; cls
-                py "$vf19_TOOLSROOT\core\pydev.py" $USR $pyATTS $vf19_DEFAULTPATH $vf19_PYPOD $N_ $vf19_pylib $vf19_TOOLSROOT
+                startUp; $pyATTS = pyATTS; pyENV; cls
+                #py "$vf19_TOOLSROOT\core\pydev.py" $USR $pyATTS $vf19_DTOP $vf19_PYPOD $N_[0] $vf19_pylib $vf19_TOOLSROOT
+                py "$vf19_TOOLSROOT\core\pydev.py" $vf19_pylib
+                varCleanup
             }
             elseif($z -notIn 1..3){
                 cls
@@ -90,47 +104,50 @@ function debugMacross($1){
                 $Script:ErrorActionPreference = $e[$([int]$z - 1)]
                 splashPage
                 $c = $ErrorActionPreference
-                Write-Host -f CYAN "
-                Error display is now set to:  $c"
+                w "
+                Error display is now set to:  $c" c
                 slp 2
             }
         }
         else{
             $la = @()
+            $lc = $((Get-ChildItem $vf19_LOG).count)
             (Get-ChildItem $vf19_LOG).Name | Sort -Descending | %{
                 $la += $_
-                $ln++
             }
             splashPage
             ''
             while( $z -ne 'q' ){
-                $ln = 0
+                $ln = 1
                 $la | %{
-                    screenResults "$ln" "$($la[$ln])"
+                    screenResults "$ln" "$($la[$ln-1])"
                     $ln++
                 }
-                screenResults 'red~                  SELECT A FILE ABOVE ("q" to quit):'
-                screenResults 'endr'
-                Write-Host -f GREEN ' Log file >  ' -NoNewline;
+                screenResults "y~    ($lc logs)             SELECT A FILE # ABOVE (`"q`" to quit):"
+                screenResults -e
+                w ' Log file >  ' g -i
                 $z = Read-Host
 
-                if($la[$z]){
-                    $lf = $la[$z]
-                    foreach($msg in Get-Content "$vf19_LOG\$lf"){
-                        $msg = $msg -Split('\|\|')
+                if($la[$z-1]){
+                    $mi=1
+                    foreach($msg in (Get-Content "$vf19_LOG\$($la[$z-1])")){
+                        $msg = $msg -Split "`t"
                         if($msg[1] -eq 'ERROR'){
-                            $level = 'derpy    ' + $msg[1]
+                            $level = "r~MSG $mi`: " + "$($msg[1])"
                         }
                         else{
-                            $level = "    $($msg[1])"
+                            $level = "MSG $mi`: $($msg[1])"
                         }
-                        screenResultsAlt "$($msg[0] + '  ' + $lf)" "$level" "$($msg[2])"
-                        if( $msg[3] ){
-                            screenResultsAlt 'next' "$($msg[3])"
+                        screenResults $("$level  $($msg[0])")
+                        if($msg[3]){
+                            screenResults "w~$($msg[2])" "$($msg[3])"
                         }
-                        screenResultsAlt 'endr'
+                        elseif($msg[2]){
+                            screenResults "w~$($msg[2])"
+                        }
+                        $mi++
                     }
-                    screenResultsAlt 'endr'
+                    screenResults -e
                     ''
                     Write-Host -f GREEN '  Hit ENTER to continue.
                     '
@@ -211,7 +228,7 @@ function decodeSomething($1){
         >  " -NoNewline; $Z = Read-Host
         if($Z -Match "^hex"){
             $Z = $Z -replace "^hex ?",''
-            getThis $Z 1; $Z = $vf19_READ
+            getThis $Z -h; $Z = $vf19_READ
         }
         elseif($Z -Match "^b64"){
             $Z = $Z -replace "^b64 ?",''
@@ -234,7 +251,7 @@ function decodeSomething($1){
         Enter the string to base64-encode, or 'c' to cancel:
         >  " -NoNewline; $Z = Read-Host 
 
-        $Z = "$resp $(getThis $Z 0)"
+        $Z = "$resp $(getThis $Z -e)"
     }
 
     if($Z){
@@ -253,7 +270,7 @@ function decodeSomething($1){
 }
 
 ## These vars & functions need to get loaded when python calls powershell scripts without MACROSS values
-if( ! $vf19_TOOLSROOT){
+if( ! $vf19_TOOLSROOT ){
     $vf19_TOOLSROOT = '..'
     $Global:vf19_TOOLSDIR = "$vf19_TOOLSROOT\modules\"
     . "$vf19_TOOLSROOT\core\display.ps1"
@@ -261,70 +278,63 @@ if( ! $vf19_TOOLSROOT){
 }
 
 
-## This is a temp-file dump so MACROSS can hold your script outputs for both powershell and python to share as needed
-## See the "pyCross" function in utility.ps1
-$Global:vf19_GBIO = "$vf19_TOOLSROOT\core\py_classes\garbage_io"
 
-
-
-function getThis($1,$2){
+function getThis(){
     <#
     ||longhelp||
-    Deobfuscate your encoded value ($1), plaintext gets saved as $vf19_READ
+    Deobfuscate your encoded value; plaintext gets saved as $vf19_READ
             OR
-    Encode your plaintext value ($1) to base64 by making your second param 0 (zero)
+    Encode your plaintext value to base64.
     
-    -DO NOT USE ENCODING TO HIDE USERNAMES/PASSWORDS/KEYS or other sensitive info! This
-    is only intended to prevent regular users from seeing your filepaths/URLs, etc.,
-    and avoiding automated keyword scanners.
+    -DO NOT USE ENCODING TO HIDE USERNAMES/PASSWORDS/KEYS or other sensitive info!
     
     The reason it always writes to $vf19_READ instead of just returning a value to your script
     is to ensure that decoded plaintext gets wiped from memory every time the MACROSS menu loads.
-    Yes, I'm one of those paranoid types, but I can only control my code, not yours!
-    
-    This function can also be used by your scripts for normal decoding tasks, it isn't
-    limited to MACROSS' startup.
 
     ||examples||
-    -You MUST set your new variable to $vf19_READ **before** this function gets called again:
+    -$vf19_READ gets overwritten every time this function is called. If you require the plaintext 
+    as a persistent value, You MUST set $vf19_READ to a new variable:
 
         getThis $base64string
         $plaintext = $vf19_READ
 
-    -To decode a hexadecimal string, call this function with "1" as a second parameter (and
-      your hex string can include spaces and/or "0x" tags, or neither):
+    -To decode a hexadecimal string, call this function with -h (and your hex string can include 
+    spaces and/or "0x" tags, or neither):
 
-        getThis "0x746869732069 730x20 61 200x740x650x7374" 1
+        getThis "0x746869732069 730x20 61 200x740x650x7374" -h
         $plaintext = $vf19_READ
 
-    -If you want to ENCODE plaintext to Base64, call this function with your plaintext as the 
-    first parameter, and 0 as the second parameter. This mode does NOT write to $vf19_READ!
+    -If you want to ENCODE plaintext, call this function with your plaintext as the first parameter 
+    using the -e option. Include -h if you want hexadecimal output. This mode does NOT write to $vf19_READ!
         
-        $encoded_variable = getThis $plaintext 0
+        $b64 = getThis $plaintext -e
+        $hex = getThis $plaintext -e -h
      
     #>
-    
+    param(
+        $v,
+        [switch]$h=$false,
+        [switch]$e=$false
+    )
+
     ## Start fresh
     $Global:vf19_READ = $null
 
-    if( $2 -eq 1 ){
-        $a = $1 -replace "0x"
-        $a = $a -replace " "
-        $a = $(-join ($a -split '(..)' | ? { $_ } | % { [char][convert]::ToUInt32($_,16) }))
-    }
-    elseif( $2 -eq 0 ){
-        $a = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($1))
-    }
-    else{
-        $a = [Text.Encoding]::Utf8.GetString([Convert]::FromBase64String($1))
-    }
-    
-    if( $2 -eq 0 ){
+    if($e){
+        if($h){$a = ([System.Text.Encoding]::UTF8.GetBytes($v) | foreach{$_.ToString("X2")}) -join ''}
+        else{$a = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($v))}
         Return $a
     }
-    else{
-        $Global:vf19_READ = $a
+    elseif( $h ){
+        $a = $v -replace "0x"; $a = $a -replace " "
+        $a = $(-join ($a -Split '(..)' | %{[char][convert]::ToUInt32($_,16)}))
     }
+    else{
+        $a = [Text.Encoding]::Utf8.GetString([Convert]::FromBase64String($v))
+    }
+    
+    $Global:vf19_READ = $a
+    
 }
 
 
@@ -352,7 +362,7 @@ function chr($1){
     Convert a decimal value into its string format
     
     ||examples||
-    Convert 65 back into the string char 'A':
+    Convert decimal 65 into the string char 'A':
     
         chr 65
         
@@ -375,8 +385,10 @@ function errLog(){
     These logs can be viewed from MACROSS' debug screen.
     
     ||examples||
-    errLog 'WARN' "$USR/$SCRIPT failed to perform $TASK"
-    errLog 'INFO' 'Something else happened blah blah.' $HOWMANY
+
+    errLog 'WARN' "$SCRIPT failed to perform $TASK"
+    errLog 'INFO' $USR 'Accessed API for blah.'
+
     #>
     Param(
         [Parameter(Mandatory=$true)]
@@ -393,62 +405,19 @@ function errLog(){
     
     $d = $(Get-Date -Format 'yyyy-MM-dd')
     $t = $(Get-Date -Format 'yyyy-MM-dd hh:mm:ss')
-    [string]$log = $($d) + '.txt'               ## Create the log filename
-    [string]$msg = '[' + $t + ']'               ## Begin the log msg with the timestamp
-
-    if($1 -eq 'read'){
-        if($2){
-            $line = gc -Raw "$vf19_LOG\$($2 + '.txt')"
-            if( ! $line ){
-                Write-Host -f CYAN '
-        That file does not exist!
-                '
-            }
-            else{
-                foreach($l in $line){
-                    $msgs = $l -Split('\|\|')
-                    if($msgs[1] -eq 'ERROR'){
-                        $level = 'derpy' + $msgs[1]
-                    }
-                    else{
-                        $level = $msgs[1]
-                    }
-                    $c = $msgs.count
-                    if($c -eq 4){
-                        screenResults $level
-                        screenResults $msgs[0] $msgs[2] $msgs[3]
-                    }
-                    elseif($c -eq 3){
-                        screenResults $level
-                        screenResults $msgs[0] $msgs[2]
-                    }
-                    elseif($c -eq 2){
-                        screenResults $level
-                        screenResults $msgs[0]
-                    }
-                }
-            }
-        }
-        else{
-            $latest = (gci "$vf19_LOG\*.txt" | Sort -Descending)[0]
-            gc -Raw $latest
-        }
-        Write-Host -f GREEN '
-        Hit ENTER to exit.
-        '
-        Read-Host
-    }
+    [string]$log = $($d) + '.log'                 ## Create the log filename
+    [string]$msg = "$t"                           ## Begin the log msg with the timestamp
 
     if($3){
-        $msg = $msg + '||' +$1 + '||' + $2 + '||' + $3
+        $msg = $msg + "`t" +$1 + "`t" + $2 + "`t" + $3
     }
     elseif($2){
-        $msg = $msg + '||' +$1 + '||' + $2
+        $msg = $msg + "`t" +$1 + "`t" + $2
     }
     else{
-        $msg = $msg + '||' +$1
+        $msg = $msg + "`t" +$1
     }
-
+    
     if(Test-Path -Path "$vf19_LOG\$log"){
         $msg | Out-File "$vf19_LOG\$log" -Append
     }
@@ -459,22 +428,23 @@ function errLog(){
 }
 
 ## Provide additional functions from the main menu
-## easterEgg and clearProto are only ever used here.
 function extras($1){
-    ## Run through all the available splash screens. For funsies.
+    ## Cycle through all the available splash screens. For funsies.
     function easterEgg(){
-        1..10 | %{transitionSplash $_ 2}
+        0..11 | %{transitionSplash $_ 2}
     }
     ## Clear out the global PROTOCULTURE value before the next investigation
     function clearProto(){
         cls
-        w "PROTOCULTURE = " 'g' 'nl'
-        w "$PROTOCULTURE" 'bl' 'w'
+        screenResults "PROTOCULTURE = " "$PROTOCULTURE"
+        screenResults -e
         ''
         w 'Hit ENTER to clear it.' 'g'
         Read-Host; Remove-Variable -Force PROTOCULTURE -Scope Global
+        if(Test-Path $vf19_PROTO){ Remove-Item -Path $vf19_PROTO }
     }
     $ex = @{
+        'config'='splashPage;setConfig -u'
         'dec'='splashPage;decodeSomething 0'
         'defs'='cls;formatDefaults'
         'enc'='splashPage;decodeSomething 1'
@@ -487,7 +457,7 @@ function extras($1){
 
     . $([scriptblock]::Create("$($ex[$1])"))
 
-    $Global:hk_Z = $null
+    $Global:vf19_Z = $null
     Return
 }
 
@@ -495,31 +465,28 @@ function extras($1){
 function pyCross(){
 <#
     ||longhelp||
-    #######################################################
-    IMPORTANT: for powershell scripts you write that can respond to being launched from python, 
-    you should include this command where appropriate:
-    
-            . '..\core\utility.ps1'
-            
-    That will execute this script file, which will define most (not all) of the variables and 
-    functions MACROSS scripts are used to having access to.
-    #######################################################
-
     
     This function lets scripts write results to a file in the directory 
-    "MACROSS\core\py_classes\garbage_io"
+    
+        "MACROSS\core\py_classes\garbage_io\"
+
     so that python & powershell scripts can easily share the same investigation data during a 
     MACROSS session. Eventually MACROSS will improve the way it handles this.
     
     The .eod files are encoded in utf8, so plan accordingly.
   
     REQUIRED:  Your script name, as well as the value you want written to that file ($val1). 
-    The default file will be PROTOCULTURE.eod, written as a json string:
+    The default file will be PROTOCULTURE.eod, written as a basic json string:
     
-        'YourScriptName' : { 'target':$value1, 'result': $value2 }
+        { 'YourScriptName' : { 'target': $value1, 'result': $value2 } }
         
     If you need something other than this format, you can provide an alternative filename as the 
     3rd parameter, and write whatever type of data your file is to that.
+
+    Originally, the PROTOCULTURE.eod file collected search values for all scripts during any
+    given MACROSS session, which is why it is in json format. But it made more sense to limit
+    this to a single result field, so this file simply gets overwritten with each use of pyCross, 
+    and no longer appends json items for every PROTOCULTURE search.
     
     If the PROTOCULTURE.eod file already exists, this function will check to see if the "result" 
     key contains a non-empty value. If so, it assumes this is a response from python to a query 
@@ -527,17 +494,18 @@ function pyCross(){
     
     If "result" is empty, pyCross then assumes you are responding to a python script's request, 
     and will write your $value to the "result" key of the json. Otherwise, $value gets written to 
-    the "target" key in a new PROTOCULTURE.eod file.
+    the "target" key in a new PROTOCULTURE.eod file. If your value is a hashtable or list, it will
+    be converted into a single large string dilineated by "@@".
     
     ||examples||
-    if( $python_called ){
+    if( $python_called -eq $true){
   
-        # Write the results of the python script's request
+        # Write the results of the python script's request to "PROTOCULTURE.eod"
         pyCross 'myScriptName' $value
   
-        # Or you can just write all the results the script found
-        foreach($line in $eval){
-            pyCross 'myScriptName' $line 'myResultFile'
+        # Or you can create a different file, "myResultFile.eod"
+        foreach($item in $list){
+            pyCross 'myScriptName' $item 'myResultFile'
         }
   
     }
@@ -554,33 +522,44 @@ function pyCross(){
         [Parameter(Mandatory)]
         [string]$caller,
         [Parameter(Mandatory)]
-        $val1,
+        $result,
         [string]$filenm
     )
     
-    $s = "$vf19_GBIO\PROTOCULTURE.eod"
-    
     if($filenm){
         $filenm = $filenm + '.eod'  ## Append custom extension
-        $val1 | Out-File -FilePath "$vf19_GBIO\$filenm" -Encoding UTF8 -Append  ## Write results to file
+        [IO.File]::WriteAllLines("$vf19_GBIO\$filenm",$result)
+        #$result | Out-File -FilePath "$vf19_GBIO\$filenm" -Encoding UTF8 -Append  ## Write results to file
         if(-not(Test-Path -Path "$vf19_GBIO\$filenm")){
             errLog 'ERROR' "$USR/$caller" "Failed pyCross write-to $filenm"
             w "r~ERROR! File did not write! "
             slp 3
         }
     }
-    elseif(Get-ChildItem -Path $s){
-        $p = Get-Content $s | ConvertFrom-Json
-        if($p.$((gc $s) -replace "^\W+" -replace "\W.+$").result -ne ''){
-            $PROTOCULTURE = $p.$((gc $s) -replace "^\W+" -replace "\W.+$").result
+    elseif(Test-Path -Path $PROTOFILE){
+        $p = Get-Content $PROTOFILE | ConvertFrom-Json
+        if($p.$((gc $PROTOFILE) -replace "^\W+" -replace "\W.+$").result -ne ''){
+            $PROTOCULTURE = $p.$((gc $PROTOFILE) -replace "^\W+" -replace "\W.+$").result
         }
         else{
-            $r = (Get-Content $s) -replace ".result.+:.+\}\]","'result':$val1}]"
-            Set-Content $s $r -Encoding UTF8
+            if($result.getType().Name -eq 'Hashtable'){
+                $h2s = ''; $result.keys | %{
+                    $h2s += $("$_" + ':' + "$($result[$_])" + '@@')
+                }
+                $result = $h2s -replace "@@$"
+            }
+            elseif($result.getType().Name -eq 'Array'){
+                $a2s = ''; $result | %{
+                    $a2s += "$_" + '@@'
+                }
+                $result = $a2s -replace "@@$"
+            }
+            $r = (Get-Content $PROTOFILE) -replace ".result.+:.+\}","`"result`":`"$result`"}}"
+            [IO.File]::WriteAllLines($PROTOFILE,$r) #Set-Content $PROTOFILE $r -Encoding UTF8
         }
     }
     else{
-        Set-Content $s "{'$caller':[{'target':$val1,'result':''}]}" -Encoding UTF8
+        [IO.File]::WriteAllLines($vf19_PROTO,"{'$caller':{'target':$result,'result':''}}")
     }
 }
 
@@ -634,13 +613,13 @@ function stringz($f=$(getFile),$noKeep=0){
             if( !($_ -cMatch "[^\x00-\x7F]")){
                 $n++
                 Write-Host "  Extracting line $n to macross-stringz.txt..."
-                $_ | Out-File "$vf19_DEFAULTPATH\macross-stringz.txt" -Append
+                $_ | Out-File "$vf19_DTOP\macross-stringz.txt" -Append
             }
         }
     }
-    Get-Content "$vf19_DEFAULTPATH\macross-stringz.txt"
+    Get-Content "$vf19_DTOP\macross-stringz.txt"
     if( $noKeep -eq 0){
-        Remove-Item -Path "$vf19_DEFAULTPATH\macross-stringz.txt"
+        Remove-Item -Path "$vf19_DTOP\macross-stringz.txt"
     }
 }
 
@@ -649,12 +628,16 @@ function stringz($f=$(getFile),$noKeep=0){
 function getHash(){
 <#
     ||longhelp||
+
+    getHash [-f FILE] [-a MD5|SHA256]
+
     Get the hash of a file; must pass the filepath and hashing method
     
     ||examples||
     Usage:  
-    $var = getHash $filepath 'md5'
-    $var = getHash $filepath 'sha256'
+
+    $md5 = getHash $filepath -a md5
+    $sha = getHash $filepath -a sha256
     
 #>
     Param(
@@ -681,34 +664,39 @@ function getHash(){
 function sheetz(){
     <#
     ||longhelp||
+
+    sheetz [-f FILENAME] [-v VALUES] [-r ROWNUMBER] [-h COLUMN HEADERS/COLUMN NUMBERS]
+
     Output tool values to an Excel spreadsheet on user's desktop
 
     (This is very simplistic at the moment; the goal is to eventually make more useful 
     spreadsheets when simple CSV files aren't good enough.)
 
     Parameters for this function:
-    $1 = (req'd) the name of the output file
-    $2 = (req'd) output values, comma-separated
-    $3 = (optional) the starting row number to write to
-    $4 = (optional) column values, OR the number of columns you are writing across
+    -f = (req'd) the name of the output file
+    -v = (req'd) output values, comma-separated
+    -r = (optional) the starting row number to write to (default is 1)
+    -h = (optional) column values, OR the number of columns you are writing across
 
-    If only 2 parameters are sent, this function will separate the values in param $2 by 
-    removing the commas, and write each value as a list into column A.
+    -f, -v
+    If only 2 parameters are sent, this function will separate the values in param -v by 
+    removing the commas, and write each value as a list into column A to the -f file.
 
-    If you're adding values to an existing sheet, the $3 parameter lets you specify which 
-    row to start in. For example, if you know the next empty row is 200, send 200 as a 3rd 
-    parameter.
+    -r
+    If you're adding values to an existing sheet, the -r parameter lets you specify which 
+    row to start in. For example, if you know the next empty row is 200, send "-r 200".
 
-    If you send a NUMBER as the $4 parameter, it tells this function how many values to write 
-    horizontally from parameter $2, before it shifts to the next row and continues writing 
+    -h
+    If you send a NUMBER as the -h parameter, it tells this function how many values to write 
+    horizontally from parameter -v, before it shifts to the next row and continues writing 
     cells.
 
-    If you send comma-separated strings as param $4, this function will write those values as 
-    the column headers in the worksheet, and then begin writing the values from param $2 into 
+    If you send comma-separated strings as param -h, this function will write those values as 
+    the column headers in the worksheet, and then begin writing the values from param -v into 
     the appropriate row/columns.
 
     TO COLORIZE TEXT:
-    Send your color choice (red, green, blue, yellow, cyan, gray, black or white) with a  "~" 
+    Send your color choice (red, green, blue, yellow, cyan, gray, black or white) with a "~" 
     symbol between your color and the value, i.e. "red~RESULT FAILED!" will write 
     "RESULT FAILED!" in red text.
 
@@ -716,7 +704,7 @@ function sheetz(){
     Send your color (same choices as above) AND the color you want for text, separated with "~" 
     like so:
 
-        "black~red~RESULT FAILED~"
+        "black~red~RESULT FAILED!"
 
     The above will make the cell black with red text. You must send BOTH a cell color AND a 
     text color to colorize cells.
@@ -724,17 +712,17 @@ function sheetz(){
     ||examples||
     EXAMPLE 1
 
-        $vals1 = 'host 10,host 24,host 13,host 3'
-        sheetz 'myoutput' $vals
+        $vals = 'host 10,host 24,host 13,host 3'
+        sheetz -f 'myoutput' -v $vals
 
     The above example will write out the hosts in a simple list to 'myoutput.xlsx' in cells 
-    A1 - A4
+    A1 - A4.
 
     EXAMPLE 2
 
         $hosts = 'host 1,blue~white~windows,11,192.168.10.10,host2,linux,red~kali,192.168.10.11'
         $headers = 'HOST,OS,VER,IP'
-        sheetz 'myoutput' $hosts 5 $headers
+        sheetz -f 'myoutput' -v $hosts -r 5 -h $headers
 
     The above will create (or open) myoutput.xlsx, and then writes 'HOST' to cell A5, 'OS' to B5, 
     'VER' to C5, and 'IP' to D5. Next it will go through all the comma-separated values in param 2, 
@@ -747,22 +735,38 @@ function sheetz(){
             row 6      host 1   windows   11    192.168.10.10
             row 7      host 2   linux     kali  192.168.10.11
 
-    Make sure your script is sending your report values to param $2 IN ORDER, otherwise they'll get 
+    Make sure your script is sending your report values to param -v IN ORDER, otherwise they'll get 
     written to the wrong cells! Also, if you're adding values to an existing sheet, don't send the 
     headers, sheetz will automatically start writing to the next empty row (or you can specify a row
-    in parameter $3, and the number of columns being written, in this case 4 columns (A-D).
+    in parameter -r, and the number of columns being written, in this case 4 columns (A-D).
 
     EXAMPLE 3
 
     Sometimes you don't need headers. You could set the fourth param to 6 if you just need to specify 
-    that there should be 6 columns (A-F). If $patchInfo contains hosts and patch dates:
+    that there should be 6 columns (A-F). If "$patchInfo" contains hosts and patch dates:
         
-        sheetz 'patch report' $patchInfo 1 6
+        sheetz -f 'patch report' -v $patchInfo -r 1 -h 6
 
                     A         B        C         D                 E           F
         row 1      host 1   windows   11    192.168.10.10      patched     1/31/2020
         row 2      host 2   windows   10    192.168.10.11      unpatched
     
+
+    #>
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$f,
+        [Parameter(Mandatory=$true)]
+        [string]$v,
+        [int]$r=1,
+        $h
+    )
+
+    if(! $MSXL){
+        w '    ' -i; w 'Microsoft Excel is not installed!' r bl
+        w ''; slp 2; Return
+    }
+    <#
     TO ADD OR MODIFY THE DEFAULT CELL & FONT COLORIZATION:
     Colors have to be calculated by adding R + G + B, but G has to be multiplied by G and 256, 
     and B has to be multiplied by B * 256 * 256 because why just let us write 'blue', 'green, 
@@ -783,15 +787,6 @@ function sheetz(){
         Dark Gray: RGB(128,128,128)
         Snot Green: RGB(204,255,204)
     #>
-    param(
-        [Parameter(Mandatory=$true)]
-        [string]$1,
-        [Parameter(Mandatory=$true)]
-        [string]$2,
-        [int]$3,
-        $4
-    )
-
     $colors = @{
         'red~' = 255 + (1*256) + (1*256*256);
         'green~' = 204 + (255*256) + (204*256*256);
@@ -803,25 +798,19 @@ function sheetz(){
         'black~' = 0
     }
 
-
-    $r = 1  ## Starting row
     $c = 1  ## Starting column
 
-    if( $3 ){
-        $r = $3
-    }
-    
-    if($4){
-        if($4 -Match "[a-z]"){
-            $val2 = $4 -Split(',')
+    if($h){
+        if($h -Match "[a-z]"){
+            $val2 = $h -Split(',')
             $val2c = $(($val2).count)
         }
         else{
-            $val2c = $4
+            $val2c = $h
         }
     }
 
-    $val1 = $2 -Split(',')  ## Scripts should be sending comma-separated values
+    $val1 = $v -Split(',')  ## Scripts should be sending comma-separated values
 
 
     # Add reference to the Microsoft Excel assembly
@@ -835,8 +824,8 @@ function sheetz(){
     $excel.Visible = $true
 
     # Create a new workbook
-    if(Test-Path "$vf19_DEFAULTPATH\$1.xlsx"){
-        $workbook = $excel.Workbooks.Open("$vf19_DEFAULTPATH\$1.xlsx")
+    if(Test-Path "$vf19_DTOP\$f.xlsx"){
+        $workbook = $excel.Workbooks.Open("$vf19_DTOP\$f.xlsx")
         $adding = $true
     }
     else{
@@ -845,14 +834,14 @@ function sheetz(){
 
     # Select the first worksheet
     $worksheet = $workbook.Worksheets.Item(1)
-    if($adding -and ! $3){
+    if($adding -and ! $r){
         $r = $worksheet.UsedRange.Rows.Count + 1
         write-host "$r"
     }
 
 
-    # Write values to cells; if no $4 values were passed, just write $val1 as a list in column A
-    if($4){
+    # Write values to cells; if no $h values were passed, just write $val1 as a list in column A
+    if($h){
         
         function columnVals($rr,$cc,$count){
             Foreach($v1 in $val1){
@@ -958,11 +947,11 @@ function sheetz(){
 
 
     # Save the workbook (optional)
-    if( Test-Path "$vf19_DEFAULTPATH\$1.xlsx" ){
+    if( Test-Path "$vf19_DTOP\$f.xlsx" ){
         $workbook.Save()
     }
     else{
-        $workbook.SaveAs("$vf19_DEFAULTPATH\$1.xlsx")
+        $workbook.SaveAs("$vf19_DTOP\$f.xlsx")
     }
 
     # Close Excel
@@ -979,22 +968,30 @@ function sheetz(){
 
 
 
-function getFile($filter){
+function getFile([string]$filter){
     <#
     ||longhelp||
+
+    getFile [-f FILTER]
+
     This opens a dialog window so the user can specify a filepath to whatever.
     
-    Param $filter is optional, and allows you to specify a filetype to select; the
-    default is to show all files for selection.
+    Param -f is optional, and allows you to specify a filetype to select, OR
+    to select a folder instead of a file. The default is to show all files for 
+    selection.
     
     ||examples||
-    Ask user to specify any file:
+    Ask user to select any filetype:
     
         $file_to_read = getFile
     
-    Ask user for specific type of file:
+    Ask user for a .txt file:
     
-        $file_to_read = getFile 'Text Document (.txt)|*.txt'
+        $file_to_read = getFile -f 'Text Document (.txt)|*.txt'
+
+    Ask user to select a folder:
+
+        $folder = getFile -f folder
         
     #>
     [System.Reflection.Assembly]::LoadWithPartialName("System.windows.forms") | Out-Null
@@ -1007,7 +1004,7 @@ function getFile($filter){
     }
     
     if($f){
-        $f.rootfolder = $wherever
+        #$f.rootfolder = $wherever
         $f.Description = "Select a folder"
         $f.SelectedPath = 'C:\'
 
@@ -1020,7 +1017,7 @@ function getFile($filter){
         
     }
     else{
-        #$o.initialDirectory = $vf19_DEFAULTPATH  ## this got annoying for selecting multiple files
+        #$o.initialDirectory = $vf19_DTOP  ## this got annoying for selecting multiple files
         $o.InitialDirectory = $wherever
         if($filter){
             $o.filter = $filter
@@ -1042,7 +1039,10 @@ function getFile($filter){
 function houseKeeping(){
     <#
     ||longhelp||
-    Delete stale reports generated by various tools.
+
+    houseKeeping $filepath $your_script_name
+
+    Delete stale reports generated by various MACROSS tools.
     
     Users can choose to delete some, all, or none of the files in the directory 
     you pass to this function. Make sure not to pass generic folders like 'Desktop' 
