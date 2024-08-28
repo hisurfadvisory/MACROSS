@@ -17,7 +17,7 @@ IN = None
 mc.w('''
     The MACROSS mcdefs library has been imported as "mc", all the standard MACROSS
     globals have been populated. The LATTS.eod file has been converted into a
-    dictionary, "LATTS".
+    dictionary, "LATT".
      
     Just type "q" to quit back to the MACROSS menu.
 ''','g')
