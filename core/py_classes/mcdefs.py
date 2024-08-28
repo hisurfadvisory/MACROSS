@@ -1,4 +1,4 @@
-VF19_MPOD = {}
+MPOD = {}
 PROTO = ""
 MACROSS = ""
 
@@ -99,16 +99,16 @@ MACROSS = getenv('MACROSS').split(';')
 HELP = getenv('HELP')
 USR = MACROSS[6]
 CALLER = MACROSS[7]
-VF19_TOOLSROOT = MACROSS[0]
-VF19_TOOLSDIR = MACROSS[1]
-VF19_DTOP = MACROSS[2]
-VF19_TABLES = MACROSS[3]
-VF19_LOGS = MACROSS[4]
+TOOLSROOT = MACROSS[0]
+TOOLSDIR = MACROSS[1]
+DTOP = MACROSS[2]
+TABLES = MACROSS[3]
+LOGS = MACROSS[4]
 N_ = MACROSS[5]
 for missile in getenv('MPOD').split(';'):
     payload = missile.split(':')[0]
     fuel = missile.split(':')[1]
-    VF19_MPOD[payload] = fuel
+    MPOD[payload] = fuel
 del missile,payload,fuel
 
 
@@ -293,8 +293,8 @@ your python script, it will be written to the CALLER.result field of PROTOCULTUR
 where this function will retrieve it and forward it to your script.
 '''
 
-    gbio = VF19_TOOLSROOT + '\\\\core\\\\py_classes\\\\garbage_io\\\\PROTOCULTURE.eod'
-    fullpath = VF19_TOOLSROOT + '\\modules\\' + TOOL
+    gbio = TOOLSROOT + '\\\\core\\\\py_classes\\\\garbage_io\\\\PROTOCULTURE.eod'
+    fullpath = TOOLSROOT + '\\modules\\' + TOOL
     cores = 'display.ps1~utility.ps1~validation.ps1'
     empty = ''
     proto = {CALLER:{'target':PROTOCULTURE,'result':empty}}
