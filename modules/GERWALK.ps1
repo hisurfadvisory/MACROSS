@@ -1,6 +1,6 @@
 #_sdf1 Carbon Black EDR Integration
 #_ver 2.2
-#_class user,EDR,powershell,HiSurfAdvisory,1,json
+#_class 3,user,EDR,powershell,HiSurfAdvisory,1,json
 
 <#
 
@@ -12,25 +12,29 @@
 
 
     ***************!!! AUTHENTICATION !!!***************
-    The opening comments in "temp_config.txt" contain a block of Base64 lines
-    separated by "@@@". There is a line in there that begins with "ger";
-    when it is decoded by MACROSS using
+    Type "config" into the MACROSS menu to open the config wizard and add the
+    key "ger", with the value being your Carbon Black server's API URL (something
+    like "hxxps://your.cblackserver.local/api/process?"). Then this script, or
+    one you write, can reference it with:
 
         getThis $vf19_MPOD['ger']
+        curl.exe $vf19_READ -X 
 
-    it gives you a placeholder URL for a Carbon Black server. Replace this
-    line with your actual server URL encoded in Base64 (do not remove the
-    "ger" at the front!). See the "craftQuery" function in this script to
-    see where this decoding happens.
+    See the "craftQuery" function later in this script to see where this decoding 
+    happens.
 
     You will need to develop a secure method for passing in your API keys,
     this script does not contain any built-in methods for you. Look for line
-    1629, "$Script:dyrl_ger_MARK = $SETYOURKEYHERE", creating/passing in your
-    key here ensures it can be reused for multiple queries in one session.
+    1629, or the line "$Script:dyrl_ger_MARK = $SETYOURKEYHERE", creating/passing 
+    in your key here ensures it can be reused for multiple queries in one session,
+    but only after users have passed all the permisson/access checks.
+
     You may want to do this in another way that creates and destroys the key
     for every single query, it's up to you.
 
-    Please do not hardcode your keys and passwords in your scripts.
+    Please do not hardcode your keys and passwords in your scripts. I also do not
+    recommend storing them in MACROSS' config.conf file, its encryption is fairly
+    weak.
 
     Look for the commented lines in this script beginning "MPOD ALERT!", they
     will give tips on modifying that particular section to fit your needs.
@@ -211,10 +215,8 @@
     ===================================================
     DEBUGGING/TROUBLESHOOTING:
 
-        In the query wizard, add some random value to the first or second search boxes that you 
-        know will find results, then type 'debug' into the 3rd "website" menu box and click SEARCH.
-        OR, call GERWALK with the 's' option to open the non-wizard query, and enter "carbon fiber"
-        as your query. Doing either of these will turn on debugging.
+        Select GERWALK from the main menu with the 's' option (example, 5s if GERWALK is #5) to open 
+        the non-wizard query, and enter "carbon fiber" as your query. This enables debugging.
         
         Debugging will display your full curl commands*, converts the JSON response into a powershell 
         object, and lets you manipulate that object to view the different data that gets returned by 
@@ -227,8 +229,8 @@
         *NOTE: When your curl command gets printed to screen, the API key will be masked,
         and attempts to call variables from command line will be restricted to prevent 
         displaying the key onscreen. If you need to force curl to be more verbose, copy the
-        command that gets displayed onscreen and add the key in, and replace the "--silent"
-        option with "-v".
+        command that gets displayed onscreen and manually add the key in, and replace the 
+        "--silent" option with "-v".
 
     ===================================================
 
@@ -249,7 +251,6 @@
 param(
     [string]$Script:dyrl_ger_alternate
 )
-
 
 
 
@@ -332,7 +333,7 @@ function splashPage(){
     '
 }
 
-
+## Debugging can make errors noisy
 function eReset(){
     $Script:ErrorActionPreference = 'SilentlyContinue'
 }
@@ -443,22 +444,37 @@ if( $HELP ){
 }
 
 
+$C = @(
+    'username',
+    'process_name',
+    'hostname',
+    'cmdline',
+    'fileless_scriptload_cmdline',
+    'process_md5',
+    'parent_name',
+    'childproc_name',
+    'path',
+    'os_type',
+    'host_type',
+    'group'
+)
+
 
 ## $1 is the sensor ID passed in by user; inspectSID then forwards the params
-## required by the craftQuery function to get data from Carbon Black's sensor API.
+## required by the craftQuery function to get data from Carbon Black's sensor API
 ## To search by hostname instead of SID, call this function with an empty 1st param
 ## and the hostname as second param
 function inspectSID($1,$2){
     if($2){
-        if($CALLER -and $vf19_LATTS[$CALLER].valtype -Match ' IP(s| Addresses)?.*'){
-            craftQuery '' "v1/sensor?ip=$2" $dyrl_ger_MARK '1'
+        if($CALLER -eq 'C2FIDi'){
+            craftQuery '' "v1/sensor?ip=$2" $dyrl_ger_CONCHK '1'
         }
         else{
-            craftQuery '' "v1/sensor?hostname=$2" $dyrl_ger_MARK '1'
+            craftQuery '' "v1/sensor?hostname=$2" $dyrl_ger_CONCHK '1'
         }
     }
     else{
-        craftQuery $1 'v1/sensor/' $dyrl_ger_MARK ''
+        craftQuery $1 'v1/sensor/' $dyrl_ger_CONCHK ''
     }
 }
 
@@ -470,10 +486,19 @@ function inspectBin($1,$2){
     $api = 'v1/binary?facet=true'
     
 
-    
+    ## fucking windows can't just give me a value
     if( $2 -ne $null ){
         $gh = $(CertUtil -hashfile $1 $2) -split("\n")
         $gh = $gh[1]  ## cut out the useless garbage windows gives back after hashing
+        <#if($2 -eq 'sha256'){
+            $file = "sha256%3A$gh"
+        }
+        elseif($2 -eq 'md5'){
+            $file = "md5%3A$gh"
+        }
+        else{
+            errMsg 4 $2
+        }#>
         $file = $2 + ":$gh"
     }
     else{
@@ -498,7 +523,7 @@ function inspectBin($1,$2){
 function reviewResults($1,$2,$3){
     if( $2 -eq 'process' ){
         $r = $dyrl_ger_WORKSPACE1.facets
-        Return $r.$3.name                  ## This is an array value!
+        Return $r.$3.name ## This is an array value!
     }
     elseif( $2 -eq 'binary' ){
         $r = $dyrl_ger_WORKSPACE[$1]
@@ -515,22 +540,18 @@ function reviewResults($1,$2,$3){
         $rt = $r.registration_time
         $un = $r.uninstalled
 
-        screenResultsAlt "$cn" 'IP' $na
-        screenResultsAlt 'next' 'WIN SID' $si
-        screenResultsAlt 'next' 'CBLIVE' $sc
-        screenResultsAlt 'next' 'LAST SEEN' "$lc (UTC)"
-        screenResultsAlt 'next' 'HEALTH' $sh
-        screenResultsAlt 'next' 'STATUS' $st
-        screenResultsAlt 'next' 'OS' $os
-        screenResultsAlt 'next' 'MEM SIZE' $pm
-        screenResultsAlt 'next' 'REGISTERED' $rt
-        screenResultsAlt 'next' 'UNINSTALLED' $un
-        screenResultsAlt 'endr' 
-
-        w '
-
-
-        '
+        screenResultsAlt -h $1 -k ' HOST' -v "$cn"
+        screenResultsAlt -k ' IP' -v "$na"
+        screenResultsAlt -k ' WIN SID' -v "$si"
+        screenResultsAlt -k ' CBLIVE' -v "$sc"
+        screenResultsAlt -k ' LAST SEEN' -v "$lc (UTC)"
+        screenResultsAlt -k ' HEALTH' -v "$sh"
+        screenResultsAlt -k ' STATUS' -v "$st"
+        screenResultsAlt -k ' OS' -v "$os"
+        screenResultsAlt -k ' MEM SIZE' -v "$pm"
+        screenResultsAlt -k ' REGISTERED' -v "$rt"
+        screenResultsAlt -k ' UNINSTALLED' -v "$un"
+        screenResultsAlt -e
     }
 
 }
@@ -640,38 +661,45 @@ function adjustTime($1,$2){
 
 
 
+<#
+    +++++++++++++++++++++++++++++++++++++++++++++++
+    IF "findThese" IS CALLED WHEN $CALLER IS SET:
+    +++++++++++++++++++++++++++++++++++++++++++++++
+    $1 is the $CALLER value, $2 is the $PROTOCULTURE value to be queried.
+    $dyrl_ger_ALT is the optional param any script can send to via "collab" be evaluated
+    along with $PROTOCULTURE.
 
+    Currently:
+
+        'usrlkup' sets time window to 2 weeks to search for username $PROTOCULTURE
+        'usrloggedin' will only return usernames (if any) for the given $PROTOCULTURE hostname
+            from the past 12 hours
+        'hlkup' lets scripts with multiple attributes specify a hostname search for the
+            $PROTOCULTURE value; 2 week time window
+        '[0-9]results' sets the number of events to fetch
+        '[0-9]' sets the time window to the past x amount of days
+
+    +++++++++++++++++++++++++++++++++++++++++++++++
+    IF "findThese" IS CALLED WITHOUT $CALLER:
+    +++++++++++++++++++++++++++++++++++++++++++++++
+    $1 is the API to query, $2 is the value to be queried, OR
+    leave $1 and $2 empty to load the main menu for users to
+    enter their own queries.
+
+#>
 function findThese($1,$2){
 
-    <#
-        IF "findThese" IS CALLED WHEN "$CALLER" IS SET:
-        $1 is the $CALLER value, $2 is the $PROTOCULTURE value to be queried
-        $dyrl_ger_alternate is the optional param any script can send. Currently:
-
-            'usrlkup' sets time window to 12 hours
-            'usrloggedin' will only return usernames (if any) for the given hostname
-            'hlkup' lets scripts with multiple attributes specify a hostname search for the
-                $PROTOCULTURE value
-            '[0-9]results' sets the number of events to fetch
-            '[0-9]' sets the time window to the past x amount of days
-
-        IF "findThese" IS CALLED AND $CALLER IS NULL:
-        $1 is the API to query, $2 is the value to be queried, OR
-        leave $1 and $2 empty to load the wizard menu for users to
-        enter their own queries.
-    
-        -------------------------------------------------------------------------------
-    
-        The default will grab all facets, which can be parsed separate from the results, for example:
+    <# The default will grab all facets, which can be parsed separate from the results, for example:
 
             $dyrl_ger_WORKSPACE.facets.process_name
 
         will list out all processes contained in your results. If you want to omit this, change
         "facet.field=true" to "facet.field=false" in the curl request. This won't affect anything
-        within the "$dyrl_ger_WORKSPACE.results" object.
+        within the "$dyrl_ger_WORKSPACE.results" object, but it **may** break some things like the
+        host-user login searches.
 
         EXISTING FACET FIELDS:
-        -process_md5: the top unique md5s for the processes matching the search
+        -process_md5: the top unique process_md5s for the processes matching the search
         -hostname: the top unique hostnames matching the search
         -group: the top unique host groups for hosts matching this search
         -path_full: the top unique paths for the processes matching this search
@@ -679,261 +707,210 @@ function findThese($1,$2){
         -process_name: the top unique process names for the processes matching this search
         -host_type: the distribution of host types matching this search: one of workstation,
             server, domain_controller
+        -username_full: a list of all the user & system accounts active during the search window
         -hour_of_day: the distribution of process start times by hour of day in computer local time
         -day_of_week: the distribution of process start times by day of week in computer local time
         -start: the distribution of process start times by day for the last 30 days
-        -username_full: the top unique usernames associated with the event
+        -username_full: the username context associated with the process
     #>
 
     $defh = '-168h'                      ## Default time window is 1 week; can be changed based on other inputs below
     $qbuild = '&q='                      ## Query opener
     $qsection = 'v1/process?facet=true'  ## Default API call
-    $res = '&rows=10'
-    $eventID = [regex]"^\w+\-\w+\-\w+\-\w+\-\w+$"
-    
+    $res = $null
 
     ## This string will only query non-system accounts if user chooses:
-    $onlyusers = '-(username:*SERVICE OR username:root OR username:*SYSTEM OR username:svc* OR username:Window*) '
-    $Script:no = [regex]".*(_MARK|get-variable|gv|::).*"
-    if($CALLER){
+    $onlyusers = '-(username:*SERVICE OR username:root OR username:*SYSTEM OR username:svc* OR username:Window* OR username:*Font*) '
 
-        ## Script sent 'usrlkup' as the optional param
-        ## The calling script wants to view user activity (set to 2 days)
-        if($dyrl_ger_alternate -eq 'usrlkup'){  
+    if($CALLER){
+        if($dyrl_ger_ALT -eq 'usrlkup'){  ## The calling script wants to view user activity (set to 2 days)
             $defh = '-120h'
             $res = '&rows=80'           ## Send back enough events to account for noisy processes the user may want to filter out
         }
-
-        ## Script sent 'usrloggedin' as the optional param
-        ## The calling script wants to know who is/was logged into a host (8 hours)
-        elseif($dyrl_ger_alternate -eq 'usrloggedin'){
-            $defh = '-8h'
+        elseif($dyrl_ger_ALT -eq 'usrloggedin'){  ## The calling script wants to know who is/was logged into a host (12 hours)
+            $defh = '-12h'
+            $res = '&rows=1'
         }
-
-        ## Script sent a digit as the optional param
-        ## This checks options for remote hosts connecting TO the $PROTOCULTURE host (custom date)
-        elseif($dyrl_ger_alternate -Match "^[0-9]+$"){
-            $defh = '-' + [string]$dyrl_ger_alternate
+        ## This checks options for remote hosts connecting to the $PROTOCULTURE host (custom date)
+        elseif($dyrl_ger_ALT -Match "^[0-9]+$"){
+            $defh = '-' + [string]$dyrl_ger_ALT + 'h'
             $skipsys = $true
             $skipres = $true
             $res = '&rows=20'
         }
-
-        ## Script sent 'greedy' as the optional param
-        ## This option will return the MOST results to calling scripts; it does NOT
-        ## set a time window, so searches ALL events and collects up to 250!
-        ## You can increase this if you want to, but coordinate with your Carbon Black
-        ## admins before you choke their servers.
-        elseif($dyrl_ger_alternate -eq 'greedy'){
+        ## This option will return the MOST results to calling scripts
+        elseif($dyrl_ger_ALT -eq 'greedy'){
             $skipres = $true
             $res = '&rows=250'
         }
-
-        ## Script sent '<digit>results' as the optional param
         ## This lets other scripts set the amount of events to fetch
         ## Have your script send your custom value like "300results" or "125results".
-        elseif($dyrl_ger_alternate -Match "^[0-9]+results$"){
+        elseif($dyrl_ger_ALT -Match "^[0-9]+results$"){
             $skipsys = $true
             $skipres = $true
-            $cr = $dyrl_ger_alternate -replace "results"
+            $cr = $dyrl_ger_ALT -replace "results"
             $res = "&rows=$cr"
         }
-
-        ## Script sent an event ID as the optional param
         ## Searching for a specific event ID is the ONLY way to capture filenames,
-        ##   registry keys, netconns, modloads. This can be time consuming if you try
-        ##   to query hundreds of events one after another. Save it for when you know
-        ##   exactly which event you want to drill into
-        elseif($dyrl_ger_alternate -Match $eventID){
-            craftQuery "v1/$dyrl_ger_alternate/event"
+        ## registry keys, netconns, modloads. This can be time consuming if you try
+        ## query hundreds of events one after another. Save it for when you know
+        ## exactly which event you want to drill into.
+        elseif($dyrl_ger_ALT -eq 'event'){
+            craftQuery "v1/$PROTOCULTURE/event"
             Return $dyrl_ger_SINGLEEVENT
         }
-
-        ## The user typed 'file' into the MACROSS main menu; is searching for binary/hash info
         elseif($CALLER -eq 'MACROSS'){
             $qbuild = $qbuild + $2
             $qsection = $1
         }
 
-        ## No optional parameter was sent by the calling script
-        else{
-            function convert($1){
-                $d = (Get-Date).AddDays(-$1)
-                [string]$d = Get-Date $d -Format 'yyyy-MM-dd'
-                Return $d
-            }
-            
-            $instructions = '
-            -Type a new number of days back to search
-                (example "14" to search everything in
-                the past 2 weeks)
-            -Type a new number with a "d" to only search
-                that 24 hour period (example "3d" to view
-                 only results from 3 days ago)
-            -Hit ENTER to keep the default window
-            -Type "q" to quit'
-            <#Write-Host -f GREEN '
-            The default search window is 1 week (in ZULU time).
-                -Type a new number of days back to search
-                   (example "14" to search everything in
-                   the past 2 weeks)
-                -Type a new number with a "d" to only search
-                   that 24 hour period (example "3d" to view
-                 only results from 3 days ago)
-                -Hit ENTER to keep the default window
-                -Type "q" to quit'
-            #>
-
-            screenResults 'The default search window is 1 week (in ZULU time)' $instructions
-            screenResults 'endr'
-            Write-Host -f GREEN '
-            > ' -NoNewline; $Z = Read-Host
-            
-
-            if($Z -eq 'q'){
-                Remove-Variable -Force dyrl_ger_* -Scope Global
-                Exit
-            }
-            elseif($Z -Like "*d"){
-                $Z = $Z -replace "d"
-                [string]$defh = convert $Z
-                $defh = "$dt last_update:$dt "
-            }
-            elseif($Z -Match "^[0-9]$"){
-                [string]$defh = convert $Z
-            }
-
-            
-
-        }
-    }
-
-    ## Tools that call with 'greedy' param don't want a time window
-    if($dyrl_ger_alternate -eq 'greedy'){
-        $startt = ''
-    }
-    else{
-        $startt = "start:$defh "
-    }
-
-    if($2){
-        if( $1 -Match '/v1/' ){         ## Indicates an API change
-            $qsection = $1              ## Use this API instead of default
-            $qbuild = $qbuild + $2      ## Second param should be the value being queried by the new API
+        ## Tools that call with 'greedy' param don't want a time window
+        if($dyrl_ger_ALT -eq 'greedy'){
+            $startt = ''
+            $skipsys = $true
         }
         else{
+            $startt = "start:$defh "
+        }
+
+        if($2){
+            if( $1 -Match '/v1/' ){         ## Indicates an API change
+                $qsection = $1              ## Use this API instead of default
+                $qbuild = $qbuild + $2      ## Second param should be the value being queried by the new API
+            }
+            else{                         ## If not API, the $2 value should be $PROTOCULTURE
             
-            $valtype = $vf19_LATTS[$1].valtype  ## Build query based on $CALLER's eval type if no optional parameters were sent
-
-            ## Build query using $PROTOCULTURE and params from other tools
-            ## The $dyrl_ger_alternate value takes precedence
-            $Z = $null
-            if($dyrl_ger_alternate -eq 'hlkup'){
-                $hnsearch = $true
-            }
-            elseif($dyrl_ger_alternate -eq 'usrlkup'){
-                $usrsearch = $true
-            }
-            elseif($dyrl_ger_alternate -eq 'usrloggedin'){
-                $qbuild = $qbuild + $startt + "hostname:$2 " + $onlyusers
-                $skipres = $true
-                $skipsys = $true
-                $res = '&rows=1'
-                $Script:dyrl_ger_RES = 1
-                $Script:dyrl_ger_WOF = $true
-                $Script:dyrl_ger_woflist = @()
-            }
-            elseif($valtype -Like "*hostname*" -or $valtype -Like "*IPs*"){   ## Check if value is IP or hostname
-                $hnsearch = $true
-            }
-            elseif($valtype -Like "*username*"){
-                $usrsearch = $true
-            }
+                $valtype = $vf19_ATTS[$1].valtype  ## For building query based on $CALLER's eval type, OR...
 
 
-            ## Host queries
-            if($hnsearch){
-                if($2 -Match "^[0-9]+\."){
-                    $qbuild = $qbuild + $startt + "ipaddr:$2 " + $onlyusers
+                ## Build query using $PROTOCULTURE and params from other tools
+                ## The $dyrl_ger_ALT value takes precedence over the $valtype
+                $Z = $null
+                if($dyrl_ger_ALT -eq 'hlkup'){
+                    $hnsearch = $true
+                    $defh = '-336h'
                 }
-                elseif($2 -Match "^[a-z]"){
+                elseif($dyrl_ger_ALT -eq 'usrlkup'){
+                    $usrsearch = $true
+                    $defh = '-336h'
+                }
+                elseif($dyrl_ger_ALT -eq 'usrloggedin'){
                     $qbuild = $qbuild + $startt + "hostname:$2 " + $onlyusers
+                    $skipres = $true
                     $skipsys = $true
-                    if( ! $skipres ){
-                        $skipres = $true
-                        $Script:dyrl_ger_RES = 10
+                    $res = '&rows=1'
+                    $defh = '-336h'
+                    $Script:dyrl_ger_WOF = $true
+                    $Script:dyrl_ger_woflist = @()
+                }
+
+                ## Check if value is IP or hostname
+                ## Add checks for processes, files and hashes if necessary
+                elseif(($valtype -Like "*hostname*") -or ($valtype -Like "*IPs*")){
+                    $hnsearch = $true
+                }
+                elseif($valtype -Like "*username*"){
+                    $usrsearch = $true
+                }
+
+
+                ## Host queries
+                if($hnsearch){
+                    if($2 -Match "^[0-9.]+$"){
+                        if($dyrl_ger_ALT -eq 'greedy'){
+                            $qbuild = $qbuild + $startt + "ipaddr:$2 "
+                        }
+                        else{
+                            $qbuild = $qbuild + $startt + "ipaddr:$2 " + $onlyusers
+                            $skipsys = $true
+                            if( ! $skipres ){
+                                $skipres = $true
+                                $res = '&rows=10'
+                            }
+                        }
+                    }
+                    elseif($2 -Match "[a-z]"){
+                        if($dyrl_ger_ALT -eq 'greedy'){
+                            $qbuild = $qbuild + $startt + "hostname:$2 "
+                        }
+                        else{
+                            $qbuild = $qbuild + $startt + "hostname:$2 " + $onlyusers
+                            $skipsys = $true
+                            if( ! $skipres ){
+                                $skipres = $true
+                                $res = '&rows=10'
+                            }
+                        }
                     }
                 }
-            }
-            ## Username queries
-            elseif($usrsearch){
-                $skipsys = $true
-                $skipres = $true
-                $res = '&rows=20'
-                $qbuild = $qbuild + $startt + "username:$2 "
-            }
-            ## Check if value is a filename
-            elseif($valtype -Like "*filename*"){
-                
-                ## Try to give back enough results; modify as necessary
-                $Script:dyrl_ger_RES = 75
-                
-
-                ## Try not to blow up Carbon Black; the 'greedy' search is already huge, go ahead and
-                ## omit the command line searches for filenames
-                if($dyrl_ger_alternate -ne 'greedy'){
-                    $qbuild = $qbuild + "(cmdline:*$2* OR fileless_scriptload_cmdline:*$2*) OR filemod:$2 "
+                ## Username queries
+                elseif($usrsearch){
+                    if($dyrl_ger_ALT -ne 'greedy'){
+                        $skipsys = $true
+                        $skipres = $true
+                        $res = '&rows=20'
+                    }
+                    $qbuild = $qbuild + $startt + "username:$2 "
                 }
-                else{
-                    $qbuild = $qbuild + "filemod:$2 "
-                }
+                ## Check if value is a filename
+                ## MANTIS uses the largest time window;
+                ## WERDZ & MANTIS don't want root/system results
+                elseif($valtype -Like "*file*"){
 
-                $skipsys = $true
-                $skipres = $true
-            }
-            
-            
-            if( ! $skipsys ){
-                Write-Host -f GREEN '        Omit SYSTEM & local service accounts?  ' -NoNewline;
-                $Z = Read-Host
-                if($Z -Match "^y"){
-                    $skipsys = $true
                     $qbuild = $qbuild + $onlyusers
-                }
-            }
-            if( ! $skipres ){
-                ''
-                Write-Host -f GREEN '            Display how many results? (1-50)  ' -NoNewline;
-                $Z = Read-Host
-                if($Z -notMatch "^[0-9]+$"){
-                    $Script:dyrl_ger_RES = 10
-                }
-                else{
-                    $Script:dyrl_ger_RES = $Z
-                    $res ="&rows=$Z"
-                }
-                $skipres = $true
-            }
+                    $res = '&rows=100'
+                    
+                    ## Try not to blow up Carbon Black...
+                    if($dyrl_ger_ALT -ne 'greedy'){
+                        $qbuild = $qbuild + "(cmdline:*$2* OR fileless_scriptload_cmdline:*$2*) OR filemod:$2 "
+                    }
+                    else{
+                        $qbuild = $qbuild + "filemod:$2 "
+                    }
 
-            $f_val1 = $true
-            $Z = $null
+                    $skipsys = $true
+                    $skipres = $true
+                }
+            
+            
+                if( ! $skipsys ){
+                    Write-Host -f GREEN '        Omit SYSTEM & local service accounts?  ' -NoNewline;
+                    $Z = Read-Host
+                    if($Z -Match "^y"){
+                        $skipsys = $true
+                        $qbuild = $qbuild + $onlyusers
+                    }
+                }
+                if( ! $skipres ){
+                    ''
+                    Write-Host -f GREEN '            Display how many results? (1-50)  ' -NoNewline;
+                    $Z = Read-Host
+                    if($Z -gt 50){
+                        $res = '&rows=10'
+                    }
+                    else{
+                        $res = "&rows=$Z"
+                    }
+                    $skipres = $true
+                }
 
+                $f_val1 = $true
+                $Z = $null
+
+            }
         }
+
     }
     else{
+        if( ! $vf19_OPT1 ){  ## Use query wizard by default
 
-        ## Use query wizard by default; skip wizard if user launched GERWALK with the 's' option (sets $vf19_OPT1 to 'true')
-
-        if( ! $vf19_OPT1){  
             $Script:dyrl_ger_DEBUG = $false
             $f_eicon = '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'
             $f_dicon = [Convert]::FromBase64String($f_eicon)
             $f_menulist = @('user','file','host','ip','process','website','email','attachment','cmdline')
+            $f_omits = ' -(username:*SYSTEM OR username:*SERVICE OR username:root OR username:Window* OR username:Font*)'
 
-
-            ## MPOD ALERT! This variable will tell Carbon Black to ignore system/root accounts. Add more name
-            ## patterns here as necessary.
-            $f_omits = ' -(username:*SYSTEM OR username:*SERVICE OR username:root OR username:Window*)'
+            
 
             Add-Type -AssemblyName System.Windows.Forms
             [System.Windows.Forms.Application]::EnableVisualStyles()
@@ -1171,7 +1148,7 @@ function findThese($1,$2){
 
 
             
-            ## Perform a simple host login lookup (Who's on first?)
+            ## Perform a simple user lookup (Who's on first?)
             $f_key1.Add_Click({
                 if($f_key1.SelectedItem -eq 'host' -and $f_te1.Text){
                     $f_wof.Enabled = $true
@@ -1191,7 +1168,6 @@ function findThese($1,$2){
     
             ## Clean exit for CANCEL button
             $f_quit.Add_Click({
-                eReset
                 $f_te1.Text = $null
                 $f_val1 = $null
             })
@@ -1208,7 +1184,7 @@ function findThese($1,$2){
 
                 if($dyrl_ger_WOF){
                     $f_val1 = "hostname:$($f_te1.Text) " + $f_omits
-                    $res = '&rows=150'
+                    $res = '&rows=1'
                     $skipres = $true
                 }
                 else{
@@ -1242,7 +1218,6 @@ function findThese($1,$2){
                     if($f_key3.SelectedItem -eq 'website'){
                         if($f_te3.Text -eq 'debug'){
                             $dyrl_ger_DEBUG = $true
-                            $Script:ErrorActionPreference = 'Continue'
                         }
                         else{
                             $f_val3 = [string]"domain:$($f_te3.Text)"
@@ -1391,43 +1366,33 @@ function findThese($1,$2){
                 $qbuild = $qbuild + $startt + $f_val1
             }
 
+
         } ## End the "! $vf19_OPT" check
 
         else{
             $oneuser = $true; $skipsys = $true
             ''
-            if($dyrl_ger_DEBUG){
-                w '                 DEBUGGING MODE
-                
-                ' 'c'
-            }
             w ' Enter your query, "?" for help, or "q" to quit:
-            ' 'g'
-            Write-Host ' > ' -NoNewline;
+            ' g
+            w ' > ' -i
             $Z1 = Read-Host
             if($Z1 -eq '?'){
-               showHelp 2
-               findThese
+                showHelp 2
+                findThese
             }
             elseif($Z1 -eq 'q'){
-               Remove-Variable -Force dyrl_ger_* -Scope Global
-               eReset
-               Exit
+                Remove-Variable -Force dyrl_ger_* -Scope Global
+                Exit
             }
             elseif($Z1 -eq 'carbon fiber'){
-                $Z1 = ''
                 $dyrl_ger_DEBUG = $true
-                $Script:ErrorActionPreference = 'Continue'
-                w ' Debugging  mode enabled.'; slp 2; splashPage; findThese
-            }
-            elseif($Z1 -Match "\w"){
-               $qbuild = $qbuild + $Z1
-               $f_val1 = $true
+                findThese
             }
             else{
-               eReset
-               Exit
+                $qbuild = $qbuild + $Z1
+                $f_val1 = $true
             }
+
         }
         
         
@@ -1435,37 +1400,31 @@ function findThese($1,$2){
 
     if( ! $f_val1 ){
         Remove-Variable f_*,dyrl_ger_* -Scope Global
-        eReset
         Exit
     }
     
-    
-    
-    ## I set the max results to 75 out of personal preference. If there was any significant
-    ## event to investigate, I wouldn't use GERWALK, I'd just log into Carbon Black. GERWALK
-    ## is meant for supplying quick enrichment/confirmation & context to other MACROSS tools.
+    ## You can adjust the max results $resmaximum higher than 250 if you need to
+    $resmaximum = 250
     if( ! $skipres ){
-        Write-Host -f GREEN "
+        w "
         By default I'll only grab the 10 most recent results for you, and unless you are
         searching for a process, each process will only be displayed once (otherwise you'd 
         end up with a screen full of svchost and firefox). Enter a new max threshold up to
-        75, or ENTER to keep the default:  " -NoNewline;
+        $resmaximum, or ENTER to keep the default:  " g -i
         $Z = Read-Host
 
-        if($Z -Match "[0-9]{1,2}"){
-            if($Z -gt 75){
+        if($Z -Match "\d{1,3}"){
+            if($Z -gt $resmaximum){
                 ''
-                Write-Host -f CYAN '    The limit is currently 75. Setting max results to 75.
-                '
-                $Z = 75
+                w "    The limit is currently $resmaximum. Setting max results to $resmaximum.
+                " c
+                $Z = $resmaximum
                 slp 2
             }
-            $Script:dyrl_ger_RES = $Z
-            $res ="&rows=$Z"
+            $res = "&rows=$Z"
         }
         else{
-            $Script:dyrl_ger_RES = 10
-            $res='&rows=10'
+            $res ='&rows=10'
         }
     }
 
@@ -1474,7 +1433,10 @@ function findThese($1,$2){
     '
 
     
-    ## Finalize the query and URL encode it
+    ## Finalize the query and URL-encode it
+    if( $res -notMatch "rows"){
+        $res = '&rows=10'
+    }
     $Script:displayq = $qbuild
     $qbuild = $qbuild -replace "\(",'%28' -replace "\)",'%29'
     $qbuild = $qbuild -replace ' ','%20'
@@ -1484,49 +1446,45 @@ function findThese($1,$2){
     $qbuild = $qbuild + $res
     $qbuild = $qbuild + '&sort=server_added_timestamp%20desc&start=0'
 
-    craftQuery $qbuild $qsection $dyrl_ger_MARK $max
+    craftQuery $qbuild $qsection $dyrl_ger_CONCHK $max
     
     
 }
 
 
 ## Take user inputs to build query
-## $1 = CB queries from "findThese" function
+## $1 = cb queries from "findThese" function
 ## $2 = the CB module to query, passed from "findThese"
 ## $3 is the close-off section
 ## $4 limits the # of results returned
-##
 ## If only param $1 is passed in, it should be a CB event ID number. This function will
 ##  then perform a query for that specific event, which will include all details not
 ##  available in a standard query.
 function craftQuery($1,$2,$3,$4){
     
-    $ua = 'MACROSS'      ## Help track the use of this script in logs/events by setting
-                         ## a unique user-agent
+    $ua = 'MACROSS'
 
-    ## MPOD ALERT! This $vf19_MPOD['ger'] value can be found in the core/temp_config.txt file.
-    ## Replace the base64 string beginning "@@@ger" with your own base64-encoded URL for your
-    ## Carbon Black Response EDR server.
-    getThis $vf19_MPOD['ger']          
+    getThis $vf19_DEFSLIST['vcb']
     $SRV1 = "$vf19_READ"
-
-
     getThis 'IC1IICdYLUF1dGgtVG9rZW46IA=='
     $SRV2 = $vf19_READ
+
     $qopen = "curl.exe --silent -k -A '$ua' $SRV1"
 
 
     if( ! $2 ){
-        Clear-Variable dyrl_ger_FULLEVENT -Force
-        $getResults = "$qopen$1' -H 'accept: application/json' $SRV2$dyrl_ger_MARK'"
-        $Script:dyrl_ger_SINGLEEVENT = iex $getResults | ConvertFrom-Json
+        Remove-Variable -Force dyrl_ger_FULLEVENT -Scope Script
+        $qopen = $qopen + $1
+        $getResults = "$qopen' -H 'accept: application/json' $SRV2$dyrl_ger_CONCHK'"
+        $Script:dyrl_ger_SINGLEEVENT = iex "$getResults" #| ConvertFrom-Json
     }
     elseif($1 -eq ''){
-        $getResults = "$qopen$2' -H 'accept: application/json' $SRV2$3'"
-        $Script:dyrl_ger_REQUESTED = iex "$getResults" | ConvertFrom-Json
+        $qopen = $qopen + $2
+        $getResults = "$qopen' -H 'accept: application/json' $SRV2$3'"
+        $Script:dyrl_ger_REQUESTED = iex "$getResults" #| ConvertFrom-Json
     }
     else{
-        Clear-Variable dyrl_ger_WORKSPACE -Force
+        Remove-Variable -Force dyrl_ger_WORKSPACE -Scope Script
         
         $qmaxres = $4
         $getResults = "$qopen$2$1' -H 'accept: application/json' $SRV2$3'"
@@ -1538,37 +1496,32 @@ function craftQuery($1,$2,$3,$4){
             else{
                 $dyrl_ger_VAL = $PROTOCULTURE
             }
-            Write-Host -f GREEN '
-        Searching on ' -NoNewline;
-            Write-Host -f YELLOW "$dyrl_ger_VAL" -NoNewline;
-            Write-Host -f GREEN ', standby...
-            '
+            w '
+        Searching on ' g -i
+            w "$dyrl_ger_VAL" y -i
+            w ', standby...
+            ' g
         }
         elseif( $dyrl_ger_DEBUG ){
-            $debugResults = "$qopen$2$1' -H 'accept: application/json' $SRV2 ****key*masked****'"
+            $debugResults = "$qopen$1' -H 'accept: application/json' $SRV2 (+key)'"
             $debugResults
             ''
             ''
-            $z = Read-Host '  Hit ENTER to execute curl or "q" to quit'
-            if($z -eq 'q'){
-                Remove-Variable dyrl_ger_*
-                eReset
-                Exit
-            }
-            Clear-Variable z
+            Read-Host '  Hit ENTER to execute curl'
         }
         else{
-        Write-Host -f GREEN '
+            w '
         Searching now, standby...
-        '
+        ' g
         }
 
 
 
         if( $dyrl_ger_DEBUG ){
-            Remove-Variable -Force dyrl_ger_DEBUG -Scope Global
+            Remove-Variable -Force dyrl_ger_DEBUG -Scope Script
             $DEBUGSPACE = iex "$getResults" -ErrorAction Inquire | ConvertFrom-Json
             $c = 'continue'
+            $no = [regex]".*(CONCHK|get-variable|gv|::).*"
 
             while($c -ne ''){
                 Write-Host '  "$DEBUGSPACE" is your JSON response converted to a powershell object.'
@@ -1578,43 +1531,53 @@ function craftQuery($1,$2,$3,$4){
 
                 if($c -eq 'q'){
                     Remove-Variable -Force dyrl_ger_* -Scope Global
-                    eReset
                     Exit
                 }
                 elseif($c -Match $no){
                     $c = $null
                 }
-                elseif($c -Match "^\$DEBUGSPACE"){
+                elseif($c -Match "^[$]DEBUGSPACE"){
                     iex "$c"
                 }
             }
         }
-
-        Write-Host '  Your search:'
-        Write-Host -f CYAN "  > $displayq"
+        if(! $CALLER){
+            w '  Your search:'
+            w "  > $displayq" 'c'
+        }
         if($DEBUGSPACE){
-            $Script:dyrl_ger_WORKSPACE = $DEBUGSPACE  ## No need to send another API call if testing
+            $Script:dyrl_ger_WORKSPACE = $DEBUGSPACE
         }
         else{
             $Script:dyrl_ger_WORKSPACE = iex "$getResults" #| ConvertFrom-Json
+
+            ## 'curl' should typically only be grep'able in the response if the curl request fails.
+            if( $dyrl_ger_WORKSPACE | Select-String 'curl' ){
+                errLog 'ERROR' 'GERWALK' 'curl request to Carbon Black failed.'
+            }
+            else{
+                errLog 'INFO' $USR "GERWALK:  $displayq"
+            }
         }
     }
-
 }
 
 
-## Loop until user quits
+## Loop standalone searches until user quits
 ##  $1 is automatically passed if $CALLER has any value
 function searchAgain($1){
     ''
-    $Script:dyrl_ger_SINGLEEVENT = $null
-    $Script:dyrl_ger_WORKSPACE = $null
-    $Script:dyrl_ger_WORKSPACE1 = $null
-    $Script:RESULTS = $null
-    $Script:EVENTLISTING = $null
-    $Script:srch = $null
+    $Script:EVENTLISTING = $false
+    $Script:collectedOnce = $false
+    $Script:dyrl_ger_SINGLEEVENT = $false
+    $Script:dyrl_ger_WORKSPACE1 = $false
+    $Script:RESULTS = $false
+    $Script:srch = $false
     $Script:dyrl_ger_emails = $false
     $Script:dyrl_ger_attch = $false
+    Remove-Variable -Force HOWMANY -Scope Global
+
+
     if( $1 -ne 1 ){
         Write-Host -f GREEN "    Hit ENTER to search again, or 'q' to quit: " -NoNewline;
         $Z = Read-Host
@@ -1626,25 +1589,29 @@ function searchAgain($1){
     cls
 
     if( $1 -eq 1 ){
-        eReset
+        Remove-Variable -Force dyrl_ger_* -Scope Global
+        Remove-Variable -Force EVENTLISTING,RESULTS,r,rr,srch,dyrl_ger_* -Scope Script
         Exit
     }
 }
 
 
+#############################################################################
+# IMPORT YOUR API KEYS HERE
+# Figure out a way to securely pass the authentication credentials.
+# DO NOT HARDCODE YOUR KEYS!!!!!!!!
+#############################################################################
+$Script:dyrl_ger_MARK = $SETYOURKEYHERE
+
 
 
 $Script:r = 0
-## You need to figure out how to get your API key passed in here.
-## DO NOT HARDCODE KEYS IN YOUR SCRIPTS!!!!!!
-$Script:dyrl_ger_MARK = 'your api key goes in here'
-
-
-
 ## Don't display these procs on screen, or they will be the only things anyone sees
-## You'll probably need to add programs like your org's antivirus to this list
 $dyrl_ger_dontCare = @(
+    'cb-service.exe',
     'explorer.exe',
+    'mcshield.exe',
+    'mctray.exe',
     'onedrive.exe',
     'searchindexer.exe',
     'searchprotocolhost.exe',
@@ -1685,24 +1652,118 @@ function quickList($1,$2){
 }
 
 
-## Check if another tool is requesting an alt API call
-## Add more values as necessary. Currently, the 'sensor'
-## call will grab sensor IDs from hostnames, all other
-## values go through the process api in "findThese"
-if($dyrl_ger_alternate -eq 'sensor'){
+
+## List the logged in user(s), offer MYLENE output if applicable, then cleanly exit
+function whosOnFirst($1){
+    $names = ''
+    $1.facets.username_full.name | %{
+        $names = $names + $($_ -replace "ENT\\") + ', '
+    }
+    
+    $f_wshell = New-Object -ComObject Wscript.Shell
+
+    if($names -Match "[a-z]"){
+        $names = 'Logged in user(s): ' + $($names -replace ", $")
+    }
+    else{
+        $names = 'None'
+    }
+
+    if($names -eq 'None' -or $vf19_NOPE){
+        $names = 'Logged in user(s): '
+        $f_wshell.Popup(
+            $names,
+            0,
+            "Logged in user(s)",
+            64+0+4096
+        )
+    }
+    else{
+        $choice = $f_wshell.Popup(
+            $names,
+            0,
+            'Look this up in MYLENE?',
+            64+4+4096
+        )
+
+        if($choice -eq 6){
+            $HOLD = $PROTOCULTURE
+            $Global:PROTOCULTURE = $names -replace "Logged in user\(s\): "
+            collab 'MYLENE.ps1' $CALLER
+
+            $Global:PROTOCULTURE = $HOLD
+            Exit
+        }
+    }
+    
+    
+    searchAgain 1
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Check if another tool is requesting an alt API call. Add more values as necessary. Currently, the 'sensor'
+## call will grab sensor IDs from hostnames, all other values go through the 'process' api in the 
+## "findThese" function.
+if($dyrl_ger_ALT -eq 'sensor'){
     $dyrl_ger_XOBJ = $PROTOCULTURE
     inspectSID '' $dyrl_ger_XOBJ
-    Return $dyrl_ger_REQUESTED  ## Response is a simple JSON
+    Return $dyrl_ger_REQUESTED
 }
-elseif($dyrl_ger_alternate){
+if($dyrl_ger_ALT -eq 'usrloggedin'){
+    ## $CALLER only wants a quick pop-up with the most recently logged-in user for $PROTOCULTURE host
+    $dyrl_ger_XOBJ = $PROTOCULTURE
+    $Script:dyrl_ger_WOF = $true
+    $Script:dyrl_ger_woflist = @()
+    findThese $CALLER $dyrl_ger_XOBJ
+    $dyrl_ger_WORKSPACE = $dyrl_ger_WORKSPACE | ConvertFrom-Json
+    whosOnFirst $dyrl_ger_WORKSPACE
+}
+elseif($dyrl_ger_ALT){
     $dyrl_ger_XOBJ = $PROTOCULTURE
     findThese $CALLER $dyrl_ger_XOBJ
-    ## Send back the CB response JSON + a list of the noisiest processes that
-    ##   can be filtered out if necessary.
+    ## Send back the CB response + a list of the noisiest processes that can
+    ## be filtered out if necessary.
     ## Make sure your calling script is expecting an array as the response!
-    $requested = @($dyrl_ger_WORKSPACE,$dyrl_ger_dontCare)
+    $initreq = @($dyrl_ger_WORKSPACE,$dyrl_ger_dontCare)
+
+    ## Carbon Black randomly adds the total number of events as an extra header.
+    ## We don't care about it, so get rid of it when that happens.
+    if($initreq.count -eq 3){
+        $requested = @{}
+        $reqested.Add($initreq[1].keys,$initreq[1].values)
+        $requested.Add($initreq[2].keys,$initreq[2].values)
+    }
+    else{
+        $requested = $initreq
+    }
     Return $requested
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 ## Proceed with the regular proc search types
 else{
@@ -1712,6 +1773,9 @@ while($r -Match "[0-9]"){
 
     ## Import values from other tools
     if( $CALLER ){
+
+        ## If the user types "file" in the MACROSS menu, search the 'binary' API for 
+        ## file/hash info
         if( $CALLER -eq 'MACROSS' ){
             Write-Host -f GREEN "
             Type in a filename for a general search, or hit ENTER
@@ -1724,7 +1788,6 @@ while($r -Match "[0-9]"){
                     ''
                     Write-Host -f CYAN '    Action cancelled. Hit ENTER to exit.'
                     Read-Host
-                    eReset
                     Exit
                 }
                 while($Z2 -notMatch "^(md5|sha256)$"){
@@ -1747,7 +1810,7 @@ while($r -Match "[0-9]"){
             findThese $CALLER $PROTOCULTURE  ## Send imported query params to the builder function
         }
         else{
-            eMsg 3  # Inform user they're missing something
+            errMsg 5  # Inform user they're missing something
         }
 
     }
@@ -1757,7 +1820,7 @@ while($r -Match "[0-9]"){
     }
 
 
-    $dyrl_ger_WORKSPACE = $dyrl_ger_WORKSPACE | ConvertFrom-Json
+    $Script:dyrl_ger_WORKSPACE = $dyrl_ger_WORKSPACE | ConvertFrom-Json
     $HOWMANY = ($dyrl_ger_WORKSPACE.results).length
 
 
@@ -1767,128 +1830,166 @@ while($r -Match "[0-9]"){
     
 
     if( $HOWMANY -gt 0){
-        $dyrl_ger_WORKHIGHLIGHTS = @()
-        $dyrl_ger_WORKSPACE1.highlights | %{
-            $dyrl_ger_WORKHIGHLIGHTS += $($_.name -replace 'PREPREPRE' -replace 'POSTPOSTPOST')
-        }
-        ## Extract useful details from a single event ID
+
+        ##########################################################
+        ## Pull info from a single event
+        ##########################################################
         function showFULLEVENT($1,$2){
             if( ! $dyrl_ger_attch){
+                ## This gets set automatically if the user is specifically searching attachments
                 $Script:srch = "*content.outlook*"
             }
-            $attch = $1.process.filemod_complete | %{
+            else{
+                ## If user's search is something like "*.doc\ " to exclude ".docx" files, the result
+                ## is not going to contain "\" or " ". Need to adjust the search to grab the filename.
+                if($srch -Match "\\ $"){
+                    $srch = $srch -replace "\\ $"
+                }
+            }
+            $attch = @()
+            $1.process.filemod_complete | %{
                 $fmfield = $_ -Split('\|')
-                $fmfield[2] -replace ".*\\" | where{$_ -Like $srch}
+                if($fmfield[2] -Like $srch){
+                    $attch += $($fmfield[2] -replace ".*\\")
+                }
             }
             $attch = $attch | Sort -Unique
-            $bexec = $1.process.modload_complete | %{
+            $bexec = @()
+            $1.process.modload_complete | %{
                 $bx = $_ -Split('\|')
-                $bx[2] | where{$_ -notMatch "(activclient|appsense|syswow64|microsoft|windows|avast|mcafee|symantec|vmware|oracle)"}
+                if($bx[2] -notMatch "(activclient|appsense|syswow64|microsoft|windows|mcafee|cb-service|vmware)"){
+                    $bexec += $bx[2]
+                }
             }
             $bexec = $bexec | Sort -Unique
             $fcmd = $1.process.fileless_scriptload_complete | %{
-                $_ -replace "^.+\|\w{64}\|"} | 
-                Sort -Unique
+                $_ -replace "^.+\|\w{64}\|"
+            } | Sort -Unique
             if($notmp){
-                $fmod = $1.process.filemod_complete | %{
+                $fmod = @()
+                $1.process.filemod_complete | %{
                     $spl1 = $_.split('\|')
-                    $spl1[2] | where{$_ -notMatch "(.*(local|roaming)\\microsoft.*|(dat|tmp)$)"} |
-                    Sort -Unique
+                    if($spl1[2] -notMatch "(.*(local|roaming)\\microsoft.*|(dat|tmp)$)"){
+                        $fmod += $spl1[2]
+                    }
                 }
+                $fmod = $fmod | Sort -Unique
             }
             else{
-                $fmod = $1.process.filemod_complete | 
-                %{$spl1 = $_.split('\|');$spl1[2] -replace ".*\\"} | 
-                Sort -Unique
+                $fmod = $1.process.filemod_complete | %{
+                    $spl1 = $_.split('\|');$spl1[2] -replace ".*\\"
+                } | Sort -Unique
             }
-            $child = $1.process.childproc_complete | 
-                %{$spl2 = $_.split('\|');$spl2[3] -replace ".*\\"} | 
-                Sort -Unique
-            $netc = $1.process.netconn_complete | 
-                %{$spl3 = $_.split('\|');$spl3[4]} | 
-                Sort -Unique
-            $reg = $1.process.regmod_complete | 
-                %{$spl4 = $_.split('\|');$spl4[2]} | 
-                Sort -Unique
+            $child = @()
+            $1.process.childproc_complete | %{
+                $spl2 = $_.split('\|')
+                $child += $($spl2[3] -replace ".*\\")
+            }
+            $child = $child | Sort -Unique
+            $netc = @()
+            $1.process.netconn_complete | %{
+                $spl3 = $_.split('\|')
+                $netc += $spl3[4]
+            }
+            $netc = $netc | Sort -Unique
+            $reg = @()
+            $1.process.regmod_complete | %{
+                $spl4 = $_.split('\|')
+                $reg += $spl4[2]
+            }
+            $reg = $reg | Sort -Unique
             
             
             if($attch.count -gt 0){
-                ''
-                Write-Host -f YELLOW "  $($attch.count)" -NoNewline;
-                Write-Host -f CYAN " Email attachments:"
-                if($cmdmail){
-                    $2nd = $cmdmail
-                }
-                else{
-                    $2nd = $1.process.process_name
-                }
                 $attch | %{
-                    screenResults $uname $2nd
-                    screenResults $_
+                    if($cmdmail){
+                        screenResults $uname $_  ## There may be several different users for this search
+                    }
+                    else{
+                        screenResults $_  ## Users get displayed one at a time without $cmdmail
+                    }
                 }
-                screenResults 'endr'
+                if( $dyrl_ger_attch ){
+                    if($attch.count -eq 1){
+                        $ats = 'attachment'
+                    }
+                    else{
+                        $ats = 'attachments'
+                    }
+                    screenResults "r~$uname" "r~       $($attch.count) Email $ats"
+                }
+                screenResults -e
             }
             if($fcmd.count -gt 0 -and ($displayq -Like "*cmdline*" -or $2 -eq 'c')){
-                ''
-                Write-Host -f YELLOW "  $($fcmd.count)" -NoNewline;
-                Write-Host -f CYAN " Command lines:"
-                screenResults 'endr'
                 $fcmd | %{
                     screenResults $_
-                    screenResults 'endr'
                 }
+                screenResults "r~       $($fcmd.count) Command lines"
+                screenResults -e
             }
             if($fmod.count -gt 0 -and -not $dyrl_ger_attch -and ($displayq -Like "*filemod*" -or $2 -eq 'n')){
-                ''
-                Write-Host -f YELLOW "  $($fmod.count)" -NoNewline;
-                Write-Host -f CYAN " File mods (system files & files without extensions will be omitted):"
-                screenResults 'endr'
+                if($displayq -Like "*filemod*"){
+                    $search_val = $($displayq -replace "^.*filemod\:" -replace " .*$" -replace "\*")
+                }
+                elseif($displayq -Like "*cmdline*"){
+                    $search_val = $($displayq -replace "^.*cmdline\:" -replace " .*$" -replace "\*")
+                }
                 $fmod | 
                     where{$_ -notMatch "(.*(local|roaming)\\microsoft.*|(dat|tmp)$)"} |
                     where{$_ -Match "\.[a-z][a-z]+$"} | %{
-                        screenResults $_
-                        screenResults 'endr'
-                }
+                        if($search_val -and ($_ -Like "*$search_val*")){
+                            screenResults "c~$_"
+                        }
+                        else{
+                            screenResults $_
+                        }
+                    }
+                screenResults "r~   $($fmod.count) File mods (system files & files without extensions are omitted)"
+                screenResults -e
             }
             if($2 -eq 'e'){
-                ''
-                Write-Host -f YELLOW "  $($bexec.count)" -NoNewline;
-                Write-Host -f CYAN " Binary execution (system applications are ignored):"
-                screenResults 'endr'
                 $bexec | %{
                     screenResults $_
-                    screenResults 'endr'
                 }
+                screenResults "r~   $(($bexec).count) Binary execution (system applications are ignored)"
+                screenResults -e
             }
             if($netc.count -gt 0 -and ($displayq -Like "*domain*" -or $2 -eq 'd')){
-                ''
-                Write-Host -f YELLOW "  $($netc.count)" -NoNewline;
-                Write-Host -f CYAN " Network connections:"
-                screenResults 'endr'
                 $netc | %{
-                    screenResults $_
-                    screenResults 'endr'
+                    if($_ -Like "*$($displayq -replace "^.*domain\:" -replace " .*" -replace "\*")*"){
+                        screenResults "c~$_"
+                    }
+                    else{
+                        screenResults $_
+                    }
                 }
+                screenResults "r~       $($netc.count) Network connections"
+                screenResults -e
             }
             if($reg.count -gt 0 -and $2 -eq 'r'){
-                ''
-                Write-Host -f YELLOW "  $($reg.count)" -NoNewline;
-                Write-Host -f CYAN " Registry mods:"
-                screenResults 'endr'
                 $reg | %{
                     screenResults $_
-                    screenResults 'endr'
                 }
+                screenResults "r~       $($reg.count) Registry mods"
+                screenResults -e
             }
             if($child.count -gt 0 -and $2 -eq 'k'){
-                ''
-                Write-Host -f YELLOW "  $($child.count)" -NoNewline;
-                Write-Host -f CYAN " Child processes:"
-                screenResults 'endr'
                 $child | %{
-                    screenResults $_
-                    screenResults 'endr'
+                    if($displayq -Like "*childproc*"){
+                        $search_val = $($displayq -replace "^.*childproc_name\:" -replace " .*$" -replace "\*")
+                    }
+                    elseif($displayq -Like "*process_name*"){
+                        $search_val = $($displayq -replace "^.*process_name\:" -replace " .*$" -replace "\*")
+                    }
+                    if($search_val -and ($_ -Like "*$search_val*")){
+                        screenResults "c~$_"
+                    }
+                    else{
+                        screenResults $_
+                    }
                 }
+                screenResults "r~       $($child.count) Child processes"
+                screenResults -e
             }
             
             Write-Host '
@@ -1896,26 +1997,39 @@ while($r -Match "[0-9]"){
             '
         }
 
-
+        ############################################################
         ## Display results as an indexed list
+        ############################################################
         function showRESULT($1){
-            cls
-            $Script:r = 0                 ## Total up the events found
-            $Script:RESULTS = @{}         ## Collect from the .results object
+
+            if( ! $RESULTS ){
+
+            $Script:r = 0                    ## Total up the events found
+            $Script:RESULTS = @{}            ## Collect from the .results object
             $Script:EVENTLISTING = @{}    ## Collect from each query to a specific .id event
-            Write-Host '
-            '
 
             $1.results | Foreach-Object{
                 $Script:r++
-                $Script:RESULTS.Add($r,$_) ## Save all .results in an array
+                $Script:RESULTS.Add($r,$_)   ## Save all .results in an array
                 ## Save each individual event from .results in a separate array
+                ## This lets the user view more details like filenames, cmdlines, etc.
                 if( ! $CALLER ){
+                    $cid = $($_.id)
                     Write-Host -f GREEN "  Collecting Event $r"
-                    craftQuery "v1/$($_.id)/event"
-                    $Script:EVENTLISTING.Add($($_.id),$dyrl_ger_SINGLEEVENT[0])
+                    craftQuery "v1/$cid/event"
+
+                    ## When users want to drill down into an event, $EVENTLISTING contains each event
+                    ## from all of the results that were returned. The ID gets chosen by the user when
+                    ## they select a number from the result listing; the ID gets pulled from
+                    ## $RESULTS[$result_number].id, which is the index key for $EVENTLISTING.
+                    $Script:dyrl_ger_SINGLEEVENT = $dyrl_ger_SINGLEEVENT | ConvertFrom-Json
+                    $Script:EVENTLISTING.Add($cid,$dyrl_ger_SINGLEEVENT)
                 }
             }
+
+            }
+            
+
             
             splashPage
             ''
@@ -1933,12 +2047,12 @@ while($r -Match "[0-9]"){
             
             $mailstrings = 0
             foreach($rk in ($RESULTS.keys | Sort)){
+
                 $rv = $RESULTS[$rk]
                 $Script:rr = $rk
-                    #$r++
-                    #$Script:rr = $r
-                    #$Script:RESULTS.Add($r,$_)
-                    $starttt = $rv.start  ## Don't mix up with user's time window search param
+
+                ## Grab the relevant JSON elements
+                    $STARTTT = $rv.start  ## Don't mix up with user's time window search param
                     $eid = $rv.id
                     $cmdline = $rv.cmdline
                     $hname = $rv.hostname
@@ -1961,22 +2075,22 @@ while($r -Match "[0-9]"){
                     $filesrc = $rv.product_name
                     $hsid = $rv.sensor_id
 
-                    if( $hsid ){
-                        $Script:getSID = $true
-                    }
+                if( $hsid ){
+                    $Script:getSID = $true
+                }
                 
-                    if($displayq -Like "*domain:*"){
-                        if($cmdline -Like "*http*"){
-                            $cmdline = $cmdline -replace "^.+http",'http' -replace " .+"
-                        }
+                if($displayq -Like "*domain:*"){
+                    if($cmdline -Like "*http*"){
+                        $cmdline = $cmdline -replace "^.+http",'http' -replace " .+"
                     }
+                }
 
                 if($dyrl_ger_WOF){
-                    $Script:dyrl_ger_woflist += $uname
+                    Break
                 }
                 else{
 
-                    adjustTime $starttt 0  # Localize timestamp
+                    adjustTime $STARTTT 0  # Localize timestamp
 
                     $showEvent = $true
                 
@@ -2015,8 +2129,7 @@ while($r -Match "[0-9]"){
                             $cmdmail = $cmdmail -replace "^.+PREPREPRE" -replace "POSTPOSTPOST.*"
                         }
 
-                        $bar = chr 9553
-                        $bars = $bar + $bar + $bar + $bar
+                    
 
 
                         ## Create menus dynamically based on API called
@@ -2025,30 +2138,34 @@ while($r -Match "[0-9]"){
                             $bhosts = $1.facets.hostname
                             $signer = $($1.facets.digsig_publisher_facet.name)
                             $bver = $($1.facets.file_version_facet.name)
-                            Write-Host -f GREEN "   $r. FILE: " -NoNewline;
-                            Write-Host -f YELLOW "$fname"
-                            Write-Host -f GREEN '         VERSION: ' -NoNewline;
-                            Write-Host -f YELLOW "$bver"
-                            Write-Host -f GREEN '         REAL NAME: ' -NoNewline;
-                            Write-Host -f YELLOW "$rname"
-                            Write-Host -f GREEN '         DESCRIPTION: ' -NoNewline;
-                            Write-Host -f YELLOW "$fdesc"
-                            Write-Host -f GREEN '         PRODUCT: ' -NoNewline;
-                            Write-Host -f YELLOW "$filesrc"
-                            Write-Host -f GREEN '         SIGNED: ' -NoNewline;
-                            Write-Host -f YELLOW "$sigstat"
-                            Write-Host "             $signer"
-                            Write-Host -f GREEN '         HOSTS SEEN WITH THIS SPECIFIC FILE: ' -NoNewline;
-                            Write-Host -f YELLOW "$hnwithfn"
-                            Write-Host -f GREEN '         MD5: ' -NoNewline;
-                            Write-Host -f YELLOW "$md5"
+                            w "   $r. FILE: " g -i
+                            w"$fname" y
+                            w '         VERSION: ' g -i
+                            w "$bver" y
+                            w '         REAL NAME: ' g -i
+                            w "$rname" y
+                            w '         DESCRIPTION: ' g -i
+                            w "$fdesc" y
+                            w '         PRODUCT: ' g -i
+                            w "$filesrc" y
+                            w '         SIGNED: ' g -i
+                            w "$sigstat" y
+                            w "             $signer"
+                            w '         HOSTS SEEN WITH THIS SPECIFIC FILE: ' g -i
+                            w "$hnwithfn" y
+                            w '         MD5: ' g -i
+                            w "$md5" y
                         }
+
+                        ## List out email attachments if user specifically searched for them
                         elseif($dyrl_ger_attch){
-                            Write-Host -f CYAN "$bars  $dyrl_ger_EVENTT   $hname  '$htype'   '$grp'"
-                            showFULLEVENT $EVENTLISTING["$eid"]
+                            screenResults "r~$dyrl_ger_EVENTT" "r~$hname" "r~$grp"
+                            showFULLEVENT $EVENTLISTING[$eid]
                         }
                         else{
-                            Write-Host -f CYAN "$bars  $dyrl_ger_EVENTT   $hname  '$htype'   '$grp'"
+                            screenResults "r~$dyrl_ger_EVENTT" "r~$hname" "r~$grp"
+
+                            ## List out emails if user specifically searched for them
                             if($dyrl_ger_emails){
                                 if($cmdmail){
                                     $mailstrings++
@@ -2056,52 +2173,42 @@ while($r -Match "[0-9]"){
                                 }
                             
                                 if($mailstrings -gt 0){
-                                    screenResults 'endr'
+                                    screenResults -e
                                 }
                                 else{
                                     Write-Host -f GREEN ' No email addresses...
                                     '
                                 }
                             }
+
+                            ## List out cmdlines if user specifically searched for them
                             elseif($dyrl_ger_cmd){
                                 screenResults "User: $uname" "  Proc: $proc"
                                 if($daddy){
                                     screenResults 'Parent' $daddy
                                 }
-                                screenResults 'endr'
-                                Write-Host -f GREEN '$bar ' -NoNewline;
-                                Write-Host " $cmdline"
-                                screenResults 'endr'
-                                Write-Host '
+                                screenResults -e
+                                getThis 4pWR; w '$vf19_READ ' g -i
+                                w " $cmdline"
+                                screenResults -e
+                                w '
                                 '
                             }
+
+                            ## List out filenames if user specifically searched for them
                             elseif($dyrl_ger_filesearch){
-                                Write-Host -f YELLOW ' File was found, but filenames cannot be shown in this view.'
-                                Write-Host -f YELLOW " Showing the file's process path and command line values instead:"
-                                screenResults 'endr'
-                                Write-Host -f GREEN "$bar $ppath"
-                                screenResults 'endr'
-                                Write-Host -f GREEN "$bar $cmdline"
-                                screenResults 'endr'
+                                w ' File was found, but filenames cannot be shown in this view.' y
+                                w " Showing the file's process path and command line values instead:" y
+                                screenResults -e
+                                getThis 4pWR; w "$vf19_READ $ppath" g
+                                screenResults -e
+                                getThis 4pWR; w "$vf19_READ $cmdline" g
+                                screenResults -e
                                 Write-Host '
                                 '
                             }
                             else{
                                 screenResults "User: $uname" "OS: $os" "Sensor: $hsid"
-                                <#if($proc -notMatch "\w"){
-                                    $proc = 'null'
-                                }
-                                if($ppath -notMatch "\w"){
-                                    $ppath = 'null'
-                                }
-                                if($kid -notMatch "\w"){
-                                    $kid = 'null'
-                                }
-                                if($cmdline -notMatch "\w"){
-                                    $cmdline = 'null'
-                                }#>
-
-
                                 screenResults 'Process' $proc
                                 if($ppath){
                                     screenResults 'Proc Path' $ppath
@@ -2121,7 +2228,7 @@ while($r -Match "[0-9]"){
                                     }
                                     screenResults 'Cmdline' $cmd
                                 }
-                                screenResults 'endr'
+                                screenResults -e
                                 Write-Host '
                                 '
                             }
@@ -2136,31 +2243,29 @@ while($r -Match "[0-9]"){
             }
         }
         
+
+
+        ## Only show the logged in user(s)
+        if($dyrl_ger_WOF){
+            whosOnFirst $dyrl_ger_WORKSPACE
+        }
+
         
         ''
         while($dyrl_ger_Z -ne 'f'){
+            ## Save initial result; 'WORKSPACE' might get overwritten as user drills down
             $Script:dyrl_ger_WORKSPACE1 = $dyrl_ger_WORKSPACE
+
+            
+            ## Extract useful details from a single event ID
+            $dyrl_ger_WORKHIGHLIGHTS = @()
+            $dyrl_ger_WORKSPACE1.highlights.name | %{
+                $dyrl_ger_WORKHIGHLIGHTS += $($_ -replace 'PREPREPRE' -replace 'POSTPOSTPOST')
+            }
+
+
             Clear-Variable -Force dyrl_ger_Z
             showRESULT $dyrl_ger_WORKSPACE1
-
-            ## Only show the logged in user
-            if($dyrl_ger_WOF){
-                $dyrl_ger_wofnames = $($dyrl_ger_woflist | Sort -Unique) -Join ', '
-                $dyrl_ger_wofnames = 'Logged in user(s): ' + $dyrl_ger_wofnames
-                $f_wshell = New-Object -ComObject Wscript.Shell
-                $f_wshell.Popup(
-                    $dyrl_ger_wofnames,
-                    0,
-                    "Logged in user(s)",
-                    64+0+4096
-                )
-                $dyrl_ger_Z = 'f'
-                if(! $CALLER){
-                    Remove-Variable dyrl_ger_*
-                    eReset
-                    Exit
-                }
-            }
 
 
             if($dyrl_ger_SKIPPEDSUM){
@@ -2177,30 +2282,48 @@ while($r -Match "[0-9]"){
                 Write-Host -f GREEN '   Hit ENTER to exit.
                 '
                 Read-Host
-                eReset
                 Exit
             }
             else{
-                Write-Host -f GREEN "    Select a result (1 - $rr) to drill down, " -NoNewline;
-                Write-Host -f GREEN ' "' -NoNewline;
-                Write-Host -f YELLOW 'p' -NoNewline;
-                Write-host -f GREEN '"'
-                Write-Host -f GREEN '    to see a quick list of all processes, "' -NoNewline;
-                Write-Host -f YELLOW 'u' -NoNewline;
-                Write-Host -f GREEN '" to'
-                Write-Host -f GREEN '    see a quicklist of all usernames, "' -NoNewline;
-                Write-Host -f YELLOW 'h' -NoNewline;
-                Write-Host -f GREEN '" for a'
-                Write-Host -f GREEN '    quicklist of hostnames, ' -NoNewline;
-                Write-Host -f GREEN "or '" -NoNewline;
-                Write-Host 'f' -NoNewline;
-                Write-Host -f GREEN "' to finish:  " -NoNewline;
+                w "    Select a result (1 - $rr) to drill down, " g -i
+                if( $dyrl_ger_ip ){
+                    $dyrl_ger_i1 = [string]($vf19_M[3] + $vf19_M[1]) + '.' + [string]($vf19_M[3] + $vf19_M[1])
+                    $dyrl_ger_i2 = $vf19_numchk - 5183
+                    if( $dyrl_ger_ip -Match "^($dyrl_ger_i1|$dyrl_ger_i2)" ){
+                        w "'" g -i
+                        w 'i' y -i
+                        w "' to query C2FID for $dyrl_ger_ip," g
+                        w '    ' -i
+                    }
+
+                }
+                w ' "' g -i
+                w 'p' y -i
+                w '"' g
+                w '    to see a quick list of all processes, "' g -i
+                w 'u' y -i
+                w '" to' g
+                w '    see a quicklist of all usernames, "' g -i
+                w 'h' y -i
+                w '" for a' g
+                w '    quicklist of hostnames, ' g -i
+                w "or '" g -i
+                Write-Host 'f' -i
+                w "' to finish:  " g -i
                 $dyrl_ger_Z = Read-Host
             }
             
 
             
-            if($dyrl_ger_Z -eq 'u'){
+            if($dyrl_ger_Z -eq 'i'){
+                $Global:PROTOCULTURE = $dyrl_ger_ip
+                $c2fd = $(collab 'C2FID.ps1' 'GERWALK' 'sendback')
+                screenResults $c2fd.HOST $c2fd.TYPE $c2fd.IP
+                screenResults -e
+                Remove-Variable -Force PROTOCULTURE -Scope Global
+                Remove-Variable -Force c2fd
+            }
+            elseif($dyrl_ger_Z -eq 'u'){
                 quickList $dyrl_ger_WORKSPACE1 'u'
             }
             elseif($dyrl_ger_Z -eq 'p'){
@@ -2214,15 +2337,14 @@ while($r -Match "[0-9]"){
                     $Script:dyrl_ger_hname = $RESULTS[[int]$dyrl_ger_Z].hostname
                 }
 
-                $dyrl_ger_IDSELECT = $RESULTS[[int]$dyrl_ger_Z].id      ## Get the event ID for the item chosen by the user
-                #craftQuery "v1/$dyrl_ger_IDSELECT/event"               ## Run another CB query for that specific event ID
-                
+                $dyrl_ger_IDSELECT = $RESULTS[[int]$dyrl_ger_Z].id   ## Get the event ID for the item chosen by the user
+
                 while($dyrl_ger_ZZ -ne ''){
                     Write-Host -f GREEN "   $dyrl_ger_Z. EVENT TIME: " -NoNewline;
                     Write-Host -f YELLOW "$dyrl_ger_LOCAL"
                     $RESULTS[[int]$dyrl_ger_Z]
-                    #showFULLEVENT $dyrl_ger_SINGLEEVENT[0]  ## json object similar to the WORKSPACE variable, but for a single event
                     showFULLEVENT $EVENTLISTING[$dyrl_ger_IDSELECT]
+                    Remove-Variable dyrl_ger_IDSELECT
                     ''
                     Write-Host -f YELLOW ' Other notable event objects (shell commands, etc):'
                     $dyrl_ger_WORKHIGHLIGHTS | %{
@@ -2270,6 +2392,13 @@ while($r -Match "[0-9]"){
                         Write-Host -f YELLOW 'e' -NoNewline;
                         Write-Host -f GREEN "' to list binary execution" -NoNewline;
                     }
+                    if($dyrl_ger_hname){
+                        Write-Host -f GREEN ', or'
+                        Write-Host -f GREEN "       -Type '" -NoNewline;
+                        Write-Host -f YELLOW 'h' -NoNewline;
+                        Write-Host -f GREEN "' to query C2FID for " -NoNewline;
+                        Write-Host -f GREEN "$dyrl_ger_hname" -NoNewline;
+                    }
                     if( $getSID ){  ## Not implemented yet
                         Write-Host -f GREEN ', or '
                         Write-Host -f GREEN "       -Type '" -NoNewline;
@@ -2282,8 +2411,31 @@ while($r -Match "[0-9]"){
                     $dyrl_ger_ZZ = Read-Host
 
 
-                    if( $dyrl_ger_ZZ -in @('d','n','k','r','e','c') ){
-                        showFULLEVENT $dyrl_ger_SINGLEEVENT[0] $dyrl_ger_ZZ
+                    if($dyrl_ger_ZZ -eq 'd'){
+                        showFULLEVENT $dyrl_ger_SINGLEEVENT[0] 'd'
+                    }
+                    elseif($dyrl_ger_ZZ -eq 'n'){
+                        showFULLEVENT $dyrl_ger_SINGLEEVENT[0] 'n'
+                    }
+                    elseif($dyrl_ger_ZZ -eq 'k'){
+                        showFULLEVENT $dyrl_ger_SINGLEEVENT[0] 'k'
+                    }
+                    elseif($dyrl_ger_ZZ -eq 'r'){
+                        showFULLEVENT $dyrl_ger_SINGLEEVENT[0] 'r'
+                    }
+                    elseif($dyrl_ger_ZZ -eq 'e'){
+                        showFULLEVENT $dyrl_ger_SINGLEEVENT[0] 'e'
+                    }
+                    elseif($dyrl_ger_ZZ -eq 'c'){
+                        showFULLEVENT $dyrl_ger_SINGLEEVENT[0] 'c'
+                    }
+                    elseif( $dyrl_ger_ZZ -eq 'h' ){
+                        $Global:PROTOCULTURE = $dyrl_ger_hname
+                        $c2fd = $(collab 'C2FID.ps1' 'GERWALK' 'sendback')
+                        screenResults $c2fd.HOST $c2fd.TYPE $c2fd.IP
+                        screenResults -e
+                        Remove-Variable -Force PROTOCULTURE -Scope Global
+                        Remove-Variable c2fd,dyrl_ger_hname
                     }
                     elseif( $dyrl_ger_ZZ -eq 's' ){
                         $ssiidd = $RESULTS[[int]$dyrl_ger_Z].sensor_id
@@ -2294,12 +2446,12 @@ while($r -Match "[0-9]"){
                     else{
                         $dyrl_ger_ZZ = ''
                     }
-                    w '
+                    Write-Host '
                     '
 
                     if($dyrl_ger_ZZ -ne ''){
                         ''
-                        w '  Hit ENTER to continue.' 'g'
+                        Write-Host -f GREEN '  Hit ENTER to continue.'
                         Read-Host
                     }
                 }
@@ -2318,6 +2470,7 @@ while($r -Match "[0-9]"){
             searchAgain 1
         }
         else{
+            Remove-Variable -Force dyrl_ger_WORKSPACE -Scope Script
             searchAgain
         }
     
@@ -2343,5 +2496,4 @@ while($r -Match "[0-9]"){
 }
 
 Remove-Variable -Force f_*,dyrl_ger_*,Z1
-
 
