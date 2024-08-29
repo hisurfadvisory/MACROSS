@@ -1,6 +1,6 @@
 #_sdf1 Targeted Active Directory Hunting
 #_ver 1.0
-#_class 1,admin,active directory,powershell,HiSurfAdvisory,0,none
+#_class 0,admin,active directory,powershell,HiSurfAdvisory,0,none
 
 <#
     Active-Directory sniffer: find accounts based on specific properties.
@@ -10,12 +10,16 @@
     This helps shorten the amount of returns you might receive, though you may
     not always want to do so!
 
-    Also, search for the line
+    
+    Review the sections at lines 370 & 490... you can modify these sections to better
+    suit your network. For example, the lines following
 
-    $dyrl_sn_T = availableTypes -v 'active-directory user,EDR' -e
+        $dyrl_sn_T = availableTypes -v 'active-directory user,EDR' -e
 
-    Review the code below it and modify the instructions to match your own EDR 
-    script's requirements, if necessary.
+    is where you can write instructions to match your own EDR script's requirements,
+    if necessary.
+
+
 #>
 
 
@@ -177,8 +181,8 @@ function searchAD($1,$2){
     $filters = @(); $filterstring = ''
     $specific = @()
     w ''
-    w '       ' w -i
-    w "ACTIVE DIRECTORY -- SEARCH $2 SETTINGS" bl w
+    w '       ' -i
+    w " ACTIVE DIRECTORY -- SEARCH $2 SETTINGS" bl w
     w ''
     
     $i = 1
@@ -192,21 +196,21 @@ function searchAD($1,$2){
             $k2 = '0' + $k2
         }
         $v1 = $1[$k1]; $v2 = $1[$k2]
-        if($v1 -in $dyrl_sn_intlist){$c1 = 'c'}
+        if($v1 -in $t2_wo_intlist){$c1 = 'c'}
         $n = 24 - $($v1.length)
         while($n -gt 0){
             $v1 = $v1 + ' '
             $n--
         }
-        w "$($k1 -replace "^0",' ')." w -i
+        w " $($k1 -replace "^0",' ')." -i
         if($v2){
-            if($v2 -in $dyrl_sn_intlist){$c2 = 'c'}
-            w $v1 $c1 -i
-            w "$($k2 -replace "^0",' ')." w -i
-            w $v2 $c2
+            if($v2 -in $t2_wo_intlist){$c2 = 'c'}
+            w " $v1" $c1 -i
+            w " $($k2 -replace "^0",' ')." -i
+            w " $v2" $c2
         }
         else{
-            w $v1 $c1
+            w " $v1" $c1
         }
         $i++
     }
@@ -228,12 +232,12 @@ function searchAD($1,$2){
     
         w '   Example filters --
         ' g
-        w '    17:some string value,16:true,7:3/15/2024' c -i
+        w '    17:some string value,16:true,7:3/15/2024' 'c' -i
         w ' (Search multiple properties)' g
         w '    43:some string value' c -i
         w '    (Search a single property)' g
         w '    3:>10' c -i
-        w '                  (Search an int property for values 10 & higher)
+        w '                   (Search an int property for values 10 & higher)
         ' g
         w '
     Enter filters or "q" to quit:
@@ -261,7 +265,7 @@ function searchAD($1,$2){
     foreach($filter in $filters){
         $c--
         $property = $1[$filter.keys]
-        $specific += $property
+        $specific += $($property -replace " \(EDIPI\)$",".*" -replace " \(\w+\)$")
         if($property -Like "* (b)"){
             ## Set boolean filters
             if($filter.values -Match "^f"){
@@ -271,7 +275,7 @@ function searchAD($1,$2){
                 $filterstring = $filterstring + '$_.' + $($property -replace " \(b\)$")
             }
         }
-        elseif($property -in $dyrl_sn_intlist){
+        elseif($property -in $t2_wo_intlist){
             if($filter.values -Match "^<\d+$"){
                 $filterstring = $filterstring + '$_.' + $property + ' -lt ' + [string]$($filter.values -replace "<")
             }
@@ -294,12 +298,18 @@ function searchAD($1,$2){
     
     w '
     Searching...' g
+    
+    ## Debugging
+    if($hk_OPT1){while($z -ne 'q'){$z = read-host 'debug'; iex "$z"; w "`n`n" }rv -force hk_OPT1 -scope global; Exit}
 
-    $get = [srciptblock]::Create("$($cmdlet[$2]) -filter * -properties * | where{$filterstring}")
-    $matches = $(. $get)
+
+    $matches = Invoke-Expression "$($cmdlet[$2]) -filter * -properties * | where{$filterstring}"
 
 
-    if(! $matches){  $matches = 0 }
+    if(! $matches){ 
+        $matches = 0
+    }
+
     Return @($matches,$specific,$filterstring)
 
 }
@@ -477,27 +487,30 @@ while($dyrl_sn_Z -ne 'c'){
     }
 
 
-    
+    ######################################################################
+    ## Modify the -Like, -Match, etc. values below to match up with the naming
+    ## scheme of your network for service accounts and external users
+    ######################################################################
     if($dyrl_sn_accounts[0] -ne 0){
         $dyrl_sn_Z = $null
         $dyrl_sn_total = $dyrl_sn_accounts[0].count
-        $dyrl_sn_svca = ($dyrl_sn_accounts[0] | where{$_.samAccountName -Like "svc.*"})
-        $dyrl_sn_svcn = ($dyrl_sn_accounts[0] | where{$_.samAccountName -notLike "svc.*"})
-        $dyrl_sn_extu = ($dyrl_sn_accounts[0] | where{$_.samAccountName -Match "^\d{10}"})
-        $dyrl_sn_extn = ($dyrl_sn_accounts[0] | where{$_.samAccountName -notMatch "^\d{10}"})
+        $dyrl_sn_svca = ($dyrl_sn_accounts[0] | where{$_.samAccountName -Like "service*"})
+        $dyrl_sn_svcn = ($dyrl_sn_accounts[0] | where{$_.samAccountName -notLike "service*"})
+        $dyrl_sn_extu = ($dyrl_sn_accounts[0] | where{$_.samAccountName -Match "^ext\-"})
+        $dyrl_sn_extn = ($dyrl_sn_accounts[0] | where{$_.samAccountName -notMatch "^ext\-"})
         if(-not $dyrl_sn_svca.count){$dyrl_sn_sc=0}else{$dyrl_sn_sc = $dyrl_sn_svca.count}
         if(-not $dyrl_sn_extu.count){$dyrl_sn_ec=0}else{$dyrl_sn_ec = $dyrl_sn_extu.count}
         w '
 
         '
         if($dyrl_sn_total -gt 21){
-            w "  There are" g -i
+            w "  There are " g -i
             w "$dyrl_sn_total" y -i
-            w "accounts matching your search (" g -i
+            w " accounts matching your search (" g -i
             w "$($dyrl_sn_sc)" c -i
-            w  "'svc.' and" g -i
+            w  " service and " g -i
             w "$($dyrl_sn_ec)" c -i
-            w "external accounts )" g
+            w " external accounts )" g
             w '  Enter one or more of the following choices (examples, "fo" to view' g
             w '  and save user accounts, or "s" to view service accounts):' g
             w '   -"a" to display them all' g
@@ -564,3 +577,4 @@ while($dyrl_sn_Z -ne 'c'){
         Hit ENTER to continue.' g; Read-Host
     }
 }
+
