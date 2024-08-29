@@ -6,52 +6,35 @@ MACROSS = ""
 # Put your custom MACROSS-specific classes at the bottom of this file (or anywhere in the py_classes
 # folder)
 '''
-    When you import this module to your MACROSS python script, keep in mind it is
-    expecting that your python scripts are receiving MACROSS values as sys
-    arguments **in this order**
-    
-        [1] $USR -- the logged in user
-        [2] $pyATTS -- The macross class .name and .valtype attributes from
-                all of the scripts in the "modules" folder
-        [3] $vf19_DTOP -- the user's desktop
-        [4] $vf19_PYPOD -- The base64 encoded defaults contained
-                in $vf19_MPOD, but reformatted so python doesn't complain
-        [5] $vf19_numchk -- MACROSS' mathing integer
-        [6] $vf19_pylib -- the path to the mcdefs.py file
-        [7] $vf19_TOOLSROOT -- the path to MACROSS' root folder
-        
-    No need to make this 'mcdefs' library part of your default python env,
-    you can simply make use of the $vf19_pylib argument in your scripts
+    There is no need to make this 'mcdefs' library part of your default python
+    env, you can simply make use of the $vf19_pylib argument in your scripts
     to temporarily add the import path.
     
-    By default it should always be the 6th argument sent by the "collab" or
+    By default it should always be the 1st argument sent by the "collab" or
     "availableMods" functions in the validation.ps1 file:
     
         import sys
-        MCDEF = sys.argv[6]
+        MCDEF = sys.argv[1]
         sys.path.insert(0,MCDEF)
         import mcdefs
     
-    ^^ If that gets set properly, you can now import MACROSS's python library
-    for use in your automation, and you don't have to contaminate your python
-    environment with my janky code! :p
+    The mcdefs lib will automatically set several MACROSS values for you, including:
     
-    $vf19_TOOLSROOT will contain the modules folder where your scripts are
-    kept... and is also where the "py_classes" folder is located, where you can
-    add your own custom MACROSS-related python resources:
-    
-        MACROOT = sys.argv[7]             -> set the MACROSS root folder location
-        TOOLS = MACROOT + '\\modules'       -> set the location of the scripts
-        RSRCS = MACROOT + '\\resources'   -> set the location of the resources folder*
-        PYLIB = MACROOT + '\\py_classes'  -> set the location of your python stuff
+        mcdefs.PROTOCULTURE         -> if there is an active $PROTOCULTURE value
+        mcdefs.USR                  -> your username
+        mcdefs.DTOP                 -> your desktop path
+        mcdefs.N_                   -> the $N_ list of mathing obfuscation numbers
+        mcdefs.TOOLSROOT            -> the MACROSS root folder location
+        mcdefs.TOOLSDIR             -> the modules\ folder
+        mcdefs.MPOD                 -> the python version of $vf19_MPOD**
+        mcdefs.LOGS                 -> the location of MACROSS' log files
         
-        * You may want to keep the resources folder somewhere other than the MACROSS
-        root folder. In that case, you can set its location using...
-        
-                    mcdefs.getDefaults(<your index>)
-                    
-        ...provided you've set it up properly in the MACROSS temp_config.txt file.
-        
+        ** Use mcdefs.getThis() to decrypt the values you set in MACROSS' config.conf
+        file. The mcdefs.MPOD dictionary contains the same key-value pairs as the
+        $vf19_MPOD hashtable in powershell. Example:
+
+        resource_folder = mcdefs.getThis(mcdefs.MPOD['enr'])
+
     Additionally, to aid in sharing query results back and forth between powershell
     and python, the py_classes folder contains a subfolder called 'garbage_io'. MACROSS
     scripts can write their outputs into this directory, using *.eod files, (there is a 
@@ -60,12 +43,11 @@ MACROSS = ""
     might need to be stored for later in a session.
     
     MACROSS powershell scripts already know the location of this folder as $vf19_GBIO. 
-    You can set the location in python using the sys library, set as
+    You can set the location in python using the mcdefs.TOOLSROOT filepath:
     
-                    vf19_GBIO = sys.argv[6] + '\\core\\py_classes\\garbage_io'
+        GBIO = mcdefs.TOOLSROOT + '\\\\core\\\\py_classes\\\\garbage_io'
                     
     The garbage_io folder is automatically cleaned up when MACROSS exits.
-    
 '''
 
 ################################################################
