@@ -27,7 +27,7 @@
 
     2. You will need to develop a secure method for passing in your API keys,
     this script does not contain any built-in methods for you. Look for line
-    1597, or the line "$Script:dyrl_ger_MARK = $SETYOURKEYHERE", creating/passing 
+    1598, or the line "$Script:dyrl_ger_MARK = $SETYOURKEYHERE", creating/passing 
     in your key here ensures it can be reused for multiple queries in one session,
     but only after users have passed all the permisson/access checks.
 
@@ -219,7 +219,7 @@
         Debugging will display your full curl commands*, converts the JSON response into a powershell 
         object, and lets you manipulate that object to view the different data that gets returned by 
         your search. If you need the raw JSON, just convert it back with 
-        "$DEBUGSPACE = $DEBUGSPACE | ConvertTo-Json" for your testing.
+        "$dbg = $dbg | ConvertTo-Json" for your testing.
 
         All of MACROSS' functions are available, so while debugging you can play with using
         "screenResults", "sheetResults", "pyCross", etc. to manipulate the $DEBUGSPACE object.
@@ -1461,7 +1461,7 @@ function craftQuery($1,$2,$3,$4){
     
     $ua = 'MACROSS' ## If making curl requests generates alerts on your network, you can whitelist MACROSS user-agent strings
 
-    getThis $vf19_DEFSLIST['vcb']
+    getThis $vf19_MPOD['ger']
     $SRV1 = "$vf19_READ"
     getThis 'IC1IICdYLUF1dGgtVG9rZW46IA=='
     $SRV2 = $vf19_READ
@@ -1472,7 +1472,7 @@ function craftQuery($1,$2,$3,$4){
     if( ! $2 ){
         Remove-Variable -Force dyrl_ger_FULLEVENT -Scope Script
         $qopen = $qopen + $1
-        $getResults = "$qopen' -H 'accept: application/json' $SRV2$dyrl_ger_CONCHK'"
+        $getResults = "$qopen' -H 'accept: application/json' $SRV2$dyrl_ger_MARK'"
         $Script:dyrl_ger_SINGLEEVENT = iex "$getResults" #| ConvertFrom-Json
     }
     elseif($1 -eq ''){
@@ -1513,7 +1513,7 @@ function craftQuery($1,$2,$3,$4){
 
         if( $dyrl_ger_DEBUG ){
             Remove-Variable -Force dyrl_ger_DEBUG -Scope Script
-            $dbg = iex "$getResults" -ErrorAction Inquire | ConvertFrom-Json
+            $dbg = iex "$getResults"
             $c = 'continue'; getThis -h 2E2A28434F4E43484B7C6765742D7661726961626C657C67767C3A3A292E2A
             $srch0 = [regex]"$vf19_READ"
 
@@ -1531,13 +1531,14 @@ function craftQuery($1,$2,$3,$4){
                 elseif($c -Match $srch0){ $c = $null }
                 elseif($c -Match "^[$]dbg"){ iex "$c" }
             }
+            
         }
         if(! $CALLER){
             w '  Your search:'
             w "  > $displayq" 'c'
         }
-        if($DEBUGSPACE){
-            $Script:dyrl_ger_WORKSPACE = $DEBUGSPACE
+        if($dbg){
+            $Script:dyrl_ger_WORKSPACE = $dbg
         }
         else{
             $Script:dyrl_ger_WORKSPACE = iex "$getResults" #| ConvertFrom-Json
@@ -1585,6 +1586,8 @@ function searchAgain($1){
         Exit
     }
 }
+
+
 
 
 #############################################################################
