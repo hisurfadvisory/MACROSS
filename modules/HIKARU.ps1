@@ -85,8 +85,10 @@ header
 
 ## The "w" function is an alias for write-host, and allows changing text color,
 ## underlining and highlighting.
-w "This demo will ask you for a search term to find a Windows event ID. The keyword(s) 
-you enter here will be sent to the MINMYA python script, which will then forward it to 
+w "
+
+This demo will ask you for a search term to find a Windows event ID. The keyword(s) 
+you enter here will be sent to the MINMAY python script, which will then forward it to 
 the GUBABA.ps1 script and retrieve GUBABA's results.
 
 This is a very simple demonstration of how you can connect your scripts together. View
