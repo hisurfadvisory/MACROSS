@@ -1,5 +1,5 @@
 #_sdf1 Front end for MACROSS toolset
-#_ver 4.5
+#_ver 4.6
 
 <#
     Multi-API-Cross-Search (MACROSS) Console
@@ -145,9 +145,8 @@ $mcores = @(
     'updates'
 )
 ''
-
+battroid -n vf19_TOOLSROOT -v "$PSScriptRoot"
 foreach($c in $mcores){
-    $Global:vf19_TOOLSROOT = "$PSScriptRoot"
     $script = ("$($PSScriptRoot)\core\" + $c + '.ps1')
     if(Test-Path -Path "$script"){
         try{
@@ -183,7 +182,7 @@ $vf19_CHOICE = [regex]"^([\drsw]{1,3})$"
 
 
 ## Set default local MACROSS tools folder
-$Global:vf19_TOOLSDIR = "$vf19_TOOLSROOT\modules"
+battroid -n vf19_TOOLSDIR -v "$vf19_TOOLSROOT\modules"
 
 
 ################### MODIFY THESE VALUES AS NEEDED ###############
