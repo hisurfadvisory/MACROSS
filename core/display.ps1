@@ -1,4 +1,3 @@
-
 ## Functions controlling MACROSS's display
 
 <#
@@ -797,7 +796,6 @@ function startUp([switch]$init=$false){
             }
             if($prog -match 'nmap'){ $Global:MAPPER = $true }        ## Can use nmap, yay!
             if($prog -match 'wireshark'){ $Global:SHARK = $true }    ## Can use wireshark, yay!
-            if($prog -Match 'excel'){ $Global:MSXL = $true }         ## Can use excel for MACROSS' sheetz function, yay!
 
         }; rv i,INST,prog
     }
@@ -815,7 +813,7 @@ function startUp([switch]$init=$false){
     ## file.
     ##
     if(! $vf19_GBIO){
-        battroid -n vf19_GBIO -v "$vf19_pylib\garbage_io"       ## Set the garbage-in-garbage-out directory for python scripts
+        battroid -n vf19_GBIO -v "$vf19_pylib\garbage_io"
         battroid -n vf19_PROTO -v "$vf19_GBIO\PROTOCULTURE.eod"
     }
     if(! $vf19_MPOD){
@@ -885,7 +883,7 @@ function chooseMod(){
         }
     
         $toolcount = $vf19_MENULIST.count; if($toolcount -gt 10){$vf19_MULTIPAGE=$true}
-        $Global:vf19_PAGECT = [math]::Truncate(($toolcount/10) + 1)  ## Generate a new page for every 10 tools in "/modules"
+        $Global:vf19_PAGECT = [math]::Truncate(($toolcount/10) + 1)
 
         $ti = 1
         getThis 4pWR
@@ -943,10 +941,10 @@ function chooseMod(){
 
         
         if( $vf19_Z -in $extralist ){
-            extras $vf19_Z            ## Access extra tasks
+            extras $vf19_Z
         }
         elseif( $vf19_Z -Like "help*" -and $vf19_Z -Match "\d"){
-            $Global:HELP = $true   ## Launch the selected script's man page/help menu
+            $Global:HELP = $true
             $Global:vf19_Z = $vf19_Z -replace "help(\s)?"
             availableMods $([int]$vf19_Z)
         }
@@ -956,41 +954,36 @@ function chooseMod(){
         elseif( $vf19_Z -Match $vf19_CHOICE ){
             if( $vf19_Z -Like "*r" ){
                 $Global:vf19_Z = $vf19_Z -replace 'r'
-                $Global:vf19_REF = $true      ## Triggers the dlNew function (updates.ps1) to download fresh copy of the selected script before executing it
+                $Global:vf19_REF = $true
             }
             elseif( $vf19_Z -Like "*s" ){
                 $Global:vf19_Z = $vf19_Z -replace 's' 
-                $Global:vf19_OPT1 = $true     ## Triggers the selected script to switch modes/enable added functions
+                $Global:vf19_OPT1 = $true
             }
             elseif( $vf19_Z -Like "*w" ){
                 $Global:vf19_Z = $vf19_Z -replace 'w'
-                $Global:vf19_NEWWINDOW = $true   ## Triggers the availableMods function to launch the selected script in a new powershell window
+                $Global:vf19_NEWWINDOW = $true
             }
             else{
                 $Global:HELP = $false
                 $Global:vf19_OPT1 = $false
             }
-            ## availableMods (validation.ps1) checks to see if script exists, then launches with any selected options
             availableMods $([int]$vf19_Z)
         }
         elseif( $vf19_Z -eq 'p' ){
             if( $vf19_MULTIPAGE ){
-                scrollPage          ## Changes menu to show 1-9 vs 10-20
+                scrollPage
             }
-            $Global:vf19_Z = $null  ## scrollPage only works if there's more than 9 tools in the modules folder
+            $Global:vf19_Z = $null
         }
         elseif( $vf19_Z -eq 'q' ){
             varCleanup -c
-            Exit                    ## User chose to quit MACROSS
+            Exit
         }
         elseif( $vf19_Z -Match "^debug" ){
-            if($vf19_Z -Match ' '){
-                $p = $($vf19_Z -replace "^debug ")
-            }
-            else{
-                $p = $null
-            }
-            debugMacross $p      ## Enables setting error message display or suppression
+            if($vf19_Z -Match ' '){ $p = $($vf19_Z -replace "^debug ") }
+            else{ $p = $null }
+            debugMacross $p
         }
         Clear-Variable -Force vf19_Z
 
@@ -1010,3 +1003,4 @@ function scrollPage(){
         chooseMod
     }
 }
+
