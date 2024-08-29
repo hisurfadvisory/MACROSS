@@ -10,7 +10,7 @@ function setConfig(){
     $current_analyst = Test-Path "$($vf19_CONFIG[2])"
     $ml = setML;if($current_config){ startUp }
     $Script:list=@{};$e_=$vf19_GPOD.Item1;$f_=$vf19_GPOD.Item2;$ef_=$e_+$f_
-    if($($vf19_MPOD['mad'])){$Script:init=$($vf19_MPOD['mad']);varCleanup}
+    if($($vf19_MPOD['mad'])){getThis $vf19_MPOD['mad'] -h;$Script:init=$($vf19_READ);varCleanup}
     elseif($current_config){$Script:init=$((gc "$($vf19_CONFIG[0])")[0..63] -Join(''))}
     getThis 'LiooKChbZ0ddW3ZWXXxbZ0ddZXQtW3ZWXWFyaWFibGUpKCB8XFxzKSsoKHZmfFZG
     fFZmfHZGKShbXHdfXSspPyk/XCopfFtvT11bZERdXFsnKG1hZHxNQUR8QkwwfGJsMCknXF0pLio='
@@ -31,7 +31,7 @@ function setConfig(){
     function setInMem($1){
         $csec = Read-Host "`n $1" -AsSecureString; $cplain = byter $csec
         $cmem = setFromMem $([IO.MemoryStream]::New([byte[]][char[]]$cplain))
-        if($cmem -eq $vf19_MPOD['mad']){Return $e_}
+        if($cmem -eq $Script:init){Return $e_}
     }
     function setPerms(){
         getThis $ml[5]
@@ -150,8 +150,7 @@ function setConfig(){
             if($n1a -ceq $n2a){
                 $nmem = setFromMem $([IO.MemoryStream]::new([byte[]][char[]]$n1a))
                 if($list['mad']){$Script:list.Remove('mad')}
-                $Script:list.Add('mad',$nmem)
-                $Script:init = $nmem; $Script:mod = $true
+                $Script:init = $nmem; $Script:mod = $true; $Script:list.Add('mad',$(getThis -e -h $nmem))
                 if($current_analyst){
                     $ka = setCC; $kb = altBye $nmem
                     $perma = "$(setReset -d "$($vf19_CONFIG[2])" $ka)"
@@ -184,7 +183,7 @@ function setConfig(){
                     if(! $mod ){ 
                         if(! $vf19_MPOD){startUp}; $vf19_MPOD.keys | Sort | %{ $Script:list.Add($_,$($vf19_MPOD[$_])) } 
                     }
-                    subSetAuth
+                    subSetAuth; $script:pwupd = $true
                     $attempt = 9
                 }
                 else{
@@ -264,7 +263,7 @@ function setConfig(){
                     }
                 }
             }
-            
+            $z = $null
             while(-not $fin){
                 while($z -notMatch "^[yn]$"){
                     w '
@@ -347,6 +346,7 @@ function setConfig(){
         if(! $s){ cls }
         $memspace = $f_
         $firstrun = $true
+        transitionSplash $(Get-Random -Minimum 0 -Maximum 11)
         w '
         '
         screenResults 'm~                               MACROSS INITIAL SETUP'
@@ -381,27 +381,25 @@ function setConfig(){
     if($mod){
         if($perma){
             $kk = setCC
-            $(setReset $perma $kk) -replace "S$" | Out-File "$vf19_TOOLSROOT\analyst.conf" -NoNewline
+            $(setReset $perma $kk) -replace "$(chr 83)$" | Out-File "$vf19_TOOLSROOT\analyst.conf" -NoNewline
         }
         if($list.count -gt 0){
             $updated = @(); getThis QEBA; $dl = $vf19_READ
             if($vf19_MPOD.count -gt 0){
-                $list.keys | Sort | %{
+                $list.keys | Sort | where{$_ -ne 'mad'} | %{
                     if($_ -notIn $vf19_MPOD.keys){$updated += $_}
                     elseif($list[$_] -ne $vf19_MPOD[$_]){$updated += $_}
                 }
-                $vf19_MPOD.keys | Sort | %{
+                $vf19_MPOD.keys | Sort | where{$_ -ne 'mad'} | %{
                     if($_ -notIn $list.keys){$updated += $_}
                 }
                 screenResults 'KEY' 'OLD VALUE' 'NEW VALUE'
                 $updated | Sort | %{
-                    if($_ -eq 'mad'){getThis $ml[9]; screenResults "c~   $vf19_READ"}
-                    else{
-                        getThis $vf19_MPOD[$_]; $old = $vf19_READ
-                        getThis $list[$_]; $new = $vf19_READ
-                        screenResults $_ $old $new
-                    }
+                    if($vf19_MPOD[$_]){getThis $vf19_MPOD[$_]; $old = $vf19_READ}else{$old='None'}
+                    getThis $list[$_]; $new = $vf19_READ
+                    screenResults $_ $old $new
                 }
+                if($pwupd){getThis $ml[9]; screenResults "c~   $vf19_READ"}
                 screenResults -e
                 ''
                 $z = $null; while($z -notMatch "(a|c)"){
@@ -437,7 +435,7 @@ function setConfig(){
             $np = $(Get-Content "$vf19_TMP\macross_cfg.temp" -replace "^.$("$dl" + 'mad')" -replace "$("$dl").+")
         }
         else{
-            $np = $vf19_MPOD['mad']
+            getThis $vf19_MPOD['mad'] -h; $np = $vf19_READ
         }
         $kk = altByte $np $d9[0] $d9[1]
         $np | Out-File $of -NoNewline
@@ -549,7 +547,7 @@ function setNewRole($file,$role,[switch]$check=$false){
         w '
         '; Return
     }
-    elseif($check){ w ' ERROR! ' r bl -i; w 'There is no analyst.conf file.' c bl; Return}
+    elseif($check){ w ' NOTICE: ' r bl -i; w 'Could not find any analyst.conf file.' c bl; Return}
     if($file -and $role){
         if(Test-Path "$vf19_TMP\analyst.tmp"){
             $json = (gc "$vf19_TMP\analyst.tmp") -replace "\}$",$(',"' + $role + '": [')
