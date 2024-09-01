@@ -18,7 +18,7 @@ function finalSet(){
         ##     getThis $vf19_MPOD[your_key]; battroid -n vf19_REPOTOOLS -v $vf19_READ
 
         battroid -n vf19_REPOTOOLS -v "$vf19_REPOCORE\modules"
-        $vf19_VERSIONING = $true
+        $Global:vf19_VERSIONING = $true
     }
 }
 
