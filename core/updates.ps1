@@ -43,7 +43,7 @@ function toolCount(){
         $Global:vf19_MENU.Add($lfn,@{$ldesc=$latts})                ## Send all the data to the menu-screen builder
         $Global:vf19_FILECT++                                       ## Track how many tools are installed
     }
-    if($vf19_REPOCORE -ne 'none'){
+    if($vf19_VERSIONING){
     foreach($rscript in (Get-Childitem "$vf19_REPOTOOLS\$ext" | Sort)){
         $rn = $rscript.name
         $rfn = $rn -replace "\..+"
@@ -114,7 +114,7 @@ function look4New(){
         }
     }
 
-    if( $vf19_FILECT -gt $vf19_REPOTOOLSCT ){ $Global:vf19_MISMATCH = $true }
+    if( $vf19_FILECT -gt $vf19_REPOCT ){ $Global:vf19_MISMATCH = $true }
     
     ## Perform final check and copy scripts
     function copyScript($a,$b){
@@ -144,7 +144,7 @@ function look4New(){
     
 
 
-    if( $vf19_MISMATCH -and ! $vf19_SILENCE ){
+    if( ($vf19_FILECT -gt $vf19_REPOCT) -and ! $vf19_SILENCE ){
         w '   You have scripts that are not in the master folder:
         ' y
         foreach( $a in $mismatch_list ){
@@ -179,23 +179,25 @@ function look4New(){
     elseif($tool_diff){
         Foreach($t0 in $tool_diff){
             $t00 = $t0 -replace "\..*"
+            $tfn = $vf19_ATTS[$t00].fname
             if($vf19_FILECT -eq 0){
                 if($MONTY -and $vf19_ATTS[$t00].lang -eq 'python'){
-                    copyScript $t0
+                    copyScript $tfn
                 }
                 elseif($vf19_ATTS[$t00].lang -eq 'powershell'){
-                    copyScript $t0
+                    copyScript $tfn
                 }
             }
             if($t0.SideIndicator -eq '<='){
                 if($MONTY -and $vf19_ATTS[$t00].lang -eq 'python'){
-                    copyScript $($t0.InputObject)
+                    copyScript $($($tfn).InputObject)
                 }
                 elseif($vf19_ATTS[$t00].lang -eq 'powershell'){
-                    copyScript $($t0.InputObject)
+                    copyScript $($($tfn).InputObject)
                 }
             }
         }
+        
     }
 
 }
@@ -211,13 +213,13 @@ function dlNew($1,$2){
         errLog 'ERROR' "$USR - dlNew function failed to check for new scripts."
     }
     else{
-        $dir = $Global:vf19_REPOTOOLS
+        $dir = $vf19_REPOTOOLS
         $3 = $1 -replace "\.p*"
         $3 = $3 -replace "modules\\"
         $4 = $1 -replace "modules\\"
         if( $3 -eq "MACROSS" ){
             $CONSOLE = $true
-            $dir = $Global:vf19_REPOCORE
+            $dir = $vf19_REPOCORE
         }
 
         splashPage
