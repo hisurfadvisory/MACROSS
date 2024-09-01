@@ -213,14 +213,11 @@ function dlNew($1,$2){
         errLog 'ERROR' "$USR - dlNew function failed to check for new scripts."
     }
     else{
-        $dir = $vf19_REPOTOOLS
-        $3 = $1 -replace "\.p*"
+        $3 = $1 -replace "\..*"
         $3 = $3 -replace "modules\\"
         $4 = $1 -replace "modules\\"
-        if( $3 -eq "MACROSS" ){
-            $CONSOLE = $true
-            $dir = $vf19_REPOCORE
-        }
+        if( $3 -eq "MACROSS" ){ $CONSOLE = $true; $dir = $vf19_REPOCORE }
+        else{ $dir = $vf19_REPOTOOLS }
 
         splashPage
 
@@ -265,7 +262,7 @@ function dlNew($1,$2){
 
 
 
-################################
+#################################
 ## Update latest tool versions; requires that you maintain a master repository and that its
 ## location can be found in $vf19_MPOD['nre'] (see the temp_config.txt file).
 ## $1 is a required value, the tool name passed in from the functions 'chooseMod' & 'dlNew'
@@ -308,7 +305,7 @@ function verChk($1){
                 Return
             }
             elseif( $3 -eq "MACROSS" ){
-                w "     $3 needs to update to v" y -i
+                w "`n`n     $3 needs to update to v" y -i
                 Write-Host -f MAGENTA "$vf19_LVER" -NoNewline;
                 Write-Host -f YELLOW ". Hit ENTER to continue."
                 Read-Host
