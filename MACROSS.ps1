@@ -1,5 +1,5 @@
 #_sdf1 Front end for MACROSS toolset
-#_ver 4.6
+#_ver 4.5
 
 <#
     Multi-API-Cross-Search (MACROSS) Console
@@ -167,7 +167,9 @@ foreach($c in $mcores){
         Exit
     }
 }
-
+if(! (Test-Path "$vf19_TOOLSROOT\modules")){
+    New-Item -Type directory -Path $vf19_TOOLSROOT -Name modules | Out-Null
+}
 
 
 ## The ASCII art is not critical, keep loading even if it's missing
@@ -229,6 +231,7 @@ while( $Global:vf19_Z -ne 'q' ){
     if("$vf19_VERSIONING"){
         verChk 'MACROSS.ps1'       ## Check for updates before loading anything
         look4New                   ## Check for new tools
+	toolCount
     }
     
     $Global:vf19_PAGE = 0   ## Start on the first page
