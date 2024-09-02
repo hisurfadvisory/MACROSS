@@ -189,6 +189,9 @@ function idLookup($1){
                 }
             }
         }
+        if($c.count -eq 0){
+            $c = $false
+        }
         
         
         ## External scripts likely won't need screen output, they can parse the response themselves.
