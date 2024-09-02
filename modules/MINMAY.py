@@ -99,33 +99,47 @@ if test != 'False':
     ## pyCross that writes the $PROTOCULTURE value to the PROTOCULTURE.eod file within the core\py_classes\
     ## garbage_io folder. The pyCross function automatically converts hashtables and lists into strings for 
     ## python that you will need to convert & parse in your tools.
-    demoDict = {}
-    demoList = test.split("@@")
-    for i in demoList:
-        kv = i.split(':')[0]
-        vk = i.split(':')[1] + ': ' + i.split(':')[2]
-        demoDict[kv] = vk
+    if mc.rgx(".*@@.*",test):
+        demoDict = {}
+        demoList = test.split("@@")
+        for i in demoList:
+            kv = i.split(':')[0]
+            vk = i.split(':')[1]
+            demoDict[kv] = vk
+        ## The mcdefs library contains many of MACROSS' powershell functions, including  w() and screenResults() 
+        ## that you can use to format your outputs onscreen.
+        mc.w('GUBABA RESULTS USING w()','m')
+        for d in demoDict:
+            mc.w(d + ': ','g',i=True); mc.w(demoDict[d],'y')
+        print("""
+        """)
+        del d
+        input("""Hit ENTER to continue.
+        """)
 
-    ## The mcdefs library contains many of MACROSS' powershell functions, including  w() and screenResults() 
-    ## that you can use to format your outputs onscreen.
-    mc.w('GUBABA RESULTS USING w()','m')
-    for d in demoDict:
-        mc.w(d + ': ','g',i=True); mc.w(demoDict[d],'y')
-    print("""
-    """)
-    del d
-    input("""Hit ENTER to continue.
-    """)
+        
+        mc.w('GUBABA RESULTS USING screenResults()','m')
+        for d in demoDict:
+            cc = "c~" + d
+            dd = demoDict[d]
+            mc.screenResults(cc,dd)
+        mc.screenResults()
+        print("""
+        """)
+    else:
+        mc.w('GUBABA RESULTS USING mcdefs.w():','m')
+        mc.w(test,'g')
+        print("""
+        """)
+        input("""Hit ENTER to continue.
+        """)
 
-    
-    mc.w('GUBABA RESULTS USING screenResults()','m')
-    for d in demoDict:
-        cc = "c~" + d
-        dd = demoDict[d]
-        mc.screenResults(cc,dd)
-    mc.screenResults()
-    print("""
-    """)
+        
+        mc.w('GUBABA RESULTS USING mcdefs.screenResults():','m')
+        mc.screenResults(test)
+        mc.screenResults()
+        print("""
+        """)
 
     mc.w("\nHit ENTER to quit back to the menu.",'g')
 else:
