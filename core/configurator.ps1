@@ -380,8 +380,7 @@ function setConfig(){
 	
     if($mod){
         if($perma){
-            $kk = setCC
-            $(setReset $perma $kk) -replace "$(chr 83)$" | Out-File "$vf19_TOOLSROOT\analyst.conf" -NoNewline
+            $(setReset $perma $(setCC)) | Out-File "$vf19_TOOLSROOT\analyst.conf" -NoNewline
         }
         if($list.count -gt 0){
             $updated = @(); getThis QEBA; $dl = $vf19_READ
@@ -550,15 +549,15 @@ function setNewRole($file,$role,[switch]$check=$false){
     elseif($check){ w ' NOTICE: ' r bl -i; w 'Could not find any analyst.conf file.' c bl; Return}
     if($file -and $role){
         if(Test-Path "$vf19_TMP\analyst.tmp"){
-            $json = (gc "$vf19_TMP\analyst.tmp") -replace "\}$",$(',"' + $role + '": [')
+            $json = (gc "$vf19_TMP\analyst.tmp") -replace "\}$","$(',"' + $role + '": [')"
         }
         else{
-            $json = "{$('"' + $role + '": [')"
+            $json = [string]"{$('"' + $role + '": [')"
         }
         Get-Content $file | %{
             $json += $('"' + $_ + '",')
         }
-        $json -replace ",$",']}' | Out-File "$vf19_TMP\analyst.tmp"
+        $json = $json -replace ",$",']}'; $json | Out-File "$vf19_TMP\analyst.tmp"
     }
     elseif( $vf19_ROBOTECH ){
         w ' You must be admin to perform this action.
@@ -572,33 +571,33 @@ function setNewRole($file,$role,[switch]$check=$false){
         if($vf19_MPOD['ta2']){ getThis $vf19_MPOD['ta2'];$admin2=$vf19_READ }
         if($vf19_MPOD['ta1']){ getThis $vf19_MPOD['ta1'];$admin1=$vf19_READ }
         if($tier1){
-            $json = '{"Tier1": ['
+            $json = [string]'{"Tier1": ['
             gg $tier1 | %{ $json += $('"' + $_ + '",') }
             if($admin1){
                 gg $admin1 | %{ $json += $('"' + $_ + '",') }
             }
-            $json = $json -replace ",$"; $json += ']'
+            $json = $json -replace ",$",']'
         }
         if($tier2){
-            $json = $json + ',"Tier2": ['
+            $json = $json + [string]',"Tier2": ['
             gg $tier2 | %{ $json += $('"' + $_ + '",') }
             if($admin2){
                 gg $admin2 | %{ $json += $('"' + $_ + '",') }
             }
-            $json = $json -replace ",$"; $json += ']'
+            $json = $json -replace ",$",']'
         }
         if($tier3){
-            $json = $json + ',"Tier3": ['
+            $json = $json + [string]',"Tier3": ['
             gg $tier3 | %{ $json += $('"' + $_ + '",') }
             if($admin3){
                 gg $admin3 | %{ $json += $('"' + $_ + '",') }
             }
-            $json = $json -replace ",$"; $json += ']'
+            $json = $json -replace ",$",']'
         }
         if($json){
             $json += '}'
         }
-    
+        
     }
     if($json){
         $(setReset $json $gj) -replace "$(chr 83)$" | Out-File "$vf19_TOOLSROOT\analyst.conf"
