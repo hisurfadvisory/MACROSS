@@ -135,7 +135,6 @@ Write-Host -f GREEN '
 ## Import core functions
 ## Iterate through the core folder, quit if a file is missing or can't execute
 ##################################
-$Global:mstart = 70
 $mcores = @(
     'display',
     'configurator',
