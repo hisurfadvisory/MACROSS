@@ -90,7 +90,7 @@ else:
     test = mc.collab(TOOL,'MINMAY',Z)
 
 
-if test != False:
+if test != 'False':
     if CALLER != False:
         mc.w("MINMAY has processed your search via GUBABA.\n\n",'m')
         exit()
