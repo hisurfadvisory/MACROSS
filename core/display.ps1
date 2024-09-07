@@ -782,8 +782,9 @@ function startUp([switch]$init=$false){
         ## Verify required config file
         if(! (Test-Path $($vf19_CONFIG[0]))){ setConfig }
 
+        ## MOD SECTION! ##
         ####################################################################################################
-        ## Check if necessary programs are available; add as many as you need below after the 'excel' check
+        ## Check if necessary programs are available; add as many as you need below after the 'wireshark' check
         ####################################################################################################
         #$INST = Get-ChildItem 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall'
         $INST = Get-ChildItem 'HKLM:Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall'
@@ -899,7 +900,7 @@ function chooseMod(){
         ''
 
     SJW -menu     ## check user's privilege LOL
-    if( $PROTOCULTURE ){
+    if( $PROTOCULTURE -or (gc "$vf19_GBIO\PROTOCULTURE.eod" | ConvertFrom-Json).result){
         w '      ' -i; w ' PROTOCULTURE IS HOT (enter "proto" to view & clear it) ' r bl
     }
     ''
