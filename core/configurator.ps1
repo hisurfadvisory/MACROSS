@@ -137,13 +137,6 @@ function setConfig(){
             getThis $ml[1]
             $n1 = Read-Host "$vf19_READ" -AsSecureString;
             $n1a = byter $n1
-            ###################################################
-            # UNCOMMENT IF YOU WANT MORE COMPLEX PW REQUIREMENT
-            ###################################################
-            <#getThis $ml[13]; if($n1a.length -lt 18 -or $n1a -notMatch ".+[\W]" -or $n1a -notMatch ".+[A-Z].+"){
-                rv n1,n1a; w " $vf19_READ" c
-                w ' one Capital letter and one non-alphanumeric.' c; setConfig -s
-            }#>
             getThis $ml[2]
             $n2 = Read-Host "$vf19_READ" -AsSecureString;
             $n2a = byter $n2
