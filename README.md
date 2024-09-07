@@ -19,10 +19,10 @@ MACROSS came about because I got tired of handjamming cmdlets and copying everyt
 See the full README inside the core folder for function details, but here's the basics:<br>
 <br>
 
-&emsp;-When you use MACROSS for the first time, a config wizard walks you through the process of generating a configuration file. By default, you need to move this configuration file into the \core folder after it's generated, but if you want to store it somewhere more secure, change the $vf19_CONFIG value in the MACROSS.ps1 file (search for "MOD SECTION!"). Changing this location is recommended if you have multiple users.
-&emsp;-From the main MACROSS menu, enter "debug" to load a playground for testing functions and viewing helpfiles. 
-&emsp;-From the main MACROSS menu, enter "config" to add or change the settings in your config.conf file.
-&emsp;-Several of my scripts are included in this release as examples to help you integrate your scripts into MACROSS, but you may find MYLENE, NOME and ELINTS helpful; MYLENE performs new Active-Directory account audits, ELINTS can perform keyword & pattern searches on various document formats, and NOME lets you build a quick filter with Active-Directory properties to hunt for anomalous accounts in your enterprise.
+&emsp;-When you use MACROSS for the first time, a config wizard walks you through the process of generating a configuration file. By default, you need to move this configuration file into the \core folder after it's generated, but if you want to store it somewhere more secure, change the $vf19_CONFIG value in the MACROSS.ps1 file (search for "MOD SECTION!"). Changing this location is recommended if you have multiple users.<br>
+&emsp;-From the main MACROSS menu, enter "debug" to load a playground for testing functions and viewing helpfiles. <br>
+&emsp;-From the main MACROSS menu, enter "config" to add or change the settings in your config.conf file.<br>
+&emsp;-Several of my scripts are included in this release as examples to help you integrate your scripts into MACROSS, but you may find MYLENE, NOME and ELINTS helpful; MYLENE performs new Active-Directory account audits, ELINTS can perform keyword & pattern searches on various document formats, and NOME lets you build a quick filter with Active-Directory properties to hunt for anomalous accounts in your enterprise.<br>
 <br><br>
 &emsp;-When you add the required MACROSS values to your scripts, they'll be able to talk to each other and enrich IOCs your SOC analysts are investigating. This is not meant to be a monitoring tool, but a "quick-task" aid designed to help you gather data quickly if you don't have a million-dollar security stack to work with.
 <br><br>
