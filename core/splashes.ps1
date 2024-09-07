@@ -4,9 +4,9 @@ function transitionSplash([int]$a=0,[int]$s){
     <#
     ||longhelp||
 
-    transitionSplash [art number] [number of seconds to display]
+    transitionSplash [-a ART ITEM] [-s NUMBER OF SECONDS TO DISPLAY]
 
-    Call with one of these numbers to get ascii art:
+    select one of these numbers to get ascii art:
     
      0 = VF-1S Battroid "Skull Leader" (default)
      1 = VF-19 Gerwalk
@@ -21,13 +21,11 @@ function transitionSplash([int]$a=0,[int]$s){
     10 = VF-25 Messiah Fighter
     11 = Konig Monster
     
-    Send a second integer parameter to clear the screen after that many seconds.
+    Use -s <number of seconds> to clear the screen after that many seconds, otherwise 
+    the art will remain for the duration of the next task.
 
     You can get a slideshow preview of all these images by typing "splash" in the main
     menu.
-    
-    If these transitions annoy you, just remove the function call "transitionSplash"
-    from any script.
     
     ||examples||
     Display the VF-25 Messiah onscreen for 2 seconds:
@@ -66,7 +64,7 @@ function transitionSplash([int]$a=0,[int]$s){
         "                                HIKARU ICHIJO (MACROSS)",
         "                                 Sheryl Nome (MACROSS FRONTIER)",
         "                                  VF-25 Messiah (MACROSS FRONTIER)",
-        "               VB-6  KONIG MONSTER (Macross VFX-2/Macross Frontier)"
+        "               VB-6  KONIG MONSTER (MACROSS VFX-2, MACROSS FRONTIER)"
     )
 
     cls
