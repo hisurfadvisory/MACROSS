@@ -309,6 +309,7 @@ function varCleanup([switch]$c=$false){
     Remove-Variable -Force vf19_FILECT,vf19_REPOCT,HELP,vf19_OPT1,RESULTFILE,HOWMANY,`
     M_,N_,d9,CALLER,vf19_MPOD,vf19_PYPOD,vf19_READ,dyrl_* -Scope Global
 
+    ## MOD SECTION! ##
     ## UNCOMMENT THESE TO ALWAYS CLEAR PROTOCULTURE AUTOMATICALLY
     #Remove-Variable -Force PROTOCULTURE -Scope Global
     #if(Test-Path $vf19_PROTO){ Remove-Item -Path $vf19_PROTO }
