@@ -436,7 +436,12 @@ function extras($1){
     ## Clear out the global PROTOCULTURE value before the next investigation
     function clearProto(){
         cls
+        $pyp = (gc "$vf19_GBIO\PROTOCULTURE.eod" | ConvertFrom-Json)
         screenResults "PROTOCULTURE = " "$PROTOCULTURE"
+        if($pyp){
+            $k = $pyp.PSObject.Properties.Name
+            screenResults 'PROTOCULTURE.eod' $($pyp."$k" + ': ' + "$($pyp."$k".results)")
+        }
         screenResults -e
         ''
         w 'Hit ENTER to clear it.' 'g'
@@ -787,6 +792,8 @@ function sheetz(){
         Dark Gray: RGB(128,128,128)
         Snot Green: RGB(204,255,204)
     #>
+
+    ## MOD SECTION! ##
     $colors = @{
         'red~' = 255 + (1*256) + (1*256*256);
         'green~' = 204 + (255*256) + (204*256*256);
