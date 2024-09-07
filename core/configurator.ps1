@@ -389,10 +389,11 @@ function setConfig(){
                 $updated | Sort | %{
                     if($vf19_MPOD[$_]){getThis $vf19_MPOD[$_]; $old = $vf19_READ}else{$old='None'}
                     getThis $list[$_]; $new = $vf19_READ
-                    screenResults $_ $old $new
+                    screenResultsAlt -h "KEY: $_" -k "OLD" -v $old
+                    screenResultsAlt -k "NEW" -v $new
                 }
                 if($pwupd){getThis $ml[9]; screenResults "c~   $vf19_READ"}
-                screenResults -e
+                screenResultsAlt -e
                 ''
                 $z = $null; while($z -notMatch "(a|c)"){
                     w ' Review your changes above, and Enter "a" to accept or "c" to cancel: ' g -i; $z = Read-Host
