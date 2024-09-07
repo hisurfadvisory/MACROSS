@@ -283,8 +283,7 @@ function getThis(){
     <#
     ||longhelp||
 
-    getThis $encoded; write-host $vf19_READ
-    $encoded = getThis -e 'Encode my plaintext.'
+    getThis [-v value] [-e encode] [-h hexadecimal]
 
     Decode encoded values to $vf19_READ, or encode your plaintext value.
     
