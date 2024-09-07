@@ -291,20 +291,20 @@ function getThis(){
     
 
     ||examples||
-    -$vf19_READ gets overwritten every time this function is called. If you require the plaintext 
+    $vf19_READ gets overwritten every time this function is called. If you require the plaintext 
     as a persistent value, You *must* set $vf19_READ to a new variable:
 
         getThis $base64string
         $plaintext = $vf19_READ
 
-    -To decode a hexadecimal string, call this function with -h (and your hex string can include 
+    To decode a hexadecimal string, call this function with -h (and your hex string can include 
     spaces and/or "0x" tags, or neither):
 
         getThis "0x746869732069 730x20 61 200x740x650x7374" -h
         $plaintext = $vf19_READ
 
-    -If you want to ENCODE plaintext, call this function with your plaintext as the first parameter 
-    using the -e option. Use -h if you want hexadecimal output. This mode does NOT write to $vf19_READ!
+    If you want to *encode* plaintext, use the -e option. Use -h if you want hexadecimal output. 
+    This mode does NOT write to $vf19_READ!
         
         $b64 = getThis $plaintext -e
         $hex = getThis $plaintext -e -h
