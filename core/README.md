@@ -5,6 +5,8 @@ TL;DR -- To reiterate the main README -- MACROSS isn't so much a toolset as it i
 
 Important notes -- the basic permission & authentication checks that MACROSS provides are most useful in environments where code-signing is enforced (i.e. where scripts with no digital signature, or broken digital signatures, will not execute). Otherwise, it is fairly trivial for anyone with moderate skill to bypass these checks. I didn't write this as an enterprise security tool, it's an aid to help cut down on the amount of web consoles and cmdlets I need to use throughout the day. Keep that in mind if you want to use MACROSS to access APIs, and write your scripts accordingly! <br><br>
 
+Lastly, search MACROSS.ps1 and all of the files in the core folder for the comment "MOD SECTION!". These comments mark sections of code where you can change values if you want/need. <br><br>
+
 
 MACROSS.ps1  = execute this to start MACROSS<br>
 
@@ -14,7 +16,7 @@ I recommend you place these folders in an alternate, access-controlled location:
  \resources folder = put any enrichment or custom config files you want in here (json, xml, etc.)<br>
  \logs folder = The location you want MACROSS to write its log files to (currently sitting in the resources folder)<br>
 
-
+Review the scripts I've included in the modules folder to get an idea of the required structure for MACROSS integration.<br>
 The first three lines of your automation script require these:<br>
 
 	#_sdf1   BRIEF DESCRIPTION OF YOUR SCRIPT
@@ -33,7 +35,7 @@ The first three lines of your automation script require these:<br>
 		6. The maximum number of values your script can process
 		7. The format of your script's responses to other scripts' queries
 
-		Example class line:
+		Example class line for scripts offered to user-privileged tier 1 analysts:
 		#_class 1,user,office vba extraction,powershell,HiSurfAdvisory,1,hashtable
 
 When all these lines are set correctly, MACROSS uses the \[macross\] class to keep track of the scripts in the "modules" folder and the central repository (if you're using one). You can see what these look like by typing "debug TL" in the main menu.<br>
@@ -43,40 +45,39 @@ You'll need the argv and path functions from the sys library. MACROSS always pas
 
 	from sys import argv,path
 	L = len(argv)
- 
-	## Make sure MACROSS sent the lib path
+	## make sure MACROSS sent the lib path
 	if L >= 1:					
 		mpath = argv[1]
 
 		## Modify the sys path to include the local py_classes folder
 		path.insert(0,mpath)
 
-		## This is the custom MACROSS library that contains most of the functions in utilities.ps1 and display.ps1
+		## This is the custom MACROSS library that converts most of the functions from utilities.ps1 and display.ps1
 		import mcdefs			
 
 Along with utility functions, the mcdefs library will convert these MACROSS powershell values for your python use:
 
-	mcdefs.USR = $USR            # Your username<br>
+	mcdefs.USR = $USR            # Your username
 	mcdefs.DTOP = $vf19_DTOP     # Your desktop path
-	mcdefs.MPOD = $vf19_MPOD     # The list of encoded values you set in the MACROSS config.conf file
+	mcdefs.MPOD = $vf19_MPOD     # The list of key-values you set in the MACROSS config.conf file
 	mcdefs.TABLES = $vf19_TABLES # The location of your enrichment folder (set in config.conf)
 	mcdefs.PROTOCULTURE = $vf19_PROTOCULTURE
-	mcdefs.HELP = $HELP              # Used to display your python script's help file to users
+	mcdefs.HELP = $HELP          # Used to display your python script's help file to users
 
 
 
-Within the core\py_classes folder is a folder called garbage_io, where your python scripts can write outputs into if you want them available for later use in your MACROSS session. the mcdefs.collab() function performs this very action for you. This folder gets cleared out every time MACROSS exits.<br>
+Within the core\py_classes folder is a folder called garbage_io, where your python scripts can write outputs if you want them available for later use in your MACROSS session. The mcdefs.collab() function performs this very action for you. This folder gets cleared out every time MACROSS exits.<br>
 
 
 
 <b><u>RUN THE CONFIGURATION WIZARD:</u></b><br>
--If you are writing automations that will be used by other people, change the default config location! In the MACROSS.ps1 file, look for line 195. Change the "$vf19_CONFIG" value to a filepath external to MACROSS (someplace access-controlled). If you are only using MACROSS yourself, or you don't really care, you don't need to change anything.
+-If you are writing automations that will be used by other people, change the default config location! In the MACROSS.ps1 file, look for line 189. Change the "$vf19_CONFIG" value to a filepath external to MACROSS (someplace access-controlled). If you are only using MACROSS yourself, or you don't really care, you don't need to change anything.
 
 -When you first launch MACROSS, it does not have a configration file. You'll be prompted to create a password, then you'll need to enter values for the required configuration defaults. After that, you can enter additional configurations which are values that you want all of your scripts to have regular access to (stuff like server addresses, file locations, etc.).
 
 After you've entered the default configuration, you'll be asked if you want to use access control. In an active-directory environment, assuming your SOC analysts have different tiers of permissions, you can enter the group-policy names that you want MACROSS to identify for allowing or denying execution of scripts. You can enter up to 3 group-policy names, the first for tier1 analysts/investigators, then tier2, and tier3. Alternatively, you can supply text files with usernames for each tier to achieve the same result. *If you skip this configuration, MACROSS will allow everybody to execute any tool.*
 
-Once your config file is generated, MACROSS will exit. Move config.conf (and analyst.conf if you created one) from the root MACROSS folder to the location specified in MACROSS.ps1 line 195 (again, by default it is the MACROSS\core folder), then launch MACROSS again. Congrats, you're ready to go! Any custom scripts you drop into the modules folder will become available in the menu.
+Once your config file is generated, MACROSS will exit. Move config.conf (and analyst.conf if you created one) from the root MACROSS folder to the location specified in MACROSS.ps1 line 189 (again, by default it is the MACROSS\core folder), then launch MACROSS again. Congrats, you're ready to go! Any custom scripts you drop into the modules folder will become available in the menu.
 
 If you need to change or add more configurations, type "config" into the main menu and follow the instructions. A new configuration file will be generated with your changes (you should backup the old one, but remember that if you changed the admin password, the old file will still be encrypted with your old password*!).
 
@@ -84,9 +85,7 @@ If you need to change or add more configurations, type "config" into the main me
 
 
 <b><u>MANUAL CONFIGURATION CHANGES:</u></b><br>
-MACROSS.ps1 line 195 -- In this section, you can change the location for the config.conf file (the default is your local core folder). The access controls work best if you can place this file in a centralized location reachable by your SOC teams, instead of having copies installed to each user's core folder.
-
-display.ps1 line 800 -- You can add checks for MACROSS to determine if specific programs are installed that your automations can use. Just copy line 799, which is checking for MS Excel. (The MACROSS function "sheetz" can create excel spreadsheets for you)
+Search each of the .ps1 files for the comment "MOD SECTION!" to determine if you need to change some default values.
 
 
 
@@ -103,17 +102,19 @@ For example, the configuration wizard asked you for a folder to place enrichment
 
 	getThis $vf19_MPOD['enr']; $SERVERS = "$vf19_READ\servers.json"
 
+(Note that the 'enr' value is automatically set to $vf19_TABLES for you so you don't need to perform the "getThis" command.)
+
 If you've set a configuration key for something like the address of your firewall, your scripts can access it with
 
 	getThis $vf19_MPOD['key']; $firewall = $vf19_READ
 
-where 'key' is the ID you specified for your firewall's URL. $vf19_READ is a variable that is regularly flushed so that plaintext values are only available while needed.
+where 'key' is the ID you specified for your firewall's URL. $vf19_READ is a global variable that is regularly flushed so that plaintext values are only available while needed.
 
-The <b>getThis</b> function can decode any Base64 and Hexadecimal for your scripts as long as MACROSS is running. The decoded plaintext gets written to <i>$vf19_READ</i>. If you need that value persistently, you must store it as something else before using <b>getThis</b> again:<br><br>
+The <b>getThis</b> function can also decode any Base64 and Hexadecimal for your scripts as long as MACROSS is running. The decoded plaintext gets written to <i>$vf19_READ</i>. If you need that value persistently, you must store it as something else before using <b>getThis</b> again:<br><br>
 
     getThis $b64
     $plaintext = $vf19_READ
-<br>    
+<br>
 Call it with -h if you're decoding hex:<br><br>
 
     getThis $hex -h
@@ -125,30 +126,28 @@ Call it with -e to encode plaintext (it does NOT write to $vf19_READ):<br><br>
 	$hex = getThis -h -e $plaintext
 
 There are many more functions in the display.ps1 and utility.ps1 files that are available to all your scripts to hopefully make life a little easier. (Details toward the end of this page)<br>
-
-<b>FINALLY...</b><br>
-To further customize and modify these core functions to your liking, see the comments in each .ps1/.py file and the README below.<br>
 <br>
 <br>
 
 
-<b>The MACROSS powershell object</b>
+<b> *THE MACROSS POWERSHELL OBJECT* </b><br>
 <b>core\classes.ps1</b><br>
 	This file should be reserved for any custom classes your scripts need, especially if they could be useful for other scripts to make use of.<br>
-	&emsp;<b>A.</b> macross = A custom powershell class that tags every script in the \modules folder with specific attributes that you MUST include on the third line of your scripts, tagged with "#\_class" so that MACROSS will parse it correctly. In this example:<br>
+	&emsp;<b>A.</b> macross = A custom powershell class that tags every script in the \modules folder with specific attributes that you MUST include on the third line of your scripts, tagged with "#\_class" so that MACROSS will parse it correctly. MACROSS performs this automatically for each script in the "modules" folder, you shouldn't ever need to do this manually. But if you want to make changes to this class, this is how it's set up. In this example:<br>
 	<br>
 	`#_class  1,user,syslog parsing,python,SuzyQ,1,list`
 	<br>
-	The first value <b>1</b> is the .access attribute, used for basic role-based access (values can be 1, 2, or 3, to limit the script to your tier 1, tier 2 and tier 3 analysts respectively). Next is the .priv attribute <b>user</b>, or the level of privilege required to run your script (will typically be User vs. Admin). Third, the <b>syslog parsing</b> value will be assigned to the .valtype attribute, describing what kind of data your script processes/returns, or what kind of actions it performs. The fourth value, <b>python</b>, is the .lang attribute while the fifth, <b>SuzyQ</b>, is the .author attribute. The sixth, "<b>1</b>" is the .evalmax attribute, which is the maximum number of parameters that your script can accept for processing. And finally, the value <b>list</b> is the type of response your script provides. The attributes tracked in this class are:<br>
+	The first value<b>1</b> is the .access attribute, used for basic role-based access (values can be 1, 2, or 3, to limit the script to your tier 1, tier 2 and tier 3 analysts respectively). Next is the .priv attribute <b>user</b>, or the level of privilege required to run your script (will typically be User vs. Admin). Next, the <b>syslogs</b> value will be assigned to the .valtype attribute, describing what kind of data your script processes/returns, or what kind of actions it performs. The third value, <b>Python3</b>, is the .lang attribute while the fourth, <b>SuzyQ</b>, is the .author attribute. The fifth, "<b>1</b>" is the .evalmax attribute, which is the maximum number of parameters that your script can accept for processing. And finally, the value <b>list</b> is the type of response your script provides. The attributes tracked in this class are:<br>
 	
-	.name
-	.access
-	.priv
-	.valtype
-	.lang
-	.author
-	.evalmax
-	.rtype
+	.name     # the script's common name
+	.access   # tier level
+	.priv     # privilege level
+	.valtype  # task performed, or value type processed
+	.lang     # python or powershell
+	.author   # author
+	.evalmax  # maximum args/params accepted
+	.rtype    # type of response
+	.fname    # full filename of the script
 	
 <br>
 This is used for:<br>
@@ -189,7 +188,7 @@ This is used for:<br>
 <br>
 <br>
 <b>py_classes\mcdefs.py</b><br>
-	&emsp;<b>A.</b> This is a python library that provides many of the same core functions used in the MACROSS powershell scripts, as well a "getDefaults" function that will convert MACROSS' $vf19_MPOD hashtable into a python dictionary. See the mcdefs file comments for more details.
+	&emsp;<b>A.</b> This is a python library that provides many of the same core functions used in the MACROSS powershell scripts, as well as MACROSS globals like $vf19_MPOD converted to mcdefs.MPOD, etc. See the mcdefs.py file comments for more details.
 
 
 
@@ -198,11 +197,17 @@ Your script should be written to recognize the global variables MACROSS uses. Un
 <br><br>
 &emsp;&emsp;$PROTOCULTURE = this is the IOC that you are investigating. Usernames, filenames, IPs, anything. MACROSS scripts should all be written to set this value when you find an artifact worth investigating, and also to automatically act on this variable if it was generated by another script. This variable does NOT clear automatically when exiting to the menu, but a persistent message reminds you about it and offers to clear it for you.
 
+&emsp;&emsp;$CALLER = when you use the collab function, this global value identifies your script as the one calling another. The called script can watch for this value and perform specific actions, such as look up your script's .valtype or .lang attributes.
+
 &emsp;&emsp;$RESULTFILE = if your script outputs results to a file that other scripts might be able to process, set its filepath in this global variable.
 
-&emsp;&emsp;$HOWMANY = the total number of successful hits from all of the tasks run so far (your scripts must be coded to update this value when applicable, MACROSS only clears it out when necessary).
+&emsp;&emsp;$vf19_TABLES = This is the location you configured for your resources folder. Your scripts can reference it as needed, example 
 
-&emsp;&emsp;$N_ = This is a number you can use to perform math or obfuscate IP addresses in your scripts. It has a counterpart, $M_, which an array created by splitting $N_ into a list of single-digit numbers.
+	$host_info = "$vf19_TABLES\hosts.xml"
+
+&emsp;&emsp;$HOWMANY = the total number of successful hits from all of the tasks run so far (your scripts must be coded to update this value when applicable).
+
+&emsp;&emsp;$N_ = This is a list of numbers you can use to perform obfuscated math in your scripts. You set this in the configuration wizard.
 
 <br><br>
 Make sure to code your scripts to provide responses when MACROSS executes them via the collab function, and use the availableTypes function to make auto-searching for relevant scripts easier.<br>
@@ -210,13 +215,15 @@ Make sure to code your scripts to provide responses when MACROSS executes them v
 <br><br>
 
 <br>
+<b>UTILITIES</b>
 MACROSS provides shared utilities your scripts can use (many of them also provided in the python "mcdefs" library):
 
-&emsp;&emsp;w =  Alias for the write-host cmdlet. The first param is the string you want written to screen, the second (optional) param colorizes the text. You can send a third param that will colorize the background, or use "nl" to set the "-NoNewLine" option.
+&emsp;&emsp;w =  Alias for the write-host cmdlet. The first param is the string you want written to screen, and you can use -f to colorize the text. Additional options are -b that colorizes the background, -i that writes your next text block inline, and -u to underline the text.
 	
-	w 'I want green text here ' 'g' 'nl'; w 'and yellow text here.' 'y'
+	w 'I want green text on black background here ' -i -f g -b bl
+	w 'and underlined yellow text here.' -u -f y
 
-&emsp;&emsp;getThis = base64 and hex decoder/encoder
+&emsp;&emsp;getThis = text decoder/encoder
 
 	getThis  $b64          ## decodes base64 to $vf19_READ.
 	getThis  $hex -h       ## decodes hexadecimal to $vf19_READ.
@@ -226,10 +233,11 @@ MACROSS provides shared utilities your scripts can use (many of them also provid
 &emsp;&emsp;getFile = open a file-selection dialog
 
 	$file = getFile
+	$folder = getFile -f
 
 &emsp;&emsp;getHash = get the md5 or sha256 of a file
 
-		-Usage:   getHash $filepath 'md5'
+	getHash $filepath md5
 
 &emsp;&emsp;yorn = Open a popup to get a "yes" or "no" response from the analyst.
 
@@ -245,16 +253,14 @@ MACROSS provides shared utilities your scripts can use (many of them also provid
 
 	stringz $filepath
 
-&emsp;&emsp;screenResults = used for writing results to screen in a colorized table format
+&emsp;&emsp;screenResults = used for writing large-value results to screen in a colorized table format
 
 	screenResults  $string  $optional_var1  $optional_var2
-	screenResults  'endr'
+	screenResults  -e
 
-&emsp;&emsp;&emsp;&emsp;-Set $string as "endr" to draw the "end of row" border lines. OPTIONAL: Begin any of your string values with "color~" to change the color of the text. For example "r~$string" for red text or "m~$optional_var2" for magenta
+&emsp;&emsp;&emsp;&emsp;-Use "-e" to draw the "end of row" border lines. OPTIONAL: Begin any of your string values with "color~" to change the color of the text. For example "r~$string" for red text or "m~$optional_var2" for magenta
 
-&emsp;&emsp;screenResultsAlt = same as above, but formatted differently for small values
-
-	same as "screenResults" above.
+&emsp;&emsp;screenResultsAlt = same as above, but formatted differently for smaller values
 
 &emsp;&emsp;sheetz = write results to an excel spreadsheet, with options to highlight text and/or cells in different colors
 
@@ -269,6 +275,8 @@ MACROSS provides shared utilities your scripts can use (many of them also provid
 &emsp;&emsp;&emsp;&emsp;-$optional_row_to_start_writing is the row you want to start writing to. If editing an existing spreadsheet and the next available row is A151, you would send 151 in this space.
 
 &emsp;&emsp;&emsp;&emsp;-$optional_headers_or_max_columns can be a comma-separated list of column names you want to use, OR the number of columns that you want $comma_separated_values to write to before jumping to the next row. For instance, if you send eight column names in this parameter, it will write each name to its own column (A1 thru H1). The $comma_separated_values will then get written under these columns, so make sure you send the $comma_separated_values in order!
+
+&emsp;&emsp;&emsp;&emsp;-this function has not been converted for use in the mcdefs python library yet.
 
 &emsp;&emsp;houseKeeping = display the contents of a folder your script writes outputs to, and options to delete stale reports
 
