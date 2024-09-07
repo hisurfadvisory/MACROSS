@@ -282,18 +282,18 @@ if( ! $vf19_TOOLSROOT ){
 function getThis(){
     <#
     ||longhelp||
-    Deobfuscate your encoded value; plaintext gets saved as $vf19_READ
-            OR
-    Encode your plaintext value to base64.
+
+    getThis $encoded; write-host $vf19_READ
+    $encoded = getThis -e 'Encode my plaintext.'
+
+    Decode encoded values to $vf19_READ, or encode your plaintext value.
     
     -DO NOT USE ENCODING TO HIDE USERNAMES/PASSWORDS/KEYS or other sensitive info!
     
-    The reason it always writes to $vf19_READ instead of just returning a value to your script
-    is to ensure that decoded plaintext gets wiped from memory every time the MACROSS menu loads.
 
     ||examples||
     -$vf19_READ gets overwritten every time this function is called. If you require the plaintext 
-    as a persistent value, You MUST set $vf19_READ to a new variable:
+    as a persistent value, You *must* set $vf19_READ to a new variable:
 
         getThis $base64string
         $plaintext = $vf19_READ
@@ -305,7 +305,7 @@ function getThis(){
         $plaintext = $vf19_READ
 
     -If you want to ENCODE plaintext, call this function with your plaintext as the first parameter 
-    using the -e option. Include -h if you want hexadecimal output. This mode does NOT write to $vf19_READ!
+    using the -e option. Use -h if you want hexadecimal output. This mode does NOT write to $vf19_READ!
         
         $b64 = getThis $plaintext -e
         $hex = getThis $plaintext -e -h
