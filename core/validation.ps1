@@ -248,7 +248,7 @@ function eMsg($m='ERROR: that module is unavailable!',$c='c'){
     <#
     ||longhelp||
 
-    eMsg [-m TEXT STRING] [-c TEXT COLOR]
+    eMsg [-m MSG NUMBER OR TEXT STRING] [-c TEXT COLOR]
 
     Call a list of canned messages. You can add more to the $msgs list within the function,
     or you can send your own message, which will both write to the screen and record the
@@ -267,8 +267,12 @@ function eMsg($m='ERROR: that module is unavailable!',$c='c'){
 
         if(-not $Result){ eMsg -m "These aren't the droids you're looking for." -c r }
 
+    There are currently 5 canned messages, but you can add more if necessary.
+
 
     #>
+    ## MOD SECTION! ##
+    ## Add your own error message if it's something you'd use often.
     $msgs = @(
         'You are not in the correct security group. Exiting...',
         'Unknown error! You may need to exit this script and restart it.',
