@@ -1,1 +1,1 @@
-from py_classes import mcdefs
+from macross_py import valkyrie
