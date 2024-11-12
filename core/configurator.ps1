@@ -5,13 +5,17 @@ function setConfig(){
         [switch]$s = $false,
         [switch]$u = $false
     )
-    $ccfg_ = Test-Path "$($vf19_CONFIG[0])"
-    if($ccfg_){if($(gethash $vf19_CONFIG[0] sha256 | Select -Index 1) -eq $(gc $vf19_CONFIG[1])){$current_config=$ccfg_}}
-    $current_analyst = Test-Path "$($vf19_CONFIG[2])"
+    $ecfg_=$vf19_CONFIG[0]; $ccfg_=(gc $ecfg_).count
+    if(Test-Path "$ecfg_"){
+        if($(getHash $ecfg_ sha256 | Select -Index 1) -eq $(gc $vf19_CONFIG[1])){
+            $current_config=$(gc $ecfg_)[2..$ccfg_]
+        }
+    }
+    $current_analyst=Test-Path "$($vf19_CONFIG[2])"
     $ml = setML;if($current_config){ startUp }
     $Script:list=@{};$e_=$vf19_GPOD.Item1;$f_=$vf19_GPOD.Item2;$ef_=$e_+$f_
     if($($vf19_MPOD['mad'])){getThis $vf19_MPOD['mad'] -h;$Script:init=$($vf19_READ);varCleanup}
-    elseif($current_config){$Script:init=$((gc "$($vf19_CONFIG[0])")[0..63] -Join(''))}
+    elseif($current_config){$Script:init=$($ecfg_[1].Substring(32))}
     getThis 'LiooKChbZ0ddW3ZWXXxbZ0ddZXQtW3ZWXWFyaWFibGUpKCB8XFxzKSsoKHZmfFZG
     fFZmfHZGKShbXHdfXSspPyk/XCopfFtvT11bZERdXFsnKG1hZHxNQUR8QkwwfGJsMCknXF0pLio='
     $bv = $vf19_READ
@@ -137,6 +141,14 @@ function setConfig(){
             getThis $ml[1]
             $n1 = Read-Host "$vf19_READ" -AsSecureString;
             $n1a = byter $n1
+            ###################################################
+            # MOD SECTION
+            # UNCOMMENT IF YOU WANT MORE COMPLEX PW REQUIREMENT
+            ###################################################
+            <#getThis $ml[13]; if($n1a.length -lt 18 -or $n1a -notMatch ".+[\W]" -or $n1a -notMatch ".+[A-Z].+"){
+                rv n1,n1a; w " $vf19_READ" c
+                w ' one Capital letter and one non-alphanumeric.' c; setConfig -s
+            }#>
             getThis $ml[2]
             $n2 = Read-Host "$vf19_READ" -AsSecureString;
             $n2a = byter $n2
@@ -317,21 +329,20 @@ function setConfig(){
         U1MgQ09ORklHIE1FTlUgICAgICAgICAgICAgICAgICAgICAgICAgICA='
         w '
         '
-        sep '>' 79 'g'
-        w ' >> ' 'g' -i 
-        w $vf19_READ 'c' -i
-        w '>>' 'g'
-        sep '>' 79 'g'
+        sep '>' 79 g
+        w ' >> ' g -i 
+        w $vf19_READ c -i
+        w '>>' g
+        sep '>' 79 g
         getThis 'ID4+ICAxLiBSZXZpZXcvdXBkYXRlIGNvbmZpZyBkZWZhdWx0cyAgICAgICAgICAgICAgICAgICAgI
         CAgICAgICAgICAgICAgICAgICAgPj4KID4+ICAyLiBVcGRhdGUgYWRtaW4gcGFzc3dvcmQgICAgICAgICAgICA
         gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPj4KID4+ICAzLiBSZXZpZXcvdXBkYXRlIHVzZ
         XJsaXN0IG9yIEdQTy1iYXNlZCBwZXJtaXNzaW9ucyAgICAgICAgICAgICAgICAgICAgICAgPj4KID4+ICA0LiB
         GaW5pc2hlZCAoZ2VuZXJhdGVzIG5ldyBjb25maWcgaWYgY2hhbmdlcyB3ZXJlIG1hZGUsIG90aGVyd2lzZSBle
         Gl0cykgPj4='
-        w $vf19_READ 'g'
-        sep '>' 79 'g'
-        w ''
-        w '>>     SELECT AN OPTION 1-4: ' g -i; Return $(Read-Host)
+        w $vf19_READ g
+        sep '>' 79 g
+        w "`n>>     SELECT AN OPTION 1-4: " g -i; Return $(Read-Host)
     }
 
     
@@ -339,21 +350,18 @@ function setConfig(){
         if(! $s){ cls }
         $memspace = $f_
         $firstrun = $true
-        transitionSplash $(Get-Random -Minimum 0 -Maximum 11)
-        w '
-        '
+        transitionSplash 0 #$(Get-Random -Minimum 0 -Maximum 11)
+        w "`n"
         screenResults 'm~                               MACROSS INITIAL SETUP'
         screenResults -e
-        w '
-        
-        '
+        w "`n`n"
         setAuth -n
         setDefaultKeys
 		$z=$null; while($z -notMatch "^[yn]$"){
         	w "`n  Do you want to set a userlist/role-based access? (y/n) " g -i; $z = Read-Host
 		}
         if($z -eq 'y'){ setPerms }
-		else{$p = $(getThis none -e); $Script:list.Add('tr1',$p); $Script:list.Add('ta1',$p); rv p }
+		else{$p = $(getThis unused -e); $Script:list.Add('tr1',"$p"); $Script:list.Add('ta1',"$p"); rv p }
 		$Script:mod=$true
     }
     elseif($a){
@@ -385,14 +393,13 @@ function setConfig(){
                 $vf19_MPOD.keys | Sort | where{$_ -ne 'mad'} | %{
                     if($_ -notIn $list.keys){$updated += $_}
                 }
-                screenResults 'KEY' 'OLD VALUE' 'NEW VALUE'
                 $updated | Sort | %{
                     if($vf19_MPOD[$_]){getThis $vf19_MPOD[$_]; $old = $vf19_READ}else{$old='None'}
                     getThis $list[$_]; $new = $vf19_READ
-                    screenResultsAlt -h "KEY: $_" -k "OLD" -v $old
-                    screenResultsAlt -k "NEW" -v $new
+                    screenResults -h "KEY: $_" -k 'OLD VALUE' -v $old 
+                    screenResultsAlt -k 'NEW VALUE' -v $new
                 }
-                if($pwupd){getThis $ml[9]; screenResults "c~   $vf19_READ"}
+                if($pwupd){getThis $ml[9]; screenResultsAlt -k 'NEW PWD' -v "c~$vf19_READ"}
                 screenResultsAlt -e
                 ''
                 $z = $null; while($z -notMatch "(a|c)"){
@@ -421,18 +428,21 @@ function setConfig(){
         getThis QEBA; $dl = $vf19_READ
         $write = Get-Content "$vf19_TMP\macross_cfg.temp"
         $of = "$vf19_TOOLSROOT\config.conf"; $ol = ''
-        if($write[0].length -eq 64){
-            $np = $($write[0])
-        }
+        '   ############  MACROSS CONFIG: DO NOT MODIFY  ############' | Out-File $of
+        if($write[0].length -eq 64){ $np = $($write[0]) }
         elseif(Select-String -Pattern "($("$dl")mad|^mad)" "$vf19_TMP\macross_cfg.temp"){
             $np = $(Get-Content "$vf19_TMP\macross_cfg.temp" -replace "^.$("$dl" + 'mad')" -replace "$("$dl").+")
         }
-        else{
-            getThis $vf19_MPOD['mad'] -h; $np = $vf19_READ
-        }
+        else{ getThis $vf19_MPOD['mad'] -h; $np = $vf19_READ }
         $kk = altByte $np $d9[0] $d9[1]
-        $np | Out-File $of -NoNewline
-        $(setReset $write[1] $kk) | Out-File $of -NoNewline -Append
+        $("$((1..32 | %{$(Get-Random -min 0 -max 9)}) -Join '')" + "$np" ) | Out-File $of -Append
+        #$(setReset $write[1] $kk) | Out-File $of -NoNewline -Append
+        $di = 0; $en = setReset "$($write[1])" $kk; $de = "$en".length
+        while($di -le $de){
+            $($en[$di..$($di+95)] -Join '') | Out-File $of -Append
+            $di=$di+96
+        }
+        rv de,di,en
         Remove-Item -Path "$vf19_TMP\macross_cfg.temp" -Force
         (getHash $of sha256 | Select -Index 1).toUpper() | Out-File "$vf19_TOOLSROOT\launch.conf"
 
@@ -447,7 +457,7 @@ function setConfig(){
             }
             ''
             w ' Your default configuration folder is:' g
-            w " $($vf19_CONFIG[0] -replace "\\config\.conf$")"
+            w " $($ecfg_ -replace "\\config\.conf$")"
             if($firstrun){
                 w "
  You need to place the new configuration files there.
@@ -500,8 +510,8 @@ function setConfig(){
 function setCC([switch]$c=$false,[switch]$b=$false){
     if($b){startUp;getThis $vf19_MPOD['bl0']
     rv -Force vf19_MPOD,vf19_PYPOD -Scope Global;Return $vf19_READ}
-    $cc=$((gc $($vf19_CONFIG[0]))[0..63] -Join(''))
-    if($c){Return @($(gc $($vf19_CONFIG[0])) -replace $cc)}
+    $gc=gc $vf19_CONFIG[0];$cc=$gc[1].Substring(32)
+    if($c){Return @($gc[2..$gc.count] -Join '')}
     else{Return $(altByte $cc $d9[0] $d9[1])}
 }
 function setML($1){
