@@ -1,54 +1,5 @@
-MPOD = {}
-PROTO = ""
-MACROSS = ""
+"""The valkyrie library is a set of MACROSS functions converted from powershell to python."""
 
-"""The mcdefs library is a set of MACROSS functions converted from powershell to python."""
-# Put your custom MACROSS-specific classes at the bottom of this file (or anywhere in the py_classes
-# folder)
-'''
-    There is no need to make this 'mcdefs' library part of your default python
-    env, you can simply make use of the $vf19_pylib argument in your scripts
-    to temporarily add the import path.
-    
-    By default it should always be the 1st argument sent by the "collab" or
-    "availableMods" functions in the validation.ps1 file:
-    
-        import sys
-        MCDEF = sys.argv[1]
-        sys.path.insert(0,MCDEF)
-        import mcdefs
-    
-    The mcdefs lib will automatically set several MACROSS values for you, including:
-    
-        mcdefs.PROTOCULTURE         -> if there is an active $PROTOCULTURE value
-        mcdefs.USR                  -> your username
-        mcdefs.DTOP                 -> your desktop path
-        mcdefs.N_                   -> the $N_ list of mathing obfuscation numbers
-        mcdefs.TOOLSROOT            -> the MACROSS root folder location
-        mcdefs.TOOLSDIR             -> the modules\ folder
-        mcdefs.MPOD                 -> the python version of $vf19_MPOD**
-        mcdefs.LOGS                 -> the location of MACROSS' log files
-        
-        ** Use mcdefs.getThis() to decrypt the values you set in MACROSS' config.conf
-        file. The mcdefs.MPOD dictionary contains the same key-value pairs as the
-        $vf19_MPOD hashtable in powershell. Example:
-
-        resource_folder = mcdefs.getThis(mcdefs.MPOD['enr'])
-
-    Additionally, to aid in sharing query results back and forth between powershell
-    and python, the py_classes folder contains a subfolder called 'garbage_io'. MACROSS
-    scripts can write their outputs into this directory, using *.eod files, (there is a 
-    built-in utility called "pyCross" in the utility.ps1 file specifically to do this). 
-    These are plaintext files that you can read() and split() to collect results that 
-    might need to be stored for later in a session.
-    
-    MACROSS powershell scripts already know the location of this folder as $vf19_GBIO. 
-    You can set the location in python using the mcdefs.TOOLSROOT filepath:
-    
-        GBIO = mcdefs.TOOLSROOT + '\\\\core\\\\py_classes\\\\garbage_io'
-                    
-    The garbage_io folder is automatically cleaned up when MACROSS exits.
-'''
 
 ################################################################
 ###################    IMPORT SECTION    #######################
@@ -60,43 +11,74 @@ MACROSS = ""
 ## classes here as necessary for your environment (classes go at the very bottom).
 import base64 as b64
 import array as arr
+from datetime import datetime as dt
 from subprocess import run as srun
+from os import chdir,path,getenv,environ
 from os import system as osys
 from os import popen as osop
 from os import getcwd as pwd
-from os import path
-from os import getenv
 from os import remove as osrm
 from json import dumps,load
 from time import sleep as ts
 from tkinter import Tk
-from tkinter.filedialog import askopenfilename as peek
+from tkinter.filedialog import askopenfilename as aof
 import math
 from re import search,sub
 
 
-## Set default MACROSS values
-PROTOCULTURE = getenv('PYPROTO')
-MACROSS = getenv('MACROSS').split(';')
-HELP = getenv('HELP')
-USR = MACROSS[6]
-CALLER = MACROSS[7]
-TOOLSROOT = MACROSS[0]
-TOOLSDIR = MACROSS[1]
-DTOP = MACROSS[2]
-TABLES = MACROSS[3]
-LOGS = MACROSS[4]
-N_ = MACROSS[5]
-for missile in getenv('MPOD').split(';'):
-    payload = missile.split(':')[0]
-    fuel = missile.split(':')[1]
-    MPOD[payload] = fuel
-del missile,payload,fuel
+################################################################
+## Set default MACROSS values:
+## var names will be the same as their powershell versions,
+## but **without** the "vf19_" or "dyrl_" prefixes.
+################################################################
+global PROTOCULTURE,CALLER,HELP
+if getenv('PROTOCULTURE'):
+    PROTOCULTURE = getenv('PROTOCULTURE')
+else:
+    PROTOCULTURE = False
+
+if getenv('CALLER'):
+    CALLER = getenv('CALLER')
+else:
+    CALLER = False
+
+if getenv('HELP'):
+    HELP = True
+else:
+    HELP = False
+
+if getenv('MACROSS'):
+    global USR,GBIO,TABLES,DTOP,TOOLSROOT,TOOLSDIR,LOGS,M_,N_,ROBOTECH
+    M = getenv('MACROSS').split(';')
+    TOOLSROOT = M[0]
+    DTOP = M[1]
+    TABLES = M[2]
+    LOG = M[3]
+    N_ = [int(M[4])]
+    n_ = [int(d) for d in str(M[4])]
+    for n in n_:
+        N_.append(n)
+    del n,n_
+    USR = M[5]
+    CALLER = M[6]
+    if M[7] == 'T':
+        ROBOTECH = True
+    GBIO = TOOLSROOT + '\\\\core\\\\macross_py\\\\garbage_io'
+    TOOLSDIR = TOOLSROOT + '\\\\modules'
+    environ['MACROSS'] = getenv('MACROSS')
+    
+if getenv('MPOD'):
+    global MPOD; MPOD = {}
+    for missile in getenv('MPOD').split(';'):
+        payload = missile.split(':')[0]
+        fuel = missile.split(':')[1]
+        MPOD[payload] = fuel
+    del missile,payload,fuel
+    environ['MPOD'] = getenv('MPOD')
 
 
-## Enable terminal colors for w() function
-##
-osys('color')   ## Colorize the terminal
+## Enable colorized terminal
+osys('color')
 tcolo = {
 'g':'\033[92m',
 'c':'\033[96m',
@@ -109,28 +91,92 @@ tcolo = {
 'rs':'\033[0m'
 }
 
+
+################################################################
+####################   CLASS DEFINITIONS   #####################
+################################################################
+class macross:
+	def __init__(self,n,ac,p,vt,l,au,e,r,vr,f):
+		self.name = n
+		self.access = ac
+		self.priv = p
+		self.valtype = vt
+		self.lang = l
+		self.author = au
+		self.evalmax = e
+		self.rtype = r
+		self.ver = vr
+		self.fname = f
+
 ################################################################
 ###############  FUNCTION DEFINITIONS  #########################
 ################################################################
+def help():
+    print('''
+ MACROSS automatically sets this module path in $env:PYTHONPATH so you can import
+ it in your script without any hassle.
+
+ The valkyrie module will automatically set several MACROSS values for you, including:
+
+    valkyrie.PROTOCULTURE         -> if there is an active $PROTOCULTURE value
+    valkyrie.USR                  -> your Windows account name
+    valkyrie.DTOP                 -> your desktop path
+    valkyrie.N_                   -> the $N_ list of mathing obfuscation numbers
+    valkyrie.TOOLSROOT            -> the MACROSS root folder path
+    valkyrie.TOOLSDIR             -> the modules\ folder path
+    valkyrie.GBIO                 -> the garbage_io\ folder path
+    valkyrie.MPOD                 -> a python dictionary of $vf19_MPOD**
+    valkyrie.LOG                  -> the location of MACROSS' log files
+    valkyrie.ROBOTECH             -> True if powershell $vf19_ROBOTECH is $true
+    valkyrie.HELP                 -> True if powershell $HELP is $true
+
+ ** Use valkyrie.getThis() to decrypt the values you set in MACROSS' config.conf
+ file. The valkyrie.MPOD dictionary contains the same key-value pairs as the
+ $vf19_MPOD hashtable in powershell. Example to read from the resources folder
+ location that you configured:
+
+ resource_folder = valkyrie.getThis(valkyrie.MPOD['enr'])
+
+ Note that some valkyrie functions operate differently than their powershell
+ counterparts! For example, unlike the powershell collab function, valkyrie.collab
+ does not write to vf19_READ, it just returns your results.
+
+ Additionally, to aid in sharing query results back and forth between powershell
+ and python, the valkyrie folder contains a subfolder called 'garbage_io'. MACROSS
+ scripts can write their outputs into this directory, using ".eod" files. When
+ python is assigning or reading PROTOCULTURE values for powershell, that value is
+ stored in the PROTOCULTURE.eod file.
+
+ See the collab() function down below, as well as the pyCross() function in utility.p1
+ for more details. MACROSS typically handles everything to do with .eod files in the
+ background, but you can create your own for specific scripts if necessary.
+
+ MACROSS powershell scripts already know the location of this folder as $vf19_PYG[0]. 
+ In python it is referenced with the variable GBIO.
+
+ All .eod files in the garbage_io folder are automatically deleted when MACROSS exits 
+ or starts up.
+
+ ''')
 
 ## Alias to write colorized text to screen
 def w(TEXT,C1 = 'rs',C2 = None,i = False):
-    '''Pass this function your text/string as arg 1 and the first letter of the
-color you want ("bl" for black). You can pass "ul" as a second option to
-underline the text. Set i to True to write the next line of your text on the
-same line as the last.
+    ''' Pass this function your text/string as arg 1 and the first letter of the
+ color you want ("bl" for black). You can pass "ul" as a second option to
+ underline the text. Set i to True to write the next line of your text on the
+ same line as the last.
 
-Colors: (c)yan, (g)reen, (y)ellow, (r)ed, (m)agenta, (bl)ack, (b)lue
-(default is white)
+ Colors: (c)yan, (g)reen, (y)ellow, (r)ed, (m)agenta, (bl)ack, (b)lue
+ (default is white)
 
-Usage:
+ Usage:
 
-For green text underlined:
-    mcdefs.w(text,'g','ul')
+ For green text underlined:
+    valkyrie.w(text,'g','ul')
 
-For yellow text followed by white text on the same line:
-    mcdefs.w(text,'y',i=True)
-    mcdefs.w(text,'w')
+ For yellow text followed by white text on the same line:
+    valkyrie.w(text,'y',i=True)
+    valkyrie.w(text,'w')
 
     '''
     if i == True:
@@ -146,32 +192,33 @@ For yellow text followed by white text on the same line:
 
 ## Sleep function for pausing scripts when needed
 def slp(s):
-    """The 'slp' function will pause your script for the number of seconds you
-pass to it. Usage:
+    """ The 'slp' function will pause your script for the number of seconds you
+ pass to it. Usage:
 
-    mcdefs.slp(3)
+    valkyrie.slp(3)
     ^^ Will pause your script for 3 seconds\n"""
     ts(s)
 
+## Write MACROSS message logs
+def errLog(msg,field1=None,field2=None):
+    ''' You can use this to write messages to MACROSS' log files. Timestamps are
+ automatically added. Message fields get written in the order they are passed (at 
+ least one arg is required, but up to three are accepted).
 
-## This function can generate the equivalent of MACROSS' $M_ value
-def makeM(n):
-    """Passing a large integer to makeM will split it into an array of single-
-digit integers for obscure mathing. Usage:
+ USAGE:
 
-    var = mcdefs.makeM(123456)
-    ^^ becomes  var == [1,2,3,4,5,6]
+    valkyrie.errLog("A single-field log message")
+    valkyrie.errLog("ERROR","The quick brown fox","jumped over the lazy dog")
 
-Your script can use this along with chr and ord as one of many methods 
-to create hexadecimal strings, IP addresses, keys, etc. without hard-
-coding such things in plaintext. Instead of string "A3", for example 
-you could use 
-    
-    hex_pos1 = str(chr((M_[5] + M_[5] + M_[0]) * M_[4])) + str(M_[2])
-    """
-    a = [int(i) for i in str(n)]
-    return a
-
+    '''
+    write = dt.now().strftime('%Y-%m-%d %H:%M:%S') + "\t" + msg
+    if field2 != None:
+        write = write + "\t" + field1 + "\t" + field2
+    elif field1 != None:
+        write = write + "\t" + field1
+    with open(LOG,'a') as L:
+        L.write(str(write) + "\n")
+    L.close()
 
 ## Call this function with a filepath (d) to delete a file
 def dS(d):
@@ -197,22 +244,22 @@ def rgx(pattern,string,replace = None):
 ##  Typically, I call this function with one arg -- a powershell command to launch one of
 ##  the MACROSS *.ps1 scripts and whatever parameters that powershell script requires.
 ##  If you need to collect values from the script, or from a quick command like "hostname" or 
-##  "ping", call mcdefs.psc() with an empty value as the first arg, and your command as the second:
+##  "ping", call valkyrie.psc() with an empty value as the first arg, and your command as the second:
 
-##          var = mcdefs.psc('','ping 192.168.1.1')
+##          var = valkyrie.psc('','ping 192.168.1.1')
 
 ##  Feel free to modify this however you need; you might even need to import the entire os library--
 ##  everyone has different use-cases, especially with python-based APIs! Just make sure to enact your
 ##  changes across ALL of the MACROSS functions and scripts!
 def psc(c,cc = None):
-    """The psc function performs os.system() commands that you pass in. If
-you pass your command as the *second* arg, the ouput\nwill be read
-using os.read(). Usage:
+    """ The psc function performs os.system() commands that you pass in. If
+ you pass your command as the *second* arg, the ouput\nwill be read
+ using os.read(). Usage:
 
-    mcdefs.psc('powershell.exe "filepath\\myscript.ps1" "argument 1"')
+    valkyrie.psc('powershell.exe "filepath\\myscript.ps1" "argument 1"')
     ^^ Will launch your powershell script with args
     
-    mcdefs.psc('','powershell.exe "filepath\\myscript.ps1" "argument 1"')
+    valkyrie.psc('','powershell.exe "filepath\\myscript.ps1" "argument 1"')
     ^^ Will return the results of your powershell script as usable strings"""
     if cc == None:
         osys(c)
@@ -226,10 +273,11 @@ using os.read(). Usage:
 ## Send what you're looking to verify as arg 1, and its type ("dir" vs. "file") as optional arg 2
 ## This function returns true/false
 def drfl(check,method = 'e'):
-    '''Check if a path exists. Send "file" or "dir" as the second argument
-(optional). Usage:
+    ''' Check if a path exists. Send "file" or "dir" as the second argument
+ (optional). Usage:
 
-    drfl(path_to_check,optional)'''
+    drfl(path_to_check,optional)
+    '''
     if method == 'file':
         a = path.isfile(check)
     elif method == 'dir':
@@ -243,57 +291,129 @@ def drfl(check,method = 'e'):
 ## This function is just subprocess.run(p)
 ## For when the os lib doesn't have what you need
 def psp(p):
-    """The psp function is simply 'subprocess.run' made readily available 
-to MACROSS python scripts. Usage:
+    """ The psp function is simply 'subprocess.run' made readily available 
+ to MACROSS python scripts. Usage:
 
-    mcdefs.psp('powershell.exe "filepath\\myscript.ps1" "argument 1"')
+    valkyrie.psp('powershell.exe "filepath\\myscript.ps1" "argument 1"')
     ^^ Will launch your powershell script with args
     """
     srun(p)
 
 
-## Must pass your argv[7] value (the $vf19_TOOLSROOT or MACROSS root folder path) + the tool you're calling, and the name of your 
-## calling script. We have to use the GBIO folder because this opens a new powershell session that won't have all the $vf19_LATTS data.
-def collab(TOOL,CALLER,PROTOCULTURE,OPT = None):
-    '''The python "collab" function writes your PROTOCULTURE value to an ".eod"
-file in the GBIO folder for the powershell script to read and write its results to. You
-*must* send the full filepath for TOOL, i.e.
+def availableTypes(val,la=".*",ea=".*",ra=".*",exact=False):
+    """ Use this function to search for tools with matching MACROSS
+ attributes. Matching tools are returned in a list that you can
+ forward to the collab function.
 
-    TOOL = sys.argv[7] + "\\\\modules" + TOOL + ".ps1"
+ USAGE: 
 
-USAGE:
-         
-        collab(TOOL,CALLER,PROTOCULTURE,optional_value)
+    tools = valkyrie.availableTypes(val,language,maxArguments,responseType,exact)
+
+ The first arg is the tool's MACROSS valType, and is the only required
+ arg. If you want to specify exact matches for the valType, send exact=True
+    """
+    res = []
+    for t in LATTS:
+        L = str(LATTS[t].lang)
+        E = str(LATTS[t].evalmax)
+        R = str(LATTS[t].rtype)
+        N = str(LATTS[t].name)
+        V = str(LATTS[t].valtype)
+        ml = rgx(la,L); me = rgx(str(ea),E); mr = rgx(ra,R)
+        if ml and me and mr:
+            if exact == True:
+                if val == V:
+                    res.append(N)
+            elif rgx(val,V):
+                res.append(N)
+
+    return res
+
+######################################################################################
+####   PYTHON COLLAB ~~~~~~~~~~~IMPORTANT!!!!!!~~~~~~~~~~~~~~~  ######################
+######################################################################################
+## If you want your MACROSS powershell scripts to be able to respond to python requests,
+## you **MUST** include these parameter checks to ensure your powershell script can run
+## as expected:
+##
+##          param($pythonsrc=$null)
+##          if($pythonsrc -ne $null){
+##              foreach($core in gci "$PSScriptRoot\..\core\*.ps1"){ . $core.fullname }
+##              restoreMacross
+##          }
+##
+## The restoreMacross() powershell function will reload all of the resources that get
+## lost when you launch python.
+######################################################################################
+def collab(Tool,Caller,Protoculture,ap = None):
+    ''' The python "collab" function writes your PROTOCULTURE value to an ".eod"
+ file in the GBIO folder for the powershell script to read and write its results to.
+
+ USAGE:
+ If the PROTOCULTURE.eod file's "result" field is "PS_", the "target" field is meant
+ to be python's PROTOCULTURE value. You can check it with:
+
+        collab()
+
+ And after processing the PROTOCULTURE, write your results:
+
+        collab(PROTOCULTURE=<script results>)
+
+ If you want to pass values to powershell tools:
+
+        collab(Tool,Caller,Protoculture,ap)
         
-where TOOL is the powershell script you're calling, CALLER is the name of your python
-script, and PROTOCULTURE is the value you need powershell to evaluate. You can also 
-send an additional parameter (OPT) if the powershell script accepts one.
+ where Tool is the powershell script you're calling (no extension), Caller is the name of 
+ your python script, and PROTOCULTURE is the value you need powershell to evaluate. You can  
+ also send an additional parameter (ap) if the powershell script accepts one.
 
-"py_classes\gbio\PROTOCULTURE.eod" is a json file that contains the key-values CALLER.target 
-(the PROTOCULTURE value) and CALLER.result. If the powershell script has a response for
-your python script, it will be written to the CALLER.result field of PROTOCULTURE.eod,
-where this function will retrieve it and forward it to your script.
-'''
+ "core\macross_py\garbage_io\PROTOCULTURE.eod" is a json file that contains the key-values
+ Caller.target (the PROTOCULTURE value) and Caller.result. If the powershell script has a 
+ response for your python script, it will be written to the Caller.result field of 
+ PROTOCULTURE.eod, where this function will retrieve it and forward it to your script.
 
-    gbio = TOOLSROOT + '\\\\core\\\\py_classes\\\\garbage_io\\\\PROTOCULTURE.eod'
-    fullpath = TOOLSROOT + '\\modules\\' + TOOL
-    cores = 'display.ps1~utility.ps1~validation.ps1'
-    empty = ''
-    proto = {CALLER:{'target':PROTOCULTURE,'result':empty}}
-    with open(gbio, 'w') as outf: 
+ The PROTOCULTURE.eod file will remain the default PROTOCULTURE value in MACROSS until
+ you delete it from the menu or exit MACROSS.
+ '''
+    
+    protofile = GBIO + '\\\\PROTOCULTURE.eod'
+    '''
+    with open(protofile) as d:
+        readproto = load(d)
+    d.close()
+    for rp in readproto:
+        if readproto[rp]['result'] == 'PS_':
+            if not Protoculture:
+                PROTOCULTURE = readproto[rp]['target']
+            else:
+                readproto[rp]['result'] = Protoculture
+                with open(protofile, 'w') as dd:
+                    d.write(readproto)
+                dd.close()
+            return
+            '''
+
+    Tool = LATTS[Tool].fname
+    chdir(TOOLSROOT)
+    fullpath = TOOLSDIR + '\\\\' + Tool
+    empty = 'WAITING'
+    proto = {Caller:{'target':Protoculture,'result':empty}}
+
+    with open(protofile, 'w') as outf: 
         outf.write(dumps(proto))
-        
+            
     outf.close()
-    call = 'powershell.exe ' + fullpath + ' -pythonsrc ' + CALLER + '~' + cores
-    if OPT != None:
-        call = OPT + '~' + call
+
+    call = 'powershell.exe ' + fullpath + ' -pythonsrc ' + Caller
+    if ap != None:
+        call = ap + '~' + call
     psc(call)
 
-    with open(gbio) as r:
+    with open(protofile) as r:
         res = load(r)
 
-    if res[CALLER]['result'] != empty:
-        return res[CALLER]['result']
+    if res[Caller]['result'] and res[Caller]['result'] != empty:
+        return res[Caller]['result']
     else:
         return False
 
@@ -307,12 +427,12 @@ def getFile(opendir = 'C:\\',filter = (('All files', '*.*'),('All files', '*.*')
 can pass in optional arguments 1) to set the default location for the dialog,
 and 2) limit the selection\nby file extension. Usage: 
 
-    VAR = getFile('your\\directory\\to\\file',(('Adobe Acrobat Document', '*.pdf'),('All files', '*.*')))
+    FILE = getFile('your\\directory\\to\\file',(('Adobe Acrobat Document', '*.pdf'),('All files', '*.*')))
     
     """
     Tk().withdraw()
     if filter:
-        chooser = peek(initialdir=opendir,filetypes=filter)
+        chooser = aof(initialdir=opendir,filetypes=filter)
         
     return chooser
  
@@ -330,9 +450,9 @@ and 2) limit the selection\nby file extension. Usage:
 ## Your mileage may vary depending on the strings that get passed in; I sometimes
 ## get a display with broken columns. It usually works pretty well, though.
 def screenResults(A = 'endr',B = None,C = None):
-    '''Usage: 
-    
-    screenResults(string1,g~string2,string3)
+    '''(Usage example) Write 3 columns, with the second column in green:
+
+    valkyrie.screenResults(string1,'g~'+string2,string3)
 
 Each string value is optional, and will be written to screen in separate
 rows & columns.\nYou can send the first letter of a color ("bl" for black)
@@ -347,7 +467,7 @@ write the closing row boundary.'''
     c = chr(8214)
     RC = chr(8801)
     r = c + RC
-    for rr in range(1,98):      ## 98 char length
+    for rr in range(1,90):      ## 98 char length
         r = r + RC
     r = r + c
     del(rr)
@@ -358,7 +478,7 @@ write the closing row boundary.'''
 
     else:
         
-        ## Write text to screen without newlines
+        ## Write text to a block without newlines
         def csep(text,tc=None):
             if tc != None:
                 print(tcolo[tc] + text + tcolo['rs'], end = ' ')
@@ -396,6 +516,7 @@ write the closing row boundary.'''
 
             if P != None:
                 for WORD in P:
+                    ## Track the number of char spaces we can fit in a column
                     L = len(WORD)
                     WIDE = WIDE + (L + 1)
 
@@ -424,7 +545,7 @@ write the closing row boundary.'''
                         WIDE = L + 1          ## Reset the line length
 
                     ## If the current o1 item is the last one from outputs, add it to
-                    ## the o2 response
+                    ## the o2 collection
                     if WORD == P[-1]:
                         LAST = ' '.join(o1)
                         L = len(LAST)
@@ -456,26 +577,25 @@ write the closing row boundary.'''
             C = rgx("^[a-z]{1,2}~",C,'')
             
         WIDE1 = len(A)
-
         
         if B != None:
             WIDE2 = len(B)
-            BLOCK1 = genBlocks(A,25,24)
+            BLOCK1 = genBlocks(A,23,23)
             if C != None:
                 WIDE3 = len(C)
-                BLOCK2 = genBlocks(B,35,33)
-                BLOCK3 = genBlocks(C,30,28)
+                BLOCK2 = genBlocks(B,32,30) #genBlocks(B,34,32)
+                BLOCK3 = genBlocks(C,28,26) #genBlocks(C,28,25)
                 CT3 = len(BLOCK3)
             else:
                 CT3 = None
-                BLOCK2 = genBlocks(B,68,65)
+                BLOCK2 = genBlocks(B,62,59) #genBlocks(B,64,62)
                 
             CT2 = len(BLOCK2)
 
         else:
             CT3 = None
             CT2 = None
-            BLOCK1 = genBlocks(A,93,91)
+            BLOCK1 = genBlocks(A,89,87) #genBlocks(A,96,95)
 
         CT1 = len(BLOCK1)
 
@@ -485,14 +605,14 @@ write the closing row boundary.'''
             for i in range(1,ii):
                 ee = ee + ' '
             return ee
-            
+
         EMPTY1 = makeEmpty(25)              ## 25 empty char length 1st column
         if CT3 != None:
-            EMPTY2 = makeEmpty(35)          ## 35 empty char length 2nd column with 3rd column
-            EMPTY3 = makeEmpty(28)          ## 28 empty char length  3rd column
+            EMPTY2 = makeEmpty(31)          ## 36 empty char length 2nd column *with* 3rd column
+            EMPTY3 = makeEmpty(27)          ## 29 empty char length 3rd column
         elif CT2 != None:
-            EMPTY2 = makeEmpty(64)          ## 64 empty char length 2nd column without 3rd column
-        
+            EMPTY2 = makeEmpty(61)          ## 65 empty char length 2nd column *without* 3rd column
+
 
         ## Iterate through each column block for strings
         INDEX1 = 0
@@ -610,43 +730,27 @@ write the closing row boundary.'''
             
 
 
-
-## Same as MACROSS's "getThis" function, decodes B64 and hex values.
-## !!! However, it returns the decoded value to your request, it does NOT write to "vf19_READ" !!!
-## 'd' is the value to decode;
-## 'e' is the encoding:
-##        0 = decode base64
-##        1 = decode hexadecimal (Your hex can contain whitespace and/or '0x', this function will strip them out)
-##        2 = encode plaintext to base64
-##        3 = encode plaintext to hexadecimal
-##
-##  You can pass an optional 3rd arg to specify the out-encoding
-##  (ascii, ANSI, etc, default is UTF-8).
-##
-##      MYVAR = mcdefs.getThis('base64 string',0)
-##      MYVAR = mcdefs.getThis('hex string',1,'ascii')
-##
 def getThis(d,e = 0,ee = 'utf8'):
-    """This is the same as MACROSS' powershell function 'getThis'. Your
-first argument is the encoded string you want to decode, and your
-second arg will be:
+    """ This is the same as MACROSS' powershell function 'getThis'. Your
+ first argument is the encoded string you want to decode, and your
+ second arg will be:
 
     (0) if decoding base64 (default action), or
     (1) if decoding hexadecimal, or
     (2) if encoding to base64, or
     (3) if encoding to hexadecimal.
 
-Unlike the powershell function, this function does NOT write to
+ Unlike the powershell function, this function does NOT write to
 "vf19_READ", it just returns your decoded plaintext.
 
-You can pass an optional 3rd arg to specify the out-encoding (ascii,
-ANSI, etc, default is UTF-8).
+ You can pass an optional 3rd arg to specify the out-encoding (ascii,
+ ANSI, etc, default is UTF-8).
 
-Usage:
-    PLAINTEXTASCII = mcdefs.getThis(base64string,0,'ascii')
-    PLAINTEXT = mcdefs.getThis(hexstring,1)
-    HEX = mcdefs.getThis('plaintext',1)
-    BASE64 = mcdefs.getThis('plaintext',0)
+ Usage:
+    PLAINTEXTASCII = valkyrie.getThis(base64string,0,'ascii')
+    PLAINTEXT = valkyrie.getThis(hexstring,1)
+    HEX = valkyrie.getThis('plaintext',1)
+    BASE64 = valkyrie.getThis('plaintext',0)
 
     """
     if e == 0:
@@ -669,84 +773,23 @@ Usage:
     return newval
 
 
-
-
-##    MACROSS calls all python scripts with at least 7 args (8, if you count
-##    the script itself being called via python). The fourth arg is always
-##    $vf19_PYOPT, a string that the getDefaults function can use to create a
-##    dictionary that lets your python scripts share the same default
-##    directories/values as MACROSS' $vf19_MPOD hashtable.
-##    
-##    Declare a new dictionary by calling this function with sys.argv[3] as
-##    your first argument (x), and 0 as your second argument (y). After you have
-##    your dictionary, you can decode its indexes at any time by calling
-##    this function again with a specific index, and no second arg.
-##    
-##    EXAMPLES:
-##
-##
-##        vf19_PYPOD = mcdefs.getDefaults(sys.argv[3],0)
-##        ^^ This is your dictionary, containing any indexed values you supplied in the
-##        temp_config.txt file as described in the README files.
-##        
-##        repo = mcdefs.getDefaults(vf19_PYPOD['nre'])
-##        ^^If you set your master repo location with 'nre' as its index, then calling
-##        getDefaults again will decode that filepath for you to use anytime in
-##        your python scripts.
-##
-##
-def getDefaults(x,y = 1):
-    """This function is solely for splitting and decoding MACROSS' $vf19_PYPOD list
-into the encoded default strings your scripts may need to use. To create your
-initial dictionary, call this function with a (0) for the second arg. After
-that, call with the specific index needed from your dictionary with a (1) as
-the second arg. Usage:
-       
-    vf19_PYPOD = mcdefs.getDefaults(sys.argv[3],0)
-       
-Now let's say vf19_PYPOD contains an index 'tbl' with the filepath to some JSON
-files:
-       
-    JSONdir = mcdefs.getDefaults(vf19_PYPOD['tbl'],1)"""
-    if y == 0:
-        newlist = {}
-        w = x.split(',')
-        for line in w:
-            kkey = line[0:3]
-            kval = sub("^.{3}",'',line)
-            kdct = {kkey:kval}
-            newlist.update(kdct)
-        return newlist
-    elif y == 1:
-        DECVAL = getThis(x,0)
-        return DECVAL
-
-## Similar to getDefaults above, but replicates MACROSS' $vf19_LATTS hashtable so that python
-## scripts can read the [macross].name and [macross].valtype attributes of other scripts.
-def getATTS(L):
-    """MACROSS passes the .fname and .valtype attributes from its $vf19_ATTS
-hashtable via sys.argv[2] every time it calls a python script. Send
-that value to this function, and you will get a pythonized $vf19_ATTS
-dictionary to do macross attribute evals in your python scripts.
-       
-For example, if you have MACROSS scripts with the .valtype "ip addresses",
-you can auto-scan for them with
-
-    vf19_ATTS = getATTS(sys.argv[2])
-    for i in vf19_ATTS:
-        if i['valtype'] == 'ip addresses':
-            collab i['fname'] 'MyScript'
-    """
-    list = []
-    for atts in L.split(','):
-        list.append({'fname':(atts.split('=')[0]),'valtype':(atts.split('=')[1])})
-    return list
-    
-    
-    
-
 ################################################################
-####################  CLASSES SECTION  #########################
+## Convert powershell's [macross] objects to python macross class
 ################################################################
-#class macross():
-    
+attfile = GBIO + '\\\\LATTS.eod'
+if drfl(attfile,method='file'):
+    global LATTS; LATTS = {}
+    with open(attfile) as af:
+        pa = load(af)
+        for tool in pa:
+            l = []
+            K = tool
+            V = pa[tool]
+            for i in V:
+                l.append(str(i))
+            ATT = macross(l[0],l[1],l[2],l[3],l[4],l[5],l[6],l[7],l[8],l[9])
+            LATTS.update({K:ATT})
+    af.close()
+    del pa,i,K,V,tool,attfile,af
+
+
