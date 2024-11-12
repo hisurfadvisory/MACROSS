@@ -78,7 +78,7 @@ function splashPage(){
             'getThis'= @{'d'="Decode base64 and hex values to plaintext in the global variable $('$'+'vf19_READ'); encode plaintext to base64 string";'u'='Usage: getThis $string [1 to decode hex|0 to encode base64|none to decode base64]'}
             'getFile'= @{'d'='Open a dialog window to let analysts select a file from any local/network location';'u'='Usage: $file = getFile'}
             'yorn'= @{'d'='Open a "yes/no" dialog to get response from analysts so your script can perform an action they choose.';'u'='Usage: if( $( yorn "SCRIPTNAME" $CURRENT_TASK ) -eq "No") { $STOP_DOING_TASK }'}
-            'pyCross'= @{'d'="Write your powershell script's results to a json file (PROTOCULTURE.eod) that can later be read by MACROSS python scripts. This file is written to a folder, 'core\py_classes\garbage_io', that MACROSS regularly empties. You only need to send the name of your script as param1 and your values as param2. If you need to write something other than the default json, send an alternate filename in param3, and your data will be written as-is to another .eod file.";'u'='Usage: pyCross "myScriptName" $VALUES_TO_WRITE $optional_alt_filename'}
+            'pyCross'= @{'d'="Write your powershell script's results to a json file (PROTOCULTURE.eod) that can later be read by MACROSS python scripts. This file is written to a folder, 'core\macross_py\garbage_io', that MACROSS regularly empties. You only need to send the name of your script as param1 and your values as param2. If you need to write something other than the default json, send an alternate filename in param3, and your data will be written as-is to another .eod file.";'u'='Usage: pyCross "myScriptName" $VALUES_TO_WRITE $optional_alt_filename'}
             'stringz'= @{'d'="Extract ASCII characters from binary files. Call this function without parameters to open a nav window and select a file. You can also send a filepath as parameter one. If you do not want to keep the output text file, send 1 as parameter two.";'u'="Usage: stringz ['path\to\file' (optional)] [1 (optional)]"}
             'eMsg'= @{'d'="Send an integer 0-3 as the first parameter to display a canned message, or send your own message as the first parameter.  The second parameter is optional and will change the text color (send the first letter or 'bl' for black)";'u'='Usage: eMsg [message number|your custom msg] [text color (optional)]'}
             'errLog'= @{'d'="Write messages to MACROSS' log folder. Timestamps are added automatically. You can read these logs by typing 'debug' into MACROSS' main menu.";'u'='Usage: errLog [message level, examples: "INFO"|"WARN"|"ERROR"] [message field 1] [message field 2]'}
@@ -778,9 +778,13 @@ function startUp([switch]$init=$false){
         }$ml=setML;getThis -h $ml[13]; . $([scriptblock]::Create("$vf19_READ"))
         battroid -n vf19_TMP -v "$([string]$env:LOCALAPPDATA)\Temp\MACROSS"
         battroid -n vf19_GPOD -v $([System.Tuple]::Create($(e),$(e)))
+        if( ! (Test-Path "$vf19_TOOLSROOT\core\preferences.txt")){
+            "persist_protoculture=true`nuse_pythonv2=false" | Out-File "$vf19_TOOLSROOT\core\preferences.txt"
+        }
         
         ## Verify required config file
         if(! (Test-Path $($vf19_CONFIG[0]))){ setConfig }
+        userPrefs
 
         ## MOD SECTION! ##
         ####################################################################################################
@@ -792,8 +796,9 @@ function startUp([switch]$init=$false){
             $prog = $i.GetValue('DisplayName')
             if($prog -Like 'python*'){
                 $Global:MONTY = $true
-                battroid -n vf19_pylib -v "$vf19_TOOLSROOT\core\py_classes"
+                battroid -n vf19_pylib -v "$vf19_TOOLSROOT\core\macross_py"
                 cleanGBIO                                               ## Make sure any temp .eod files are disposed of
+                if($vf19_pylib -notIn $env:PYTHONPATH){ $env:PYTHONPATH = $vf19_pylib + $env:PYTHONPATH }
             }
             if($prog -match 'nmap'){ $Global:MAPPER = $true }        ## Can use nmap, yay!
             if($prog -match 'wireshark'){ $Global:SHARK = $true }    ## Can use wireshark, yay!
@@ -813,9 +818,8 @@ function startUp([switch]$init=$false){
     ## where 'key' is the 3-character ID you created when adding values to the config.conf
     ## file.
     ##
-    if(! $vf19_GBIO){
-        battroid -n vf19_GBIO -v "$vf19_pylib\garbage_io"
-        battroid -n vf19_PROTO -v "$vf19_GBIO\PROTOCULTURE.eod"
+    if(! $vf19_PYG){
+        battroid -n vf19_PYG -v @("$vf19_pylib\garbage_io","$vf19_pylib\garbage_io\PROTOCULTURE.eod")
     }
     if(! $vf19_MPOD){
         $defs=@{};$Global:vf19_PYPOD='';getThis -h $((setML)[14])
@@ -823,18 +827,17 @@ function startUp([switch]$init=$false){
         $y = setCC -c; getThis QEBA; $9d = "$vf19_READ"
         $j = setCC
         $b = $(setReset -d $y $j) -Split $9d
-
+        
         foreach($c in $b){
-            $d = $c.substring(0,3)
+            $d = $c.Substring(0,3)
             $e = $c -replace "^..."
             $defs.Add($d,$e)
-            if($MONTY){ $p += $c }
+            if($MONTY -and $d -ne 'mad'){ $p += $c }
         }
         battroid -n vf19_MPOD -v $defs; getThis $vf19_MPOD['int']
         battroid -n N_ -v @($vf19_READ,$([int[]](($vf19_READ -split '') -ne '')))
         if($p.length -gt 0){ $Global:vf19_PYPOD = $p -join(',') }
     }
-    
 }
 
 
@@ -855,61 +858,48 @@ function chooseMod(){
         'refresh'
     )
 
-    $ct = 1
-    $vf19_MENU.keys | Sort |
-        %{
-            $k1 = $_
-            $menuNum = [string]$ct
-            if($ct -lt 10){
-                $menuNum = '0' + $menuNum
-            }
-            $desc = $vf19_MENU[$k1].keys
-            $fname = $($vf19_MENU[$k1][$desc].fname)
-            
-            $d1 = " $menuNum" + ". $k1"
-            $d0 = $d1.Length
-            if($d0 -lt 15){
-                $d2 = (15 - $d0)
-                while($d2 -gt 1){
-                    $d1 += ' '
-                    $d2--
-                }
-            }
-            elseif($d0 -gt 15){
-                $d1 = $d1.substring(0,15)
-            }
-            $Global:vf19_MODULENUM.Add($ct,$fname)
-            $Global:vf19_MENULIST.Add($d1,$desc)
-            $ct++
-        }
-    
-        $toolcount = $vf19_MENULIST.count; if($toolcount -gt 10){$vf19_MULTIPAGE=$true}
-        $Global:vf19_PAGECT = [math]::Truncate(($toolcount/10) + 1)
+    ## Check for python-generated PROTOCULTURE & count the available tools
+    $c = gc -raw "$($vf19_PYG[1])" | ConvertFrom-Json
+    $c = $c."$($c.psobject.properties.name)".result
+    $toolcount = $vf19_LATTS.count
+    if( $c -and ! $PROTOCULTURE ){ $Global:PROTOCULTURE = $c }
+    if($toolcount -gt 10){$vf19_MULTIPAGE=$true}
+    $Global:vf19_PAGECT = [math]::Truncate(($toolcount/10) + 1)
 
-        $ti = 1
-        getThis 4pWR
-        $vf19_MENULIST.GetEnumerator() | Sort -Property Name | Select -Skip $($vf19_PAGE * 10) | %{
-            if($ti -le 10){
-            w ' ' -i; sep '=' 70 c
-            w "   $($_.Name -replace "^ 0") " y -i; w $vf19_READ c -i; w " $($_.Value)" y
-            }
-            $ti++
+        
+    getThis 4pWR
+
+    $vf19_LATTS.keys | Sort | Select -Skip $($vf19_PAGE * 10) | Select -First 10 | %{
+         w ' ' -i; sep '=' 70 c
+        $desc = $vf19_LATTS[$_].desc
+        $cname = $vf19_LATTS[$_].name
+            
+        if($vf19_LATTS[$_].pos -lt 10){ $d1 = " $($vf19_LATTS[$_].pos)" + ". $cname" }
+        else{ $d1 = [string]$($vf19_LATTS[$_].pos) + ". $cname" }
+        $d0 = $d1.Length
+        if($d0 -lt 15){
+            $d2 = (15 - $d0)
+            while($d2 -gt 1){ $d1 += ' '; $d2-- }
         }
-        rv ti
-        Write-Host ' ' -NoNewline; sep '=' 70 c
-        ''
+        elseif($d0 -gt 15){
+            $d1 = $d1.substring(0,15)
+        }
+        w "   $d1" y -i; w $vf19_READ c -i; w " $desc" y
+    }
+
+    w ' ' -i; sep '=' 70 c
+    ''
 
     SJW -menu     ## check user's privilege LOL
-    if( $PROTOCULTURE -or (gc "$vf19_GBIO\PROTOCULTURE.eod" | ConvertFrom-Json).result){
-        w '      ' -i; w ' PROTOCULTURE IS HOT (enter "proto" to view & clear it) ' r bl
+    if( $PROTOCULTURE ){
+        w '      ' -i; w ' PROTOCULTURE IS HOT (enter "proto" to view & clear it) ' r bl 
     }
     ''
 
     if( $vf19_MULTIPAGE ){
         w "   -There are $toolcount tools available. Enter " g -i; w 'p' 'y' -i; w ' for the next Page.' g
     }
-    w '   -Select the module you want (' g -i; w "1 - $toolcount" 'y' -i;
-    w ').' g
+    w '   -Select the module you want (' g -i; w "1 - $toolcount" 'y' -i; w ').' g
     w '   -Enter "' g -i; w 'help' 'y' -i;
     w '" and the number of the tool to view its help page' g
     w '   -Type ' g -i; w 'shell' 'y' -i;
