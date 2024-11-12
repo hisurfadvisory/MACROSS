@@ -78,7 +78,7 @@ function debugMacross($1,[switch]$continue=$true){
                 4. Cancel
             
             OR Type "logs" to review MACROSS log files,' g
-            if($MONTY){ w '
+            if($MONTY[1]){ w '
             OR Type "python" to open a MACROSS python session for testing,' g}
             w '
             OR Enter any command to begin testing/debugging within powershell
@@ -93,7 +93,7 @@ function debugMacross($1,[switch]$continue=$true){
             elseif($z -eq 'python'){
                 startUp; $pyATTS = pyATTS; pyENV; cls
                 #py "$vf19_TOOLSROOT\core\pydev.py" $USR $pyATTS $vf19_DTOP $vf19_PYPOD $N_[0] $vf19_pylib $vf19_TOOLSROOT
-                py "$vf19_TOOLSROOT\core\pydev.py" $vf19_pylib
+                py "$vf19_TOOLSROOT\core\pydev.py" #$vf19_pylib
                 varCleanup
             }
             elseif($z -notIn 1..3){
@@ -180,8 +180,8 @@ function runSomething(){
 ## read powershell outputs
 function cleanGBIO(){
     ## Make sure the GBIO directory is clean
-    if(Get-ChildItem "$vf19_GBIO\*.eod"){
-        Get-ChildItem "$vf19_GBIO\*.eod" | %{
+    if(Get-ChildItem "$($vf19_PYG[0])\*.eod"){
+        Get-ChildItem "$($vf19_PYG[0])\*.eod" | %{
             try{
                 Remove-Item -Force $_
             }
@@ -216,22 +216,20 @@ function formatDefaults(){
 ## Decode base64 or hex string one-offs from the main menu
 function decodeSomething($1){
     cls
-    Write-Host '
-    
-    '
+    w "`n`n"
     if($1 -eq 0){
         $resp = "Decoded:"
         $ask = "Decode another?"
         Write-Host -f GREEN "
-        Enter 'hex' or 'b64' followed by your encoded string (hex strings can contain '0x'),
+        Enter 'h' or 'b' followed by your encoded string (hex strings can contain '0x'),
         or 'c' to cancel:
         >  " -NoNewline; $Z = Read-Host
-        if($Z -Match "^hex"){
-            $Z = $Z -replace "^hex ?",''
+        if($Z -Like "h*"){
+            $Z = $Z -replace "^h ?",''
             getThis $Z -h; $Z = $vf19_READ
         }
-        elseif($Z -Match "^b64"){
-            $Z = $Z -replace "^b64 ?",''
+        elseif($Z -Like "b*"){
+            $Z = $Z -replace "^b ?",''
             getThis $Z; $Z = $vf19_READ
         }
         elseif($Z -eq 'c'){
@@ -239,27 +237,28 @@ function decodeSomething($1){
         }
         else{
             Remove-Variable Z
-            Write-Host -f CYAN '
-            You need to specify "b64" or "hex".'
+            w '
+            You need to specify "b" or "h".' c
             decodeSomething
         }
     }
     elseif($1 -eq 1){
         $resp = "Encoded:"
         $ask = "Encode another?"
-        Write-Host -f GREEN "
-        Enter the string to base64-encode, or 'c' to cancel:
-        >  " -NoNewline; $Z = Read-Host 
-
-        $Z = "$resp $(getThis $Z -e)"
+        while($Z -notMatch "^[hcb]"){
+            w '
+        Enter "h" or "b" and the string to encode, or "c" to cancel:
+        >  ' -i g; $Z = Read-Host 
+        }
+        if($Z -eq "c"){  Return }
+        elseif($Z -Like "h*"){ $Z = "$resp $(getThis $($Z -replace "^h ?") -h -e)" }
+        else{ $Z = "$resp $(getThis $($Z -replace "^b ?") -e)" }
     }
 
     if($Z){
-        Write-Host -f GREEN "
-        $resp " -NoNewline;
-        Write-Host " $Z
-        "
-        Write-Host -f GREEN "    $ask " -NoNewline;
+        w "
+        $resp " -i g; w " $Z`n"
+        w "    $ask " -i g;
         $Z = Read-Host
         if($Z -Match "^y"){
             Remove-Variable Z
@@ -269,13 +268,13 @@ function decodeSomething($1){
         
 }
 
-## These vars & functions need to get loaded when python calls powershell scripts without MACROSS values
+<## These vars & functions need to get loaded when python calls powershell scripts without MACROSS values
 if( ! $vf19_TOOLSROOT ){
     $vf19_TOOLSROOT = '..'
     $Global:vf19_TOOLSDIR = "$vf19_TOOLSROOT\modules\"
     . "$vf19_TOOLSROOT\core\display.ps1"
     . "$vf19_TOOLSROOT\core\validation.ps1"
-}
+}#>
 
 
 
@@ -376,6 +375,9 @@ function chr($1){
 function errLog(){
     <#
     ||longhelp||
+
+    errLog [message] [optional message field 1] [optional message field 2]
+
     Have your scripts write to MACROSS logs for troubleshooting/auditing. The default location
     is $vf19_LOG, wherever you've specified that location to be. The current timestamp automatically
     gets written to the log, you don't need to send it. Just send at least 2 params, like a log-level
@@ -407,23 +409,28 @@ function errLog(){
     [string]$log = $($d) + '.log'                 ## Create the log filename
     [string]$msg = "$t"                           ## Begin the log msg with the timestamp
 
-    if($3){
-        $msg = $msg + "`t" +$1 + "`t" + $2 + "`t" + $3
-    }
-    elseif($2){
-        $msg = $msg + "`t" +$1 + "`t" + $2
-    }
-    else{
-        $msg = $msg + "`t" +$1
-    }
-    
-    if(Test-Path -Path "$vf19_LOG\$log"){
-        $msg | Out-File "$vf19_LOG\$log" -Append
-    }
-    else{
-        $msg | Out-File "$vf19_LOG\$log"
-    }
+    if($3){ $msg = $msg + "`t" +$1 + "`t" + $2 + "`t" + $3 }
+    elseif($2){ $msg = $msg + "`t" +$1 + "`t" + $2 }
+    else{ $msg = $msg + "`t" +$1 }
+    $msg | Out-File "$vf19_LOG\$log" -Append
 
+}
+
+## When python needs to call powershell scripts. This is kind of a circle-jerk but
+## I'll write a better solution at some point.
+function restoreMacross(){
+    $Global:ErrorActionPreference = 'SilentlyContinue'
+    $v = $env:MACROSS -Split ';'
+    $Global:vf19_TOOLSROOT = "$((pwd).path)"; $Global:vf19_TOOLSDIR = "$vf19_TOOLSROOT\modules"
+    $Global:USR = $v[6]; $Global:vf19_DTOP = $v[2]; $Global:vf19_TABLES = $v[3]; $Global:vf19_LOGS = $v[4]
+    $Global:N_ = $v[5]
+    $Global:vf19_PYG = @("core\macross_py\garbage_io","core\macross_py\garbage_io\PROTOCULTURE.eod")
+    $Global:PROTOCULTURE = (gc "$($vf19_PYG[1])" | ConvertFrom-Json).$CALLER.target; $Global:vf19_MPOD = @{}
+    foreach($missile in $($env:MPOD -split ';')){
+        $payload = ($missile -split('::'))[0]
+        $fuel = ($missile -split('::'))[1]
+        $Global:vf19_MPOD.Add($payload,$fuel)
+    }
 }
 
 ## Provide additional functions from the main menu
@@ -435,17 +442,16 @@ function extras($1){
     ## Clear out the global PROTOCULTURE value before the next investigation
     function clearProto(){
         cls
-        $pyp = (gc "$vf19_GBIO\PROTOCULTURE.eod" | ConvertFrom-Json)
+        w "`n`n`n"
+        $pf = "$($vf19_PYG[1])"
         screenResults "PROTOCULTURE = " "$PROTOCULTURE"
-        if($pyp){
-            $k = $pyp.PSObject.Properties.Name
-            screenResults 'PROTOCULTURE.eod' $($pyp."$k" + ': ' + "$($pyp."$k".results)")
-        }
         screenResults -e
         ''
-        w 'Hit ENTER to clear it.' 'g'
+        w 'Hit ENTER to clear it.' g
         Read-Host; Remove-Variable -Force PROTOCULTURE -Scope Global
-        if(Test-Path $vf19_PROTO){ Remove-Item -Path $vf19_PROTO }
+        if(Test-Path $pf){ Remove-Item -Path $pf }
+        w " Enter `"p`" to automatically clear `$PROTOCULTURE from now on, or hit ENTER to skip: " -i g
+        if($(Read-Host) -eq 'p'){ userPrefs -proto }
     }
     $ex = @{
         'config'='splashPage;setConfig -u'
@@ -472,12 +478,10 @@ function pyCross(){
     
     This function lets scripts write results to a file in the directory 
     
-        "MACROSS\core\py_classes\garbage_io\"
+        "MACROSS\core\macross_py\garbage_io\"
 
     so that python & powershell scripts can easily share the same investigation data during a 
-    MACROSS session. Eventually MACROSS will improve the way it handles this.
-    
-    The .eod files are encoded in utf8, so plan accordingly.
+    MACROSS session. The files are encoded in utf8.
   
     REQUIRED:  Your script name, as well as the value you want written to that file ($val1). 
     The default file will be PROTOCULTURE.eod, written as a basic json string:
@@ -485,85 +489,66 @@ function pyCross(){
         { 'YourScriptName' : { 'target': $value1, 'result': $value2 } }
         
     If you need something other than this format, you can provide an alternative filename as the 
-    3rd parameter, and write whatever type of data your file is to that.
+    3rd parameter, and write whatever type of data your file is to that. (the extension will
+    still be .eod to handle auto-cleanup.)
 
     Originally, the PROTOCULTURE.eod file collected search values for all scripts during any
     given MACROSS session, which is why it is in json format. But it made more sense to limit
     this to a single result field, so this file simply gets overwritten with each use of pyCross, 
     and no longer appends json items for every PROTOCULTURE search.
     
-    If the PROTOCULTURE.eod file already exists, this function will check to see if the "result" 
-    key contains a non-empty value. If so, it assumes this is a response from python to a query 
-    from powershell, and sets that "result" value as $PROTOCULTURE.
-    
-    If "result" is empty, pyCross then assumes you are responding to a python script's request, 
-    and will write your $value to the "result" key of the json. Otherwise, $value gets written to 
-    the "target" key in a new PROTOCULTURE.eod file. If your value is a hashtable or list, it will
-    be converted into a single large string dilineated by "@@".
-    
-    ||examples||
-    if( $python_called -eq $true){
-  
-        # Write the results of the python script's request to "PROTOCULTURE.eod"
-        pyCross 'myScriptName' $value
-  
-        # Or you can create a different file, "myResultFile.eod"
-        foreach($item in $list){
-            pyCross 'myScriptName' $item 'myResultFile'
-        }
-  
+    When a python script uses valkyrie.collab() to query your powershell scripts, your script
+    should contain this check & instruction:
+
+    param( $pythonsrc = $null )
+    if( $pythonsrc ){
+        $Global:CALLER = $pythonsrc
+        foreach( $core in gci "core\*.ps1" ){ . $core.fullname }
+        restoreMacross
     }
-  
-    ...and then your python script can do whatever with it:
-        json.dumps(open('PATH\\PROTOCULTURE.eod).read())
-        open('PATH\\myResultFile.eod').read()
-  
-    The file outputs are written with the extension "*.eod" (including your custom filenames) to 
-    ensure regular cleanup (see the "cleanGBIO" function elsewhere in this file).
+
+    The restoreMacross function will automatically read any PROTOCULTURE.eod files, and generate
+    a $PROTOCULTURE value for your powershell script to act on.
     
 #>
     Param(
         [Parameter(Mandatory)]
-        [string]$caller,
+        [string]$caller_,
         [Parameter(Mandatory)]
         $result,
         [string]$filenm
     )
-    
+
+    $PF = "$($vf19_PYG[1])"  ## Read the PROTOCULTURE.eod data
+
+    function w2f($1,$2="$PF"){
+        [IO.File]::WriteAllLines("$2",$($1 | ConvertTo-Json -Depth 3))
+    }
+    <#if($result -isNot [System.String] -and $result -isNot [System.Int32]){
+        $result = [PSCustomObject]@{ } + $result
+    }#>
+
     if($filenm){
-        $filenm = $filenm + '.eod'  ## Append custom extension
-        [IO.File]::WriteAllLines("$vf19_GBIO\$filenm",$result)
-        #$result | Out-File -FilePath "$vf19_GBIO\$filenm" -Encoding UTF8 -Append  ## Write results to file
-        if(-not(Test-Path -Path "$vf19_GBIO\$filenm")){
+        $filenm = "$($vf19_PYG[0])\$filenm" + '.eod'  ## Append custom extension
+        w2f $result $filenm
+        if(-not(Test-Path -Path "$($vf19_PYG[0])\$filenm")){
             errLog 'ERROR' "$USR/$caller" "Failed pyCross write-to $filenm"
-            w "r~ERROR! File did not write! "
+            w "ERROR! $filenm did not write! " -f r -b bl
             slp 3
         }
     }
-    elseif(Test-Path -Path $PROTOFILE){
-        $p = Get-Content $PROTOFILE | ConvertFrom-Json
-        if($p.$((gc $PROTOFILE) -replace "^\W+" -replace "\W.+$").result -ne ''){
-            $PROTOCULTURE = $p.$((gc $PROTOFILE) -replace "^\W+" -replace "\W.+$").result
+    elseif(Test-Path -Path $PF){
+        $p = Get-Content $PF | ConvertFrom-Json
+        if($p.$caller_.result -ne 'WAITING'){
+            $Global:PROTOCULTURE = $p.$caller_.result
         }
         else{
-            if($result.getType().Name -eq 'Hashtable'){
-                $h2s = ''; $result.keys | %{
-                    $h2s += $("$_" + ':' + "$($result[$_])" + '@@')
-                }
-                $result = $h2s -replace "@@$"
-            }
-            elseif($result.getType().Name -eq 'Array'){
-                $a2s = ''; $result | %{
-                    $a2s += "$_" + '@@'
-                }
-                $result = $a2s -replace "@@$"
-            }
-            $r = (Get-Content $PROTOFILE) -replace ".result.+:.+\}","`"result`":`"$result`"}}"
-            [IO.File]::WriteAllLines($PROTOFILE,$r) #Set-Content $PROTOFILE $r -Encoding UTF8
+            $p.$caller_.result = $result
+            w2f $p
         }
     }
-    else{
-        [IO.File]::WriteAllLines($vf19_PROTO,"{'$caller':{'target':$result,'result':''}}")
+    else{ 
+        errLog 'ERROR' $caller/$USR 'Attempted to write to non-existent PROTOCULTURE.eod file' 
     }
 }
 
@@ -766,10 +751,6 @@ function sheetz(){
         $h
     )
 
-    if(! $MSXL){
-        w '    ' -i; w 'Microsoft Excel is not installed!' r bl
-        w ''; slp 2; Return
-    }
     <#
     TO ADD OR MODIFY THE DEFAULT CELL & FONT COLORIZATION:
     Colors have to be calculated by adding R + G + B, but G has to be multiplied by G and 256, 
@@ -820,7 +801,11 @@ function sheetz(){
 
 
     # Add reference to the Microsoft Excel assembly
-    Add-Type -AssemblyName Microsoft.Office.Interop.Excel
+    try{ Add-Type -AssemblyName Microsoft.Office.Interop.Excel }
+    catch{
+        w '    ' -i; w 'Microsoft Excel is not installed!' r bl
+        w ''; slp 2; Return
+    }
 
     
     # Create a new Excel application
@@ -1097,7 +1082,11 @@ function houseKeeping(){
     }
     function rmFiles($del){
         $reportdir = $reports -replace "\*.*$",''
-        #Write-Host 'deleting ' -NoNewline; write-host "$reportdir\$del"  # uncomment for debugging the occasional derp
+
+        ## MOD SECTION
+        ## uncomment for debugging the occasional derp
+        #Write-Host 'deleting ' -NoNewline; write-host "$reportdir\$del" 
+
         Remove-Item -Force -Path "$reportdir\$del"
         if(Test-Path -Path "$reportdir\$del"){
             Write-Host -f CYAN '
