@@ -14,43 +14,75 @@
 ################################
 function toolCount(){
     Remove-Variable -Force vf19_ATTS,vf19_LATTS,vf19_LIST0,vf19_LIST1 -Scope Global   ## Clear old lists from memory
-    $Global:vf19_ATTS = @{}   ## Collect MACROSS class info for tools in the repo
-    $Global:vf19_LATTS = @{}  ## Collect MACROSS class info for locally installed tools
+    $Global:vf19_ATTS = [ordered]@{}   ## Collect MACROSS class info for tools in the repo
+    $Global:vf19_LATTS = [ordered]@{}  ## Collect MACROSS class info for locally installed tools
     $Global:vf19_MENU = @{}   ## Send script names and stats to the menu-screen builder
     $Global:vf19_LIST0 = @{}  ## Collect local versions for verChk function
     $Global:vf19_LIST1 = @{}  ## Collect master versions for verChk function
     $Global:vf19_FILECT = 0
     $Global:vf19_REPOCT = 0
+    $menunum = 0
     if($vf19_ACCESSTIER.Item3){ $t3 = $true }
     if($vf19_ACCESSTIER.Item2){ $t2 = $true }
     if($vf19_ACCESSTIER.Item1){ $t1 = $true }
-    if( $MONTY ){
-        $ext = "*.p*"  ## count python tools
-    }
-    else{
-        $ext = "*.ps*" ## ignore python tools if python not installed
-    }
+    if( $MONTY ){ $ext = "*.p*"; $pa = '' }     ## count python tools
+    else{ $ext = "*.ps*" }                      ## ignore python tools if python not installed
+    
     $rgx = [regex]"^#_\S+ "
-    foreach($lscript in (Get-Childitem "$vf19_TOOLSDIR\$ext" | Sort)){
+    foreach($lscript in (Get-Childitem "$vf19_TOOLSDIR\$ext" | Sort Name)){
+        $menunum++
         $ln = $lscript.name                                                         ## Record the fullname with extension
         $lfn = $ln -replace "\..+"                                                  ## Set common name (no ext.)
         $ldesc = (Get-Content $lscript.FullName | Select -Index 0) -replace $rgx    ## This is the tool description
         $lver = (Get-Content $lscript.FullName | Select -Index 1) -replace $rgx     ## This is the tool version
         $lclass = (Get-Content $lscript.FullName | Select -Index 2) -replace $rgx   ## These are the class attributes
-        [macross]$latts = $lfn + ",$lclass" + ",$lver" + ",$ln"                     ## Use the above lines to create the macross object
+        [macross]$latts = $lfn + ",$lclass" + ",$lver" + ",$ln,$ldesc,$menunum"     ## Use the above lines to create the macross object
         $Global:vf19_LATTS.Add($lfn,$latts)                         ## Add the tool and its details to the local tracking list
         $Global:vf19_LIST0.Add($lfn,$vf19_LATTS[$lfn].ver)          ## Compare local versions to master repo versions
         $Global:vf19_MENU.Add($lfn,@{$ldesc=$latts})                ## Send all the data to the menu-screen builder
         $Global:vf19_FILECT++                                       ## Track how many tools are installed
     }
+    
+    ## Write a temp file for the valkyrie module
+    if($MONTY){ pyATTS }
+    $menunum = 0
+
+    ##################################################################
+    ##  MOD SECTION
+    ##      If you are using git or some other master repository that isn't
+    ##      a networked share or http server, you'll need to add a method
+    ##      to create the $masterlist value below.
+    ##################################################################
     if($vf19_VERSIONING){
-    foreach($rscript in (Get-Childitem "$vf19_REPOTOOLS\$ext" | Sort)){
-        $rn = $rscript.name
+
+    ##################
+    ## Depending where and how your web server is hosting scripts, you may need to tweak this, as well.
+    ##################
+    if($vf19_REPOTOOLS -Like "http*"){
+        battroid -N webrepo  -V $true
+        #$masterlist = (Invoke-WebRequest $vf19_REPOTOOLS -UseBasicParsing).links | Sort | ?{$_ -Like "*$ext"}
+        $masterlist = (Invoke-WebRequest $vf19_REPOTOOLS -UseBasicParsing).links.href | Sort | ?{$_ -Like "*$ext"}
+    }
+    ##################
+    ## Reading from a repo hosted on a network share is pretty simple.
+    ##################
+    else{
+        $masterlist = (Get-Childitem "$vf19_REPOTOOLS\$ext" | Sort Name -Descending)
+    }
+    foreach($rscript in $masterlist){
+        ## Based on whether $webrepo is true, doing a lookup for master files will be different...
+        if( $webrepo ){ $rn = $rscript -replace "^.+\\" }
+        else{ $rn = $rscript.name }
+
         $rfn = $rn -replace "\..+"
-        $rdesc = (Get-Content $rscript.FullName | Select -Index 0) -replace $rgx 
-        $rver = (Get-Content $rscript.FullName | Select -Index 1) -replace $rgx
-        $rclass = (Get-Content $rscript.FullName | Select -Index 2) -replace $rgx 
-        [macross]$ratts = $rfn + ",$rclass" + ",$rver" + ",$rn" 
+
+        if( $webrepo ){ $magiclines = (Invoke-WebRequest $rscript -UseBasicParsing) -Split "`n" | Select-String -Pattern "^#_" }
+        else{ $magiclines = Get-Content $rscript.FullName | Select -Index 0,1,2 }
+
+        $rdesc = $magiclines[0] -replace $rgx 
+        $rver = $magiclines[1] -replace $rgx
+        $rclass = $magiclines[2] -replace $rgx 
+        [macross]$ratts = $rfn + ",$rclass" + ",$rver" + ",$rn,$ldesc,$menunum" 
         $Global:vf19_ATTS.Add($rfn,$ratts)
 
         <# 
@@ -61,7 +93,8 @@ function toolCount(){
             fashion, it's all-or-nothing.
 
             If you've set Tier/GPO restrictions and configured a central repo, analysts
-            will only be able to download scripts applicable to their Tier level.
+            will only be able to download scripts applicable to their Tier level, as well
+            as their user/admin privilege level.
         #>
         
         if($vf19_ATTS[$rfn].priv -eq 'user'){
@@ -126,15 +159,21 @@ function look4New(){
         }
         
         splashPage
-        w '
-
-        '
+        w "`n`n"
         w "    You are missing '$a'. Installing it now...
         " y
-        Copy-Item -Path "$dir\$a" "$vf19_TOOLSDIR\$a"
+
+        ##################################################################
+        ##  MOD SECTION
+        ##      This is where new or updated scripts get copied from the repo
+        ##      to your local modules folder. Depending on where your master
+        ##      scripts are hosted, you might need to modify this along with
+        ##      the mod sections elsewhere in this file.
+        ##################################################################
+        if( $webrepo ){ Invoke-WebRequest "$dir\$a" -UseBasicParsing > "$vf19_TOOLSDIR\$a" }
+        else{ Copy-Item -Path "$dir\$a" "$vf19_TOOLSDIR\$a" }
         if( Test-Path -Path "$vf19_TOOLSDIR\$a" ){
-            w "        ...$a has been installed in the console!
-            " g
+            w "        ...$a has been installed in the console!`n" g
         }
         else{
             eMsg "ERROR - $a could not be installed for $USR!"
@@ -145,8 +184,7 @@ function look4New(){
 
 
     if( ($vf19_FILECT -gt $vf19_REPOCT) -and ! $vf19_SILENCE ){
-        w '   You have scripts that are not in the master folder:
-        ' y
+        w "   You have scripts that are not in the master folder:`n" y
         foreach( $a in $mismatch_list ){
             w "      $a" c
         }
@@ -221,27 +259,32 @@ function dlNew($1,$2){
 
         splashPage
 
-        w "     Updating $3...
-        " g
+        w "     Updating $3...`n" g
+
+        ##################################################################
+        ##  MOD SECTION
+        ##      More sections where MACROSS needs to copy from the master
+        ##      repo to the local folders.
+        ##################################################################
 
         ## Update the main console and all its files
         if( $CONSOLE ){
-            Copy-Item -Force -Path "$dir\$1" "$vf19_TOOLSROOT\$1"
+            if( $webrepo ){ Invoke-WebRequest -UseBasicParsing "$dir\$1" > "$vf19_TOOLSROOT\$1" }
+            else{ Copy-Item -Force -Path "$dir\$1" "$vf19_TOOLSROOT\$1" }
             Get-ChildItem -Recurse -Path "$dir\core\*" | 
                 ForEach-Object{
                     Copy-Item -Recurse -Force -Path "$dir\core\$_" "$vf19_TOOLSROOT\core\"
                 }
         }
         else{
-            Copy-Item -Force -Path "$dir\$1" "$vf19_TOOLSDIR\$1"
+            if( $webrepo ){ Invoke-WebRequest -UseBasicParsing "$dir\$1" > "$vf19_TOOLSDIR\$1" }
+            else{ Copy-Item -Force -Path "$dir\$1" "$vf19_TOOLSDIR\$1" }
         }
         toolCount           ## Refresh the list of tool versions
         verChk $4 'verify'  ## Make sure the new version downloaded correctly
-        w '
-        ' g
+        w "`n"
         if( $vf19_REF ){
-            w "  ...$3 has been refreshed.
-            "
+            w "  ...$3 has been refreshed.`n"
             Remove-Variable vf19_REF -Scope Global
         }
         else{
@@ -251,8 +294,7 @@ function dlNew($1,$2){
         if( $CONSOLE ){
             cls
             ''
-            w "     $3 needs to be restarted. Run it again after it closes. Exiting...
-            " y
+            w "     $3 needs to be restarted. Run it again after it closes. Exiting...`n" y
             slp 2
             Remove-Variable vf19_* -Scope Global
             Exit
@@ -264,7 +306,7 @@ function dlNew($1,$2){
 
 #################################
 ## Update latest tool versions; requires that you maintain a master repository and that its
-## location can be found in $vf19_MPOD['nre'] (see the temp_config.txt file).
+## location can be found in $vf19_MPOD['nre'] (you specify this during initial setup).
 ## $1 is a required value, the tool name passed in from the functions 'chooseMod' & 'dlNew'
 ## $2 is an optional verification check passed in from the function 'dlNew'
 ################################
@@ -284,7 +326,18 @@ function verChk($1){
         else{
             $local = "$vf19_TOOLSROOT\$1"
             $dir = $vf19_REPOCORE
-            $Global:vf19_LVER = (Get-Content "$dir\$1" | Select -Index 1) -replace "^.+ "
+            ##################################################################
+            ##  MOD SECTION
+            ##      Another function to copy/download the latest scripts from repo
+            ##      to the local folders. This gets executed each time a user
+            ##      selects a tool from the main menu, to check for new versions.
+            ##################################################################
+            if( $webrepo ){ 
+                $Global:vf19_LVER = (Invoke-WebRequest -UseBasicParsing "$dir\$1" | Select-String -Pattern "^#_ver ")[1] -replace "^#_ver "
+            }
+            else{ 
+                $Global:vf19_LVER = (Get-Content "$dir\$1" | Select -Index 1) -replace "^.+ " 
+            }
             $vf19_CVER = (Get-Content "$local" | Select -Index 1) -replace "^.+ "
         }
 
@@ -295,10 +348,8 @@ function verChk($1){
         elseif( $vf19_CVER -lt $vf19_LVER ){
             if( $2 -eq 'verify' ){
                 splashPage
-                w '
-                '
-                w '     UPDATE FAILED!
-                ' y
+                w "`n"
+                w "     UPDATE FAILED!`n" y
                 errLog 'ERROR' "$USR - failed updating $1 to version $vf19_LVER"
                 slp 3
                 $Global:vf19_Z = 'GO'
@@ -306,16 +357,15 @@ function verChk($1){
             }
             elseif( $3 -eq "MACROSS" ){
                 w "`n`n     $3 needs to update to v" y -i
-                Write-Host -f MAGENTA "$vf19_LVER" -NoNewline;
-                Write-Host -f YELLOW ". Hit ENTER to continue."
+                w "$vf19_LVER" -i m
+                w ". Hit ENTER to continue." y
                 Read-Host
                 dlNew $1 $vf19_LVER
             }
             else{
                 splashPage
-                Write-Host "
-                "
-                Write-Host -f YELLOW "     $3 v$vf19_LVER is live. Hit ENTER to update." -NoNewline;
+                w "`n"
+                w "     $3 v$vf19_LVER is live. Hit ENTER to update." -i y
                 Read-Host
 
                 dlNew $1 $Global:vf19_LVER
