@@ -1,6 +1,6 @@
 #_sdf1 Carbon Black EDR Integration
 #_ver 2.2
-#_class 3,user,EDR,powershell,HiSurfAdvisory,1,json
+#_class 3,user,edr,powershell,HiSurfAdvisory,1,json
 
 <#
 
@@ -69,7 +69,7 @@
     How to specify your search -------------------
 
     See the section within the "findThese" function that checks for "$CALLER",
-    $dyrl_ger_alternate is the optional value you can send, with these values:
+    $spiritia is the optional value you can send, with these values:
 
         -'sensor' -- If you set a hostname as $PROTOCULTURE, you can get all the system
             info Carbon Black has on that host. Example
@@ -247,8 +247,14 @@
 ## is 'process', but can also use 'sensor' or 'binary'), specify an event ID
 ## to collect, or to change the default number of results to collect
 param(
-    [string]$Script:dyrl_ger_alternate
+    $spiritia,
+    $pythonsrc=$null
 )
+if( $pythonsrc ){
+    $Global:CALLER = $pythonsrc
+    foreach( $core in gci "$(($env:MACROSS -Split ';')[0])\core\*.ps1" ){ . $core.fullname }
+    restoreMacross
+}
 
 
 
@@ -486,17 +492,7 @@ function inspectBin($1,$2){
 
     ## fucking windows can't just give me a value
     if( $2 -ne $null ){
-        $gh = $(CertUtil -hashfile $1 $2) -split("\n")
-        $gh = $gh[1]  ## cut out the useless garbage windows gives back after hashing
-        <#if($2 -eq 'sha256'){
-            $file = "sha256%3A$gh"
-        }
-        elseif($2 -eq 'md5'){
-            $file = "md5%3A$gh"
-        }
-        else{
-            errMsg 4 $2
-        }#>
+        $gh = $(getHash $1 $2)
         $file = $2 + ":$gh"
     }
     else{
