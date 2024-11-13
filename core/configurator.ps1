@@ -58,7 +58,7 @@ function setConfig(){
             $z=$null;$v=$true
             while($v){
             while($z -notIn 1..4){
-                w "`n  1. View current Tier lists`n  2. Set GPO/Tier access list`n  3. Set a user access list" g
+                w "`n  1. View current Tier lists`n  2. Set Tier/GPO names`n  3. Set a user access list" g
                 w "  4. Exit" g
                 w "      Select 1-4 > " g -i; $z = Read-Host
             }
