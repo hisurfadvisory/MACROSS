@@ -4,8 +4,7 @@
 
 <#
     Author: HiSurfAdvisory
-    ELINT-SEEKER (Automated String Search): Part of the MACROSS blue-team
-    automation framework
+    ELINT-SEEKER (Document-File String Searches)
     
     Uses Get-Content and/or .NET methods to search files for user-supplied
     keywords; automatically uncompresses MS Office documents to scan XML files
@@ -19,10 +18,10 @@
     at this time, instead it uses Didier Stevens' pdf-parser python
     script (see the pdfScan function later in this script for details.)
 	
-	Many customer networks I investigate do not have access to whatever
-    3rd-party utilities that make life easy, so MACROSS tries to work
-    with what's available, or what can be copy-pasted rather than
-    installed.
+	I've used what can be copy-pasted rather than installed, because you
+    can't assume you'll be able to install whatever you like on a 
+    given customer's network. Unfortunately, this makes things more
+    janky than I'd like, too.
 	
     ================= Note on unused settings =================
     There are a few variables in this script that are not used by
@@ -37,8 +36,41 @@
 		
         $dyrl_eli_norecord -- when this is set to true, the filenames and
         their string-matches (if any) write to screen, but will NOT be written
-        to the ~\Desktop\strings-found.txt file
+        to the ~\Desktop\strings-found.txt file. Again, this is to prevent
+        making leaks worse.
 #>
+
+
+###################################################################################
+###       README ~~~~~~~~~ MACROSS PYTHON INTEGRATION EXAMPLE
+###################################################################################
+## If you want your powershell scripts to work with MACROSS python scripts,
+## copy-paste this check to restore all the values that get lost when transitioning
+## via both the powershell and python versions of the collab function.
+param(
+    [string]$pythonsrc = $null  ## The python collab function will set this value
+)
+if( $pythonsrc ){
+
+    ## This will be the name of the python script calling this one
+    $Global:CALLER = $pythonsrc
+
+    ## This is a unique temporary session, so launch the core scripts to get their functions
+    foreach( $core in gci "core\*.ps1" ){ . $core.fullname }
+
+    ## Now that the core files are loaded, this function can restore all the MACROSS 
+    ## defaults your powershell script might need:
+    restoreMacross
+
+    ## ELINTS is expecting a list of filepaths when called
+    $Global:PROTOCULTURE = $PROTOCULTURE | ConvertTo-Json | ConvertFrom-Json
+    
+    ## Note that just like the powershell version, the python collab function can also
+    ## send an alternate param to your scripts when relevant. So, you can write your  
+    ## scripts to accept a value in addition to (or instead of) $PROTOCULTURE, if necessary.
+}
+
+
 
 ## ASCII art for launching the script
 function splashPage($1){
@@ -180,7 +212,7 @@ function completeMsg (){
                     screenResults "$([string]$_ + ". $($r[1])")" $r[0]
                 }
             }
-            screenResults 'endr'
+            screenResults -e
             ''
         
         Write-Host -f GREEN ' Search complete!'
@@ -221,7 +253,7 @@ function completeMsg (){
 ####################################
 function msOffice($1,$2,$3){
     Set-Variable -Name a,n -Option AllScope         ## Let nested functions control these values
-    $a = @('')                                      ## Collect all matches in $a
+    $Script:a = New-Object -TypeName System.Collections.ArrayList   ## Collect all matches in $a
     $n = 0                                          ## Track number of matches PER FILE
     $fn = $1 -replace "^.*\\"                       ## Cut filepath for display
     $Script:dyrl_eli_VBA = 0                        ## Count of any vba scripts found
@@ -269,7 +301,7 @@ function msOffice($1,$2,$3){
                         if( !($_ -cMatch $enc) ){
                             if( $dyrl_eli_CASE -eq 'y' ){   ## If the user specified case-sensitive
                                 if($_ -cMatch "$2"){
-                                    $a += $_
+                                    $Script:a.Add($_) | Out-Null #$a += $_
                                     $n++
                                     if( $3 -eq 1){
                                         $quit = $true
@@ -286,7 +318,7 @@ function msOffice($1,$2,$3){
                                 }
                             }
                             elseif($_ -Match "$2"){        ## If case doesn't matter
-                                    $a += $_
+                                    $Script:a.Add($_) | Out-Null #$a += $_
                                     $n++
                                     if( $3 -eq 1){
                                         $quit = $true
@@ -326,9 +358,7 @@ function msOffice($1,$2,$3){
     ## noticeable lag you can modify this to just grab Document.xml from Word files
     if( $doc ){
         $doc.Entries |
-            Where-Object{
-                $_.Name -Match "\.xml$"
-            } | %{
+            ?{ $_.Name -Match "\.xml$"} | %{
                 if($_.name -Match "^vba"){
                     $Script:dyrl_eli_VBA++
                     'VBA Script found: ' >> $dyrl_eli_intelpkg
@@ -352,8 +382,8 @@ function msOffice($1,$2,$3){
 
         ## If 'VBA...DLL' and 'Sub ' are in the same doc, likely a macro
         if( $findvba | Select-String -CaseSensitive 'VBA' | Select-String 'dll' ){
-            $mac = ($findvba | Select-String -Pattern "Sub .+\(\)") -replace $enc
-            $mac= $mac -replace "^Sub " -replace "\(\)"
+            $mac = (($findvba | Select-String -Pattern "Sub .+\(\)") -replace $enc) -replace "^Sub " -replace "\(\)"
+            #$mac = $mac -replace "^Sub " -replace "\(\)"
             Write-Host -f CYAN '  Possible macro found  : ' -NoNewline;
             Write-Host -f YELLOW $mac
             ''
@@ -366,12 +396,12 @@ function msOffice($1,$2,$3){
         $findstr | %{
             if($dyrl_eli_CASE -eq 'y'){
                 if($_ | Select-String -CaseSensitive $2){
-                    $a += $_ -replace $enc
+                    $Script:a.Add("$($_ -replace $nc)") | Out-Null #$a += $_ -replace $enc
                     $n++
                 }
             }
             elseif($_ | Select-String $2){
-                $a += $_ -replace $enc
+                $Script:a.Add("$($_ -replace $enc)") #$a += $_ -replace $enc
                 $n++
             }
         }
@@ -382,17 +412,17 @@ function msOffice($1,$2,$3){
     if( $n -gt 0 ){
         $Script:dyrl_eli_CONFIRMED = $dyrl_eli_CONFIRMED + $n
         $n2 = $true
-        if($a.length -gt 1){
+        if($Script:a.count -gt 1){
             ## Dedup results into new array, remove empty placeholder
-            $stringsfound = $a | where{$_ -ne ''} | Select -Unique
+            $stringsfound = $Script:a | Select -Unique | ?{$_ -ne ''} 
         }
     }
 
-    Write-Host -f YELLOW "
+    w "
     
-    $fn" -NoNewline;
-    Write-Host -f GREEN ": FOUND $n matches for '$2'
-    "
+    $fn" -i y
+    w ": FOUND $n matches for '$2'
+    " g
     slp 2
 
 
@@ -431,46 +461,50 @@ if($MONTY){
         ## Temp files created in $outf don't get deleted until ELINTS exits, so only need to dump once.
         $outf = $($1 -replace ".*\\" -replace "\.pdf") + '-plaintext.txt'
     
-        $20 = @()  ## Use this to rewrite words with whitespace-regex
-        $22 = @()  ## This is the list of exact words + whitespace-regex to search on
-    
+        #$20 = @()  ## Use this to rewrite words with whitespace-regex
+        #$22 = @()  ## This is the list of exact words + whitespace-regex to search on
         
         if($dyrl_eli_re){
             $23 = [regex]$2  ## $23 value means user entered a specific regex pattern
         }
-        ## User may separate exact words with either spaces or commas or both
-        ## $21 value means user is looking for exact words
-        elseif($2 -Match ', '){
-            $21 = $2 -Split(', ')
-        }
-        <#
-        ## User might be looking for a phrase, so don't split without commas;
-        ## be aware that phrase-searching may not work because things get broken
-        ## up unpredictably while decoding
-        elseif($2 -Match ' '){
-            $21 = $2 -Split(' ')
-        }#>
         else{
-            $21 = $2 -Split(',')
+            @('20','22') | %{Set-Variable -Name "$_" -Value $(New-Object System.Collections.ArrayList)}
+        
+            ## User may separate exact words with either spaces or commas or both
+            ## $21 value means user is looking for exact words
+            if($2 -Match ', '){
+                $21 = $2 -Split(', ')
+            }
+            <#
+            ## User might be looking for a phrase, so don't split without commas;
+            ## be aware that phrase-searching may not work because things get broken
+            ## up unpredictably while decoding
+            elseif($2 -Match ' '){
+                $21 = $2 -Split(' ')
+            }#>
+            else{
+                $21 = $2 -Split(',')
+            }
         }
     
-        if($21){
+        if($21 -and ! $23){
             ## PDF streams often break words apart; take all of the user's search
             ## keywords, split them into separate characters and add a regex for
             ## "match even if there is whitespace between letters". Also add 
             ## escapes for special characters
-            $22 = @()
+            #$22 = @()
             $21 | %{
                 foreach($char in ($_ -Split(''))){
                     if($char -Match "(\\|\$|\(|\)\|\[|\]|\{|\}|\.|\?|\*|\^|\&)"){
                         $char = '\' + $char
                     }
                     $sp = $char + '\s*'
-                    $20 += $sp
+                    $20.Add($sp) | Out-Null #$20 += $sp
                 }
-                $22 += $($20 -Join(''))
-                $20,$21 = $null,$null
+                $22.Add($($20.toArray() -Join '')) #$22 += $($20 -Join(''))
+                rv -Force 20,21
             }
+            $22 = $22.toArray()
         }
         if($23){
             $22 = $23
@@ -548,13 +582,17 @@ if($MONTY){
                             $startIndex = 0
     
                             if($m -gt 0){
-                                $Script:pdfReturn = @()
+                                #$Script:pdfReturn = @()
+                                $Script:pdfReturn = New-Object System.Collections.ArrayList
                                 ## Pull the matching keyword(s) along with some of the surrounding text
                                 foreach($match in $matched){
                                     $Script:dyrl_eli_CONFIRMED++
                                     $Global:HOWMANY++                       ## track the total search hits
-                                    $Script:pdfReturn += "$( (($textblk.substring($($match.index - 10))) -split (' '))[0..35])"
+                                    #$Script:pdfReturn += "$( (($textblk.substring($($match.index - 10))) -split (' '))[0..35])"
+                                    $m_ = "$( (($textblk.substring($($match.index - 10))) -split (' '))[0..35])"
+                                    $Script:pdfReturn.Add($m_)
                                 }
+                                rv m_; $Script:pdfReturn = $pdfReturn.toArray()
                             }
                             ''
                         }
@@ -734,14 +772,15 @@ if($MONTY){
                     if($_ -cMatch "$22"){
                         $Global:HOWMANY++                       ## Track the MACROSS total
                         $Script:dyrl_eli_CONFIRMED++            ## Track ELINTS' total
-                        $find = [string]$($pt[$($i-1)..$($i+1)])
-                        $finds += $(($find -join '') -replace "\s{2,}",' ')
+                        $find = (([string]$($pt[$($i-1)..$($i+1)]) -join '') -replace "\s{2,}",' ')
+                        #$finds += $(($find -join '') -replace "\s{2,}",' ')
+                        $finds.Add($find)
                     }
                     $i++
                 }
                 
                 if($finds.count -gt 0){
-                    Return $finds
+                    Return $($finds -Join '')
                 }
         }
     }
@@ -788,7 +827,7 @@ function fileCopy(){
                 screenResults $item $r[2]
             }
         }
-        screenResults 'endr'
+        screenResults -e
     }
     else{
         w ' 
@@ -827,7 +866,7 @@ function fileCopy(){
                             collab $dyrl_eli_EDR 'ELINTS' ## EDR script will read ELINTS' .valtype to know what $PROTOCULTURE is
                             Write-Host '
                             '
-                            while($mz -notMatch "^(y|n)"){
+                            while($mz -notMatch "^[yn]"){
                                 Write-Host -f GREEN " Do you want to search $edr for another file? " -NoNewline;
                                 $mz = Read-Host
                             }
@@ -1120,9 +1159,9 @@ do{
         # Get required vars and run the search
         w '======         ~~ PDF SEARCHES ARE *ALWAYS* CASE-SENSITIVE ~~       ======' -f y -b bl
         w '======           ~~ REGEX IS UNRELIABLE FOR PDF SEARCHES ~~         ======' -f y -b bl
-        Write-Host -f GREEN ' Type "regex " (without quotes) followed by your expression to match a'
-        Write-Host -f GREEN ' pattern, otherwise just enter your string or comma-separated keywords:'
-        Write-Host '  >  ' -NoNewLine; 
+        w ' Type "regex " (without quotes) followed by your expression to match a' g
+        w ' pattern, otherwise just enter your string or comma-separated keywords:' g
+        w '  >  ' -i 
         $dyrl_eli_TARGET = Read-Host 
 
         ## Process special chars as literals if user didn't specify 'regex'
@@ -1141,11 +1180,11 @@ do{
                 -replace '\}','\}'
             
             while($dyrl_eli_CASE -notMatch "^(y|n)$"){
-                Write-Host -f GREEN ' Does case matter for non-PDFs? (' -NoNewline;
-                Write-Host -f YELLOW 'y' -NoNewLine;
-                Write-Host -f GREEN '/' -NoNewLine;
-                Write-Host -f YELLOW 'n' -NoNewLine;
-                Write-Host -f GREEN ')  ' -NoNewLine; 
+                w ' Does case matter for non-PDFs? (' -i g
+                w 'y' -i y
+                w '/' -i g
+                w 'n' -i y
+                w ')  ' -i g
                 $dyrl_eli_CASE = Read-Host
             }
         }
@@ -1349,9 +1388,8 @@ do{
         Remove-Variable dyrl_eli_COLLECTIONS,dyrl_eli_setCase
         ## Offer to perform new search on same files
         while( $dyrl_eli_YN -notMatch "^(y|n)" ){
-            Write-Host '
-            '
-            Write-Host -f GREEN " Do you want to search the same file(s) for a different string?  " -NoNewLine;
+            w "`n"
+            w " Do you want to search the same file(s) for a different string?  " -i g
                 $dyrl_eli_Z = Read-Host
 
             if( $dyrl_eli_Z -eq 'n' ){
@@ -1379,7 +1417,7 @@ pdfScan 'fin'  ## Make sure temp files get deleted
 
 if( $GOBACK ){
     ''
-    Write-Host -f GREEN ' Hit ENTER to return to ' -NoNewLine;
+    w ' Hit ENTER to return to ' -i g
     w $CALLER c
     Read-Host
 }
