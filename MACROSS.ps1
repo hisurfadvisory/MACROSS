@@ -14,16 +14,16 @@
     
     'Script' & 'Tool' are used interchangebly in my comments. Sorry.
 
-    MACROSS community functions are in the core\utility.ps1 file for powershell,
-    and the core\py_classes\mcdefs.py file for python. You can type "debug" in
+    MACROSS functions are in the core\utility.ps1 file for powershell, and
+    the core\macross_py\valkyrie.py file for python. You can type "debug" in
     the main menu to get a listing and help files for all of these.
 
     Commenting in MACROSS powershell scripts is non-standard. I wrote my core
-    tools specifically to be unusable if executed outside of MACROSS since
+    tools specifically to be unusable if executed outside of MACROSS, since
     they can involve accessing APIs or sensitive data.
 
 	ADDING AUTOMATIONS TO MACROSS:
-		1a. To include your automation ps or py scripts, you need to add three
+		1a. To include your automation ps1 or py scripts, you need to add three
             specific lines to your script. First:
 		
 			    #_sdf1 <your description of the script>
@@ -36,72 +36,83 @@
             strips out the "#_ver " to get the version number from the
             local copy of the script, and compares it to the version
             number in the master copy that should be kept in your master
-            repo (if you are using one; see the verChk function below). If
-            the master copy is a higher number, MACROSS can grab the 
-            updated version.
+            repo (if you are using one). If the master copy is a higher 
+            number, MACROSS can grab the updated version.
 
-        1c. The third line must contain custom [macross] class attributes in order.
-            An example from my ELINTS tool:
+        1c. The third line must contain "_class " followed by custom [macross] class 
+            attributes, in a specific order. An example from my ELINTS tool:
 
                      FIELD1,FIELD2,     FIELD3,      FIELD4,     FIELD5, FIELD6, FIELD7
              #_class 0,user,document string search,powershell,HiSurfAdvisory,1,onscreen
 
-            This helps MACROSS determine when to provide tools to users. 
+            This helps MACROSS determine when to provide tools to users at any point
+            during investigations. 
                 FIELD1 (Access): Tier level 0 - 3
-                FIELD2 (Privilege): does the script require admin or user priv?
-                FIELD3 (Descriptor): Add a BRIEF description of what your script handles. Examples:
-                    "Parse office documents", "Access SEIM logs", "Verify IP addresses".
-                    This attribute can be used by MACROSS to load multiple tools to investigate
-                    the same IOCs if you write your scripts to take advantage of this.
-                FIELD4 (Language): Powershell vs. Python
+                FIELD2 (Privilege): the lowest privilege level required (admin or user)
+                FIELD3 (Descriptor): Add a BRIEF description of what your script handles.
+                 Examples:
+                    "parse office documents", "firewall api", "verify ip addresses".
+                    This attribute can be used by MACROSS to load multiple tools to 
+                    investigate the same IOCs if you write your scripts to take advantage 
+                    of this. It is important to be consistent with these descriptors!
+                FIELD4 (Language): powershell vs. python
                 FIELD5 (Author): who wrote the script
-                FIELD6 (How Many Params): tell MACROSS how many parameters can be passed to the script 
-                    for evaluation. As of version 2, MACROSS only passes 1 param to any script. 
-                    See notes in "validation.ps1" under the function "collab" if you need to 
-                    modify this.
-                FIELD7 (Response Type): what kind of data gets sent back -- json, onscreen, none, etc.
+                FIELD6 (How Many Params): tell MACROSS how many parameters can be passed 
+                    to the script for evaluation. If your script is written to automatically 
+                    act on the global variable $PROTOCULTURE, this value should be 1. If your 
+                    script can *also* accept an additional param or arg, set it to 2. MACROSS 
+                    can only pass 1 parameter or argument to any script. See notes in 
+                    "validation.ps1" under the function "collab" if you want to modify this
+                    behavior, but I limited it to 1 to keep things simple.
+                FIELD7 (Response Type): what kind of data gets sent back -- json, onscreen, 
+                    none, etc.
 
             Review the "classes.ps1" file for more info, and use MACROSS' debugger to see
             how the functions "availableTypes" and "collab" can connect your tools!
 
 		2. Keep the script name under 11 characters to preserve the menu's
 		    uniformity (not including the '.py' or '.ps1' file extensions, MACROSS
-		    automatically ignores them).
+		    automatically ignores them). Names exceeding 11 chars get truncated.
 		
 		3. Where possible, prepend your variables with 'dyrl_', for example $dyrl_var1.
 		    Because multiple scripts can be running at once and sharing data, MACROSS
-            flushes all variables beginning with 'dyrl_' each time the main menu loads
-            to make sure the tools are "zeroed" and always work as expected.
+            flushes all variables beginning with 'dyrl_' in all scopes each time the 
+            main menu loads to make sure the tools are "zeroed" and always work as expected.
 			
 		4. Include a function that displays any help or extended description of your
-            scripts for analysts to view. Set the function to run FIRST if the variable
-            $HELP is true, and automatically exit after the function finishes. $HELP 
-            automatically gets reset by MACROSS. Users set $HELP by typing 'help' in the
-            main menu.
+            scripts for analysts to view. Set the function to run FIRST if the global
+            variable $HELP is true, and automatically exit after the function finishes. 
+            $HELP automatically gets reset by MACROSS. Users set $HELP by typing 'help' 
+            in the main menu along with the tool # they want to view help for.
 
-        5. MACROSS sets or clears these custom GLOBAL values that can be used in your 
-           scripts:
+        5. MACROSS handles auto-clearing these custom GLOBAL values that can be used 
+            in your scripts:
+
 			$USR is the local user (set by MACROSS)
-			$HOWMANY is what I used to track things like the total number of search  
-                results between scripts (set by your script)
+			$HOWMANY is what I used to track things like the total number of search
+                results between scripts (set by your scripts)
 			$CALLER is used when one script calls functions in another script;
                 it passes the name of the current script to the one that is
                 being called (set by MACROSS)
-			$RESULTFILE is any file output generated by any of the scripts. This value  
-                gets flushed everytime the main menu loads. (set by your script)
+			$RESULTFILE is the filepath to any file output generated by any of the 
+                scripts. Multiple scripts can then reference this filepath to read
+                or change its contents. This value gets flushed everytime the main
+                menu loads. (set by your scripts)
 			$GOBACK and $COMEBACK are true/false and used when scripts need to jump 
-                back and forth between each other (I used this in early versions of 
-                MACROSS, you may not have a need for them). (set by your script)
-            $vf19_OPT1 gets set when a user appends an 's' to their module selection
+                back and forth between each other without using the collab function
+                (I used this in early versions of MACROSS, you may not have a need 
+                for them. Set by your scripts)
+            $vf19_OPT1 gets set when a user appends an 's' to their tool selection
                 (e.g. 1s). This allows your tool to switch modes or provide added
                 functionality that normally wouldn't be used/needed. For example,
                 my BASARA tool is used to digitally sign scripts, but when selected
                 with 's', it instead lets you inspect the digital signatures of any 
                 signed files. (set by MACROSS)
             $vf19_TABLES is the location of the MACROSS\resources folder, which you
-                can change in the configuration wizard.
-            $vf19_MPOD contains any values your scripts regularly make use of, but that
-                you don't want stored in plaintext. Retrieve your value using:
+                can change in the configuration wizard. This location is where you
+                can store any files regularly used by your scripts.
+            $vf19_MPOD contains the encrypted values that you created during MACROSS' 
+                setup. Retrieve your plaintext value using:
 
                     getThis $vf19_MPOD[$id]; $myVar = $vf19_READ
 
@@ -118,6 +129,12 @@
 
         7. Place your script in the "MACROSS\modules" folder. It will automatically
             be added to the menu if you've set the #_sdf, #_ver and #_class headers.
+        
+        8. MACROSS provides most of its powershell utilities in a python module called
+            "valkyrie". This module also converts the above global values for you; simply
+            import valkyrie into your python scripts to make use of them. You can review
+            the valkyrie module in the core\macross_py folder, or just use valkyrie.help()
+            after importing it.
         
 #>
 
@@ -191,10 +208,11 @@ Remove-Variable c,mcores,script
 
 ## MOD SECTION! ##
 ################### MODIFY THESE VALUES AS NEEDED ###############
-## UPDATE THESE LINES IF YOU MOVE THE config.conf FILE ELSEWHERE!
+## UPDATE THESE LINES IF YOU MOVE THE .conf FILES ELSEWHERE!
 ## By default these files need to be placed in your MACROSS\core
 ## folder, but it is highly recommended that you keep your .conf 
-## files in an access-controlled location.
+## files in a separate access-controlled location if you will have
+## multiple users.
 
 battroid -n vf19_CONFIG -v  @(
     "$vf19_TOOLSROOT\core\config.conf",
@@ -205,7 +223,7 @@ battroid -n vf19_CONFIG -v  @(
 ## Input validation for menu choices
 $vf19_CHOICE = [regex]"^([\drsw]{1,3})$"
 
-
+## MOD SECTION! ##
 ## UNCOMMENT AND UPDATE THIS LINE IF YOU HAVE LOCAL SYSINTERNALS!
 ## Your scripts can then quickly load them via $SI[$app]
 #$Global:vf19_SYSINT = 'C:\Program Files\Microsoft Sysinternals Suite'
@@ -230,7 +248,7 @@ while( $Global:vf19_Z -ne 'q' ){
     
     ## When you run the initial MACROSS configuration wizard and it asks for a repository
     ## path, enter "n" if you are not using a central repo to store your master copies.
-    ## If you are using a master repo and set the path in the MACROSS config, it will be
+    ## If you *are* using a master repo and set the path in the MACROSS config, it will be
     ## referenced in these functions to auto-download new or updated scripts.
 
     toolCount
