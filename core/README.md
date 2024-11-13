@@ -16,27 +16,28 @@ The first three lines of your automation script require these:<br>
 			To allow anyone to execute the script, use 0.
 		2. The LOWEST privilege level your script requires (user, admin, etc.)
 			Even if your script contains tasks that require elevated privilege, use "user"
-			if the script can perform tasks without admin. MACROSS tags non-admin users with "$vf19_ROBOTECH",
-			which you can use to skip admin tasks if that value is $True.
-		3. What kind of data your script processes (IPs, filescans, etc.), or what task it performs. Keep this 
-			concise but specific across your scripts. For example, you might have several automations that do 
-			things in active directory, but don't just use "active-directory" for each one!
+			if the script can perform tasks without admin. MACROSS tags non-admin users 
+   			with "$vf19_ROBOTECH", which you can use to skip admin tasks if that value is $True.
+		3. What kind of data your script processes (IPs, filescans, etc.), or what task it performs. 
+  			Keep this concise but specific across your scripts. For example, you might have several 				automations that do things in active directory, but don't just use "active-directory" 
+     			for each one!
 		4. What language your script is (powershell or python)
 		5. The author
 		6. The maximum number of values your script can process
 		7. The format of your script's responses to other scripts' queries
 
-		Here's an example class line for scripts offered to user-privileged tier 1 analysts, and their \[macross\] attribute names:
+		Here's an example class line for scripts offered to user-privileged tier 1 analysts, and their
+  		\[macross\] attribute names:
 		
 		#_class 1,user,office vba extraction,powershell,HiSurfAdvisory,1,xml
 
-			1 						= .access
-			user					= .priv
+			1 			= .access
+			user			= .priv
 			office vba extraction 	= .valtype
-			powershell 				= .lang
-			HiSurfAdvisory 			= .auth
-			1 						= .evalmax
-			xml 					= .rtype
+			powershell 		= .lang
+			HiSurfAdvisory 		= .auth
+			1 			= .evalmax
+			xml 			= .rtype
 
 When all these lines are set correctly, MACROSS uses the \[macross\] class to keep track of the scripts in the "modules" folder and the central repository (if you're using one). You can see what these look like by typing "debug TL" in the main menu.
 
