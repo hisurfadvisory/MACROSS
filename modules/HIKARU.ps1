@@ -1,4 +1,4 @@
-#_sdf1 Demo - a basic config walkthru (6-8 mins)
+#_sdf1 Demo - Review My Code
 #_ver 0.2
 #_class 0,user,demo script,powershell,HiSurfAdvisory,0,none
 
@@ -48,7 +48,7 @@ function splashPage(){
     param([switch]$h=$false)
     cls
     if($h){
-        '' 
+        ''
         screenResults '[macross] attributes:' ' .access | .priv | .valtype | .lang | .auth | .evalmax | .rtype | .ver | .fname'
         screenResults 'Variables to remember' '$PROTOCULTURE, $CALLER, $RESULTFILE, $vf19_MPOD, $vf19_LATTS'
         screenResults -e
@@ -87,6 +87,9 @@ function header(){
     screenResults -e
 }
 
+
+## It is recommended that you include a check for the $HELP variable, and display a
+## help/description if it is true. MACROSS clears this variable when your script exits.
 if($HELP){
     splashPage
     $vf19_LATTS['HIKARU'].toolInfo() | %{
@@ -109,6 +112,9 @@ if($HELP){
     Exit
 }
 
+## When MACROSS' collab() function is used, it sets the calling script's name as $CALLER.
+## In this way, you can both track what script is calling, and what the $CALLER's [macross]
+## class attributes are so you can automatically tailor responses.
 if($CALLER){
     $j = Get-Content -raw "$vf19_TOOLSROOT\resources\hikaru_demo.txt" | ConvertFrom-Json
     $j | %{
