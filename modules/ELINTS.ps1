@@ -845,10 +845,10 @@ function fileCopy(){
         while( ! $probe ){
             $vf19_LATTS.keys | %{
                 if($vf19_LATTS[$_].valType -eq 'EDR'){
-                    $dyrl_eli_EDR = $vf19_LATTS[$_].fname
-                    $edr = $vf19_LATTS[$_].name
+                    $dyrl_eli_EDR = $vf19_LATTS[$_].name
+                    #$edr = $vf19_LATTS[$_].name
                     ''
-                    Write-Host -f GREEN " Select a file # to research in $edr, or Hit ENTER to continue: " -NoNewline;
+                    Write-Host -f GREEN " Select a file # to research in $dyrl_eli_EDR, or Hit ENTER to continue: " -NoNewline;
                     $mz = Read-Host
 
                     if($mz -Match "^\d+$"){
@@ -867,7 +867,7 @@ function fileCopy(){
                             Write-Host '
                             '
                             while($mz -notMatch "^[yn]"){
-                                Write-Host -f GREEN " Do you want to search $edr for another file? " -NoNewline;
+                                Write-Host -f GREEN " Do you want to search $dyrl_eli_EDR for another file? " -NoNewline;
                                 $mz = Read-Host
                             }
                             if( $mz -Match "^y" ){
