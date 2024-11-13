@@ -7,7 +7,7 @@ function setConfig(){
     )
     $ecfg_=$vf19_CONFIG[0]; $ccfg_=(gc $ecfg_).count
     if(Test-Path "$ecfg_"){
-        if($(getHash $ecfg_ sha256 | Select -Index 1) -eq $(gc $vf19_CONFIG[1])){
+        if($(getHash $ecfg_ sha256) -eq $(gc $vf19_CONFIG[1])){
             $current_config=$(gc $ecfg_)[2..$ccfg_]
         }
     }
@@ -439,12 +439,15 @@ function setConfig(){
         #$(setReset $write[1] $kk) | Out-File $of -NoNewline -Append
         $di = 0; $en = setReset "$($write[1])" $kk; $de = "$en".length
         while($di -le $de){
-            $($en[$di..$($di+95)] -Join '') | Out-File $of -Append
-            $di=$di+96
+            if($di+95 -ge $de){ $($en[$di..$($di+95)] -Join '') -replace "\D$" | Out-File $of -Append; Break }
+            else{
+                $($en[$di..$($di+95)] -Join '') | Out-File $of -Append
+                $di=$di+96
+            }
         }
         rv de,di,en
         Remove-Item -Path "$vf19_TMP\macross_cfg.temp" -Force
-        (getHash $of sha256 | Select -Index 1).toUpper() | Out-File "$vf19_TOOLSROOT\launch.conf"
+        (getHash $of sha256).toUpper() | Out-File "$vf19_TOOLSROOT\launch.conf"
 
         sep '=' 72 g; sep '=' 72 g
 
