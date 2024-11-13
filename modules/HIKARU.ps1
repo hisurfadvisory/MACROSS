@@ -10,6 +10,37 @@
 
 #>
 
+###################################################################################
+###       README ~~~~~~~~~ MACROSS PYTHON INTEGRATION EXAMPLE
+###################################################################################
+## If you want your powershell scripts to work with MACROSS python scripts,
+## you need to add a param named $pythonsrc with the value $null, and
+## copy-paste the "if( $pythonsrc ){ }" check below. This allows MACROSS core functions
+## to be loaded, and executing the "restoreMacross" function will reload all
+## the default values your script might need, including $PROTOCULTURE.
+param(
+    ## If you want your scripts to accept non-$PROTOCULTURE values, use the param name 
+    ##  "$spiritia"; this is the name used by MACROSS' collab function to pass parameter values.
+    $spiritia,
+    $pythonsrc = $null  ## The python valkyrie.collab() function will set this value
+)
+if( $pythonsrc ){
+
+    ## This will be the name of the python script calling this one
+    $Global:CALLER = $pythonsrc
+
+    ## This is a unique temporary session, so launch the core scripts to get their functions
+    foreach( $core in gci "core\*.ps1" ){ . $core.fullname }
+
+    ## Now that the core files are loaded, this function can restore all the MACROSS 
+    ## defaults your powershell script might need
+    restoreMacross
+    
+    ## Note that just like the powershell version, the python collab function can also
+    ## send an alternate param to your scripts when relevant. So, you can write your  
+    ## scripts to accept a value in addition to (or instead of) $PROTOCULTURE, if necessary.
+}
+
 function rdh(){ 
     w "`n Hit ENTER to continue.`n" g; Read-Host 
 }
@@ -63,12 +94,12 @@ if($HELP){
     }
     w "
       ======================================================================
-  HIKARU is a simple demo on how to use the MACROSS base to connect
-  your scripts together. The main goal of MACROSS is to automate your automations;
+  HIKARU is a simple demo on how to use the MACROSS base to connect your
+  scripts together. The main goal of MACROSS is to automate your automations;
   give even your most junior analysts the ability to get as much information as
   quickly and easily as any crusty ol' command-line junkie -- on a budget!
   
-  HIKARU will talk to the tools MINMAY and KONIG. MINMAY is a python script that
+  HIKARU will talk to the tools MINMAY and GUBABA. MINMAY is a python script that
   performs a similar demonstration. Review the code for both demo scripts to see
   how you need to write or modify your own tools to make full use of MACROSS.
 
@@ -78,89 +109,105 @@ if($HELP){
     Exit
 }
 
-
-transitionSplash 8  ## Displays the number 8 ascii art
-splashPage          ## Displays HIKARU's title in block-text
-header
-
-## The "w" function is an alias for write-host, and allows changing text color,
-## underlining and highlighting.
-w "
-
-This demo will ask you for a search term to find a Windows event ID. The keyword(s) 
-you enter here will be sent to the MINMAY python script, which will then forward it to 
-the GUBABA.ps1 script and retrieve GUBABA's results.
-
-This is a very simple demonstration of how you can connect your scripts together. View
-the code in HIKARU.ps1 and MINMAY.py to see how the `"availableTypes`" and `"collab`"
-functions are used to connect scripts wherever you find it useful to do so.
-" g
-
-while($z -notMatch "\w{3,}"){
-    w "Enter a keyword or ID number to search for an event ID: " g -i
-    $z = Read-Host
-}
-
-## Where it makes sense, have your scripts automatically act on $PROTOCULTURE any time it has a value
-$Global:PROTOCULTURE = $z
-
-## The availableTypes function collects all of the scripts in the modules folder that match
-## your [macross] criteria. In this example, I search for the .valtype 'demo' and the .lang 
-## python
-$list = availableTypes -v 'demo' -l python
-
-## The collab function loads whatever script you require next, within your MACROSS session
-## In this basic demo, I'm just pushing your search over to the python script MINMAY, who
-## will then forward it to GUBABA. This is only meant to demonstrate how to get data from
-## one script to the next for evaluation or enrichment.
-$list | Foreach-Object{
-    $pytool = $_
-    collab $pytool 'HIKARU'
-    $json = (Get-Content $vf19_PROTO | ConvertFrom-Json)."$($pytool -replace "\.py")".result
-    ''
-    ## When values are forwarded to python scripts, the MACROSS mcdefs python library provides
-    ## its own collab function. Instead of writing $Global variables, it writes search results
-    ## to a basic json file at $vf19_PROTO. If the response is a list or hashtable, MACROSS
-    ## converts it into a string separated by '@@' that you can split.
-    if(Test-Path -Path $vf19_PROTO){
-        w "HIKARU is now reading MINMAY's response from 
-        " g
-        w " $vf19_PROTO
-        "
-        $Result = $json -Split '@@'
-        $Result | Foreach-Object{
-            $k = ($_ -Split ':')[0]
-            $v = ($_ -Split ':')[1]
-
-            ## MACROSS offers a few different ways to display your data. "screenResults" Can take large
-            ## blocks of info and split them evenly into columns.
-            screenResults "c~$k" $v
-        }
-        screenResults -e
+if($CALLER){
+    $j = Get-Content -raw "$vf19_TOOLSROOT\resources\hikaru_demo.txt" | ConvertFrom-Json
+    $j | %{
+        $j."$_" = "$($_ -replace "smithj","$PROTOCULTURE")"
     }
+    screenResultsAlt -h $j.samAccountName -k 'Created' -v "$($j.Created)"
+    screenResultsAlt -k 'Last Logon' -v "$($j.LastLogonDate)"
+    screenResultsAlt -k "Password Expired" -v "$($j.PasswordExpired)"
+    screenResultsAlt -k "r~Passw Never Expires" -v "$($j.PasswordNeverExpires)"
+    screenResultsAlt -k "Email" -v "$($j.EmailAddress)"
+    w " Hit ENTER to continue." -i g; Read-Host
 }
-w '
-'
-if(Test-Path -Path $vf19_PROTO){
+else{
+    transitionSplash 8  ## Displays the number 8 ascii art
+    splashPage          ## Displays HIKARU's title in block-text
+    header
 
-    ## The "sep" function lets you quickly generate division lines to break up
-    ## blocks of text.
-    sep '~@~' 25 -c g; sep '~@~' 25 -c g
+    ## The "w" function is an alias for write-host, and allows changing text color,
+    ## underlining and highlighting.
     w "
-The garbage_io folder gets cleaned out every time MACROSS starts & exits. The
-function `"pyCross`" can be used by your powershell scripts to write values to
-this folder for python scripts to read, and vice versa.
 
-The default file used is a json-format PROTOCULTURE.eod, but pyCross will create
-files with different names if you choose.
+    This demo will ask you for a search term to find a Windows event ID. The keyword(s) 
+    you enter here will be sent to the MINMAY python script, which will then forward it to 
+    the GUBABA.ps1 script and retrieve GUBABA's results.
 
-Type `"debug`" in the main menu to load the debugger, where you can read help files
-for all of MACROSS' utility functions, and test them out in a mini-playground
-(including python).
-" g
-    while($z -ne 'e'){
-        w "Enter `"e`" to exit: " g
+    This is a very simple demonstration of how you can connect your scripts together. View
+    the code in HIKARU.ps1 and MINMAY.py to see how the `"availableTypes`" and `"collab`"
+    functions are used to connect scripts wherever you find it useful to do so.
+    " g
+
+    while($z -notMatch "\w{3,}"){
+        w "Enter a keyword or ID number to search for an event ID: " g -i
         $z = Read-Host
     }
+
+    ## Where it makes sense, have your scripts automatically act on $PROTOCULTURE any time it has a value
+    $Global:PROTOCULTURE = $z
+
+    ## The availableTypes function collects all of the scripts in the modules folder that match
+    ## your [macross] criteria. In this example, I search for the .valtype "demo" and the  
+    ## .lang value "python"
+    $list = availableTypes -v 'demo' -l python
+
+    ## The collab function loads whatever script you require next, within your MACROSS session
+    ## In this basic demo, I'm just pushing your search over to the python script MINMAY, who
+    ## will then forward it to GUBABA. This is only meant to demonstrate how to get data from
+    ## one script to the next for evaluation or enrichment.
+    $list | Foreach-Object{
+        $pytool = $_
+        collab $pytool 'HIKARU'
+        $json = (Get-Content $vf19_PYG[1] | ConvertFrom-Json).HIKARU.result
+        ''
+        ## When values are forwarded to python scripts, the MACROSS valkyrie python library provides
+        ## its own collab function. Instead of writing $Global variables, it writes search results
+        ## to a basic json file at $vf19_PYG[1]. If the response is a list or hashtable, MACROSS
+        ## converts it into a string separated by '@@' that you can split.
+        if(Test-Path -Path $vf19_PYG[1]){
+            w "HIKARU is now reading MINMAY's response from 
+            " g
+            w " $($vf19_PYG[1])
+            "
+            $Result = $json -Split '@@'
+            $Result | Foreach-Object{
+                $k = ($_ -Split ':')[0]
+                $v = ($_ -Split ':')[1]
+
+                ## MACROSS offers a few different ways to display your data. "screenResults" Can take large
+                ## blocks of info and split them evenly into columns.
+                screenResults "c~$k" $v
+            }
+            screenResults -e
+        }
+    }
+    w '
+    '
+    if(Test-Path -Path $vf19_PYG[1]){
+
+        ## The "sep" function lets you quickly generate division lines to break up
+        ## blocks of text.
+        sep '~@~' 25 -c g; sep '~@~' 25 -c g
+        w "
+    The garbage_io folder can be referenced by your scripts as `$vf19_PYG[0] if
+    necessary, and it gets cleaned out every time MACROSS starts & exits. The function 
+    `"pyCross`" can be used by your powershell scripts to write values to this folder 
+    for python scripts to read, and vice versa.
+
+    The default file used is a json-format PROTOCULTURE.eod, but pyCross will create
+    files with different names if you choose.
+
+    Type `"debug`" in the main menu to load the debugger, where you can read help files
+    for all of MACROSS' utility functions, and test them out in a mini-playground
+    (including python).
+    " g
+        while($z -ne 'e'){
+            w "Enter `"e`" to exit: " g
+            $z = Read-Host
+        }
+    }
 }
+
+
 Exit
