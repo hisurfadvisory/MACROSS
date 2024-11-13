@@ -92,7 +92,6 @@ function debugMacross($1,[switch]$continue=$true){
             }
             elseif($z -eq 'python'){
                 startUp; $pyATTS = pyATTS; pyENV; cls
-                #py "$vf19_TOOLSROOT\core\pydev.py" $USR $pyATTS $vf19_DTOP $vf19_PYPOD $N_[0] $vf19_pylib $vf19_TOOLSROOT
                 py "$vf19_TOOLSROOT\core\pydev.py" #$vf19_pylib
                 varCleanup
             }
@@ -639,11 +638,8 @@ function getHash(){
     $type = @('md5','sha256')
 
     if( Test-Path -Path $file ){
-        if($alg -in $type){
-            $h = CertUtil -hashfile $file $alg
-        }
+        if($alg -in $type){ Return (CertUtil -hashfile $file $alg)[1] }
     }
-    Return $h
 }
 
 
