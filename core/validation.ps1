@@ -1,6 +1,22 @@
-## Functions for MACROSS input validations. You shouldn't need to modify anything here except the "setUser" function if
+## Functions for MACROSS tool validations. You shouldn't need to modify anything here except the "setUser" function if
 ## you plan to use the basic access control.
 
+
+function userPrefs([switch]$proto=$false,[switch]$pyv=$false){
+    $pref = "$vf19_TOOLSROOT\core\preferences.txt"
+    function chgpref($1){
+        $t = $1 + 'true'; $f = $1 + 'false'
+        if( Select-String $f $pref ){ $chg = $(gc $pref) -replace "$f","$t" }
+        else{ $chg = $(gc $pref) -replace "$t","$f" }
+        Set-Content $chg -Path $pref
+        w ' Preference updated.' c; slp 1
+    }
+    if($proto){ chgpref 'persist_protoculture=' }
+    elseif($pyv){ chgpref 'use_pythonv2=' }
+    $plist = @("$((gc $pref | Select-String 'persist_protoculture=') -replace 'persist_protoculture=')")
+    $plist += "$((gc $pref | Select-String 'use_pythonv2=') -replace 'use_pythonv2=')"
+    $Global:vf19_PREFS = $plist
+}
 
 function yorn(){
     <#
@@ -49,6 +65,8 @@ function yorn(){
     )
     [void][System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms')
     
+
+    ## MOD SECTION! ##
     <# # Uncomment these and add more parameters if you want to modify this
        # function to offer more options
     $Buttons = @{
@@ -92,24 +110,24 @@ function yorn(){
  Check your privilege LOL
  Some tools or APIs need admin-level access.
  
- Set $1 to 'deny' if your script requires elevated priv, or set
- it to 'pass' if it will kinda-sorta work in userland
+ Send -d if your script requires elevated priv, or send
+ -p if it will kinda-sorta work in userland
 
  EXAMPLE: 
  
-    SJW -pass
+    SJW -p
  
  will let the user choose whether to run your script with
  limited functionality;
  
-    SJW -deny
+    SJW -d
         
  will tell the user they need to be admin or DA or whatever,
  then return to the console menu. 
  
  The [macross].priv attribute in each script may indicate "user", while
- certain functions within that script still need admin privilege to work. 
- Use this check in those cases.
+ certain functions within that script might still need admin privilege  
+ to work. Use this check in those cases.
 ################################>
 function SJW([switch]$menu=$false,[switch]$deny=$false,[switch]$pass=$false){
     if( $menu -and $vf19_ROBOTECH ){
@@ -202,10 +220,9 @@ function setUser($1,[switch]$c=$false,[switch]$i=$false){
         }
         ## If you don't create GPO/Tier names during configuration, access control will be disabled and everyone
         ## can download & execute all tools in the modules folder!
-        elseif($aTIER['ta1'] -eq 'none' -and $uTIER['tr1'] -eq 'none'){
+        elseif($aTIER['ta1'] -eq 'unused' -and $uTIER['tr1'] -eq 'unused'){
             battroid -n vf19_modifier -v 111; battroid -n vf19_check -v 555
             battroid -n vf19_USERAUTH -v $false
-			battroid -n vf19_DTOP -v "$([string]$env:HOMEPATH)\Desktop"
             tup 5 $true $true; $skip = $true
         }
         else{
@@ -230,14 +247,17 @@ function setUser($1,[switch]$c=$false,[switch]$i=$false){
             
         }
         
-        if($vf19_USERAUTH){
-            ## This should point $vf19_DTOP to your desktop 99% of the time, but you can change the
+        if($vf19_ACCESSTIER.Item1 -ne 5){ eMsg 1; varCleanup -c; Exit }
+        else{
+            ##############################################################################
+            ## MOD SECTION ##
+            ##############################################################################
+            ## These should point $vf19_DTOP to your desktop 99% of the time, but you can change the
             ## -v value if your environment is different.
-            #battroid -n vf19_DTOP -v "$([string]$env:HOMEPATH)\Desktop"
+            #battroid -n vf19_DTOP -v "$([string]$env:UserProfile)\Desktop"
             battroid -n vf19_DTOP -v "C:\Users\$USR\Desktop"
             battroid -n vf19_modifier -v $idm; battroid -n vf19_check -v $idc
         }
-        elseif($vf19_ACCESSTIER.Item1 -ne 5){ eMsg 1; varCleanup -c; Exit }
         rv id,idm,idc,priv
 
     }
@@ -309,10 +329,15 @@ function varCleanup([switch]$c=$false){
     Remove-Variable -Force vf19_FILECT,vf19_REPOCT,HELP,vf19_OPT1,RESULTFILE,HOWMANY,`
     M_,N_,d9,CALLER,vf19_MPOD,vf19_PYPOD,vf19_READ,dyrl_* -Scope Global
 
-    ## MOD SECTION! ##
-    ## UNCOMMENT THESE TO ALWAYS CLEAR PROTOCULTURE AUTOMATICALLY
-    #Remove-Variable -Force PROTOCULTURE -Scope Global
-    #if(Test-Path $vf19_PROTO){ Remove-Item -Path $vf19_PROTO }
+    ## Clear the custom python resources
+    if($env:MPOD){Remove-Item env:MPOD}
+    if($env:CALLER){Remove-Item env:CALLER}
+    if($env:PROTOCULTURE){Remove-Item env:PROTOCULTURE}
+
+    if( $vf19_PREFS[0] -eq 'false' ){
+        Remove-Variable -Force PROTOCULTURE -Scope Global
+        if(Test-Path "$($vf19_PYG[1])"){ Remove-Item -Path "$($vf19_PYG[1])" }
+    }
 
     ## Cleanup python usage
     if($env:MACROSS){ pyENV -c }
@@ -320,47 +345,50 @@ function varCleanup([switch]$c=$false){
     ## Erase everything when quitting MACROSS
     if($c){
         cleanGBIO  ## Don't leave eod files sitting around, it might interfere with python tools
-        Remove-Variable -Force PROTOCULTURE,MAPPER,MONTY,MSXL,SHARK,SI,USR,vf19_*,dyrl_* -Scope Global
+        Remove-Variable -Force PROTOCULTURE,MAPPER,MONTY,MSXL,SHARK,SI,USR,vf19_*,dyrl_*,webrepo -Scope Global
+        $env:PYTHONPATH = $env:PYTHONPATH -replace "([^;])+core\\macross_py;*"
     }
 }
 
 <#
       pyATTS()  details:
 
-   Converts the hashtable of macross objects for python. Your python
-   script can either reference the JSON file "LATTS.eod", or the 
-   simplified value forwarded as sys.argv[6] which only includes the 
-   .fname and .valtype attributes.
+   Converts the hashtable of macross objects into a json file, LATTS.eod,
+   which the valkyrie module will auto-convert into a python class.
    
-   We don't want this to be a static global value in case scripts get
+   We don't want this to be a static value in case scripts get
    modified/removed/added while MACROSS is active, so this function 
-   will create a new argv[6] and new JSON everytime a python script is 
-   launched from the "collab" or "availableMods" functions.
+   will create a new JSON everytime a python script is launched from 
+   the "collab" or "availableMods" functions.
    
-   Your python scripts can iterate through argv[6] (each item is 
-   "script1.fname"="script1.valtype","script2.fname"="script2.valtype"...)
-   or reference the LATTS.eod json file which has all the [macross] object
-   attributes {script1:{},script2:{}}...
+   The valkyrie.availableTypes() function can then perform the same task
+   as the powershell version, finding relevant tools for your script
+   to query next.
    
 #>
 function pyATTS(){
     $p = @(); $p2j = @{}
     foreach($k in $vf19_LATTS.keys){
-        $n = $vf19_LATTS[$k].fname       ## The full filepath to the script
-        $t = $vf19_LATTS[$k].valtype     ## The value type processed by the script
-        $l = $vf19_LATTS[$k].lang        ## python vs. powershell
-        $a = $vf19_LATTS[$k].author      ## who wrote the script
-        $r = $vf19_LATTS[$k].rtype       ## the script's response format type
-        $v = $vf19_LATTS[$k].ver         ## the script's version
-        $m = $vf19_LATTS[$k].evalmax     ## max number of args/params accepted by the script
+        $LAT = $vf19_LATTS[$k]
+        $c = $LAT.access      ## The user's Tier level
+        $n = $LAT.name        ## The common name
+        $p = $LAT.priv        ## The required privilege level
+        $f = $LAT.fname       ## The full name with extension
+        $t = $LAT.valtype     ## The value type processed by the script
+        $l = $LAT.lang        ## python vs. powershell
+        $a = $LAT.author      ## who wrote the script
+        $r = $LAT.rtype       ## the script's response format type
+        $v = $LAT.ver         ## the script's version
+        $m = $LAT.evalmax     ## max number of args/params accepted by the script
 
-        $p2j.Add($k,@{'fname'=$n;'valtype'=$t;'lang'=$l;'evalmax'=$m;'author'=$a;'rtype'=$r;'ver'=$v})
+        #$p2j.Add($k,@{'fname'=$n;'valtype'=$t;'lang'=$l;'evalmax'=$m;'author'=$a;'rtype'=$r;'ver'=$v})
+        $p2j.Add($k,@($n,$c,$p,$t,$l,$m,$a,$r,$v,$f))
         $atts = $n + '=' + $v
         $p += $atts
     }
-    [IO.File]::WriteAllLines("$vf19_TOOLSROOT\core\py_classes\garbage_io\LATTS.eod", $($p2j | ConvertTo-Json))
-    [string]$str = $p -Join(',')
-    Return $str
+    [IO.File]::WriteAllLines("$($vf19_PYG[0])\LATTS.eod", $($p2j | ConvertTo-Json))
+    <#[string]$str = $p -Join(',')
+    Return $str#>
 }
 function altByte($1,[int]$2,[int]$3){
     Return $([convert]::ToByte($($1[$2,$3] -join ''),16))
@@ -371,42 +399,44 @@ function setReset(){
         [Parameter(Mandatory=$true)]$n,
         [switch]$d = $false
     )
-    $p=chr 83;$lines=''
+    getThis -h 41424344454640212526464544434241
+    $na=$vf19_READ;$lines=''
     if($d){
         setML 1
         $sml = [scriptblock]::Create("$vf19_READ")
-        $($v -Split("$p")) | %{$lines += $([System.Text.Encoding]::UTF8.GetString("$(. $sml)"))}
+        $($v -Split("[\D]")) | %{$lines += $([System.Text.Encoding]::UTF8.GetString("$(. $sml)"))}
     }
     else{
-        $v = $v -replace ",$"
+        $v = $v -replace ",+$"
         setML 2
         $x = $([System.Text.Encoding]::UTF8.GetBytes("$v"))
         $sml = [scriptblock]::Create("$vf19_READ")
-        $i=0; while($i -lt $x.count){ $lines += ("$(. $sml)" + "$p"); $i++ }
+        $i=0; while($i -lt $x.count){ $lines += ("$(. $sml)" + $($na[$(Get-Random -min 0 -max 10)])); $i++ }
     }
-
-    Return $($lines -replace "[,$p]$")
+    
+    Return $lines
 }
 
 
-## Make MACROSS values accessible to python's mcdefs library
+## Make MACROSS values accessible via the valkyrie python module
 function pyENV([switch]$c=$false){
     if($c){
-        Remove-Item env:PYPROTO,env:MPOD,env:MACROSS,env:HELP
+        Remove-Item env:PROTOCULTURE,env:MPOD,env:MACROSS,env:HELP
     }
     else{
         if( $HELP ){ $env:HELP = 'T' }
         else{
-            $env:HELP = 'F'
             startUp; $l = ''
             $vf19_MPOD.keys | Sort -Descending | where{$_ -ne 'mad'} | %{
-                $l += $($_ + ':' + "$($vf19_MPOD[$_])" + ';')
+                $l += $($_ + '::' + "$($vf19_MPOD[$_])" + ';')
             }
             $l = $l -replace ";$"
             $env:MPOD = $l
-            $env:MACROSS = "$vf19_TOOLSROOT;$vf19_TOOLSDIR;$vf19_DTOP;$vf19_TABLES;$vf19_LOG;$($N_[0]);$USR;$CALLER"
-            if($PROTOCULTURE){ $env:PYPROTO = $PROTOCULTURE }
-            else{ $env:PYPROTO = 'None' }
+            if( $vf19_ROBOTECH ){ $rt = 'T' }
+            else{ $rt = 'F' }
+            $logfile = "$vf19_LOG\$(Get-Date -format 'yyyy-MM-dd').log"
+            $env:MACROSS = "$vf19_TOOLSROOT;$vf19_DTOP;$vf19_TABLES;$logfile;$($N_[0]);$USR;$CALLER;$rt"
+            if($PROTOCULTURE){ $env:PROTOCULTURE = $PROTOCULTURE }
         }
     }
 }
@@ -436,14 +466,26 @@ function collab(){
     your scripts lookup attributes from  the $vf19_LATTS array and determine its 
     .valtype, .lang, etc.)
 
-    The -o param is an ***optional*** item you're passing if you want something other 
-    than $PROTOCULTURE to be eval'd, or if the script being called requires 2 eval 
-    parameters.
+    The -option param is an ***optional*** item that can be passed. If you write a script
+    that can process $PROTOCULTURE and/or accept an argument/parameter that is not
+    $PROTOCULTURE, you need to set your script's evalmax field to 2, and you *MUST*
+    accept the additional parameter as "$super" in powershell:
 
-    If you're calling a python script, all the default MACROSS values will be passed 
-    in the standard 6-argument sequence that is used in the availableMods function, 
-    but your $CALLER, $PROTOCULTURE and -o values will also be added in as the 7th, 
-    8th and 9th args.
+        param( $super )
+        if( $super ){ doSomething }
+
+    The python arg doesn't need to be called super, but it helps to be consistent:
+
+        from sys import argv
+        super = None
+        if len(argv) == 2:
+            super = argv[1]
+
+    If you're calling a python script, MACROSS automatically handles loading its python
+    module, "valkyrie", in the background. Your script just needs to import it like any 
+    other import:
+
+        import valkyrie
 
     If you need the called script to launch in a new window, set
 
@@ -451,15 +493,17 @@ function collab(){
 
     in your script. Be aware that the called script will NOT have access to MACROSS 
     resources if launched in a new window, as it will be its own entirely different session!
+    In those cases, you'll need to write your script to be able to function outside of
+    MACROSS.
 
     The $PROTOCULTURE variable should already be globally set by ***your*** script. If you 
-    pass another value in, make sure the script you are calling has an .evalmax value of 2.
+    send another value to collab, it will be passed along as $super.
         
     For instance, it could be that $PROTOCULTURE is globally set, but you're calling a script 
     that can accept more than one item to evaluate. In this case, you can send a new value to 
     this function to be passed along in addition to $PROTOCULTURE, if the called script is 
-    designed to recognize when it is receiving a parameter while $PROTOCULTURE also contains a 
-    value.
+    designed to recognize when it is receiving a $super value while $PROTOCULTURE also contains 
+    a value.
         
     Remember that $PROTOCULTURE is meant to be available to all the scripts all the time until 
     *you* decide to overwrite or clear it, or you exit MACROSS cleanly which will delete all 
@@ -479,12 +523,11 @@ function collab(){
             
     ||examples||
     Example on how you might use the availableTypes function to search each tool's MACROSS class
-    for tools that look up data on hostnames, and then filtering that list of tools based on
-    their .evalmax & .rtype values to automatically call them via the collab function to collect 
-    data on the hostnames you're investigating:
+    for tools that look up data on hostnames, and then iterating that list of tools to automatically 
+    call them via the collab function to collect data on the hostnames you're investigating:
         
         $results = @()
-        $list = availableTypes 'hostname'
+        $list = availableTypes 'hostnames'
         $hostnames | foreach-object
         {
             $PROTOCULTURE = $_
@@ -503,68 +546,43 @@ function collab(){
         [Parameter(Mandatory=$true)]
         [string]$module,
         [Parameter(Mandatory=$true)]
-        [string]$C,
-        $option=$PROTOCULTURE
+        [string]$caller_,
+        $option=$null
     )
-
-    if($module -Like "*py"){
-        $py = $true
-        $pyATTS = pyATTS
-    }
-    $Global:CALLER = $C
     
+    $Global:CALLER = $caller_
 
-    $mod = "$vf19_TOOLSDIR\$module"
+    function pyTool(){
+        if( $vf19_NEWWINDOW ){ Start-Process powershell.exe "py $mod $option" }
+        else{ py $mod $option }
+    }
+    
+    $mod = "$vf19_TOOLSDIR\$($vf19_LATTS[$module].fname)"
     $tpm = Test-Path -Path $mod
-    $dom = setUser "$($vf19_LATTS[$($module -replace "\.\w+$")].access)"
+    $dom = setUser "$($vf19_LATTS[$module].access)"
 
     if( ($dom -eq $vf19_GPOD.Item1) -and $tpm ){
         startUp
-        if($py){
+        if($vf19_LATTS[$module].lang -eq 'python'){
             pyENV
-            if( $vf19_NEWWINDOW ){ 
-                if( $option -ne $PROTOCULTURE ){
-                    #Start-Process powershell.exe "python3
-                    #Start-Process powershell.exe "py $mod $USR $pyATTS $vf19_DTOP $vf19_PYPOD $($N_[0]) $vf19_pylib $vf19_TOOLSROOT $CALLER $PROTOCULTURE $option"
-                    Start-Process powershell.exe "py $mod $vf19_pylib $option"
-                } 
-                else{
-                    #Start-Process powershell.exe "py $mod $USR $pyATTS $vf19_DTOP $vf19_PYPOD $($N_[0]) $vf19_pylib $vf19_TOOLSROOT $CALLER $PROTOCULTURE"
-                    Start-Process powershell.exe "py $mod $vf19_pylib"
-                }
-            }
-            else{
-                if( $option -ne $PROTOCULTURE ){
-                    #python3 $mod
-                    #py $mod $USR $pyATTS $vf19_DTOP $vf19_PYPOD $N_[0] $vf19_pylib $vf19_TOOLSROOT $CALLER $PROTOCULTURE $option
-                    py $mod $vf19_pylib $option
-                } 
-                else{
-                    #py $mod $USR $pyATTS $vf19_DTOP $vf19_PYPOD $N_[0] $vf19_pylib $vf19_TOOLSROOT $CALLER $PROTOCULTURE
-                    py $mod $vf19_pylib
-                }
-            }
+            pyTool
             pyENV -c
         }
         else{
             if( $vf19_NEWWINDOW ){
                 ## Launches script in new window if user desires; WILL NOT SHARE CORE MACROSS VALUES OR FUNCTIONS!
-                Start-Process powershell.exe "$mod $CALLER $option"
+                if($option){ Start-Process powershell.exe "$mod -spiritia $option"}
+                else{ Start-Process powershell.exe "$mod" }
             }
-            else{
-                . $mod $option  
-            }
+            elseif( $option ){ . $mod -spiritia $option   }
+            else{ . $mod }
             Remove-Variable -Force CALLER -Scope Global
         }
         
         $vf19_NEWWINDOW = $false  ## Always reset value
     }
-    elseif($tpm){
-        eMsg 4
-    }
-    else{
-        eMsg
-    }
+    elseif( $tpm ){ eMsg 4 }
+    else{ eMsg }
 
 }
 
@@ -590,13 +608,13 @@ function availableTypes(){
     ||examples||
     Ask for any scripts that process usernames, including EDR apis:
     
-        $tools = availableTypes  'user, edr'
-        foreach($t -in $tools){ collab $t 'myscript'}
+        $tools = availableTypes  'user,edr'
+        foreach($t in $tools){ collab $t 'myscript'}
 
     Ask only for python scripts with .valtype that is "firewall api":
     
         $tools = availableTypes  'firewall api' -e -l python
-        foreach($t -in $tools){ collab $t 'myscript'}
+        foreach($t in $tools){ collab $t 'myscript'}
 
 
     #>
@@ -612,13 +630,13 @@ function availableTypes(){
         if($vf19_LATTS[$k].evalmax -gt 0 -and $vf19_LATTS[$k].lang -Like "$l*" `
         -and $vf19_LATTS[$k].rtype -Match $r){
             if($e -and $vf19_LATTS[$k].valtype -eq $v){
-                $list += "$($vf19_LATTS[$k].fname)"
+                $list += "$($vf19_LATTS[$k].name)"
             }
             elseif(! $e){
                 $v = $v -replace ", ",','
                 $v -Split ',' | %{
                     if($vf19_LATTS[$k].valtype -Like "*$_*"){
-                        $list += "$($vf19_LATTS[$k].fname)"
+                        $list += "$($vf19_LATTS[$k].name)"
                     }
                 }
             }
@@ -649,15 +667,16 @@ function availableTypes(){
             before launching the script.
         3. Checks if the selected script is in python; if so, it launches
             the script with a default sequence of arguments that contain
-            MACROSS' core values and the filepath to the mcdefs.py library
+            MACROSS' core values and the filepath to the valkyrie.py library
      
 ################################>
 function availableMods($1){
     if( $($1).getType().Name -eq 'Int32' ){
 
-            # Use the adjusted input as the index for the MODULENUM array
-            $MODULE = "$vf19_TOOLSDIR\$($vf19_MODULENUM[$1])"
-            $MODCHK = Test-Path $MODULE -PathType Leaf; $tk = $($vf19_MODULENUM[$1] -replace "\.\w+$")
+            #$tk = $($vf19_MODULENUM[$1])
+            $tk = $vf19_LATTS.keys | ?{$vf19_LATTS[$_].pos -eq $1}
+            $MODULE = "$vf19_TOOLSDIR\$($vf19_LATTS[$tk].fname)"
+            $MODCHK = Test-Path $MODULE -PathType Leaf
             $LAUNCH = setUser "$($vf19_LATTS[$tk].access)"
             
             if( $MODCHK -and ($LAUNCH -eq $vf19_GPOD.Item1) ){
@@ -669,46 +688,29 @@ function availableMods($1){
                 }
 
                 
-                # Run the script selected by the user
+                # Launch python scripts; check if new window is needed (WILL NOT SHARE CORE MACROSS FUNCTIONS!)
                 if( "$($vf19_LATTS[$tk].lang)" -eq 'python' ){
                     cls; pyENV
-                    if( $HELP ){
-                        #py $MODULE 'HELP' '' '' '' '' $vf19_pylib
+                    if($vf19_NEWWINDOW){
+                        $MODULE = $($MODULE -replace "\\\\",'\') ## I don't know why extra slashes get added sometimes
+                        Start-Process powershell.exe "py $MODULE"
                     }
-                    else{
-                        $pyATTS = pyATTS
-                        if($vf19_NEWWINDOW){
-                            $MODULE = $($MODULE -replace "\\\\",'\') ## I don't know why extra slashes get added sometimes
-                            #Start-Process powershell.exe "py $MODULE $USR $pyATTS $vf19_DTOP $vf19_PYPOD $($N_[0]) $vf19_pylib $vf19_TOOLSROOT"
-                            Start-Process powershell.exe "py $MODULE $vf19_pylib"
-                        }
-                        else{
-                            #py $MODULE $USR $pyATTS $vf19_DTOP $vf19_PYPOD $N_[0] $vf19_pylib $vf19_TOOLSROOT
-                            py $MODULE $vf19_pylib
-                        }
-                        pyENV -c
-                    }
+                    else{ py $MODULE }
+                    pyENV -c
                 }
                 else{
+                    ## Launch powershell scripts; check if new window is needed (WILL NOT SHARE CORE MACROSS FUNCTIONS!)
                     $1 = ''
-                    if( $vf19_NEWWINDOW ){  ## Launches script in new window if user desires; WILL NOT SHARE CORE MACROSS FUNCTIONS!
+                    if( $vf19_NEWWINDOW ){ 
                         Start-Process powershell.exe $MODULE
                     }
-                    else{
-                        . $MODULE
-                    }
+                    else{ . $MODULE }
                 }
                 $Global:vf19_NEWWINDOW = $false  ## Always make sure this is reset
             }
-            elseif( $MODCHK -and ! $LAUNCH ){
-                eMsg 0
-            }
-            else{
-                eMsg  # User chose a number outside the range
-            }
+            elseif( $MODCHK -and ! $LAUNCH ){ eMsg 0 }
+            
     }
-    else{
-        eMsg   # Don't let the user just type whatever they like
-    }
+    else{ eMsg }  # Don't let the user just type whatever they like
     
 }
