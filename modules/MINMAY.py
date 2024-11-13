@@ -1,4 +1,4 @@
-#_sdf1 Demo - Python integration
+#_sdf1 Demo - Python Automation
 #_ver 0.2
 #_class 0,user,demo script,python,HiSurfAdvisory,2,onscreen
 
@@ -6,14 +6,15 @@ from sys import argv
 from json import loads
 import valkyrie as vk
 L = len(argv)
-spiritia = False
+spiritia = False  ## "spiritia" is used as an alt arg/param in addition to or instead of PROTOCULTURE.
     
 ## MACROSS can send a single optional arg, if your script is coded to accept one
 if L == 2:
     spiritia = argv[1]
     
-    
-vk.psc('cls')
+
+## The valkyrie.psc() function is just "os.system()"
+vk.psc('cls')  
 
 ## If the user selected this script with the "help" option, the valkyrie module will set the
 ## HELP value to T so that your help/description message can be displayed.
@@ -61,15 +62,17 @@ Z0gIOKVmuKVkOKVnSAgIOKVmuKVkOKVnSA='
 
 
 
-## Use availableTypes to generate lists of relevant scripts, regardless of files
+## Use availableTypes() to generate lists of relevant scripts, regardless of files
 ## being added/removed from your core folder
 TOOL = vk.availableTypes('event id',la='powershell')[0]
 
+## The standard rule for MACROSS scripts is that they automatically act on the
+## global value PROTOCULTURE, if it exists.
 if vk.PROTOCULTURE:
-    ## In this section, MINMAY is looking at the calling script's MACROSS class,
+    ## In this section, MINMAY is looking at the CALLER script's MACROSS class,
     ## specifically the ".valtype" value. Using the MACROSS class attributes lets 
     ## you write your tools to respond appropriately no matter which script is 
-    ## calling yours. MINMAY will only act on queries from scripts with the .valtype 
+    ## calling yours. MINMAY will only reply to queries from scripts with the .valtype 
     ## "demo script" and the .lang "powershell".
     if vk.CALLER:
         vtype = vk.LATTS[vk.CALLER].valtype
@@ -103,6 +106,8 @@ if test:
     for i in test.keys():
         t = str(test[i][0])
         v = str(test[i][1])
+        ## Both the powershell and python modules contain useful utilities you can use, such as
+        ## screenResults(), which formats large blocks of text into columns
         vk.screenResults('y~'+t+'-'+'ID '+i,v)
     vk.screenResults()
     if vk.CALLER:
