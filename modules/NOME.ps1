@@ -1,6 +1,6 @@
 #_sdf1 Targeted Active Directory Hunting
-#_ver 1.0
-#_class 0,admin,active directory,powershell,HiSurfAdvisory,0,none
+#_ver 1.1
+#_class 2,admin,search active-directory account properties,powershell,HiSurfAdvisory,0,none
 
 <#
     Active-Directory sniffer: find accounts based on specific properties.
@@ -71,8 +71,8 @@ $dyrl_sn_userslist = @{
     '04'='badPasswordTime';
     '05'='CanonicalName';
     '06'='CN (Full name)';
-    '07'='Created (date)';
-    '08'='Deleted (date)';
+    '07'='Created (days)';
+    '08'='Deleted (days)';
     '09'='Department';
     '10'='Description';
     '11'='DisplayName';
@@ -87,13 +87,13 @@ $dyrl_sn_userslist = @{
     '20'='info';
     '21'='instanceType';
     '22'='LastBadPasswordAttempt';
-    '23'='LastLogonDate';
+    '23'='LastLogonDate (days)';
     '24'='LockedOut (b)';
     '25'='LockoutTime';
     '26'='logonCount';
     '27'='LogonWorkstations'
     '28'='msNPAllowDialin (b)';
-    '29'='Modified (date)';
+    '29'='Modified (days)';
     '30'='Name';
     '31'='Office';
     '32'='OfficePhone';
@@ -102,7 +102,7 @@ $dyrl_sn_userslist = @{
     '35'='otherName';
     '36'='PasswordNotRequired (b)';
     '37'='PasswordExpired (b)';
-    '38'='PasswordLastSet';
+    '38'='PasswordLastSet (days)';
     '39'='PasswordNeverExpires (b)';
     '40'='PrimaryGroupID';
     '41'='ProfilePath';
@@ -129,8 +129,8 @@ $dyrl_sn_hostslist = @{
     '03'='adminDescription';
     '04'='CanonicalName';
     '05'='CN';
-    '06'='Created';
-    '07'='Deleted';
+    '06'='Created (days)';
+    '07'='Deleted (days)';
     '08'='Description';
     '09'='DisplayName';
     '10'='DistinguishedName';
@@ -141,12 +141,12 @@ $dyrl_sn_hostslist = @{
     '15'='IPv6Address';
     '16'='isCriticalSystemObject (b)';
     '17'='isDeleted';
-    '18'='LastLogonDate';
+    '18'='LastLogonDate (days)';
     '19'='Location';
     '20'='LockedOut (b)';
     '21'='logonCount';
     '22'='ManagedBy';
-    '23'='Modified';
+    '23'='Modified (days)';
     '24'='Name';
     '25'='OperatingSystem';
     '26'='OperatingSystemVersion';
@@ -266,7 +266,11 @@ function searchAD($1,$2){
         $c--
         $property = $1[$filter.keys]
         $specific += $($property -replace " \(EDIPI\)$",".*" -replace " \(\w+\)$")
-        if($property -Like "* (b)"){
+        if($property -Like "*days)"){
+            $filterstring = $filterstring + '$_.' + $property + " -gt `"$((Get-Date).AddDays(-$fv))`" "
+            $filterstring = $filterstring + ' -and $_.' + $property + " -lt `"$(Get-Date)`""
+        }
+        elseif($property -Like "* (b)"){
             ## Set boolean filters
             if($filter.values -Match "^f"){
                 $filterstring = $filterstring + ' ! $_.' + $($property -replace " \(b\)$")
@@ -335,12 +339,15 @@ function showAccounts($1,$2,$3){
     ''
     w ' Enter the number of an account to review,' c -i
     if($limit -ge 0){
-        w 'hit ENTER for the next 10,' c -i
+        w 'hit ENTER for the next 10,' c
     }
-    w 'or "n" for a new search:  ' c -i
+    w ' "n" for a new search or "q" to quit:  ' c -i
     $z = Read-Host
 
-    if($z -eq 'n'){
+    if($z -eq 'q'){
+        rv dyrl_sn_*; Exit
+    }
+    elseif($z -eq 'n'){
         $Script:dyrl_sn_quit = $true
         Break
     }
@@ -352,9 +359,9 @@ function showAccounts($1,$2,$3){
         $focus = $dyrl_sn_list[([int]$z - 1)]
         $focus
 
-        $check = availableTypes 'EDR' -e
+        $check = availableTypes 'edr' -e
         if($check.count -gt 0){ $dyrl_sn_EDRQ = $true; rv check }
-        $dyrl_sn_T = availableTypes 'active-directory,EDR'  ## Get any scripts that query EDR or AD
+        $dyrl_sn_T = availableTypes 'active-directory,edr'  ## Get any scripts that query EDR or AD
         if($dyrl_sn_T.count -ge 1){
             ''
             screenResults '         Enter one of the tools below for more data, or hit ENTER to skip.'
@@ -367,6 +374,7 @@ function showAccounts($1,$2,$3){
             ''
             $z = Read-Host '  '
 
+            #########################  MOD SECTION   #########################
             ########   MODIFY THIS BLOCK IF YOU USE A SPECIFIC EDR SOLUTION
             if((TL $z).valtype -eq 'EDR'){
                 if($dyrl_sn_EDRQ -and $dyrl_sn_computer){
