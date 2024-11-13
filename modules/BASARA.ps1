@@ -4,7 +4,7 @@
 
 ## Watch for alt filenames requested from python scripts via 'collab'
 param(
-    [string]$dyrl_bas_NOPROTO
+    [string]$spiritia
 )
 
 function splashPage(){
@@ -101,8 +101,8 @@ if( $vf19_OPT1 ){
     Return
 }
 if( $CALLER ){
-    if( $dyrl_bas_NOPROTO ){
-        $dyrl_bas_v = $dyrl_bas_NOPROTO
+    if( $spiritia ){
+        $dyrl_bas_v = $spiritia
     }
     elseif($PROTOCULTURE){
         $dyrl_bas_v = $PROTOCULTURE
