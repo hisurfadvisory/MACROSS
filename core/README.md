@@ -18,9 +18,10 @@ The first three lines of your automation script require these:<br>
 			Even if your script contains tasks that require elevated privilege, use "user"
 			if the script can perform tasks without admin. MACROSS tags non-admin users 
    			with "$vf19_ROBOTECH", which you can use to skip admin tasks if that value is $True.
-		3. What kind of data your script processes (IPs, filescans, etc.), or what task it performs. 
-  			Keep this concise but specific across your scripts. For example, you might have several 				automations that do things in active directory, but don't just use "active-directory" 
-     			for each one!
+		3. What kind of data your script processes (IPs, filescans, etc.), or what task it performs.
+  			Keep this concise but specific across your scripts. For example, you might have
+     		several automations that do things in active directory, but don't just use "active-
+			directory" for each one!
 		4. What language your script is (powershell or python)
 		5. The author
 		6. The maximum number of values your script can process
@@ -44,13 +45,13 @@ When all these lines are set correctly, MACROSS uses the \[macross\] class to ke
 Consistency is important when you craft the #_class lines for your scripts! It's a good idea to leave everything lower case even though powershell doesn't care, because python IS case-sensitive. Make sure field 3 (the task/evaluation descriptor) keeps commonality while being unique. For example, if you have three different scripts that access AD, you could begin them all with "active-directory" followed by their unique task. This will be important as you'll see.<br><br>
 
 <b><u>THE REASON FOR MACROSS</u></b><br>
-When your script extracts or identifies a value to focus on, set it as the <u>global</u> variable $PROTOCULTURE (the power that defeated the Zeltran empire in the original Macross anime -- love and pop music!). Scripts that are meant to collaborate with others should all be coded to act automatically when this variable contains a value; make sure to set your script's #_class field 6 as 1*.
+When your script extracts or identifies a value to focus on, set it as the <u>global</u> variable $PROTOCULTURE (the power that defeated the Zeltran empire in the original Macross anime -- love and pop music!). Scripts that are meant to collaborate with others should all be coded to act automatically when this variable contains a value; make sure to set your script's #_class field 6 (.evalmax) as 1*.
 
-<i>*If your script can accept additional parameters, set this to 2.</i>
+<i>*If your script can accept additional parameters, set .evalmax to 2.</i>
 
 When the global $PROTOCULTURE has been set, there are two key utilities that will pull your scripts together: availableTypes() and collab().<br>
 
-availableTypes() is used to generate a list of scripts relevant to your task. It accepts several arguments that let you filter based on the #_class field 3 value mentioned above, as well as language, response type, and how many inputs a script accepts. In reference to my commonality suggestion above, availableTypes can filter based on <u>exact</u> matches, or just partial matches. If you want all the scripts that access AD, you can get them; if you just want the script that locks or unlocks accounts, you can do that too.
+availableTypes() is used to generate a list of scripts relevant to your task. It accepts several arguments that let you filter based on the #_class field 3 (.valtype) value mentioned above, as well as language, response type, and how many inputs a script accepts. In reference to my commonality suggestion above, availableTypes can filter based on <u>exact</u> matches, or just partial matches. If you want all the scripts that access AD, you can get them; if you just want the script that locks or unlocks accounts, you can do that too.
 
 Once you have this list, you can iterate each script with the collab function, which handles generating all necessary background resources and passing your investigation values to each script.<br><br>
 
@@ -68,7 +69,7 @@ In order to let powershell and python scripts interact seamlessly, there are a f
 		restoreMacross
 	}
 
-<i>*$pythonsrc is not counted as an evaluation parameter in MACROSS; don't count it in your #_class field 6 value.</i>
+<i>*$pythonsrc is not counted as an evaluation parameter in MACROSS; don't count it in your .evalmax value.</i>
 
 The above check allows a powershell script to know when it is being called by python. Since jumping to python and back creates new sessions outside of the currently running MACROSS session, this lets powershell regen any values and functions it would require from MACROSS.
 
@@ -82,7 +83,7 @@ If your automation is written in python, you'll need to import the custom MACROS
 
 -If a user adds an "s" to their selection in the menu, it sets the global value "$vf19_OPT" to true. This allows your script to load additional features or change functions without adding param switches.<br>
 
--There are loads of built-in utilities your script can make use of. Check out the "FCT_DETAILS" file, or type "debug" in the main menu to load a dev playground.<br><br>
+-There are lots of built-in utilities your script can make use of. Check out the "FUNCTION_DETAILS" readme, or type "debug" in the main menu to load a "developer playground".<br><br>
 
 
 <b><u>QUIRKS & LIMITATIONS</u></b><br>
