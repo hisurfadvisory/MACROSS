@@ -1,6 +1,6 @@
 
 
-TL;DR -- A "no-command-line-necessary" powershell menu to link multiple automation scripts together for blue-team investigators. When you run MACROSS for the first time, select the HIKARU demo to get a basic demonstration of making your scripts talk to each other. From the main menu, you can type "help" and any tool number to get that tool's help page, or type "debug" to get the usage and descriptions of MACROSS functions your scripts can make use of. Also, scan each script for the phrase "MOD ALERT" to find sections you can modify if needed.<br><br>
+TL;DR -- A "no-command-line-necessary" powershell menu to link multiple automation scripts together for blue-team investigators. When you run MACROSS for the first time, select the HIKARU demo to get a basic demonstration of making your scripts talk to each other. From the main menu, you can type "help" and any tool number to get that tool's help page, or type "debug" to get the usage and descriptions of MACROSS functions your scripts can make use of. Also, scan each script for the phrase "MOD SECTION!" to find sections you can modify if needed.<br><br>
 
 <img src="https://raw.githubusercontent.com/hisurfadvisory/MACROSS/main/mscr.PNG">
 
