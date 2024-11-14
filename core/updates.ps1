@@ -16,7 +16,6 @@ function toolCount(){
     Remove-Variable -Force vf19_ATTS,vf19_LATTS,vf19_LIST0,vf19_LIST1 -Scope Global   ## Clear old lists from memory
     $Global:vf19_ATTS = [ordered]@{}   ## Collect MACROSS class info for tools in the repo
     $Global:vf19_LATTS = [ordered]@{}  ## Collect MACROSS class info for locally installed tools
-    $Global:vf19_MENU = @{}   ## Send script names and stats to the menu-screen builder
     $Global:vf19_LIST0 = @{}  ## Collect local versions for verChk function
     $Global:vf19_LIST1 = @{}  ## Collect master versions for verChk function
     $Global:vf19_FILECT = 0
@@ -39,7 +38,6 @@ function toolCount(){
         [macross]$latts = $lfn + ",$lclass" + ",$lver" + ",$ln,$ldesc,$menunum"     ## Use the above lines to create the macross object
         $Global:vf19_LATTS.Add($lfn,$latts)                         ## Add the tool and its details to the local tracking list
         $Global:vf19_LIST0.Add($lfn,$vf19_LATTS[$lfn].ver)          ## Compare local versions to master repo versions
-        $Global:vf19_MENU.Add($lfn,@{$ldesc=$latts})                ## Send all the data to the menu-screen builder
         $Global:vf19_FILECT++                                       ## Track how many tools are installed
     }
     
@@ -141,10 +139,7 @@ function look4New(){
         $tool_diff = $(Compare-Object -ReferenceObject $($vf19_LIST1.keys) -DifferenceObject $($vf19_LIST0.keys))
     }
     else{
-        $tool_diff = @()
-        $vf19_LIST1.keys | %{
-            $tool_diff += $_
-        }
+        $tool_diff = $($vf19_LIST1.keys)
     }
 
     if( $vf19_FILECT -gt $vf19_REPOCT ){ $Global:vf19_MISMATCH = $true }
@@ -219,23 +214,15 @@ function look4New(){
             $t00 = $t0 -replace "\..*"
             $tfn = $vf19_ATTS[$t00].fname
             if($vf19_FILECT -eq 0){
-                if($MONTY -and $vf19_ATTS[$t00].lang -eq 'python'){
-                    copyScript $tfn
-                }
-                elseif($vf19_ATTS[$t00].lang -eq 'powershell'){
-                    copyScript $tfn
-                }
+                if($MONTY -and $vf19_ATTS[$t00].lang -eq 'python'){ copyScript $tfn }
+                elseif($vf19_ATTS[$t00].lang -eq 'powershell'){ copyScript $tfn }
             }
             if($t0.SideIndicator -eq '<='){
-                if($MONTY -and $vf19_ATTS[$t00].lang -eq 'python'){
-                    copyScript $($($tfn).InputObject)
-                }
-                elseif($vf19_ATTS[$t00].lang -eq 'powershell'){
-                    copyScript $($($tfn).InputObject)
-                }
+                if($MONTY -and $vf19_ATTS[$t00].lang -eq 'python'){ copyScript $($($tfn).InputObject) }
+                elseif($vf19_ATTS[$t00].lang -eq 'powershell'){ copyScript $($($tfn).InputObject) }
             }
         }
-        
+        toolCount
     }
 
 }
