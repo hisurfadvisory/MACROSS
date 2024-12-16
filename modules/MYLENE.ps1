@@ -1336,7 +1336,7 @@ else{
             }
             elseif($dyrl_myl_wf){
                 $ermsg = "Failed to write $vf19_DTOP\NewUserSearches\$dyrl_myl_OUTNAME"
-                errLog $ermsg
+                errLog ERROR "$USR/MYLENE" $ermsg
                 w $ermsg c; Remove-Variable -Force ermsg
             }
 
