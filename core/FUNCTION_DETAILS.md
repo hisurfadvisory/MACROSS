@@ -74,7 +74,7 @@ Along with utility functions, the valkyrie module will contain these MACROSS pow
 	valkyrie.DTOP     	 # The user's desktop path
 	valkyrie.N_	 		 # The list of mathing obfuscation numbers you set in config.conf
 	valkyrie.MPOD     	 # The list of key-values you set in the MACROSS config.conf file
-	valkyrie.TABLES 		 # The location of your enrichment folder (set in config.conf)
+	valkyrie.RSRC 		 # The location of your enrichment folder (set in config.conf)
 	valkyrie.PROTOCULTURE	 # The Global investigation value to be processed by your scripts
 	valkyrie.HELP          # Used to display your python script's help file to users
 
@@ -98,7 +98,7 @@ For example, the configuration wizard asked you for a folder to place enrichment
 
 	getThis $vf19_MPOD['enr']; $SERVERS = "$vf19_READ\servers.json"
 
-(Note that the 'enr' value is automatically set to $vf19_TABLES for you so you don't need to perform the "getThis" command.)
+(Note that the 'enr' value is automatically set to $vf19_RSRC for you so you don't need to perform the "getThis" command.)
 
 If you've set a configuration key for something like the address of your firewall, your scripts can access it with
 
@@ -131,7 +131,7 @@ The availableTypes function allows you to build a list of available scripts that
 <br><br>
 
 
-<b> *THE MACROSS POWERSHELL OBJECT* </b><br>
+<b> *THE MACROSS POWERSHELL (and python) CLASS* </b><br>
 <b>core\classes.ps1</b><br>
 	This file should be reserved for any custom classes your scripts need, especially if they could be useful for other scripts to make use of.<br>
 	&emsp;<b>A.</b> macross = A custom powershell class that tags every script in the \modules folder with specific attributes that you MUST include on the third line of your scripts, tagged with "#\_class" so that MACROSS will parse it correctly. MACROSS performs this automatically for each script in the "modules" folder, you shouldn't ever need to do this manually. But if you want to make changes to this class, this is how it's set up. In this example:<br>
@@ -179,9 +179,9 @@ Your script should be written to recognize the global variables MACROSS uses. Un
 
 &emsp;&emsp;$RESULTFILE = if your script outputs results to a file that other scripts might be able to process, set its filepath in this global variable.
 
-&emsp;&emsp;$vf19_TABLES = This is the location you configured for your resources folder. Your scripts can reference it as needed, example 
+&emsp;&emsp;$vf19_RSRC = This is the location you configured for your resources folder. Your scripts can reference it as needed, example 
 
-	$host_info = "$vf19_TABLES\hosts.xml"
+	$host_info = "$vf19_RSRC\hosts.xml"
 
 &emsp;&emsp;$HOWMANY = the total number of successful hits from all of the tasks run so far (your scripts must be coded to update this value when applicable).
 
@@ -217,7 +217,15 @@ MACROSS provides shared utilities your scripts can use (many of them also provid
 
 	getHash $filepath md5
 
+&emsp;&emsp;errLog = record logs for troubleshooting or auditing
+
+	errLog $log_level $user_or_scriptname $message		## Log the message locally
+	errLog -f $log_level $user_or_scriptname $message	## Log the message locally AND forward it to a log server
+
 &emsp;&emsp;yorn = Open a popup to get a "yes" or "no" response from the analyst.
+
+	yorn -script MYSCRIPT -task 'Enumerating shares'	## Prompt user whether to continue your script's task
+	yorn -script MYSCRIPT -q 'Is it Friday yet?'		## Prompt user with a custom message
 
 &emsp;&emsp;ord = get the decimal representation of a unicode character
 
