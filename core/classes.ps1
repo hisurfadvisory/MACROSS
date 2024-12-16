@@ -1,99 +1,174 @@
-## ADD YOUR AUTOMATIONS TO MACROSS
-
-<b><u>REQUIREMENTS:</u></b><br>
--For any script to function in MACROSS, whether you're writing new code or using an existing automation, you must reserve the first three lines of the file for these attributes (review the scripts I've included in the modules folder to get an idea of the required structure for MACROSS integration):
-<br>
-The first three lines of your automation script require these:<br>
-
-	#_sdf1   BRIEF DESCRIPTION OF YOUR SCRIPT
-	#_ver    VERSION NUMBER OF YOUR SCRIPT
-	#_class  COMMA-SEPARATED ATTRIBUTES OF YOUR SCRIPT
-
-	The "sdf1" line needs a brief description of your script; this gets written to the MACROSS menu
-	The "ver" line is the version of your script
-	The "class" line needs you to comma-separate ***all*** of these attributes, in this order:
-		1. If you have different tiers/levels of analysts, use this for access control (1 - 3).
-			To allow anyone to execute the script, use 0.
-		2. The LOWEST privilege level your script requires (user, admin, etc.)
-			Even if your script contains tasks that require elevated privilege, use "user"
-			if the script can perform tasks without admin. MACROSS tags non-admin users 
-   			with "$vf19_ROBOTECH", which you can use to skip admin tasks if that value is $True.
-		3. What kind of data your script processes (IPs, filescans, etc.), or what task it performs.
-  			Keep this concise but specific across your scripts. For example, you might have
-     		several automations that do things in active directory, but don't just use "active-
-			directory" for each one!
-		4. What language your script is (powershell or python)
-		5. The author
-		6. The maximum number of values your script can process
-		7. The format of your script's responses to other scripts' queries
-
-		Here's an example class line for scripts offered to user-privileged tier 1 analysts, and their
-  		\[macross\] attribute names:
-		
-		#_class 1,user,office vba extraction,powershell,HiSurfAdvisory,1,xml
-
-			1 			= .access
-			user			= .priv
-			office vba extraction 	= .valtype
-			powershell 		= .lang
-			HiSurfAdvisory 		= .auth
-			1 			= .evalmax
-			xml 			= .rtype
-
-When all these lines are set correctly, MACROSS uses the \[macross\] class to keep track of the scripts in the "modules" folder and the central repository (if you're using one). You can see what these look like by typing "debug TL" in the main menu.
-
-Consistency is important when you craft the #_class lines for your scripts! It's a good idea to leave everything lower case even though powershell doesn't care, because python IS case-sensitive. Make sure field 3 (the task/evaluation descriptor) keeps commonality while being unique. For example, if you have three different scripts that access AD, you could begin them all with "active-directory" followed by their unique task. This will be important as you'll see.<br><br>
-
-<b><u>THE REASON FOR MACROSS</u></b><br>
-When your script extracts or identifies a value to focus on, set it as the <u>global</u> variable $PROTOCULTURE (the power that defeated the Zeltran empire in the original Macross anime -- love and pop music!). Scripts that are meant to collaborate with others should all be coded to act automatically when this variable contains a value; make sure to set your script's #_class field 6 (.evalmax) as 1*.
-
-<i>*If your script can accept additional parameters, set .evalmax to 2.</i>
-
-When the global $PROTOCULTURE has been set, there are two key utilities that will pull your scripts together: availableTypes() and collab().<br>
-
-availableTypes() is used to generate a list of scripts relevant to your task. It accepts several arguments that let you filter based on the #_class field 3 value mentioned above (.valtype), as well as language, response type, and how many inputs a script accepts. In reference to my commonality suggestion above, availableTypes can filter based on <u>exact</u> matches, or just partial matches. If you want all the scripts that access AD, you can get them; if you just want the script that locks or unlocks accounts, you can do that too.
-
-Once you have this list, you can iterate each script with the collab function, which handles generating all necessary background resources and passing your investigation values to each script.<br><br>
-
-<b><u>CROSS LANGUAGE SUPPORT</u></b><br>
-In order to let powershell and python scripts interact seamlessly, there are a few more requirements. First, you'll need to add a param field in your powershell scripts like this (in addition to any other params you have):
-
-	param(
-    	$pythonsrc = $null
-	)
-	if( $pythonsrc ){
-		$Global:CALLER = $pythonsrc
-		foreach( $core in gci "$(($env:MACROSS -Split ';')[0])\core\*.ps1" ){ 
-			. $core.fullname 
-		}
-		restoreMacross
-	}
-
-<i>*$pythonsrc is not counted as an evaluation parameter in MACROSS; don't count it in your .evalmax value.</i>
-
-The above check allows a powershell script to know when it is being called by python. Since jumping to python and back creates new sessions outside of the currently running MACROSS session, this lets powershell regen any values and functions it would require from MACROSS.
-
-If your automation is written in python, you'll need to import the custom MACROSS module, "valkyrie". This module contains most of the powershell utilities converted into python, and also generates the default global MACROSS variables. The valkyrie.collab() and valkyrie.availableTypes() functions work just like their powershell counterparts, with caveats (see QUIRKS & LIMITATIONS below).<br><br>
+## Custom MACROSS classes go here
 
 
-<b><u>OPTIONAL STUFF</u></b><br>
--The configuration wizard that walks you through MACROSS for the first time can be re-launched by typing "config" in the main menu. This lets you change, add, or remove any configured values. The purpose of the config.conf file is to store regularly used data, which could be file locations, URLs, or whatever you don't want hardcoded in plaintext. The data is protected with a very basic encryption, so I wouldn't recommend storing keys or passwords in it!<br>
 
--If a user types "help" with the number of your script in the menu, it sets global "$HELP" to true. Your script should have a description/helpfile/man-page that loads for the user when they do this, then exits when they finish reading.<br>
+class macross {
+<#
+.description
+Classify MACROSS tools: this class helps you manage where scripts need to go and what
+they can query.
+    -Users get access to their intended toolsets; admin tools won't be copied to user profiles,
+        SOC tools won't get copied to forensic investigator profiles, etc.
+    -MACROSS tools will be able to determine the capabilities and params of other scripts, i.e.
+        "are you a python script" or "can you accept more than one value to search on?"
+        When you write a custom script for use in MACROSS, the first three lines are reserved for
+        MACROSS tags:
 
--If a user adds an "s" to their selection in the menu, it sets the global value "$vf19_OPT" to true. This allows your script to load additional features or change functions without adding param switches.<br>
+            #_sdf1 <description of your script>
+            #_ver <your script version number>
+            #_class <your script's attributes> 
+        
+The 'macross' class relies on the third line of each script in the nmods folder, it must begin 
+with "#_class " followed by a comma separated string of attributes for your script. Example:
 
--There are lots of built-in utilities your script can make use of. Check out the "FUNCTION_DETAILS" readme, or type "debug" in the main menu to load a "developer playground".<br><br>
+    #_class tier1,user,file hashes,python3,HiSurfAdvisory,2
+
+IN ORDER, these attributes are applied for MACROSS to recognize:
+    the level of access,*
+    level of privilege required,
+    the type of data it works with,
+    the script's language,
+    the script's author,
+    the number of values it can handle being passed
+    the type of response it gives back**
+
+All 7 of these fields are REQUIRED. In addition, the script's name and version are 
+automatically applied when MACROSS starts up, along with its description field and
+its position in the main menu.
+
+* MACROSS only recognizes three ".access" tiers: 1, 2, & 3, with "1" being 
+reserved for the most junior analysts, "tier3" the most senior. Putting 
+anything else in this field tells MACROSS that everyone can execute the script. 
+The tier1 - tier3 attributes are determined by the user's GPO membership; if you 
+want to use a different method than GPO, you'll need to modify the "setUser" 
+function in validation.ps1.
+
+** Suggested .rtype values are "onscreen" for results that only show on screen,
+"file" if your script outputs results to any kind of file, where you store the
+filepath as $global:RESULTFILE, and "none" if your script just performs a task
+without responding. Other than those, specify json, xml, or whatever else your 
+script responds with.
+
+            
+Example .access attribute that ignores tier restrictions:
+
+    #_class allusers,user,file hashes,python3,HiSurfAdvisory,2,
+        
+You need to specify the GPO names by running "config" from the main menu, and specifying
+the name of the groups your analysts belong to ("SOC", "Incident-Responder", etc.).
+            
+You should not need to worry about generating objects in the macross class, MACROSS does it
+automatically every time it builds out its menu. You just need to make sure you're following
+the commenting convention described above in the first three lines of your scripts.
 
 
-<b><u>QUIRKS & LIMITATIONS</u></b><br>
-1. The powershell collab() function can only pass 1 extra evaluation parameter to scripts, an alternate value to $PROTOCULTURE. It passes this value as "$spiritia" (the energy source highlighted in the Macross 7 anime -- generated by love & rock music!), so your script will need to accept is as<br>
+.example
+Examples for manually classifying MACROSS tools (you shouldn't ever need to do manually this):
 
-	param( $spiritia )
+$gerwalk = [macross]::new('GERWALK,3,Admin,endpoint artifacts,powershell,HiSurfAdvisory,1,json,4.5,GERWALK.ps1')
+^^ The GERWALK script now gets described with all of these attributes
 
-to avoid confusion with any other params. If you need to modify this behavior to handle more parameters, the collab function is located in the validation.ps1 file.<br><br>
+Example of the above macross class "$gerwalk" in use:
 
-2. The valkyrie module's collab() function operates by reading and writing to a simple json file in the core\macross_py\garbage_io folder. The function allows for writing your own custom outputs to this folder as well, but the folder gets cleared out every time MACROSS exits or launches.
+    $gerwalk.access   --> will return '3', meaning only your Tier 3 people can execute it
+    $gerwalk.priv     --> will return 'admin', meaning it will only be visible to someone logged in
+                            with admin privilege (provided you are using a master repo and version 
+                            checks)
+
+You can then craft your scripts to search through the $vf19_LATTS hashtable to find relevant tools 
+to perform further evals, using MACROSS' availableTypes function. For example:
+
+    $PROTOCULTURE = '9.9.9.9'
+    $tools = availableTypes 'ip, firewall api' 
+            
+The above scriptblock would iterate through all the MACROSS tools listed in $vf19_LATTS, and 
+returns a list of tools matching the .valtype 'ip' or 'firewall api'. That list can then be 
+used to auto-execute MACROSS' collab function to further process the $PROTOCULTURE value.
+
+Reference the "toolCount" and "look4New" functions in updates.ps1 if you want to see how MACROSS
+automatically classifies scripts for you.
+#>
+
+    [string]$name     ## Attribute 1:  Name of the script
+    [string]$access   ## Attribute 2:  Tier level of analyst access (1, 2, or 3)
+    [string]$priv     ## Attribute 3:  Privilege level required, admin vs. user
+    [string]$valtype  ## Attribute 4:  The type of data processed, or type of task performed
+    [string]$lang     ## Attribute 5:  The script language
+    [string]$author   ## Attribute 6:  Script author
+    [int]$evalmax     ## Attribute 7:  How many values a script can accept from other tools
+    [string]$rtype    ## Attribute 8:  The type of response your script returns (onscreen, json, etc.)
+    [string]$ver      ## Attribute 9:  The script version
+    [string]$fname    ## Attribute 10: The full filename for use with MACROSS' collab function
+    [string]$desc     ## Attribute 11: The tool's description (writes to the main menu)
+    [int]$pos         ## Attribute 12: This is the position in the main menu; used for selection
 
 
-Be sure to read the FUNCTION_DETAILS readme file for the full notes of MACROSS functionalities!
+    macross($scriptvalues){
+        $this.setAttributes($scriptvalues)
+    }
+
+    ## The toolCount function in updates.ps1 will feed script values here;
+    ## Once the macross object has been created, it will be stored in the global
+    ## array $vf19_LATTS to be used by functions in updates.ps1 that handle
+    ## script distribution
+    [void]setAttributes($scriptvalues){
+        $this.name    = ($scriptvalues -Split ',')[0]
+        $this.access  = ($scriptvalues -Split ',')[1]
+        $this.priv    = ($scriptvalues -Split ',')[2]
+        $this.valtype = ($scriptvalues -Split ',')[3]
+        $this.lang    = ($scriptvalues -Split ',')[4]
+        $this.author  = ($scriptvalues -Split ',')[5]
+        $this.evalmax = ($scriptvalues -Split ',')[6]
+        $this.rtype   = ($scriptvalues -Split ',')[7]
+        $this.ver     = ($scriptvalues -Split ',')[8]
+        $this.fname   = ($scriptvalues -Split ',')[9]
+        $this.desc    = ($scriptvalues -Split ',')[10]
+        $this.pos     = ($scriptvalues -Split ',')[11]
+    }
+
+    [void]setAttributes(
+            [string]$name,
+            [string]$access,
+            [string]$priv,
+            [string]$valtype,
+            [string]$lang,
+            [string]$author,
+            [int]$evalmax,
+            [string]$rtype,
+            [string]$ver,
+            [string]$fname,
+            [string]$desc,
+            [int]$pos
+            ){
+        $this.name    = $name
+        $this.access  = $access
+        $this.priv    = $priv
+        $this.valtype = $valtype
+        $this.lang    = $lang
+        $this.author  = $author
+        $this.evalmax = $evalmax
+        $this.rtype   = $rtype
+        $this.ver     = $ver
+        $this.fname   = $fname
+        $this.desc    = $desc
+        $this.pos     = $pos
+    }
+
+
+    ## Method checks to automatically divvy out the tools to appropriate users
+    [string]toolInfo(){
+        $info = "
+    $($this.name)
+        $(' Version (use for auto-updating):                ' + $this.ver)
+        $(' Author:                                         ' + $this.author)
+        $(' Evaluates (use for auto-launching scripts):     ' + $this.valtype)
+        $(' Max arguments (use for auto-launching scripts): ' + [string]$this.evalmax)
+        $(' Response type (use for auto-launching scripts): ' + $this.rtype)
+        $(' Privilege (use for access-control):             ' + $this.priv)
+        $(' Tier (use for access-control):                  ' + $this.access)
+        $(' Language (use for auto-launching scripts):      ' + $this.lang)
+        "
+        Return $info
+    }
+    
+}
