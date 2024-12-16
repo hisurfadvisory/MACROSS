@@ -433,7 +433,22 @@ def collab(Tool,Caller,Protoculture,ap = None):
     chdir(TOOLSROOT)
     fullpath = TOOLSDIR + '\\\\' + Tool
     empty = 'WAITING'
-    proto = {Caller:{'target':Protoculture,'result':empty}}
+    pr = ''
+
+    ## MOD SECTION ##
+    # If your Protoculture value is a huge dictionary, this function won't do a good job
+    # of passing it back to powershell. Tweak it however you need to.
+    if type(Protoculture) == list:
+        for P in Protoculture:
+            P = f"[{P}]"
+            pr = f"{pr},{P}"
+        pr = rgx("^,",pr,"")
+    elif type(Protoculture) == dict:
+        pr = "["
+        for P in Protoculture.keys():
+            pr = pr + ",{\"" + P + '\": ' + f"\"{Protoculture[P]}\"" + "}"
+        pr = rgx("[,",pr,"")
+    proto = {Caller:{'target':pr,'result':empty}}
 
     if getenv('MPOD'):
         environ['MPOD'] = getenv('MPOD')
