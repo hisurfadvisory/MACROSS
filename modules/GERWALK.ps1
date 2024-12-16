@@ -190,20 +190,23 @@
 
         BEST PRACTICE ISN'T FOLLOWED:
         I mean to get around to fixing it eventually, but the debugging and craftQuery functions
-        make use of "iex" or "Invoke-Expression". It always makes my eye twitch when I see other
-        people doing it, but I got lazy with this one and needed some quick curl generators. Not
-        a big deal to me on my networks, but you're getting this off the internet, so...
-        I just wanted to make you're aware these exist, sorry. Make sure you review everything to
-        make sure there's no evil going on.
+        make use of scriptblock executions. It always makes my eye twitch when I see other
+        people doing it, but I got lazy with this one and needed some quick curl generators. It's
+        not a big deal to me on my networks, but you're getting this off the internet, so...
+        I just wanted to make you're aware these exist, sorry. Make sure you review these to
+        ensure there's no evil going on. (just search for the few lines with "[scriptblock]")
 
         USING "collab" TO CALL PROCESS API SEARCHES (/v1/process?q=):
-        -Sometimes a useless header informing you of the max results gets attached along
-        with the json object and "dontCare" list (a list of the noisiest processes that
-        would dominate the screen if you displayed them). When this happens, the response array 
-        will contain 3 items instead of 2, with the useless header in the [0] spot. If your 
-        script is erroring with no returns after calling GERWALK, check and see if you are 
-        getting this header in your response, and modify your functions to look at items 
-        [1] and [2] instead of [0] and [1].
+        -This scripts standard response to other MACROSS tools is a hashtable and a "dontCare" 
+        list (a list of the noisiest processes that would dominate the screen if you displayed 
+        them). You can use this second item to filter out the noise if desired.
+        
+        Sometimes a useless value informing you of the max results gets attached along with these
+        two items. I haven't figured out why this only happens occasionally. When it DOES happen, 
+        the response array will contain 3 items instead of 2, with the "max results" value in the  
+        [0] position. If your script is erroring with no returns after calling GERWALK, check and  
+        see if you are getting this value in your response, and modify your functions to look at  
+        items [1] and [2] instead of [0] and [1].
 
         USING THE SEARCH WIZARD:
         -There is a bug that breaks performing new searches after using the automatic 
@@ -213,8 +216,8 @@
     ===================================================
     DEBUGGING/TROUBLESHOOTING:
 
-        Select GERWALK from the main menu with the 's' option (example, 5s if GERWALK is #5) to open 
-        the non-wizard query, and enter "carbon fiber" as your query. This enables debugging.
+        Select GERWALK from the main menu with the 's' option (example, 5s if GERWALK is #5) to launch 
+        GERWALK without the wizard, and enter "carbon fiber" as your query. This enables debugging.
         
         Debugging will display your full curl commands*, converts the JSON response into a powershell 
         object, and lets you manipulate that object to view the different data that gets returned by 
@@ -1509,7 +1512,7 @@ function craftQuery($1,$2,$3,$4){
 
         if( $dyrl_ger_DEBUG ){
             Remove-Variable -Force dyrl_ger_DEBUG -Scope Script
-            $dbg = iex "$getResults"
+            $dbg = . $([scriptblock]::Create("$getResults"))
             $c = 'continue'; getThis -h 2E2A28434F4E43484B7C6765742D7661726961626C657C67767C3A3A292E2A
             $srch0 = [regex]"$vf19_READ"
 
@@ -1537,14 +1540,14 @@ function craftQuery($1,$2,$3,$4){
             $Script:dyrl_ger_WORKSPACE = $dbg
         }
         else{
-            $Script:dyrl_ger_WORKSPACE = iex "$getResults" #| ConvertFrom-Json
+            $Script:dyrl_ger_WORKSPACE = . $([scriptblock]::Create("$getResults")) #| ConvertFrom-Json
 
             ## You should typically only be able to grep "curl" in the response if the curl request fails.
             if( $dyrl_ger_WORKSPACE | Select-String 'curl' ){
-                errLog 'ERROR' 'GERWALK' "$dyrl_ger_WORKSPACE"
+                errLog ERROR "$USR/GERWALK(craftQuery)" "$(dyrl_ger_WORKSPACE -Join ' ')"
             }
             else{
-                errLog 'INFO' $USR "GERWALK:  $displayq"
+                errLog INFO "$USR/GERWALK(craftQuery)"  $displayq
             }
         }
     }
