@@ -9,16 +9,9 @@
     the instances of "service-" in this script with your organization's naming scheme.
     This helps shorten the amount of returns you might receive, though you may
     not always want to do so!
-
     
-    Review the sections at lines 370 & 490... you can modify these sections to better
-    suit your network. For example, the lines following
-
-        $dyrl_sn_T = availableTypes -v 'active-directory user,EDR' -e
-
-    is where you can write instructions to match your own EDR script's requirements,
-    if necessary.
-
+    Review the lines surrounding any "MOD SECTION" comments for tips on how to tweak
+    for your own uses if necessary.
 
 #>
 
