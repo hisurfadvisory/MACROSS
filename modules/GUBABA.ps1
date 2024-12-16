@@ -10,7 +10,7 @@
 
     NOTE 1:
         This script requires the file "gubaba.json" located in the resources/ folder.
-        That file needs to be in whatever directory that gets set as $vf19_TABLES
+        That file needs to be in whatever directory that gets set as $vf19_RSRC
         during MACROSS's start up, so if you've changed the default location of
         resources/ from MACROSS' root to someplace else, make sure MACROSS knows
         how to find it!
@@ -218,8 +218,8 @@ if( $pythonsrc ){
         Exit
     }
 }
-elseif( Test-Path "$vf19_TABLES\gubaba.json" ){  ## Check if there is an alternate path to the resources folder
-    $dyrl_gub_TABLE = "$vf19_TABLES\gubaba.json"
+elseif( Test-Path "$vf19_RSRC\gubaba.json" ){  ## Check if there is an alternate path to the resources folder
+    $dyrl_gub_TABLE = "$vf19_RSRC\gubaba.json"
 }
 elseif( Test-Path "$vf19_TOOLSROOT\resources\gubaba.json" ){   ## Check if the resources folder is in MACROSS root
     $dyrl_gub_TABLE = "$vf19_TOOLSROOT\resources\gubaba.json"
