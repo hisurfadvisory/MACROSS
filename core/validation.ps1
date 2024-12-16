@@ -2,19 +2,25 @@
 ## you plan to use the basic access control.
 
 
-function userPrefs([switch]$proto=$false,[switch]$pyv=$false){
+function userPrefs([switch]$proto=$false,[switch]$py=$false){
     $pref = "$vf19_TOOLSROOT\core\preferences.txt"
-    function chgpref($1){
-        $t = $1 + 'true'; $f = $1 + 'false'
-        if( Select-String $f $pref ){ $chg = $(gc $pref) -replace "$f","$t" }
-        else{ $chg = $(gc $pref) -replace "$t","$f" }
-        Set-Content $chg -Path $pref
+    function chgpref($tf){
+        $t = $tf + 'true'; $f = $tf + 'false'; $chg = (Get-Content $pref)
+        if( Select-String $f $pref ){ $chg = $chg -replace $f,$t }
+        else{ $chg = $chg -replace $t,$f }
+        Set-Content -path "$pref" $chg
         w ' Preference updated.' c; slp 1
     }
     if($proto){ chgpref 'persist_protoculture=' }
-    elseif($pyv){ chgpref 'use_pythonv2=' }
-    $plist = @("$((gc $pref | Select-String 'persist_protoculture=') -replace 'persist_protoculture=')")
-    $plist += "$((gc $pref | Select-String 'use_pythonv2=') -replace 'use_pythonv2=')"
+    elseif($py){ chgpref 'use_pythonv2=' }
+    $plist = @("$((gc $pref | sls 'persist_protoculture=') -replace 'persist_protoculture=')")
+
+    ############################################
+    ## MOD SECTION
+    ############################################
+    ## This is pretty much abandoned, I didn't want the headache of tracking python versions, so MACROSS just
+    ## uses whatever's default. Feel free to play with this in the display.ps1 file's "startUp" function.
+    $plist += "$((gc $pref | sls 'use_pythonv2=') -replace 'use_pythonv2=')"
     $Global:vf19_PREFS = $plist
 }
 
@@ -59,9 +65,8 @@ function yorn(){
     param(
         [Parameter(Mandatory)]
         [string]$scriptname,
-        [Parameter(Mandatory)]
-        [string]$task,
-        [string]$question
+        [string]$task=$null,
+        [string]$question=$null
     )
     [void][System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms')
     
@@ -85,13 +90,8 @@ function yorn(){
     }
     #>
     
-    if($question){
-        $1 = $question
-    }
-    else{
-        $task = $task + '?'
-        $1 = "Do you want to continue $task"
-    }
+    if($question){ $1 = $question }
+    else{ $1 = "Do you want to continue $task`?" }
     
 
     Return [System.Windows.Forms.MessageBox]::Show(
@@ -171,13 +171,17 @@ function setUser($1,[switch]$c=$false,[switch]$i=$false){
     }
     if($1){ 
         $l_=$($vf19_GPOD.Item1);$ll_=$($vf19_GPOD.Item2)
-        function x(){if($($vf19_check / ($vf19_ACCESSTIER.Item1) -eq $vf19_modifier)){Return $l_}}
+        getThis -h 206E6F7420696E20616E792074696572206C69737473
+        function x($tier){
+            if($($vf19_check / ($vf19_ACCESSTIER.Item1) -eq $vf19_modifier)){Return $l_}
+            else{errLog AUTH "$USR/MACROSS(setUser)" "Failed tool check for tier $tier"; Return $ll_}
+        }
         if( ! $vf19_USERAUTH ){Return $l_}
-        elseif($1 -eq 0){Return $(x)}
-        elseif($1 -eq 3 -and $vf19_ACCESSTIER.Item3){Return $(x)}
-        elseif($1 -eq 2 -and $vf19_ACCESSTIER.Item2){Return $(x)}
-        elseif($1 -eq 1){Return $(x)}
-        else{Return $ll_}
+        if($1 -eq 0){Return $(x)}
+        if($1 -eq 3 -and $vf19_ACCESSTIER.Item3){Return $(x 3)}
+        if($1 -eq 2 -and $vf19_ACCESSTIER.Item2){Return $(x 2)}
+        if($1 -eq 1){Return $(x 1)}
+        else{errLog AUTH "$USR/MACROSS(setUser)" "$USR$vf19_READ"; Return $ll_}
     }
     elseif($i){
         Remove-Variable -Force vf19_ACCESSTIER -Scope Global
@@ -190,7 +194,14 @@ function setUser($1,[switch]$c=$false,[switch]$i=$false){
         $Global:USR = $u -replace "^(.+\\)?"  ## Remove domain from username
         battroid -n vf19_USRCHK -v $USR
 
-        $aTIER=@{};$uTIER=@{};$aconf=$vf19_CONFIG[2]
+        $aTIER=@{};$uTIER=@{}
+        if($vf19_CONFIG[2] -Like "http*"){
+            $aconf = (curl.exe $vf19_CONFIG[2]) -Join ''
+            if($error[0] -Like "*curl*"){
+                errLog ERROR "$USR could not retrieve $($vf19_CONFIG[2]) during startup"
+            }
+        }
+        else{ $aconf=(gc $vf19_CONFIG[2]) -Join '' }
         $vf19_MPOD.keys | where{$_ -Match "tr[1-3]"} | %{
             getThis $vf19_MPOD[$_]; $uTIER.Add($_,$vf19_READ)
         }
@@ -210,56 +221,66 @@ function setUser($1,[switch]$c=$false,[switch]$i=$false){
         catch{ battroid -n vf19_ROBOTECH -v $true }
         
         
-        if(Test-Path "$aconf"){
-            $gj = setCC
-            $current = setReset -d $(gc "$aconf") $gj | ConvertFrom-Json
-            battroid -n vf19_USERAUTH -v $true
+        if($aconf){
+            $current = $(setReset -d "$aconf" $(setCC)) | ConvertFrom-Json
             if($USR -in $current.Tier3){tup $id $false $true}
             elseif($USR -in $current.Tier2){tup $id $true $false}
             elseif($USR -in $current.Tier1){tup $id $false $false}
         }
-        ## If you don't create GPO/Tier names during configuration, access control will be disabled and everyone
-        ## can download & execute all tools in the modules folder!
-        elseif($aTIER['ta1'] -eq 'unused' -and $uTIER['tr1'] -eq 'unused'){
+        ## If you don't create GPO/Tier names during configuration, access control will be disabled and 
+        ## everyone can download & execute all tools in the modules folder!
+        elseif($aTIER.ta1 -eq 'unused' -and $uTIER.tr1 -eq 'unused'){
             battroid -n vf19_modifier -v 111; battroid -n vf19_check -v 555
             battroid -n vf19_USERAUTH -v $false
             tup 5 $true $true; $skip = $true
+            errLog AUTH "$USR launched MACROSS with no tier permissions required"
         }
         else{
             ## Multiple methods because every use-case is different...
+            <#  ## MOD SECTION! ##
+                Using "net user" to lookup GPO only returns partial strings, unlike Get-ADUser.
+                Make sure you use patterns that will match the response of the "net user"
+                command when setting your GPO tiers!
+            #>
             if( $vf19_ROBOTECH ){
-                if(net user $USR /domain | sls $($uTIER['tr3'])){tup $id $false $true}
-                elseif(net user $USR /domain | sls $($uTIER['tr2'])){tup $id $true $false}
-                elseif(net user $USR /domain | sls $($uTIER['tr1'])){tup $id $false $false}
+                if(net user $USR /domain | sls $($uTIER.tr1)){tup $id $false $true}
+                elseif(net user $USR /domain | sls $($uTIER.tr1)){tup $id $true $false}
+                elseif(net user $USR /domain | sls $($uTIER.tr1)){tup $id $false $false}
             }
             else{
-                ## If SysInternals is installed, create a list of its applications for quick-launching via $SI
-                ## Useful for scanning evtx files, etc.
+                ## If SysInternals is installed, create a list of its applications for quick-launching 
+                ## via "$SI". Useful for scanning evtx files, etc.
                 if(Test-Path $vf19_SYSINT){
                     $sint=@{}; ls $vf19_SYSINT | Select -ExpandProperty FullName | where{$_ -Like "*exe"} |
                     %{$sint.Add($($_ -replace "^.+\\" -replace "\.exe$"),$_)}
                     battroid -n SI -v $sint
                 }; rv vf19_SYSINT -Scope Global
-                if($priv.memberOf | where{$_ -Like "*$($aTIER['ta3'])*"}){ tup $id $false $true }
-                elseif($priv.memberOf | where{$_ -Like "*$($aTIER['ta2'])*"}){ tup $id $true $false }
-                elseif($priv.memberOf | where{$_ -Like "*$($aTIER['ta1'])*"}){ tup $id $false $false }
+                if($priv.memberOf | where{$_ -Like "*$($aTIER.ta3)*"}){ tup $id $false $true }
+                elseif($priv.memberOf | where{$_ -Like "*$($aTIER.ta2)*"}){ tup $id $true $false }
+                elseif($priv.memberOf | where{$_ -Like "*$($aTIER.ta1)*"}){ tup $id $false $false }
             }
             
         }
         
-        if($vf19_ACCESSTIER.Item1 -ne 5){ eMsg 1; varCleanup -c; Exit }
-        else{
+        if($vf19_USERAUTH -and -not $vf19_ACCESSTIER.Item1){ 
+            eMsg 1
+            varCleanup -c
+            errLog AUTH "$USR denied permissions to launch MACROSS ($env:COMPUTERNAME)"
+            Exit
+        }
+        elseif($vf19_USERAUTH){
             ##############################################################################
             ## MOD SECTION ##
             ##############################################################################
             ## These should point $vf19_DTOP to your desktop 99% of the time, but you can change the
             ## -v value if your environment is different.
-            #battroid -n vf19_DTOP -v "$([string]$env:UserProfile)\Desktop"
-            battroid -n vf19_DTOP -v "C:\Users\$USR\Desktop"
+            #battroid -n vf19_DTOP -v "C:\Users\$USR\Desktop"
+            battroid -n vf19_DTOP -v "$env:USERPROFILE\Desktop"
             battroid -n vf19_modifier -v $idm; battroid -n vf19_check -v $idc
+            errLog AUTH "$USR successfully launched MACROSS ($env:COMPUTERNAME)"
         }
         rv id,idm,idc,priv
-
+        varCleanup -t
     }
 }
 
@@ -305,7 +326,7 @@ function eMsg($m='ERROR: that module is unavailable!',$c='c'){
     if($m.getType().Name -eq 'String' -and $m -ne 'ERROR: that module is unavailable!'){
         Write-Host -f $cc " $m
         "
-        errLog 'ERROR' "$USR" $m
+        errLog ERROR "$USR/MACROSS" $m
     }
     elseif($m.getType().Name -eq 'Int32'){
         Write-Host -f $cc " $($msgs[$m])
@@ -323,8 +344,9 @@ function eMsg($m='ERROR: that module is unavailable!',$c='c'){
     }
 }
 
-## Don't leave crap in memory when not needed
-function varCleanup([switch]$c=$false){
+## Don't leave crap in memory or on disk when not needed
+function varCleanup([switch]$c=$false,[switch]$t=$false){
+    if($t){ Remove-Item "$vf19_TMP\*.conf"; Return }
     Remove-Variable -Force dyrl_* -Scope Script
     Remove-Variable -Force vf19_FILECT,vf19_REPOCT,HELP,vf19_OPT1,RESULTFILE,HOWMANY,`
     M_,N_,d9,CALLER,vf19_MPOD,vf19_PYPOD,vf19_READ,dyrl_* -Scope Global
@@ -347,6 +369,7 @@ function varCleanup([switch]$c=$false){
         cleanGBIO  ## Don't leave eod files sitting around, it might interfere with python tools
         Remove-Variable -Force PROTOCULTURE,MAPPER,MONTY,MSXL,SHARK,SI,USR,vf19_*,dyrl_*,webrepo -Scope Global
         $env:PYTHONPATH = $env:PYTHONPATH -replace "([^;])+core\\macross_py;*"
+        varCleanup -t
     }
 }
 
@@ -369,7 +392,7 @@ function varCleanup([switch]$c=$false){
 function pyATTS(){
     $p = @(); $p2j = @{}
     foreach($k in $vf19_LATTS.keys){
-        $LAT = $vf19_LATTS[$k]
+        $LAT = $vf19_LATTS.$k
         $c = $LAT.access      ## The user's Tier level
         $n = $LAT.name        ## The common name
         $p = $LAT.priv        ## The required privilege level
@@ -435,7 +458,7 @@ function pyENV([switch]$c=$false){
             if( $vf19_ROBOTECH ){ $rt = 'T' }
             else{ $rt = 'F' }
             $logfile = "$vf19_LOG\$(Get-Date -format 'yyyy-MM-dd').log"
-            $env:MACROSS = "$vf19_TOOLSROOT;$vf19_DTOP;$vf19_TABLES;$logfile;$($N_[0]);$USR;$CALLER;$rt"
+            $env:MACROSS = "$vf19_TOOLSROOT;$vf19_DTOP;$vf19_RSRC;$logfile;$($N_[0]);$USR;$CALLER;$rt"
             if($PROTOCULTURE){ $env:PROTOCULTURE = $PROTOCULTURE }
         }
     }
@@ -557,13 +580,13 @@ function collab(){
         else{ py $mod $option }
     }
     
-    $mod = "$vf19_TOOLSDIR\$($vf19_LATTS[$module].fname)"
+    $mod = "$vf19_TOOLSDIR\$($vf19_LATTS.$module.fname)"
     $tpm = Test-Path -Path $mod
-    $dom = setUser "$($vf19_LATTS[$module].access)"
+    $dom = setUser "$($vf19_LATTS.$module.access)"
 
     if( ($dom -eq $vf19_GPOD.Item1) -and $tpm ){
         startUp
-        if($vf19_LATTS[$module].lang -eq 'python'){
+        if($vf19_LATTS.$module.lang -eq 'python'){
             pyENV
             pyTool
             pyENV -c
@@ -627,16 +650,16 @@ function availableTypes(){
     $list = @()
     $vf19_LATTS.keys | %{
         $k = $_
-        if($vf19_LATTS[$k].evalmax -gt 0 -and $vf19_LATTS[$k].lang -Like "$l*" `
-        -and $vf19_LATTS[$k].rtype -Match $r){
-            if($e -and $vf19_LATTS[$k].valtype -eq $v){
-                $list += "$($vf19_LATTS[$k].name)"
+        if($vf19_LATTS.$k.evalmax -gt 0 -and $vf19_LATTS.$k.lang -Like "$l*" `
+        -and $vf19_LATTS.$k.rtype -Match $r){
+            if($e -and $vf19_LATTS.$k.valtype -eq $v){
+                $list += "$($vf19_LATTS.$k.name)"
             }
             elseif(! $e){
                 $v = $v -replace ", ",','
                 $v -Split ',' | %{
-                    if($vf19_LATTS[$k].valtype -Like "*$_*"){
-                        $list += "$($vf19_LATTS[$k].name)"
+                    if($vf19_LATTS.$k.valtype -Like "*$_*"){
+                        $list += "$($vf19_LATTS.$k.name)"
                     }
                 }
             }
@@ -673,11 +696,10 @@ function availableTypes(){
 function availableMods($1){
     if( $($1).getType().Name -eq 'Int32' ){
 
-            #$tk = $($vf19_MODULENUM[$1])
             $tk = $vf19_LATTS.keys | ?{$vf19_LATTS[$_].pos -eq $1}
-            $MODULE = "$vf19_TOOLSDIR\$($vf19_LATTS[$tk].fname)"
+            $MODULE = "$vf19_TOOLSDIR\$($vf19_LATTS.$tk.fname)"
             $MODCHK = Test-Path $MODULE -PathType Leaf
-            $LAUNCH = setUser "$($vf19_LATTS[$tk].access)"
+            $LAUNCH = setUser "$($vf19_LATTS.$tk.access)"
             
             if( $MODCHK -and ($LAUNCH -eq $vf19_GPOD.Item1) ){
                 startUp; if( $vf19_VERSIONING ){
@@ -689,7 +711,7 @@ function availableMods($1){
 
                 
                 # Launch python scripts; check if new window is needed (WILL NOT SHARE CORE MACROSS FUNCTIONS!)
-                if( "$($vf19_LATTS[$tk].lang)" -eq 'python' ){
+                if( "$($vf19_LATTS.$tk.lang)" -eq 'python' ){
                     cls; pyENV
                     if($vf19_NEWWINDOW){
                         $MODULE = $($MODULE -replace "\\\\",'\') ## I don't know why extra slashes get added sometimes
