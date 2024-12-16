@@ -12,7 +12,6 @@
 import base64 as b64
 import array as arr
 from datetime import datetime as dt
-from subprocess import run as srun
 from os import chdir,path,getenv,environ
 from os import system as osys
 from os import popen as osop
@@ -23,6 +22,7 @@ from time import sleep as ts
 from tkinter import Tk
 from tkinter.filedialog import askopenfilename as aof
 import math
+import socket
 from re import search,sub
 
 
@@ -48,11 +48,11 @@ else:
     HELP = False
 
 if getenv('MACROSS'):
-    global USR,GBIO,TABLES,DTOP,TOOLSROOT,TOOLSDIR,LOGS,M_,N_,ROBOTECH
+    global USR,GBIO,RSRC,DTOP,TOOLSROOT,TOOLSDIR,LOGS,M_,N_,ROBOTECH
     M = getenv('MACROSS').split(';')
     TOOLSROOT = M[0]
     DTOP = M[1]
-    TABLES = M[2]
+    RSRC = M[2]
     LOG = M[3]
     N_ = [int(M[4])]
     n_ = [int(d) for d in str(M[4])]
@@ -65,8 +65,7 @@ if getenv('MACROSS'):
         ROBOTECH = True
     GBIO = TOOLSROOT + '\\\\core\\\\macross_py\\\\garbage_io'
     TOOLSDIR = TOOLSROOT + '\\\\modules'
-    environ['MACROSS'] = getenv('MACROSS')
-    
+
 if getenv('MPOD'):
     global MPOD; MPOD = {}
     for missile in getenv('MPOD').split(';'):
@@ -74,12 +73,11 @@ if getenv('MPOD'):
         fuel = missile.split(':')[1]
         MPOD[payload] = fuel
     del missile,payload,fuel
-    environ['MPOD'] = getenv('MPOD')
 
 
-## Enable colorized terminal
+## Enable colorized terminal in Windows
 osys('color')
-tcolo = {
+fcolo = {
 'g':'\033[92m',
 'c':'\033[96m',
 'm':'\033[95m',
@@ -88,7 +86,18 @@ tcolo = {
 'r':'\033[91m',
 'bl':'\033[30m',
 'ul':'\033[4m',
-'rs':'\033[0m'
+'w':'\033[97m',
+'rs':'\033[0m'      ## Reset formatting to default
+}
+bcolo = {
+'bl':'\033[40m',
+'r':'\033[101m',
+'g':'\033[102m',
+'y':'\033[103m',
+'b':'\033[104m',
+'m':'\033[105m',
+'c':'\033[106m',
+'w':'\033[107m'
 }
 
 
@@ -138,8 +147,8 @@ def help():
  resource_folder = valkyrie.getThis(valkyrie.MPOD['enr'])
 
  Note that some valkyrie functions operate differently than their powershell
- counterparts! For example, unlike the powershell collab function, valkyrie.collab
- does not write to vf19_READ, it just returns your results.
+ counterparts! For example, unlike the powershell getThis function, 
+ valkyrie.getThis() does not write to vf19_READ, it just returns your results.
 
  Additionally, to aid in sharing query results back and forth between powershell
  and python, the valkyrie folder contains a subfolder called 'garbage_io'. MACROSS
@@ -160,35 +169,41 @@ def help():
  ''')
 
 ## Alias to write colorized text to screen
-def w(TEXT,C1 = 'rs',C2 = None,i = False):
-    ''' Pass this function your text/string as arg 1 and the first letter of the
- color you want ("bl" for black). You can pass "ul" as a second option to
- underline the text. Set i to True to write the next line of your text on the
- same line as the last.
+def w(TEXT,C1='rs',C2=None,i=False,u=False):
+    ''' Pass this function your text/string as arg 1, and the first letter of the
+ color you want as arg2 ("bl" for black). Send a second color to highlight 
+ the text.
+ 
+ Setting u=True will underline the text. Setting i=True for "inline" will write 
+ the next block of text on the same line as the last.
 
  Colors: (c)yan, (g)reen, (y)ellow, (r)ed, (m)agenta, (bl)ack, (b)lue
- (default is white)
+ (default is (w)hite)
 
- Usage:
+ USAGE:
 
  For green text underlined:
-    valkyrie.w(text,'g','ul')
+    valkyrie.w(text,'g',u=True)
 
- For yellow text followed by white text on the same line:
+ For yellow text followed by white text highlighted in red on the same line:
     valkyrie.w(text,'y',i=True)
-    valkyrie.w(text,'w')
+    valkyrie.w(text,'w','r')
 
     '''
+    lead = fcolo[C1]
+    tail = fcolo['rs']
+    if u:
+        lead = fcolo['ul'] + lead
     if i == True:
         if C2 != None:
-            print(tcolo[C1] + tcolo[C2] + TEXT + tcolo['rs'],end="")
+            print(lead + bcolo[C2] + TEXT + tail,end="")
         else:
-            print(tcolo[C1] + TEXT + tcolo['rs'],end="")
+            print(lead + TEXT + tail,end="")
     else:
         if C2 != None:
-            print(tcolo[C1] + tcolo[C2] + TEXT + tcolo['rs'])
+            print(lead + bcolo[C2] + TEXT + tail)
         else:
-            print(tcolo[C1] + TEXT + tcolo['rs'])
+            print(lead + TEXT + tail)
 
 ## Sleep function for pausing scripts when needed
 def slp(s):
@@ -200,38 +215,69 @@ def slp(s):
     ts(s)
 
 ## Write MACROSS message logs
-def errLog(msg,field1=None,field2=None):
+def errLog(forward=False,*fields):
     ''' You can use this to write messages to MACROSS' log files. Timestamps are
- automatically added. Message fields get written in the order they are passed (at 
- least one arg is required, but up to three are accepted).
+ automatically added. The first arg *must* be True or False to tell the function
+ whether or not to forward your log message to an external log collector (this
+ requires that you define the url of the log collector in MACROSS' $vf19_MPOD
+ list as 'elc'). If you forward logs, the timestamp will be converted to UTC.
+ 
+ Message fields get written in the order they are passed.
 
  USAGE:
+    Create a local log with no forwarding:
+    valkyrie.errLog(False,"A single-field log message")
 
-    valkyrie.errLog("A single-field log message")
-    valkyrie.errLog("ERROR","The quick brown fox","jumped over the lazy dog")
+    Create a local log and forward it to a log collector:
+    valkyrie.errLog(True,"ERROR","The quick brown fox","jumped over the lazy dog")
 
     '''
-    write = dt.now().strftime('%Y-%m-%d %H:%M:%S') + "\t" + msg
-    if field2 != None:
-        write = write + "\t" + field1 + "\t" + field2
-    elif field1 != None:
-        write = write + "\t" + field1
-    with open(LOG,'a') as L:
-        L.write(str(write) + "\n")
-    L.close()
 
-## Call this function with a filepath (d) to delete a file
+    ## If logging is enabled, there should already be a logfile present;
+    ## otherwise logging will be ignored
+    if drfl(LOG,'file'):
+        df = dt.now().strftime("%Y-%m-%d")
+        F = ''
+        fd = 'Get-Date -f "yyyy/MM/dd` hh:mm:ss:ms"'
+        UT = psc(cr='powershell.exe -command "(Get-Date).toUniversalTime()|"'+fd).rstrip()
+        LT = str(dt.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+        if fields:
+            for field in fields:
+                F = F + f"{field}\t"
+
+        F = F.rstrip()
+        ewrite = str(getThis(f"{LT}\t{F}",2))
+
+        with open(LOG,'a') as L:
+            L.write(str(f"{ewrite}\n"))
+        L.close()
+
+        if forward and MPOD['elc']:
+            logserver = getThis(MPOD['elc'])
+            s = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+            s.sendto(f"{UT}\t{F}",(logserver,514))
+            s.close()
+
+
 def dS(d):
-    ''' Delete files. Usage:\n dS(path_to_file)'''
+    ''' Delete files.
+ USAGE:\n\tvalkyrie.dS(path_to_file)'''
     confirm = input('''
     Are you sure you want to delete''',d)
     if search("^y",confirm):
         osrm(d)
 
-## Regex is your friend
-## Since I needed to import re anyway, might as well make it available to other scripts.
-## Pass in a replacement string as a third arg to do basic string edits
+
 def rgx(pattern,string,replace = None):
+    ''' Perform pattern matching/replacement (re.search and re.sub)
+ USAGE:
+    Search a string:
+    valkyrie.rgx(pattern,string)
+
+    Replace a string:
+    valkyrie.rgx(pattern,string,replace)
+ '''
     if replace == None:
         r = search(pattern,string)
     else:
@@ -246,25 +292,27 @@ def rgx(pattern,string,replace = None):
 ##  If you need to collect values from the script, or from a quick command like "hostname" or 
 ##  "ping", call valkyrie.psc() with an empty value as the first arg, and your command as the second:
 
-##          var = valkyrie.psc('','ping 192.168.1.1')
+##          var = valkyrie.psc(cr='ping 192.168.1.1')
 
 ##  Feel free to modify this however you need; you might even need to import the entire os library--
 ##  everyone has different use-cases, especially with python-based APIs! Just make sure to enact your
 ##  changes across ALL of the MACROSS functions and scripts!
-def psc(c,cc = None):
-    """ The psc function performs os.system() commands that you pass in. If
- you pass your command as the *second* arg, the ouput\nwill be read
- using os.read(). Usage:
+def psc(cc=None,cr=None):
+    """ The psc function uses os.system() to execute any Windows commands 
+ that you might require. Send your arg as "cc" to simply execute a
+ task; use "cr" instead if you need to save the result from the task.
+ 
+ USAGE:
 
-    valkyrie.psc('powershell.exe "filepath\\myscript.ps1" "argument 1"')
-    ^^ Will launch your powershell script with args
+    valkyrie.psc(cc='powershell.exe "filepath\\myscript.ps1" "argument 1"')
+    ^^ Will launch a powershell script with args, but not save any outputs
     
-    valkyrie.psc('','powershell.exe "filepath\\myscript.ps1" "argument 1"')
-    ^^ Will return the results of your powershell script as usable strings"""
-    if cc == None:
-        osys(c)
-    else:
-        TASK = osop(cc)
+    result = valkyrie.psc(cr='powershell.exe "get-aduser -filter *"')
+    ^^ Will return your AD enumeration as a usable object"""
+    if cc:
+        osys(cc)
+    if cr:
+        TASK = osop(cr)
         return TASK.read()
 
 
@@ -286,18 +334,6 @@ def drfl(check,method = 'e'):
         a = path.exists(check)
 
     return a
-
-
-## This function is just subprocess.run(p)
-## For when the os lib doesn't have what you need
-def psp(p):
-    """ The psp function is simply 'subprocess.run' made readily available 
- to MACROSS python scripts. Usage:
-
-    valkyrie.psp('powershell.exe "filepath\\myscript.ps1" "argument 1"')
-    ^^ Will launch your powershell script with args
-    """
-    srun(p)
 
 
 def availableTypes(val,la=".*",ea=".*",ra=".*",exact=False):
@@ -399,6 +435,11 @@ def collab(Tool,Caller,Protoculture,ap = None):
     empty = 'WAITING'
     proto = {Caller:{'target':Protoculture,'result':empty}}
 
+    if getenv('MPOD'):
+        environ['MPOD'] = getenv('MPOD')
+    if getenv('MACROSS'):
+        environ['MACROSS'] = getenv('MACROSS')
+
     with open(protofile, 'w') as outf: 
         outf.write(dumps(proto))
             
@@ -407,7 +448,7 @@ def collab(Tool,Caller,Protoculture,ap = None):
     call = 'powershell.exe ' + fullpath + ' -pythonsrc ' + Caller
     if ap != None:
         call = ap + '~' + call
-    psc(call)
+    psc(cc=call)
 
     with open(protofile) as r:
         res = load(r)
@@ -481,7 +522,7 @@ write the closing row boundary.'''
         ## Write text to a block without newlines
         def csep(text,tc=None):
             if tc != None:
-                print(tcolo[tc] + text + tcolo['rs'], end = ' ')
+                print(fcolo[tc] + text + fcolo['rs'], end = ' ')
             else:
                 print(text, end = ' ')
 
@@ -730,9 +771,9 @@ write the closing row boundary.'''
             
 
 
-def getThis(d,e = 0,ee = 'utf8'):
+def getThis(v,e = 0,ee = 'utf8'):
     """ This is the same as MACROSS' powershell function 'getThis'. Your
- first argument is the encoded string you want to decode, and your
+ first argument is the encoded string you want to de/encode, and your
  second arg will be:
 
     (0) if decoding base64 (default action), or
@@ -741,7 +782,7 @@ def getThis(d,e = 0,ee = 'utf8'):
     (3) if encoding to hexadecimal.
 
  Unlike the powershell function, this function does NOT write to
-"vf19_READ", it just returns your decoded plaintext.
+"vf19_READ", it just returns your processed string.
 
  You can pass an optional 3rd arg to specify the out-encoding (ascii,
  ANSI, etc, default is UTF-8).
@@ -749,24 +790,24 @@ def getThis(d,e = 0,ee = 'utf8'):
  Usage:
     PLAINTEXTASCII = valkyrie.getThis(base64string,0,'ascii')
     PLAINTEXT = valkyrie.getThis(hexstring,1)
-    HEX = valkyrie.getThis('plaintext',1)
-    BASE64 = valkyrie.getThis('plaintext',0)
+    HEX = valkyrie.getThis('plaintext',3)
+    BASE64 = valkyrie.getThis('plaintext',2)
 
     """
     if e == 0:
-        newval = b64.b64decode(d)
+        newval = b64.b64decode(v)
         newval = newval.decode(ee)
     elif e == 1:
-        if search('0x',d):
-            d = sub('0x','',d)
-        if search(' ',d):
-            d = sub(' ','',d)
-        newval = bytes.fromhex(d).decode(ee)
+        if search('0x',v):
+            v = sub('0x','',v)
+        if search(' ',v):
+            v = sub(' ','',v)
+        newval = bytes.fromhex(v).decode(ee)
     elif e == 2:
-        newval = b64.b64encode(d)
+        newval = str(b64.b64encode(v.encode()).decode())
     elif e == 3:
         newval = ''
-        for b in d:
+        for b in v:
             hb = '0x' + "{0:02x}".format(ord(b))
             newval = newval + hb
         
