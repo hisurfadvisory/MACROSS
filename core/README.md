@@ -51,7 +51,7 @@ When your script extracts or identifies a value to focus on, set it as the <u>gl
 
 When the global $PROTOCULTURE has been set, there are two key utilities that will pull your scripts together: availableTypes() and collab().<br>
 
-availableTypes() is used to generate a list of scripts relevant to your task. It accepts several arguments that let you filter based on the #_class field 3 (.valtype) value mentioned above, as well as language, response type, and how many inputs a script accepts. In reference to my commonality suggestion above, availableTypes can filter based on <u>exact</u> matches, or just partial matches. If you want all the scripts that access AD, you can get them; if you just want the script that locks or unlocks accounts, you can do that too.
+availableTypes() is used to generate a list of scripts relevant to your task. It accepts several arguments that let you filter based on the #_class field 3 value mentioned above (.valtype), as well as language, response type, and how many inputs a script accepts. In reference to my commonality suggestion above, availableTypes can filter based on <u>exact</u> matches, or just partial matches. If you want all the scripts that access AD, you can get them; if you just want the script that locks or unlocks accounts, you can do that too.
 
 Once you have this list, you can iterate each script with the collab function, which handles generating all necessary background resources and passing your investigation values to each script.<br><br>
 
