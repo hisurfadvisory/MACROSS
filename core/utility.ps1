@@ -2,13 +2,13 @@
 
 ## These values can only be set after all initializations have finished
 function finalSet(){   
-    getThis $vf19_MPOD['enr']
-    battroid -n vf19_TABLES -v $vf19_READ
-    getThis $vf19_MPOD['log']
+    getThis $vf19_MPOD.enr
+    battroid -n vf19_RSRC -v $vf19_READ
+    getThis $vf19_MPOD.log
     battroid -n vf19_LOG -v $vf19_READ
-    getThis $vf19_MPOD['rep']
+    getThis $vf19_MPOD.rep
     battroid -n vf19_REPOCORE -v $vf19_READ
-    if(Test-Path $vf19_REPOCORE){
+    if($vf19_REPOCORE -ne 'n'){
         ## If you want to control tier-level access, change the $vf19_REPOCORE location and store  
         ## master copies of your tools there. That way, MACROSS will be able to auto-download tier- 
         ## appropriate tools to each analyst. You can use the configuration wizard to store the
@@ -17,8 +17,31 @@ function finalSet(){
 
         ##     getThis $vf19_MPOD[your_key]; battroid -n vf19_REPOTOOLS -v $vf19_READ
 
-        battroid -n vf19_REPOTOOLS -v "$vf19_REPOCORE\modules"
-        $Global:vf19_VERSIONING = $true
+        ## Enable or disabled live updating
+        function fs_([switch]$e=$false,$d='\'){
+            if($e){
+                errLog ERROR "$USR/MACROSS(finalSet)" "Main repository $vf19_REPOCORE was unreachable; updates disabled"
+            }
+            else{
+                battroid -n vf19_REPOTOOLS -v ("$vf19_REPOCORE$d"+'modules')
+                $Global:vf19_VERSIONING = $true
+            }
+        }
+
+        if( $vf19_REPOCORE -Like "http*" ){
+            if(! $vf19_ATTS){
+                try{ 
+                    $g = [net.Webrequest]::Create($vf19_REPOCORE).getResponse()
+                    if($g.statusCode -eq 200){ fs_ '/' }else{ fs_ -e }
+                    $g.close()
+                }
+                catch{ fs_ -e }
+            }
+        }
+        else{
+            if(Test-Path $vf19_REPOCORE){ fs_ }
+            else{ fs_ -e }
+        }
     }
 }
 
@@ -43,7 +66,7 @@ function debugMacross($1,[switch]$continue=$true){
         w '                        MACROSS DEBUG MODE
         ' y
     }
-    macrossHelp 'show'
+    macrossHelp show
     ''
     #getThis -h $(setCC -b); getThis $vf19_READ; $rst = [regex]$vf19_READ
     $rst = $(setCC -b); getThis IFRoYXQgaXMgYSBwcml2aWxlZ2VkIGNvbW1hbmQu; $bm = $vf19_READ
@@ -51,8 +74,8 @@ function debugMacross($1,[switch]$continue=$true){
     if($1){
         if($1 -Match $rst -and ! $ad){w "$bm`n`n" 'r' 'bl'; $ad = setConfig -a}
         if(($ad -eq $vf19_GPOD.Item1) -or ($1 -notMatch $rst)){
-            startUp;if($1 -eq 'help'){macrossHelp 'dev';macrossHelp 'show'}
-            elseif($1 -Like "help *"){macrossHelp $($1 -replace "help ");macrossHelp 'show'}
+            startUp;if($1 -eq 'help'){macrossHelp dev;macrossHelp show}
+            elseif($1 -Like "help *"){macrossHelp $($1 -replace "help ");macrossHelp show}
             else{$1=$1 -replace "^debug ";$cmd = [scriptblock]::Create("$1");. $cmd};varCleanup
         }
     
@@ -109,47 +132,90 @@ function debugMacross($1,[switch]$continue=$true){
             }
         }
         else{
-            $la = @()
+            $la = New-Object System.Collections.ArrayList
             $lc = $((Get-ChildItem $vf19_LOG).count)
             (Get-ChildItem $vf19_LOG).Name | Sort -Descending | %{
-                $la += $_
+                $la.Add($_)
             }
             splashPage
             ''
             while( $z -ne 'q' ){
-                $ln = 1
-                $la | %{
-                    screenResults "$ln" "$($la[$ln-1])"
-                    $ln++
+                $ln = 1; $row = 0
+                Foreach($lf in $la){
+                    $row++
+                    if($ln -ge 100){$index = "$ln`. "}
+                    elseif($ln -lt 100 -and $ln -ge 10){$index = " $ln`. "}
+                    elseif($ln -lt 10){$index = "  $ln`. "}
+                    w $index y -i
+                    if($row -eq 1){$row++; $ln++; w "$lf" -u -i}
+                    elseif($row -eq 2){$row = 0; $ln++; w "$lf" -u}
                 }
+                ''
                 screenResults "y~    ($lc logs)             SELECT A FILE # ABOVE (`"q`" to quit):"
                 screenResults -e
                 w ' Log file >  ' g -i
                 $z = Read-Host
 
                 if($la[$z-1]){
-                    $mi=1
+                    $logmsgs = New-Object System.Collections.ArrayList
                     foreach($msg in (Get-Content "$vf19_LOG\$($la[$z-1])")){
-                        $msg = $msg -Split "`t"
-                        if($msg[1] -eq 'ERROR'){
-                            $level = "r~MSG $mi`: " + "$($msg[1])"
-                        }
-                        else{
-                            $level = "MSG $mi`: $($msg[1])"
-                        }
-                        screenResults $("$level  $($msg[0])")
-                        if($msg[3]){
-                            screenResults "w~$($msg[2])" "$($msg[3])"
-                        }
-                        elseif($msg[2]){
-                            screenResults "w~$($msg[2])"
-                        }
-                        $mi++
+                        getThis $msg
+                        $logmsgs.Add($vf19_READ) > $null
                     }
-                    screenResults -e
+
+                    Add-Type -AssemblyName System.Windows.Forms
+                    [System.Windows.Forms.Application]::EnableVisualStyles()
+                    $viewer = New-Object System.Windows.Forms.Form
+                    $viewer.Size = New-Object System.Drawing.Size(1100,650)
+                    $viewer.StartPosition = "CenterScreen"
+                    $viewer.Font = [System.Drawing.Font]::New("Tahoma",10.5)
+                    $viewer.Text = "MACROSS log viewer"
+                    $viewer.ForeColor = 'YELLOW'
+                    $viewer.BackColor = 'BLACK'
+
+                    $thislog = New-Object System.Windows.Forms.Label
+                    $thislog.Location = New-Object System.Drawing.Point(10,8)
+                    $thislog.Size = New-Object System.Drawing.Size(700,20)
+                    $thislog.Font = [System.Drawing.Font]::New("Tahoma",10)
+                    $thislog.Text = "Viewing log $lf"
+                    $viewer.Controls.Add($thislog)
+
+                    $msgpane = New-Object System.Windows.Forms.TextBox
+                    $us=chr 175;$ul="$us";1..63 | %{$ul="$ul"+"$us"}
+                    $msgpane.MultiLine = $true
+                    $msgpane.Scrollbars = 'Vertical'
+                    $msgpane.Font = [System.Drawing.Font]::New("Consolas", 10)
+                    $msgpane.ForeColor = 'WHITE'
+                    $msgpane.BackColor = 'GRAY'
+                    $msgpane.Text = "LOCAL TIME`t`tLEVEL`tLOG SOURCE`t`tMESSAGE(S)"+[System.Environment]::NewLine
+                    $msgpane.AppendText($ul+[System.Environment]::NewLine)
+                    $msgpane.Location = New-Object System.Drawing.Point(10,30)
+                    $msgpane.Size = New-Object System.Drawing.Size(1050,510)
+                    $viewer.Controls.Add($msgpane)
+
+                    $logmsgs | %{ ($msgpane.AppendText("$_"+[System.Environment]::NewLine)) }
+
+                    $fin = New-Object System.Windows.Forms.Button
+                    $fin.Location = New-Object System.Drawing.Point(490,555)
+                    $fin.Size = New-Object System.Drawing.Size(150,30)
+                    $fin.Text = "EXIT"
+                    $fin.Enabled = $true
+                    $fin.DialogResult = [System.Windows.Forms.DialogResult]::OK
+                    $viewer.Controls.Add($fin)
+                    $viewer.AcceptButton = $fin
+
+                    $fin.Add_Click({
+                        $thislog = $null
+                        $logmsgs = $null
+                    })
+
+                    $viewer.TopMost = $true
+                    $logswindow = $viewer.ShowDialog()
+                    
+                    
                     ''
-                    Write-Host -f GREEN '  Hit ENTER to continue.
-                    '
+                    w '  Hit ENTER to continue.
+                    ' g
                     Read-Host
                 }
             }
@@ -375,7 +441,9 @@ function errLog(){
     <#
     ||longhelp||
 
-    errLog [message] [optional message field 1] [optional message field 2]
+    errLog [message] [optional message field 1] [optional message field 2] [forwarding]
+
+    This function only acts if you've set a logging location in the MACROSS config.
 
     Have your scripts write to MACROSS logs for troubleshooting/auditing. The default location
     is $vf19_LOG, wherever you've specified that location to be. The current timestamp automatically
@@ -386,32 +454,64 @@ function errLog(){
     
     ||examples||
 
-    errLog 'WARN' "$SCRIPT failed to perform $TASK"
-    errLog 'INFO' $USR 'Accessed API for blah.'
+    Write local logs with 2 or 3 fields:
+        errLog WARN "$SCRIPT failed to perform $TASK"
+        errLog INFO $USR 'Accessed API for blah.'
+
+    Write a local log *and* forward it to a log collector:
+        errLog -f INFO $USR 'Your log message'
 
     #>
     Param(
-        [Parameter(Mandatory=$true)]
-        $1,
-        $2,
-        $3
+        [Parameter(Mandatory=$true)]$level,
+        [Parameter(Mandatory=$false)]$message,
+        [Parameter(Mandatory=$false)]$msgplus,
+        [switch]$forward=$false
     )
     
-
+    
     ## By default, the logs directory is set to your local MACROSS/resources/logs
     ## folder. You should change this to an alternate location if you don't want
-    ## all users to see these logs. (It is set with $vf19_MPOD['log'], which gets
-    ## set in the "temp_config.txt" file.)
-    
-    $d = $(Get-Date -Format 'yyyy-MM-dd')
-    $t = $(Get-Date -Format 'yyyy-MM-dd hh:mm:ss')
-    [string]$log = $($d) + '.log'                 ## Create the log filename
-    [string]$msg = "$t"                           ## Begin the log msg with the timestamp
+    ## all users to see these logs. (It is stored in $vf19_MPOD['log'], which gets
+    ## set by you in the configuration wizard.)
+    if(Test-Path -Path "$vf19_LOG"){
+        $t = "$(Get-Date -Format 'yyyy-MM-dd hh:mm:ss:ms')"
+        $u = "$((Get-Date).toUniversalTime() | Get-Date -Format 'yyyy-MM-dd hh:mm:ss:ms')"
+        [string]$log = "$(Get-Date -Format 'yyyy-MM-dd')" + '.log'  ## Create the log filename
+        $msg = "MACROSS ($env:COMPUTERNAME)"
+        $d = "`t"                                                   ## Delimiter
 
-    if($3){ $msg = $msg + "`t" +$1 + "`t" + $2 + "`t" + $3 }
-    elseif($2){ $msg = $msg + "`t" +$1 + "`t" + $2 }
-    else{ $msg = $msg + "`t" +$1 }
-    $msg | Out-File "$vf19_LOG\$log" -Append
+        if($msgplus){ $msg = "$msg$d$level$d$message$d$msgplus" }
+        elseif($message){ $msg = "$msg$d$level$d$message" }
+        else{ $msg = "$msg$d$level" }
+        $(getThis -e "$t$d$msg") | Out-File "$vf19_LOG\$log" -Append
+        if($forward){
+            getThis $vf19_MPOD.elc; $addr = ($vf19_READ -Split ':')[0]; $port = ($vf19_READ -Split ':')[1]
+            ## MOD SECTION ##
+            # If you have dig, use that to do hostname lookups below; otherwise you may need to adjust the
+            # "Select -Index" number depending on your nameserver's responses. The alternative *easy* way
+            # is to just specify an IP address when using the configuration wizard (but IPs can change,
+            # which is why I wrote this to accept hostnames or IPs).
+            if($addr -Match "[a-z]"){$addr = $((nslookup $addr | Select -Index 4) -replace "Address\W+")}
+            if($addr){
+                $syslog_server = [System.Net.IPAddress]::Parse($addr) 
+                $local = New-Object System.Net.IPEndPoint $syslog_server,$port 
+
+                $set1 = [System.Net.Sockets.AddressFamily]::InterNetwork 
+                $set2 = [System.Net.Sockets.SocketType]::Dgram 
+                $proto = [System.Net.Sockets.ProtocolType]::UDP 
+                $socket = New-Object System.Net.Sockets.Socket $set1, $set2, $proto 
+                $socket.TTL = 26 
+                $socket.Connect($local) 
+
+                $encoding = [System.Text.Encoding]::UTF8
+                ## Forwarded logs will be timestamped in UTC
+                $tosend = $encoding.GetBytes("$u$d$msg")
+                $fwd = $socket.Send($tosend)
+                $socket.close()
+            }
+        }
+    }
 
 }
 
@@ -421,7 +521,7 @@ function restoreMacross(){
     $Global:ErrorActionPreference = 'SilentlyContinue'
     $v = $env:MACROSS -Split ';'
     $Global:vf19_TOOLSROOT = "$((pwd).path)"; $Global:vf19_TOOLSDIR = "$vf19_TOOLSROOT\modules"
-    $Global:USR = $v[6]; $Global:vf19_DTOP = $v[2]; $Global:vf19_TABLES = $v[3]; $Global:vf19_LOGS = $v[4]
+    $Global:USR = $v[6]; $Global:vf19_DTOP = $v[2]; $Global:vf19_RSRC = $v[3]; $Global:vf19_LOGS = $v[4]
     $Global:N_ = $v[5]
     $Global:vf19_PYG = @("core\macross_py\garbage_io","core\macross_py\garbage_io\PROTOCULTURE.eod")
     $Global:PROTOCULTURE = (gc "$($vf19_PYG[1])" | ConvertFrom-Json).$CALLER.target; $Global:vf19_MPOD = @{}
@@ -531,8 +631,9 @@ function pyCross(){
         $filenm = "$($vf19_PYG[0])\$filenm" + '.eod'  ## Append custom extension
         w2f $result $filenm
         if(-not(Test-Path -Path "$($vf19_PYG[0])\$filenm")){
-            errLog 'ERROR' "$USR/$caller" "Failed pyCross write-to $filenm"
-            w "ERROR! $filenm did not write! " -f r -b bl
+            $em = "Failed write to $filenm for $caller_"
+            errLog ERROR "$USR/MACROSS(pyCross)" $em
+            w "ERROR! $em " -f r -b bl
             slp 3
         }
     }
@@ -547,7 +648,7 @@ function pyCross(){
         }
     }
     else{ 
-        errLog 'ERROR' $caller/$USR 'Attempted to write to non-existent PROTOCULTURE.eod file' 
+        errLog ERROR "$USR/MACROSS(pyCross)" "Attempted to write to non-existent PROTOCULTURE.eod file while launching $caller_"
     }
 }
 
@@ -569,46 +670,50 @@ function TL($1){
     
     #>
     if($1){
-        Return $($vf19_LATTS[$1].toolInfo())
+        Return $($vf19_LATTS.$1.toolInfo())
     }
     else{
-        $vf19_LATTS.keys | %{$vf19_LATTS[$_].toolInfo()}
+        $vf19_LATTS.keys | %{$vf19_LATTS.$_.toolInfo()}
     }
 }
 
 
 
-function stringz($f=$(getFile),$noKeep=0){
+function stringz($f=$(getFile),[switch]$save=$false){
     <#
     ||longhelp||
     For those deployments when "strings" isn't a default Windows utility.
     
-    Send a filepath, or let the function open a dialog for you. Send 1 as 
-    parameter $2 if you don't want to keep the outputs.
+    Send a filepath, or let the function open a dialog for you. Send -s 
+    if you want to keep the outputs.
     
     ||examples||
-    Dump strings from an executable to your desktop:
+    Dump strings from an executable to your screen:
     
         stringz <filepath>
         
-    Do the same, but write outputs to screen without saving to file:
+    Do the same, but write outputs to file on your desktop:
     
-        strings <filepath> 1
+        strings <filepath> -s
     
     #>
     if($f -ne ''){
         Get-Content $f | %{
             if( !($_ -cMatch "[^\x00-\x7F]")){
                 $n++
-                Write-Host "  Extracting line $n to macross-stringz.txt..."
-                $_ | Out-File "$vf19_DTOP\macross-stringz.txt" -Append
+                if( $save ){
+                    Write-Host "  Extracting line $n to macross-stringz.txt..."
+                    "$_" | Out-File "$vf19_DTOP\macross-stringz.txt" -Append
+                }
+                else{ w " $_" }
             }
         }
     }
-    Get-Content "$vf19_DTOP\macross-stringz.txt"
-    if( $noKeep -eq 0){
-        Remove-Item -Path "$vf19_DTOP\macross-stringz.txt"
+    
+    if( $save ){
+        Get-Content "$vf19_DTOP\macross-stringz.txt"
     }
+    w " Hit ENTER to exit." g; Read-Host
 }
 
 
@@ -1088,7 +1193,7 @@ function houseKeeping(){
             Write-Host -f CYAN '
             ...Delete action failed!
             '
-            errLog 'ERROR' "$USR failed to delete $($_.Name) for $2 (houseKeeping)"
+            errLog INFO "$USR/MACROSS(houseKeeping)" "Failed to delete $($_.Name) for $2"
         }
         else{
             $Script:fcount = $fcount - 1
@@ -1115,7 +1220,7 @@ function houseKeeping(){
                     $dn = $_.Name
                     Write-Host -f CYAN "  Deleting $dn...."
                     rmFiles $dn
-                    errLog 'INFO' "$USR deleted $($_.Name) for $2 (houseKeeping)"
+                    errLog INFO "$USR/MACROSS(houseKeeping)" "Deleted $($_.Name) for $2"
                     slp 1
                 }
         }
@@ -1129,7 +1234,7 @@ function houseKeeping(){
                         $dn = $_.Name
                         Write-Host -f CYAN "  Deleting $dn...."
                         rmFiles $dn
-                        errLog 'INFO' "$USR deleted $($_.Name) for $2 (houseKeeping)"
+                        errLog INFO "$USR/MACROSS(houseKeeping)" "Deleted $($_.Name) for $2"
                         slp 1 
                     }
             }
