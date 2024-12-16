@@ -25,6 +25,6 @@ while True:
     else:
         try:
             exec(Z)
-        except:
-            vk.w('  Could not execute that command!','c')
+        except Exception as e:
+            print(e)
 
