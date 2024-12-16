@@ -70,7 +70,8 @@ if( $pythonsrc ){
     ## scripts to accept a value in addition to (or instead of) $PROTOCULTURE, if necessary.
 }
 
-
+## Set EDR access if one exists
+$EDR = @(availabletypes -v edr -e)[0]
 
 ## ASCII art for launching the script
 function splashPage($1){
@@ -843,56 +844,51 @@ function fileCopy(){
     if( $dyrl_eli_nocopy ){
         
         while( ! $probe ){
-            $vf19_LATTS.keys | %{
-                if($vf19_LATTS[$_].valType -eq 'EDR'){
-                    $dyrl_eli_EDR = $vf19_LATTS[$_].name
-                    #$edr = $vf19_LATTS[$_].name
-                    ''
-                    Write-Host -f GREEN " Select a file # to research in $dyrl_eli_EDR, or Hit ENTER to continue: " -NoNewline;
-                    $mz = Read-Host
+            if($EDR){
+                ''
+                w " Select a file # to research in $edr, or Hit ENTER to continue: " -i g
+                $mz = Read-Host
 
-                    if($mz -Match "^\d+$"){
-                        if( $dyrl_eli_SENSOR2[$mz] ){
-                            $probe = $dyrl_eli_SENSOR2[$mz] -replace "^.*\\"
+                if($mz -Match "^\d+$"){
+                    if( $dyrl_eli_SENSOR2[$mz] ){
+                        $probe = $dyrl_eli_SENSOR2[$mz] -replace "^.*\\"
                             
-                            ## Don't lose the original caller & protoculture, if any
-                            if( $CALLER ){
-                                $dyrl_eli_callerhold = $CALLER
-                            }
-                            if($PROTOCULTURE){
-                                $dyrl_eli_holdPROTO = $PROTOCULTURE
-                            }
-                            $Global:PROTOCULTURE = $probe
-                            collab $dyrl_eli_EDR 'ELINTS' ## EDR script will read ELINTS' .valtype to know what $PROTOCULTURE is
-                            Write-Host '
-                            '
-                            while($mz -notMatch "^[yn]"){
-                                Write-Host -f GREEN " Do you want to search $dyrl_eli_EDR for another file? " -NoNewline;
-                                $mz = Read-Host
-                            }
-                            if( $mz -Match "^y" ){
-                                Clear-Variable -Force mz,probe
-                                fileCopy
-                            }
-                            else{
-                                ## Reinstate the original values
-                                if($dyrl_eli_callerhold){
-                                    $Global:CALLER = $dyrl_eli_callerhold
-                                }
-                                if($dyrl_eli_holdPROTO){
-                                    $Global:PROTOCULTURE = $dyrl_eli_holdPROTO
-                                }
-                            }
-                            Remove-Variable edr,dyrl_eli_EDR
+                        ## Don't lose the original caller & protoculture, if any
+                        if( $CALLER ){
+                            $dyrl_eli_callerhold = $CALLER
+                        }
+                        if($PROTOCULTURE){
+                            $dyrl_eli_holdPROTO = $PROTOCULTURE
+                        }
+                        $Global:PROTOCULTURE = $probe
+                        collab $dyrl_eli_EDR ELINTS ## EDR script will read ELINTS' .valtype to know what $PROTOCULTURE is
+                        w "`n"
+                        while($mz -notMatch "^[yn]"){
+                            w " Do you want to search $edr for another file? " -i g
+                            $mz = Read-Host
+                        }
+                        if( $mz -Match "^y" ){
+                            Clear-Variable -Force mz,probe
+                            fileCopy
                         }
                         else{
-                            Write-Host -f CYAN ' ERROR! That is not a valid selection.'
-                            Clear-Variable -Force mz
+                            ## Reinstate the original values
+                            if($dyrl_eli_callerhold){
+                                $Global:CALLER = $dyrl_eli_callerhold
+                            }
+                            if($dyrl_eli_holdPROTO){
+                                $Global:PROTOCULTURE = $dyrl_eli_holdPROTO
+                            }
                         }
+                        Remove-Variable edr,dyrl_eli_EDR
                     }
                     else{
-                        $probe = $true
+                        w ' ERROR! That is not a valid selection.' c
+                        Clear-Variable -Force mz
                     }
+                }
+                else{
+                    $probe = $true
                 }
             }
         }
