@@ -108,7 +108,7 @@
                 my BASARA tool is used to digitally sign scripts, but when selected
                 with 's', it instead lets you inspect the digital signatures of any 
                 signed files. (set by MACROSS)
-            $vf19_TABLES is the location of the MACROSS\resources folder, which you
+            $vf19_RSR is the location of the MACROSS\resources folder, which you
                 can change in the configuration wizard. This location is where you
                 can store any files regularly used by your scripts.
             $vf19_MPOD contains the encrypted values that you created during MACROSS' 
@@ -149,7 +149,7 @@ function battroid(){
     param([string]$n,$v)
     Set-Variable -Name $n -Value $v -Scope Global -Option ReadOnly
 }
-[console]::WindowWidth = 105                        ## Modify the window size to your preference
+[console]::WindowWidth = 120                        ## Modify the window size to your preference
 Remove-Variable -Force vf19_* -Scope Global
 cls
 Write-Host -f GREEN '
@@ -213,6 +213,8 @@ Remove-Variable c,mcores,script
 ## folder, but it is highly recommended that you keep your .conf 
 ## files in a separate access-controlled location if you will have
 ## multiple users.
+## If MACROSS isn't loading properly after you change these paths,
+## check the MOD SECTION in configurator.ps1
 
 battroid -n vf19_CONFIG -v  @(
     "$vf19_TOOLSROOT\core\config.conf",
@@ -261,6 +263,7 @@ while( $Global:vf19_Z -ne 'q' ){
     $Global:vf19_PAGE = 0
     splashPage
     chooseMod
+    varCleanup -t
 
 }
 
