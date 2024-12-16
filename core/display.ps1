@@ -38,7 +38,7 @@ function splashPage(){
     neKVmuKVkOKVkOKVkOKVkOKVkOKVkOKVnQ=='
         ## $ip ignores the local APIPA range
         $ip = $(ipconfig | Select-String "IPv4 Address" | where{$_ -notLike "* 169.254*"}) -replace "^.* : "
-        $hn = hostname
+        $hn = $env:COMPUTERNAME
         $vl = $vr.length; if( $vl -lt 3){$vc=4}elseif( $vl -le 4 ){$vc=3}
         elseif( $vl -le 5 ){$vc=1}else{$vc=0}
         cls
@@ -79,7 +79,7 @@ function splashPage(){
             'getFile'= @{'d'='Open a dialog window to let analysts select a file from any local/network location';'u'='Usage: $file = getFile'}
             'yorn'= @{'d'='Open a "yes/no" dialog to get response from analysts so your script can perform an action they choose.';'u'='Usage: if( $( yorn "SCRIPTNAME" $CURRENT_TASK ) -eq "No") { $STOP_DOING_TASK }'}
             'pyCross'= @{'d'="Write your powershell script's results to a json file (PROTOCULTURE.eod) that can later be read by MACROSS python scripts. This file is written to a folder, 'core\macross_py\garbage_io', that MACROSS regularly empties. You only need to send the name of your script as param1 and your values as param2. If you need to write something other than the default json, send an alternate filename in param3, and your data will be written as-is to another .eod file.";'u'='Usage: pyCross "myScriptName" $VALUES_TO_WRITE $optional_alt_filename'}
-            'stringz'= @{'d'="Extract ASCII characters from binary files. Call this function without parameters to open a nav window and select a file. You can also send a filepath as parameter one. If you do not want to keep the output text file, send 1 as parameter two.";'u'="Usage: stringz ['path\to\file' (optional)] [1 (optional)]"}
+            'stringz'= @{'d'="Extract ASCII characters from binary files. Call this function without parameters to open a nav window and select a file. Use -s to save in a text file.";'u'="Usage: stringz [-s (optional)]"}
             'eMsg'= @{'d'="Send an integer 0-3 as the first parameter to display a canned message, or send your own message as the first parameter.  The second parameter is optional and will change the text color (send the first letter or 'bl' for black)";'u'='Usage: eMsg [message number|your custom msg] [text color (optional)]'}
             'errLog'= @{'d'="Write messages to MACROSS' log folder. Timestamps are added automatically. You can read these logs by typing 'debug' into MACROSS' main menu.";'u'='Usage: errLog [message level, examples: "INFO"|"WARN"|"ERROR"] [message field 1] [message field 2]'}
             'availableTypes'= @{'d'='Search MACROSS tools by their .valtype attribute';'u'='Usage: availableTypes [search term(s)] [optional .lang] [optional exact search terms]'}
@@ -155,7 +155,7 @@ function splashPage(){
       If MACROSS crashes or you kill the session with CTRL+C, you may need to
       close the powershell window and open a new one to launch MACROSS again.
       
-      ' 'g'
+      ' g
         }
         ''
         w ' Hit ENTER to continue.' g; Read-Host
@@ -783,7 +783,13 @@ function startUp([switch]$init=$false){
         }
         
         ## Verify required config file
-        if(! (Test-Path $($vf19_CONFIG[0]))){ setConfig }
+        if(! (Test-Path $($vf19_CONFIG[0]))){ 
+            if($vf19_CONFIG[0] -Like "http*"){
+                try{ curl.exe --silent $vf19_CONFIG[0] | sls 'MACROSS' }
+                catch{ setConfig }
+            }
+            else{ setConfig }
+        }
         userPrefs
 
         ## MOD SECTION! ##
@@ -834,7 +840,7 @@ function startUp([switch]$init=$false){
             $defs.Add($d,$e)
             if($MONTY -and $d -ne 'mad'){ $p += $c }
         }
-        battroid -n vf19_MPOD -v $defs; getThis $vf19_MPOD['int']
+        battroid -n vf19_MPOD -v $defs; getThis $vf19_MPOD.int
         battroid -n N_ -v @($vf19_READ,$([int[]](($vf19_READ -split '') -ne '')))
         if($p.length -gt 0){ $Global:vf19_PYPOD = $p -join(',') }
     }
@@ -845,8 +851,7 @@ function startUp([switch]$init=$false){
 ## Generate dynamic menu for tool selection
 ################################>
 function chooseMod(){
-    $Global:vf19_MENULIST = @{}
-    $Global:vf19_MODULENUM = @{}
+    
     $extralist = @(
         'config',
         'dec',
@@ -904,7 +909,7 @@ function chooseMod(){
     w '" and the number of the tool to view its help page' g
     w '   -Type ' g -i; w 'shell' 'y' -i;
     w ' to pause and run your own commands' g
-    w '   -Type ' g -i; w 'strings' 'y' -i; w ' to extract strings from binaries' g
+    w '   -Type ' g -i; w 'strings' 'y' -i; w ' to extract strings from binaries (-s to save)' g
     w '   -Type ' g -i; w 'dec' 'y' -i; w ' or ' g -i; w 'enc' 'y' -i; w ' to process Hex/B64 encoding.' g
     w '   -Type ' g -i; w 'q' 'y' -i; w ' to quit.
     ' g
