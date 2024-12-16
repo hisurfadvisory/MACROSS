@@ -307,7 +307,7 @@ function searchAD($1,$2){
     if($hk_OPT1){while($z -ne 'q'){$z = read-host 'debug'; iex "$z"; w "`n`n" }rv -force hk_OPT1 -scope global; Exit}
 
 
-    $matches = Invoke-Expression "$($cmdlet[$2]) -filter * -properties * | where{$filterstring}"
+    $matches = . $([scriptblock]::Create("$($cmdlet[$2]) -filter * -properties * | ?{$filterstring}"))
 
 
     if(! $matches){ 
