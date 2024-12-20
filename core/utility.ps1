@@ -40,7 +40,7 @@ function finalSet(){
         }
         else{
             if(Test-Path $vf19_REPOCORE){ fs_ }
-            elseif($vf19_REPOCORE -ne 'None'){ fs_ -e }
+            else{ fs_ -e }
         }
     }
 }
@@ -115,7 +115,7 @@ function debugMacross($1,[switch]$continue=$true){
             }
             elseif($z -eq 'python'){
                 startUp; $pyATTS = pyATTS; pyENV; cls
-                py "$vf19_TOOLSROOT\core\pydev.py" #$vf19_pylib
+                py "$vf19_TOOLSROOT\core\pydev.py"
                 varCleanup
             }
             elseif($z -notIn 1..3){
@@ -134,21 +134,21 @@ function debugMacross($1,[switch]$continue=$true){
         else{
             $la = New-Object System.Collections.ArrayList
             $lc = $((Get-ChildItem $vf19_LOG).count)
-            (Get-ChildItem $vf19_LOG).Name | Sort -Descending | %{
+            (Get-ChildItem $vf19_LOG).Name | Sort -Unique -Descending | %{
                 $la.Add($_)
             }
             splashPage
             ''
             while( $z -ne 'q' ){
-                $ln = 1; $row = 0
+                $ln = 0; $row = 1
                 Foreach($lf in $la){
-                    $row++
+                    $ln++
                     if($ln -ge 100){$index = "$ln`. "}
                     elseif($ln -lt 100 -and $ln -ge 10){$index = " $ln`. "}
                     elseif($ln -lt 10){$index = "  $ln`. "}
                     w $index y -i
-                    if($row -eq 1){$row++; $ln++; w "$lf" -u -i}
-                    elseif($row -eq 2){$row = 0; $ln++; w "$lf" -u}
+                    if($row -eq 1){$row++; w "$lf" -u -i}
+                    elseif($row -eq 2){$row = 1; w "$lf" -u}
                 }
                 ''
                 screenResults "y~    ($lc logs)             SELECT A FILE # ABOVE (`"q`" to quit):"
@@ -258,25 +258,6 @@ function cleanGBIO(){
     }
 }
 
-
-## Admin/dev function: type 'defs' into MACROSS' main menu.
-## It will accept super-long strings and wrap them into a block of 100 char lines for you to then
-## copy-pasta into whatever project you're working on. This is purely a cosmetic preference; 
-## sometimes I don't want lines of code (like base64) that stretch longer than my screen.
-function formatDefaults(){
-    Write-Host -f GREEN '  Paste the string to format: ' -NoNewline;
-    $z = Read-Host
-    Write-Host '
-    '
-    $z | ForEach-Object {
-        $line = $_
-        for($i = 0; $i -lt $line.Length; $i += 100){
-            $length = [Math]::Min(100, $line.Length - $i)
-            $line.SubString($i, $length)
-        }
-    }
-    Read-Host
-}
 
 ## Decode base64 or hex string one-offs from the main menu
 function decodeSomething($1){
@@ -471,9 +452,9 @@ function errLog(){
     
     
     ## By default, the logs directory is set to your local MACROSS/resources/logs
-    ## folder. You should change this to an alternate location if you don't want
-    ## all users to see these logs. (It is stored in $vf19_MPOD['log'], which gets
-    ## set by you in the configuration wizard.)
+    ## folder. You should change this to a central location if you want to collect
+    ## session logs from all users so you can troubleshoot. (It is stored in 
+    ## $vf19_MPOD['log'], which gets set by you in the configuration wizard.)
     if(Test-Path -Path "$vf19_LOG"){
         $t = "$(Get-Date -Format 'yyyy-MM-dd hh:mm:ss:ms')"
         $u = "$((Get-Date).toUniversalTime() | Get-Date -Format 'yyyy-MM-dd hh:mm:ss:ms')"
@@ -515,8 +496,9 @@ function errLog(){
 
 }
 
-## When python needs to call powershell scripts. This is kind of a circle-jerk but
-## I'll write a better solution at some point.
+
+## When python needs to call powershell scripts, after powershell called a python script. 
+## This is kind of a circle-jerk but I'll write a better solution at some point.
 function restoreMacross(){
     $Global:ErrorActionPreference = 'SilentlyContinue'
     $v = $env:MACROSS -Split ';'
@@ -648,7 +630,7 @@ function pyCross(){
         }
     }
     else{ 
-        errLog ERROR "$USR/MACROSS(pyCross)" "Attempted to write to non-existent PROTOCULTURE.eod file while launching $caller_"
+        errLog ERROR "MACROSS(pyCross)" "Attempted to write to non-existent PROTOCULTURE.eod file while launching $caller_"
     }
 }
 
