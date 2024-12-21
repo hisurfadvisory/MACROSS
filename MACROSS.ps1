@@ -23,7 +23,7 @@
     they can involve accessing APIs or sensitive data.
 
 	ADDING AUTOMATIONS TO MACROSS:
-		1a. To include your automation ps1 or py scripts, you need to add three
+	1a. To include your automation ps1 or py scripts, you need to add three
             specific lines to your script. First:
 		
 			    #_sdf1 <your description of the script>
