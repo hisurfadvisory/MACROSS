@@ -14,7 +14,8 @@ The purpose of MACROSS is to make automation tasks available to everyone on your
 MACROSS came about because I got tired of handjamming cmdlets and copying everything into notepad. I wanted a way to automatically send search results to other cmdlets while being able to come back to previous results, or pull information directly from APIs to avoid going to multiple web interfaces. Eventually I created a single front-end to handle doing all of these queries in whatever sequence I needed. It is written in powershell because all the initial automations were for active-directory and windows desktop tasks.
 <br><br>
 
-<b><u>Important Note:</u></b> MACROSS makes two very important assumptions -- Assumption #1 is that your host is running powershell 5+ and optionally, python 3+; Assumption #2 is your corporate policy doesn't allow for installing third-party modules or software whenever you like.<br>
+<b><u>Important Note 1:</u></b> There some very basic access controls that can be used with MACROSS, however, they can be easily bypassed by anyone with any scripting experience. If your environment enforces code-signing, this isn't an issue, but keep this in mind and don't treat MACROSS like a super secure storage application.<br><br>
+<b><u>Important Note 2:</u></b> MACROSS makes two very important assumptions -- Assumption #1 is that your host is running powershell 5+ and optionally, python 3+; Assumption #2 is your corporate policy doesn't allow for installing third-party modules or software whenever you like.<br>
 
 <br><br>
 <img src="https://raw.githubusercontent.com/hisurfadvisory/MACROSS/main/configpanel.PNG">
