@@ -174,14 +174,14 @@ function setUser($1,[switch]$c=$false,[switch]$i=$false){
         getThis -h 206E6F7420696E20616E792074696572206C69737473
         function x($tier){
             if($($vf19_check / ($vf19_ACCESSTIER.Item1) -eq $vf19_modifier)){Return $l_}
-            else{errLog AUTH "$USR/MACROSS(setUser)" "Failed tool check for tier $tier"; Return $ll_}
+            else{errLog AUTH "MACROSS(setUser)" "Failed tool check for tier $tier"; Return $ll_}
         }
         if( ! $vf19_USERAUTH ){Return $l_}
         if($1 -eq 0){Return $(x)}
         if($1 -eq 3 -and $vf19_ACCESSTIER.Item3){Return $(x 3)}
         if($1 -eq 2 -and $vf19_ACCESSTIER.Item2){Return $(x 2)}
         if($1 -eq 1){Return $(x 1)}
-        else{errLog AUTH "$USR/MACROSS(setUser)" "$USR$vf19_READ"; Return $ll_}
+        else{errLog AUTH "MACROSS(setUser)" "$USR$vf19_READ"; Return $ll_}
     }
     elseif($i){
         Remove-Variable -Force vf19_ACCESSTIER -Scope Global
@@ -268,7 +268,7 @@ function setUser($1,[switch]$c=$false,[switch]$i=$false){
             errLog AUTH "$USR denied permissions to launch MACROSS ($env:COMPUTERNAME)"
             Exit
         }
-        elseif($vf19_USERAUTH){
+        else{
             ##############################################################################
             ## MOD SECTION ##
             ##############################################################################
