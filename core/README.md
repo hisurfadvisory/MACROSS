@@ -12,8 +12,8 @@ The first three lines of your automation script require these:<br>
 	The "sdf1" line needs a brief description of your script; this gets written to the MACROSS menu
 	The "ver" line is the version of your script
 	The "class" line needs you to comma-separate ***all*** of these attributes, in this order:
-		1. If you have different tiers/levels of analysts, use this for access control (1 - 3).
-			To allow anyone to execute the script, use 0.
+		1. If you have different tiers/levels of analysts, use this for distribution control (1 - 3).
+			To allow anyone to download and execute the script, use 0.
 		2. The LOWEST privilege level your script requires (user, admin, etc.)
 			Even if your script contains tasks that require elevated privilege, use "user"
 			if the script can perform tasks without admin. MACROSS tags non-admin users 
