@@ -2,10 +2,6 @@
 #_ver 4.5.1
 
 <#
-    v4.5.1
-    -Bug fixes with log handling
-
-    
     Multi-API-Cross-Search (MACROSS) Console
     Automated powershell framework for blue teams
     With a little tweaking, you can link all your automation scripts
