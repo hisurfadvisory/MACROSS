@@ -327,7 +327,7 @@ function verChk($1){
         errLog "$USR - corrupt or non-existent modules script tried to load."
     }
     else{
-        $3 = $1 -replace "\.ps1"
+        $3 = $1 -replace "\.p*"
         if( $3 -ne 'MACROSS' ){
             $local = "$vf19_TOOLSDIR\$1"
             $dir = $vf19_REPOTOOLS
