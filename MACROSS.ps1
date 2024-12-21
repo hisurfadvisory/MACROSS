@@ -249,7 +249,7 @@ while( $Global:vf19_Z -ne 'q' ){
     setUser -c
     
     ## When you run the initial MACROSS configuration wizard and it asks for a repository
-    ## path, enter "n" if you are not using a central repo to store your master copies.
+    ## path, enter "None" if you are not using a central repo to store your master copies.
     ## If you *are* using a master repo and set the path in the MACROSS config, it will be
     ## referenced in these functions to auto-download new or updated scripts.
 
