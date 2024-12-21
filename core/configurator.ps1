@@ -455,7 +455,7 @@ function setConfig(){
                     }
                 }
                 if($k -cne 'XQX'){
-                    w '     Enter a value for that key or "c" to cancel:' y; $v = Read-Host
+                    w '     Enter a value for that key or "c" to cancel:' y; $v = Read-Host " >"
                     if($v -ne 'c'){$Script:list.Add($k,"$(getThis $v -e)");$Script:mod=$true;w "`n"}
                 }
                 
@@ -512,7 +512,7 @@ function setConfig(){
     elseif($u){
         startUp
         while($z -ne 4){
-            $z = options
+            $clicked = $true; $z = options
             if($z -eq 1){setDefaultKeys 'update'}
             elseif($z -eq 2){setAuth}
             elseif($z -eq 3){setPerms}
@@ -536,7 +536,7 @@ function setConfig(){
                 $updated | Sort | %{
                     if($vf19_MPOD[$_]){getThis $vf19_MPOD[$_]; $old = $vf19_READ}else{$old='None'}
                     getThis $list[$_]; $new = $vf19_READ
-                    screenResults -h "KEY: $_" -k 'OLD VALUE' -v $old 
+                    screenResultsAlt -h "KEY: $_" -k 'OLD VALUE' -v $old 
                     screenResultsAlt -k 'NEW VALUE' -v $new
                 }
                 if($pwupd){getThis $ml[9]; screenResultsAlt -k 'NEW PWD' -v "c~$vf19_READ"}
@@ -571,7 +571,7 @@ function setConfig(){
         '   ############  MACROSS CONFIG: DO NOT MODIFY  ############' | Out-File $of
         if($write[0].length -eq 64){ $np = $($write[0]) }
         elseif(Select-String -Pattern "($("$dl")mad|^mad)" "$vf19_TMP\macross_cfg.temp"){
-            $np = $(Get-Content "$vf19_TMP\macross_cfg.temp" -replace "^.$("$dl" + 'mad')" -replace "$("$dl").+")
+            $np = $(Get-Content -raw "$vf19_TMP\macross_cfg.temp" -replace "^.$("$dl" + 'mad')" -replace "$("$dl").+")
         }
         else{ getThis $vf19_MPOD.mad -h; $np = $vf19_READ }
         $kk = altByte $np $d9[0] $d9[1]
