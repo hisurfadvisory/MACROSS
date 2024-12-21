@@ -15,9 +15,9 @@ The first three lines of your automation script require these:<br>
 		1. If you have different tiers/levels of analysts, use this for distribution control (1 - 3).
 			To allow anyone to download and execute the script, use 0.
 		2. The LOWEST privilege level your script requires (user, admin, etc.)
-			Even if your script contains tasks that require elevated privilege, use "user"
-			if the script can perform tasks without admin. MACROSS tags non-admin users 
-   			with "$vf19_ROBOTECH", which you can use to skip admin tasks if that value is $True.
+			Even if your script contains tasks that require elevated privilege, set to "user"
+			if the script can perform tasks without admin privilege. MACROSS tags non-admin users 
+   			with "$vf19_ROBOTECH", which you can use to skip admin tasks if $vf19_ROBOTECH is $True.
 		3. What kind of data your script processes (IPs, filescans, etc.), or what task it performs.
   			Keep this concise but specific across your scripts. For example, you might have
      		several automations that do things in active directory, but don't just use "active-
