@@ -9,36 +9,46 @@ function finalSet(){
     getThis $vf19_MPOD.rep
     battroid -n vf19_REPOCORE -v $vf19_READ
     if($vf19_REPOCORE -ne 'n'){
-        ## If you want to control tier-level access, change the $vf19_REPOCORE location and store  
-        ## master copies of your tools there. That way, MACROSS will be able to auto-download tier- 
-        ## appropriate tools to each analyst. You can use the configuration wizard to store the
-        ## location of your master copies, and modify the vf19_REPOTOOLS line below using the same 
-        ## method seen above:
+        <# If you want to control tier-level access, change the $vf19_REPOCORE location in MACROSS.ps1
+           and store master copies of your tools there. That way, MACROSS will be able to auto download 
+           tier-appropriate tools to each analyst. You can use the configuration wizard to store the
+           location of your master copies, and modify the vf19_REPOTOOLS line below using the same 
+           method seen above:
 
-        ##     getThis $vf19_MPOD[your_key]; battroid -n vf19_REPOTOOLS -v $vf19_READ
+        ##     getThis $vf19_MPOD.your_key; battroid -n vf19_REPOTOOLS -v $vf19_READ  #>
 
-        ## Enable or disabled live updating
+        ## Enables/disables live updating
         function fs_([switch]$e=$false,$d='\'){
             if($e){
-                errLog ERROR "$USR/MACROSS(finalSet)" "Main repository $vf19_REPOCORE was unreachable; updates disabled"
+                errLog ERROR "MACROSS(finalSet)" "Main repository $vf19_REPOCORE was unreachable; updates disabled"
             }
             else{
+                ## Make sure wherever you placed your scripts, they are in a folder called "modules"
                 battroid -n vf19_REPOTOOLS -v ("$vf19_REPOCORE$d"+'modules')
                 $Global:vf19_VERSIONING = $true
             }
         }
 
+        ## Check whether the config files are stored on a server:
         if( $vf19_REPOCORE -Like "http*" ){
+            ## MOD SECTION ##
+            ## Uncomment this line if you are storing config files on a local server that is using 
+            ## self-signed TLS certs; ONLY DO THIS IF YOU FULLY TRUST THE CERTIFICATE CHAIN!
+
+            #[System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
+
             if(! $vf19_ATTS){
                 try{ 
-                    $g = [net.Webrequest]::Create($vf19_REPOCORE).getResponse()
-                    if($g.statusCode -eq 200){ fs_ '/' }else{ fs_ -e }
+                    $g = [System.Net.Webrequest]::Create($vf19_REPOCORE).getResponse()
+                    if($g.statusCode -eq 200){ fs_ -d '/' }else{ fs_ -e }
                     $g.close()
                 }
                 catch{ fs_ -e }
             }
         }
-        else{
+
+        ## Check whether the config files are stored in a local drive or network share:
+        elseif($vf19_REPOCORE -ne 'None'){
             if(Test-Path $vf19_REPOCORE){ fs_ }
             else{ fs_ -e }
         }
@@ -47,8 +57,9 @@ function finalSet(){
 
 <###############################################################
     Unlisted MACROSS menu option --
-    Change the message output for errors so you can troubleshoot scripts, and
-    view helpfiles for all the core MACROSS functions.
+    Allows changing the message output for errors so you can troubleshoot 
+    scripts; review logs; and view helpfiles for all the core MACROSS 
+    functions.
    
     Type 'debug' in the MACROSS menu to launch this debugger. From here,
     you can access all MACROSS resources and run test commands to develop
@@ -68,7 +79,6 @@ function debugMacross($1,[switch]$continue=$true){
     }
     macrossHelp show
     ''
-    #getThis -h $(setCC -b); getThis $vf19_READ; $rst = [regex]$vf19_READ
     $rst = $(setCC -b); getThis IFRoYXQgaXMgYSBwcml2aWxlZ2VkIGNvbW1hbmQu; $bm = $vf19_READ
     
     if($1){
@@ -135,7 +145,7 @@ function debugMacross($1,[switch]$continue=$true){
             $la = New-Object System.Collections.ArrayList
             $lc = $((Get-ChildItem $vf19_LOG).count)
             (Get-ChildItem $vf19_LOG).Name | Sort -Unique -Descending | %{
-                $la.Add($_)
+                $la.Add($_) > $null
             }
             splashPage
             ''
@@ -181,13 +191,13 @@ function debugMacross($1,[switch]$continue=$true){
                     $viewer.Controls.Add($thislog)
 
                     $msgpane = New-Object System.Windows.Forms.TextBox
-                    $us=chr 175;$ul="$us";1..63 | %{$ul="$ul"+"$us"}
+                    $us=chr 175;$ul="$us";1..68 | %{$ul="$ul"+"$us"}
                     $msgpane.MultiLine = $true
                     $msgpane.Scrollbars = 'Vertical'
                     $msgpane.Font = [System.Drawing.Font]::New("Consolas", 10)
                     $msgpane.ForeColor = 'WHITE'
                     $msgpane.BackColor = 'GRAY'
-                    $msgpane.Text = "LOCAL TIME`t`tLEVEL`tLOG SOURCE`t`tMESSAGE(S)"+[System.Environment]::NewLine
+                    $msgpane.Text = "LOCAL TIME`t`tLEVEL`t`tHOST`tLOG SOURCE`t`tMESSAGE(S)"+[System.Environment]::NewLine
                     $msgpane.AppendText($ul+[System.Environment]::NewLine)
                     $msgpane.Location = New-Object System.Drawing.Point(10,30)
                     $msgpane.Size = New-Object System.Drawing.Size(1050,510)
@@ -214,9 +224,6 @@ function debugMacross($1,[switch]$continue=$true){
                     
                     
                     ''
-                    w '  Hit ENTER to continue.
-                    ' g
-                    Read-Host
                 }
             }
         }
@@ -226,14 +233,13 @@ function debugMacross($1,[switch]$continue=$true){
 
 function runSomething(){
     cls
-    Write-Host '
-    '
-    Write-Host -f GREEN '  Pausing MACROSS: type ' -NoNewline;
-        Write-Host -f YELLOW 'exit' -NoNewline;
-            Write-Host -f GREEN ' to close your session and return to'
-    Write-Host -f GREEN '  the tools menu.
+    w "`n"
+    w '  Pausing MACROSS: type ' -i g
+    w 'exit' -- y
+    w ' to close your session and return to' g
+    w '  the tools menu.
 
-    '
+    ' g
 
     powershell.exe  ## Start new session outside of MACROSS
 
@@ -313,15 +319,6 @@ function decodeSomething($1){
     }
         
 }
-
-<## These vars & functions need to get loaded when python calls powershell scripts without MACROSS values
-if( ! $vf19_TOOLSROOT ){
-    $vf19_TOOLSROOT = '..'
-    $Global:vf19_TOOLSDIR = "$vf19_TOOLSROOT\modules\"
-    . "$vf19_TOOLSROOT\core\display.ps1"
-    . "$vf19_TOOLSROOT\core\validation.ps1"
-}#>
-
 
 
 function getThis(){
@@ -459,21 +456,16 @@ function errLog(){
         $t = "$(Get-Date -Format 'yyyy-MM-dd hh:mm:ss:ms')"
         $u = "$((Get-Date).toUniversalTime() | Get-Date -Format 'yyyy-MM-dd hh:mm:ss:ms')"
         [string]$log = "$(Get-Date -Format 'yyyy-MM-dd')" + '.log'  ## Create the log filename
-        $msg = "MACROSS ($env:COMPUTERNAME)"
+        $msg = "MACROSS/$env:COMPUTERNAME/$USR"
         $d = "`t"                                                   ## Delimiter
 
-        if($msgplus){ $msg = "$msg$d$level$d$message$d$msgplus" }
-        elseif($message){ $msg = "$msg$d$level$d$message" }
-        else{ $msg = "$msg$d$level" }
+        if($msgplus){ $msg = "$level$d$msg$d$message$d$msgplus" }
+        elseif($message){ $msg = "$level$d$msg$d$message" }
+        else{ $msg = "$level$d$msg$d" }
         $(getThis -e "$t$d$msg") | Out-File "$vf19_LOG\$log" -Append
         if($forward){
             getThis $vf19_MPOD.elc; $addr = ($vf19_READ -Split ':')[0]; $port = ($vf19_READ -Split ':')[1]
-            ## MOD SECTION ##
-            # If you have dig, use that to do hostname lookups below; otherwise you may need to adjust the
-            # "Select -Index" number depending on your nameserver's responses. The alternative *easy* way
-            # is to just specify an IP address when using the configuration wizard (but IPs can change,
-            # which is why I wrote this to accept hostnames or IPs).
-            if($addr -Match "[a-z]"){$addr = $((nslookup $addr | Select -Index 4) -replace "Address\W+")}
+            if($addr -Match "[a-z]"){$addr = "$([System.Net.DNS]::GetHostAddresses("$addr").IPAddressToString)"}
             if($addr){
                 $syslog_server = [System.Net.IPAddress]::Parse($addr) 
                 $local = New-Object System.Net.IPEndPoint $syslog_server,$port 
@@ -481,9 +473,9 @@ function errLog(){
                 $set1 = [System.Net.Sockets.AddressFamily]::InterNetwork 
                 $set2 = [System.Net.Sockets.SocketType]::Dgram 
                 $proto = [System.Net.Sockets.ProtocolType]::UDP 
-                $socket = New-Object System.Net.Sockets.Socket $set1, $set2, $proto 
+                $socket = New-Object System.Net.Sockets.Socket $set1,$set2,$proto 
                 $socket.TTL = 26 
-                $socket.Connect($local) 
+                $socket.Connect($local)
 
                 $encoding = [System.Text.Encoding]::UTF8
                 ## Forwarded logs will be timestamped in UTC
@@ -614,7 +606,7 @@ function pyCross(){
         w2f $result $filenm
         if(-not(Test-Path -Path "$($vf19_PYG[0])\$filenm")){
             $em = "Failed write to $filenm for $caller_"
-            errLog ERROR "$USR/MACROSS(pyCross)" $em
+            errLog ERROR "MACROSS(pyCross)" $em
             w "ERROR! $em " -f r -b bl
             slp 3
         }
@@ -1175,7 +1167,7 @@ function houseKeeping(){
             Write-Host -f CYAN '
             ...Delete action failed!
             '
-            errLog INFO "$USR/MACROSS(houseKeeping)" "Failed to delete $($_.Name) for $2"
+            errLog INFO "MACROSS(houseKeeping)" "Failed to delete $($_.Name) for $2"
         }
         else{
             $Script:fcount = $fcount - 1
@@ -1202,7 +1194,7 @@ function houseKeeping(){
                     $dn = $_.Name
                     Write-Host -f CYAN "  Deleting $dn...."
                     rmFiles $dn
-                    errLog INFO "$USR/MACROSS(houseKeeping)" "Deleted $($_.Name) for $2"
+                    errLog INFO "MACROSS(houseKeeping)" "Deleted $($_.Name) for $2"
                     slp 1
                 }
         }
@@ -1216,7 +1208,7 @@ function houseKeeping(){
                         $dn = $_.Name
                         Write-Host -f CYAN "  Deleting $dn...."
                         rmFiles $dn
-                        errLog INFO "$USR/MACROSS(houseKeeping)" "Deleted $($_.Name) for $2"
+                        errLog INFO "MACROSS(houseKeeping)" "Deleted $($_.Name) for $2"
                         slp 1 
                     }
             }
