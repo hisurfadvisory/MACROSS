@@ -2,7 +2,8 @@
 ## Functions to automate checking for tool updates
 ## If you use a local git or fileshare to store your master scripts, enter "config"
 ## in the main menu and select the "Update configs" option. You will need to specify the
-## key as "nre", and then enter the path to the master repository you wish to use.
+## key as "rep", and then enter the path to the master repository you wish to use (you'll
+## get a warning that you're about to overwrite the existing "rep" value.)
 
 
 ################################
@@ -53,23 +54,34 @@ function toolCount(){
     ##################################################################
     if($vf19_VERSIONING){
 
+    if(! $webrepo -or ($webrepo -and ! $vf19_ATTS)){  ## For web repos, just perform one initial check at startup
+
     ##################
     ## Depending where and how your web server is hosting scripts, you may need to tweak this, as well.
     ##################
     if($vf19_REPOTOOLS -Like "http*"){
-        battroid -N webrepo  -V $true
-        #$masterlist = (Invoke-WebRequest $vf19_REPOTOOLS -UseBasicParsing).links | Sort | ?{$_ -Like "*$ext"}
-        $masterlist = (Invoke-WebRequest $vf19_REPOTOOLS -UseBasicParsing).links.href | Sort | ?{$_ -Like "*$ext"}
+
+        battroid -N webrepo  -V $true   ## Tell macross your repo isn't a local fileshare
+
+        $masterlist = New-Object System.Collections.ArrayList
+
+        (Invoke-WebRequest $vf19_REPOTOOLS -UseBasicParsing).links.href | Sort -u | ?{$_ -Like "*$ext"} | %{
+            $full = "$vf19_REPOTOOLS" + "/$($_ -replace "^.+/")"
+            $masterlist.Add($full)
+        }
+
     }
     ##################
-    ## Reading from a repo hosted on a network share is pretty simple.
+    ## Reading from a repo hosted on a network share is the simplest method
     ##################
     else{
         $masterlist = (Get-Childitem "$vf19_REPOTOOLS\$ext" | Sort Name -Descending)
     }
+
+    
     foreach($rscript in $masterlist){
         ## Based on whether $webrepo is true, doing a lookup for master files will be different...
-        if( $webrepo ){ $rn = $rscript -replace "^.+\\" }
+        if( $webrepo ){ $rn = $rscript -replace "^.+/" }
         else{ $rn = $rscript.name }
 
         $rfn = $rn -replace "\..+"
@@ -113,7 +125,7 @@ function toolCount(){
                 $Global:vf19_LIST1.Add($rfn,$($vf19_ATTS[$rfn].ver))
             }
         }
-    }}
+    }}}
 }
 
 
@@ -166,6 +178,8 @@ function look4New(){
         ##      the mod sections elsewhere in this file.
         ##################################################################
         if( $webrepo ){ Invoke-WebRequest "$dir\$a" -UseBasicParsing > "$vf19_TOOLSDIR\$a" }
+
+        ## Using network shares to host the repo is easiest...
         else{ Copy-Item -Path "$dir\$a" "$vf19_TOOLSDIR\$a" }
         if( Test-Path -Path "$vf19_TOOLSDIR\$a" ){
             w "        ...$a has been installed in the console!`n" g
@@ -235,7 +249,7 @@ function look4New(){
 function dlNew($1,$2){
     if( ! $1 -or ! $2 ){
         eMsg 3
-        errLog 'ERROR' "$USR - dlNew function failed to check for new scripts."
+        errLog ERROR "$USR - dlNew function failed to check for new scripts."
     }
     else{
         $3 = $1 -replace "\..*"
@@ -256,7 +270,17 @@ function dlNew($1,$2){
 
         ## Update the main console and all its files
         if( $CONSOLE ){
-            if( $webrepo ){ Invoke-WebRequest -UseBasicParsing "$dir\$1" > "$vf19_TOOLSROOT\$1" }
+            if( $webrepo ){ 
+                Invoke-WebRequest -UseBasicParsing "$dir/MACROSS.ps1" > "$vf19_TOOLSROOT/MACROSS.ps1"
+                gci -file "$vf19_TOOLSROOT/core/*" | %{
+                    $core = $_.name
+                    Invoke-WebRequest -UseBasicParsing "$dir/core/$core" > "$vf19_TOOLSROOT/core/$core"
+                }
+                gci -file "$vf19_TOOLSROOT/core/macross_py/*" | %{
+                    $pycore = $_.name
+                    Invoke-WebRequest -UseBasicParsing "$dir/core/macross_py/$pycore" > "$vf19_TOOLSROOT/core/$pycore"
+                }
+            }
             else{ Copy-Item -Force -Path "$dir\$1" "$vf19_TOOLSROOT\$1" }
             Get-ChildItem -Recurse -Path "$dir\core\*" | 
                 ForEach-Object{
@@ -264,7 +288,7 @@ function dlNew($1,$2){
                 }
         }
         else{
-            if( $webrepo ){ Invoke-WebRequest -UseBasicParsing "$dir\$1" > "$vf19_TOOLSDIR\$1" }
+            if( $webrepo ){ Invoke-WebRequest -UseBasicParsing "$dir/$1" > "$vf19_TOOLSDIR/$1" }
             else{ Copy-Item -Force -Path "$dir\$1" "$vf19_TOOLSDIR\$1" }
         }
         toolCount           ## Refresh the list of tool versions
@@ -293,7 +317,7 @@ function dlNew($1,$2){
 
 #################################
 ## Update latest tool versions; requires that you maintain a master repository and that its
-## location can be found in $vf19_MPOD['nre'] (you specify this during initial setup).
+## location can be found in $vf19_MPOD['rep'] (you specify this during initial setup).
 ## $1 is a required value, the tool name passed in from the functions 'chooseMod' & 'dlNew'
 ## $2 is an optional verification check passed in from the function 'dlNew'
 ################################
@@ -320,7 +344,7 @@ function verChk($1){
             ##      selects a tool from the main menu, to check for new versions.
             ##################################################################
             if( $webrepo ){ 
-                $Global:vf19_LVER = (Invoke-WebRequest -UseBasicParsing "$dir\$1" | Select-String -Pattern "^#_ver ")[1] -replace "^#_ver "
+                $Global:vf19_LVER = (Invoke-WebRequest -UseBasicParsing "$dir/$1" | Select-String -Pattern "^#_ver ")[1] -replace "^#_ver "
             }
             else{ 
                 $Global:vf19_LVER = (Get-Content "$dir\$1" | Select -Index 1) -replace "^.+ " 
@@ -337,7 +361,7 @@ function verChk($1){
                 splashPage
                 w "`n"
                 w "     UPDATE FAILED!`n" y
-                errLog 'ERROR' "$USR - failed updating $1 to version $vf19_LVER"
+                errLog ERROR "$USR - failed updating $1 to version $vf19_LVER"
                 slp 3
                 $Global:vf19_Z = 'GO'
                 Return
