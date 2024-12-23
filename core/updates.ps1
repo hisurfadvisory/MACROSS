@@ -6,6 +6,11 @@
 ## get a warning that you're about to overwrite the existing "rep" value.)
 
 
+## Convert bytes pulled from web servers into strings; send back contents as a list of lines
+function parseFromWebServer($1){
+    Return ((([Text.Encoding]::UTF8.GetString($(Invoke-WebRequest -UseBasicParsing "$1").content) -join '') -replace "`r") -split "`n")
+}
+
 ################################
 ##  toolCount func:
 ##  Check if local modules folder has all the necessary scripts; includes python scripts
@@ -53,21 +58,28 @@ function toolCount(){
     ##      to create the $masterlist value below.
     ##################################################################
     if($vf19_VERSIONING){
-
-    if(! $webrepo -or ($webrepo -and ! $vf19_ATTS)){  ## For web repos, just perform one initial check at startup
+        
+    if(! $webrepo -or ($webrepo -and $vf19_ATTS.count -eq 0)){  ## For web repos, just perform one initial check at startup
 
     ##################
     ## Depending where and how your web server is hosting scripts, you may need to tweak this, as well.
     ##################
     if($vf19_REPOTOOLS -Like "http*"){
+        ## MOD SECTION ##
+        ## Uncomment this line if you are storing config files on a local server that is using 
+        ## self-signed TLS certs; ONLY DO THIS IF YOU FULLY TRUST THE CERTIFICATE CHAIN!
+
+        #[System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
 
         battroid -N webrepo  -V $true   ## Tell macross your repo isn't a local fileshare
 
         $masterlist = New-Object System.Collections.ArrayList
 
-        (Invoke-WebRequest $vf19_REPOTOOLS -UseBasicParsing).links.href | Sort -u | ?{$_ -Like "*$ext"} | %{
-            $full = "$vf19_REPOTOOLS" + "/$($_ -replace "^.+/")"
-            $masterlist.Add($full)
+        ## MOD SECTION ##
+        ## Make sure your fileserver allows indexing so MACROSS knows what scripts are in the directory!
+        (((Invoke-WebRequest -UserAgent MACROSS -UseBasicParsing "$vf19_REPOTOOLS/").content -Split "`n") | 
+            ?{$_ -Like "*$ext*"}) -replace "^.+=`"" -replace "`".+" | Sort | %{
+            $masterlist.Add("$vf19_REPOTOOLS/$_") > $null
         }
 
     }
@@ -86,7 +98,10 @@ function toolCount(){
 
         $rfn = $rn -replace "\..+"
 
-        if( $webrepo ){ $magiclines = (Invoke-WebRequest $rscript -UseBasicParsing) -Split "`n" | Select-String -Pattern "^#_" }
+        if( $webrepo ){ 
+            $magiclines = parseFromWebServer $rscript | Select -Index 0,1,2
+            #$magiclines = (Invoke-WebRequest $rscript -UseBasicParsing) -Split "`n" | Select-String -Pattern "^#_"
+        }
         else{ $magiclines = Get-Content $rscript.FullName | Select -Index 0,1,2 }
 
         $rdesc = $magiclines[0] -replace $rgx 
@@ -177,7 +192,7 @@ function look4New(){
         ##      scripts are hosted, you might need to modify this along with
         ##      the mod sections elsewhere in this file.
         ##################################################################
-        if( $webrepo ){ Invoke-WebRequest "$dir\$a" -UseBasicParsing > "$vf19_TOOLSDIR\$a" }
+        if( $webrepo ){ parseFromWebServer "$dir/$a" > "$vf19_TOOLSDIR\$a" }
 
         ## Using network shares to host the repo is easiest...
         else{ Copy-Item -Path "$dir\$a" "$vf19_TOOLSDIR\$a" }
@@ -271,14 +286,14 @@ function dlNew($1,$2){
         ## Update the main console and all its files
         if( $CONSOLE ){
             if( $webrepo ){ 
-                Invoke-WebRequest -UseBasicParsing "$dir/MACROSS.ps1" > "$vf19_TOOLSROOT/MACROSS.ps1"
+                parseFromWebServer "$dir/MACROSS.ps1" > "$vf19_TOOLSROOT/MACROSS.ps1"
                 gci -file "$vf19_TOOLSROOT/core/*" | %{
                     $core = $_.name
-                    Invoke-WebRequest -UseBasicParsing "$dir/core/$core" > "$vf19_TOOLSROOT/core/$core"
+                    parseFromWebServer "$dir/core/$core" > "$vf19_TOOLSROOT/core/$core"
                 }
                 gci -file "$vf19_TOOLSROOT/core/macross_py/*" | %{
                     $pycore = $_.name
-                    Invoke-WebRequest -UseBasicParsing "$dir/core/macross_py/$pycore" > "$vf19_TOOLSROOT/core/$pycore"
+                    parseFromWebServer "$dir/core/macross_py/$pycore" > "$vf19_TOOLSROOT/core/$pycore"
                 }
             }
             else{ Copy-Item -Force -Path "$dir\$1" "$vf19_TOOLSROOT\$1" }
@@ -288,7 +303,7 @@ function dlNew($1,$2){
                 }
         }
         else{
-            if( $webrepo ){ Invoke-WebRequest -UseBasicParsing "$dir/$1" > "$vf19_TOOLSDIR/$1" }
+            if( $webrepo ){parseFromWebServer "$dir/$1" > "$vf19_TOOLSDIR/$1" }
             else{ Copy-Item -Force -Path "$dir\$1" "$vf19_TOOLSDIR\$1" }
         }
         toolCount           ## Refresh the list of tool versions
@@ -344,7 +359,8 @@ function verChk($1){
             ##      selects a tool from the main menu, to check for new versions.
             ##################################################################
             if( $webrepo ){ 
-                $Global:vf19_LVER = (Invoke-WebRequest -UseBasicParsing "$dir/$1" | Select-String -Pattern "^#_ver ")[1] -replace "^#_ver "
+                $Global:vf19_LVER = ((curl.exe -ks -A MACROSS "$dir/$1") | Select -Index 2 ) -replace "^#_ver "
+                #$Global:vf19_LVER = (([System.Text.Encoding]::UTF8.GetString($(Invoke-WebRequest -UseBasicParsing "$dir/$1").content) -join '') -split "`n")[1] -replace "#_ver "
             }
             else{ 
                 $Global:vf19_LVER = (Get-Content "$dir\$1" | Select -Index 1) -replace "^.+ " 
