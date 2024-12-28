@@ -29,7 +29,7 @@ if( $pythonsrc ){
     ## This will be the name of the python script calling this one
     $Global:CALLER = $pythonsrc
 
-    ## This is a unique temporary session, so launch the core scripts to get their functions
+    ## This is a unique temporary session, so launch the core scripts to access their functions
     foreach( $core in gci "core\*.ps1" ){ . $core.fullname }
 
     ## Now that the core files are loaded, this function can restore all the MACROSS 
@@ -38,7 +38,8 @@ if( $pythonsrc ){
     
     ## Note that just like the powershell version, the python collab function can also
     ## send an alternate param to your scripts when relevant. So, you can write your  
-    ## scripts to accept a value in addition to (or instead of) $PROTOCULTURE, if necessary.
+    ## scripts to accept a value called "$spiritia" in addition to (or instead of) $PROTOCULTURE, 
+    ## if necessary.
 }
 
 function rdh(){ 
@@ -89,10 +90,10 @@ function header(){
 
 
 ## It is recommended that you include a check for the $HELP variable, and display a
-## help/description if it is true. MACROSS clears this variable when your script exits.
+## help/description if it is $true. MACROSS clears this variable when your script exits.
 if($HELP){
     splashPage
-    $vf19_LATTS['HIKARU'].toolInfo() | %{
+    $vf19_LATTS.HIKARU.toolInfo() | %{
         w $_ y
     }
     w "
@@ -102,7 +103,7 @@ if($HELP){
   give even your most junior analysts the ability to get as much information as
   quickly and easily as any crusty ol' command-line junkie -- on a budget!
   
-  HIKARU will talk to the tools MINMAY and GUBABA. MINMAY is a python script that
+  HIKARU will talk to the tools MISA and GUBABA. MISA is a python script that
   performs a similar demonstration. Review the code for both demo scripts to see
   how you need to write or modify your own tools to make full use of MACROSS.
 
@@ -114,17 +115,10 @@ if($HELP){
 
 ## When MACROSS' collab() function is used, it sets the calling script's name as $CALLER.
 ## In this way, you can both track what script is calling, and what the $CALLER's [macross]
-## class attributes are so you can automatically tailor responses.
-if($CALLER){
-    $j = Get-Content -raw "$vf19_TOOLSROOT\resources\hikaru_demo.txt" | ConvertFrom-Json
-    $j | %{
-        $j."$_" = "$($_ -replace "smithj","$PROTOCULTURE")"
-    }
-    screenResultsAlt -h $j.samAccountName -k 'Created' -v "$($j.Created)"
-    screenResultsAlt -k 'Last Logon' -v "$($j.LastLogonDate)"
-    screenResultsAlt -k "Password Expired" -v "$($j.PasswordExpired)"
-    screenResultsAlt -k "r~Passw Never Expires" -v "$($j.PasswordNeverExpires)"
-    screenResultsAlt -k "Email" -v "$($j.EmailAddress)"
+## class attributes are so you can automatically tailor responses. All tools and their
+## attributes are tracked in the array $vf19_LATTS.
+if($CALLER -and $vf19_LATTS.$CALLER.valtype -Like "*user*"){
+    w " Congratulations Caller! " g
     w " Hit ENTER to continue." -i g; Read-Host
 }
 else{
@@ -137,49 +131,65 @@ else{
     w "
 
     This demo will ask you for a search term to find a Windows event ID. The keyword(s) 
-    you enter here will be sent to the MINMAY python script, which will then forward it to 
+    you enter here will be sent to the MISA python script, which will then forward it to 
     the GUBABA.ps1 script and retrieve GUBABA's results.
 
     This is a very simple demonstration of how you can connect your scripts together. View
-    the code in HIKARU.ps1 and MINMAY.py to see how the `"availableTypes`" and `"collab`"
+    the code in HIKARU.ps1 and MISA.py to see how the `"availableTypes`" and `"collab`"
     functions are used to connect scripts wherever you find it useful to do so.
     " g
 
     while($z -notMatch "\w{3,}"){
         w "Enter a keyword or ID number to search for an event ID: " g -i
-        $z = Read-Host
+
+        ## Where it makes sense, have your scripts automatically act on $PROTOCULTURE any time it has a value
+        $Global:PROTOCULTURE = Read-Host
     }
 
-    ## Where it makes sense, have your scripts automatically act on $PROTOCULTURE any time it has a value
-    $Global:PROTOCULTURE = $z
 
     ## The availableTypes function collects all of the scripts in the modules folder that match
     ## your [macross] criteria. In this example, I search for the .valtype "demo" and the  
-    ## .lang value "python"
-    $list = availableTypes -v 'demo' -l python
+    ## .lang value "python" (MISA is the only script that will match). You can also search by 
+    ## response types, or ".rtype"
+    $list = availableTypes -v demo -l python
 
     ## The collab function loads whatever script you require next, within your MACROSS session
-    ## In this basic demo, I'm just pushing your search over to the python script MINMAY, who
+    ## In this basic demo, I'm just pushing your search over to the python script MISA, who
     ## will then forward it to GUBABA. This is only meant to demonstrate how to get data from
-    ## one script to the next for evaluation or enrichment.
-    $list | Foreach-Object{
-        $pytool = $_
-        collab $pytool 'HIKARU'
-        $json = (Get-Content $vf19_PYG[1] | ConvertFrom-Json).HIKARU.result
+    ## one script to the next for evaluations.
+    Foreach($pytool in $list){
+        
+        collab $pytool HIKARU
         ''
+
+
         ## When values are forwarded to python scripts, the MACROSS valkyrie python library provides
-        ## its own collab function. Instead of writing $Global variables, it writes search results
-        ## to a basic json file at $vf19_PYG[1]. If the response is a list or hashtable, MACROSS
-        ## converts it into a string separated by '@@' that you can split.
+        ## its own collab function. Instead of writing $global variables, it writes search results
+        ## to a json-format file called PROTOCULTURE.eod (which can always be referenced as $vf19_PYG[1]
+        ## in powershell scripts).
+
         if(Test-Path -Path $vf19_PYG[1]){
-            w "HIKARU is now reading MINMAY's response from 
-            " g
-            w " $($vf19_PYG[1])
-            "
-            $Result = $json -Split '@@'
-            $Result | Foreach-Object{
-                $k = ($_ -Split ':')[0]
-                $v = ($_ -Split ':')[1]
+            w " HIKARU is now reading MISA's response from `n" g
+            w "  $($vf19_PYG[1])`n"
+            w " and will show you the same results:" g
+
+
+            ## When your script is going to read a python response from PROTOCULTURE.eod, the top-level item
+            ## should be your script's name. The "result" item is where you'll find the python script's response
+            ## to your collab query. Make sure you know what the previous script's output or ".rtype" is,  
+            ## if it's a large hashtable it may get written to PROTOCULTURE.eod as one or more nested json objects!
+            ## The file is located in "core\macross_py\garbage_io\" and gets regularly deleted after use.
+            $readFromPy = (Get-Content $vf19_PYG[1] | ConvertFrom-Json).HIKARU.result
+            
+            Foreach($k in $readFromPy.PSObject.Properties.Name){
+
+                if(($readFromPy.$k).getType().Name -eq 'String'){
+                    $v = $readFromPy.$k
+                }
+                else{
+                    $v = "$($readFromPy.$k[0]) -- $($readFromPy.$k[1])"
+                }
+                
 
                 ## MACROSS offers a few different ways to display your data. "screenResults" Can take large
                 ## blocks of info and split them evenly into columns.
@@ -188,12 +198,13 @@ else{
             screenResults -e
         }
     }
-    w '
-    '
+
+    w "`n"
+
     if(Test-Path -Path $vf19_PYG[1]){
 
         ## The "sep" function lets you quickly generate division lines to break up
-        ## blocks of text.
+        ## blocks of text. You can use any character or pattern of characters you like!
         sep '~@~' 25 -c g; sep '~@~' 25 -c g
         w "
     The garbage_io folder can be referenced by your scripts as `$vf19_PYG[0] if
@@ -209,7 +220,7 @@ else{
     (including python).
     " g
         while($z -ne 'e'){
-            w "Enter `"e`" to exit: " g
+            w "Enter `"e`" to exit: " -i y
             $z = Read-Host
         }
     }
@@ -217,3 +228,5 @@ else{
 
 
 Exit
+
+
