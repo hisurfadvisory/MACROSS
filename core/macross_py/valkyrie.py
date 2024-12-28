@@ -446,8 +446,12 @@ def collab(Tool,Caller,Protoculture,ap = None):
     elif type(Protoculture) == dict:
         pr = "["
         for P in Protoculture.keys():
-            pr = pr + ",{\"" + P + '\": ' + f"\"{Protoculture[P]}\"" + "}"
+            pr = pr + ",{\"" + P + '\": ' + f"\"{Protoculture[P]}\"" + "}" 
         pr = rgx("[,",pr,"")
+    else:
+        pr = str(Protoculture)
+
+
     proto = {Caller:{'target':pr,'result':empty}}
 
     if getenv('MPOD'):
