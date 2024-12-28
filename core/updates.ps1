@@ -8,7 +8,7 @@
 
 ## Convert bytes pulled from web servers into strings; send back contents as a list of lines
 function parseFromWebServer($1){
-    Return ((([Text.Encoding]::UTF8.GetString($(Invoke-WebRequest -UseBasicParsing "$1").content) -join '') -replace "`r") -split "`n")
+    Return ((([Text.Encoding]::UTF8.GetString($(Invoke-WebRequest -UseBasicParsing "$1").Content) -Join '') -replace "`r") -split "`n")
 }
 
 ################################
@@ -19,11 +19,9 @@ function parseFromWebServer($1){
 ##   each MACROSS script
 ################################
 function toolCount(){
-    Remove-Variable -Force vf19_ATTS,vf19_LATTS,vf19_LIST0,vf19_LIST1 -Scope Global   ## Clear old lists from memory
-    $Global:vf19_ATTS = [ordered]@{}   ## Collect MACROSS class info for tools in the repo
-    $Global:vf19_LATTS = [ordered]@{}  ## Collect MACROSS class info for locally installed tools
-    $Global:vf19_LIST0 = @{}  ## Collect local versions for verChk function
-    $Global:vf19_LIST1 = @{}  ## Collect master versions for verChk function
+    Remove-Variable -Force vf19_LATTS -Scope Global                 ## Clear old array for refresh
+    $Global:vf19_LATTS = [ordered]@{}                               ## Collect MACROSS class info for locally installed tools
+    if(! $Global:vf19_ATTS){ $Global:vf19_ATTS = [ordered]@{} }     ## Collect MACROSS class info for tools in the repo
     $Global:vf19_FILECT = 0
     $Global:vf19_REPOCT = 0
     $menunum = 0
@@ -43,7 +41,6 @@ function toolCount(){
         $lclass = (Get-Content $lscript.FullName | Select -Index 2) -replace $rgx   ## These are the class attributes
         [macross]$latts = $lfn + ",$lclass" + ",$lver" + ",$ln,$ldesc,$menunum"     ## Use the above lines to create the macross object
         $Global:vf19_LATTS.Add($lfn,$latts)                         ## Add the tool and its details to the local tracking list
-        $Global:vf19_LIST0.Add($lfn,$vf19_LATTS[$lfn].ver)          ## Compare local versions to master repo versions
         $Global:vf19_FILECT++                                       ## Track how many tools are installed
     }
     
@@ -58,8 +55,9 @@ function toolCount(){
     ##      to create the $masterlist value below.
     ##################################################################
     if($vf19_VERSIONING){
-        
-    if(! $webrepo -or ($webrepo -and $vf19_ATTS.count -eq 0)){  ## For web repos, just perform one initial check at startup
+    
+    ## For web-hosted scripts, just perform one initial check at startup; no need to spam IWR every time the menu loads
+    if(! $webrepo -or ($webrepo -and $vf19_ATTS.count -eq 0)){
 
     ##################
     ## Depending where and how your web server is hosting scripts, you may need to tweak this, as well.
@@ -71,7 +69,7 @@ function toolCount(){
 
         #[System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
 
-        battroid -N webrepo  -V $true   ## Tell macross your repo isn't a local fileshare
+        battroid -N webrepo -V $true   ## Tell macross your repo isn't a local fileshare
 
         $masterlist = New-Object System.Collections.ArrayList
 
@@ -128,7 +126,6 @@ function toolCount(){
             $vf19_ATTS[$rfn].access -notLike "tier*"
             ){
                 $Global:vf19_REPOCT++
-                $Global:vf19_LIST1.Add($rfn,$($vf19_ATTS[$rfn].ver))
             }
         }
         elseif( ! $vf19_ROBOTECH -and $vf19_ATTS[$rfn].priv -eq 'admin' ){
@@ -137,7 +134,6 @@ function toolCount(){
             $vf19_ATTS[$rfn].access -notLike "tier*"
             ){
                 $Global:vf19_REPOCT++
-                $Global:vf19_LIST1.Add($rfn,$($vf19_ATTS[$rfn].ver))
             }
         }
     }}}
@@ -163,27 +159,26 @@ function toolCount(){
 function look4New(){
     ## Check if local tool copies already exist
     if($vf19_FILECT -gt 0){
-        $tool_diff = $(Compare-Object -ReferenceObject $($vf19_LIST1.keys) -DifferenceObject $($vf19_LIST0.keys))
+        $tool_diff = $(Compare-Object -ReferenceObject $($vf19_ATTS.keys) -DifferenceObject $($vf19_LATTS.keys))
     }
     else{
-        $tool_diff = $($vf19_LIST1.keys)
+        $tool_diff = $($vf19_ATTS.keys)
     }
 
-    if( $vf19_FILECT -gt $vf19_REPOCT ){ $Global:vf19_MISMATCH = $true }
+    if( $vf19_FILECT -gt $vf19_REPOCT ){ 
+        $Global:vf19_MISMATCH = $true; $mismatch_list = New-Object System.Collections.ArrayList
+        $tool_diff | ?{$_.SideIndicator -eq '=>'} | Select -ExpandProperty InputObject | %{
+            $mismatch_list.Add($vf19_LATTS[$_].fname)
+        }
+    }
     
     ## Perform final check and copy scripts
     function copyScript($a,$b){
-        if($a -eq 'MACROSS.ps1'){
-            $dir = $vf19_REPOCORE
-        }
-        else{
-            $dir = $vf19_REPOTOOLS
-        }
+        if($a -eq 'MACROSS.ps1'){ $dir = $vf19_REPOCORE }
+        else{ $dir = $vf19_REPOTOOLS }
         
         splashPage
-        w "`n`n"
-        w "    You are missing '$a'. Installing it now...
-        " y
+        w "`n`n    You are missing '$a'. Installing it now...`n" y
 
         ##################################################################
         ##  MOD SECTION
@@ -207,7 +202,7 @@ function look4New(){
     
 
 
-    if( ($vf19_FILECT -gt $vf19_REPOCT) -and ! $vf19_SILENCE ){
+    if( $vf19_MISMATCH -and ! $vf19_SILENCE ){
         w "   You have scripts that are not in the master folder:`n" y
         foreach( $a in $mismatch_list ){
             w "      $a" c
@@ -238,18 +233,20 @@ function look4New(){
     ## If you're using a central repo separate from MACROSS that may contain non-MACROSS scripts,
     ## your analysts should be given an empty "modules" folder at first-use. This check will automatically
     ## search your repo for the appropriate MACROSS tools and download them based on their .access level.
-    elseif($tool_diff){
+    elseif(($tool_diff).count -gt 0){
         Foreach($t0 in $tool_diff){
-            $t00 = $t0 -replace "\..*"
-            $tfn = $vf19_ATTS[$t00].fname
-            if($vf19_FILECT -eq 0){
-                if($MONTY -and $vf19_ATTS[$t00].lang -eq 'python'){ copyScript $tfn }
-                elseif($vf19_ATTS[$t00].lang -eq 'powershell'){ copyScript $tfn }
+            if($vf19_FILECT -eq 0){ 
+                $t1 = $t0 -replace "\..*"
+                $tfn = $vf19_ATTS[$t1].fname 
+                $lang = $vf19_ATTS[$t1].lang
             }
-            if($t0.SideIndicator -eq '<='){
-                if($MONTY -and $vf19_ATTS[$t00].lang -eq 'python'){ copyScript $($($tfn).InputObject) }
-                elseif($vf19_ATTS[$t00].lang -eq 'powershell'){ copyScript $($($tfn).InputObject) }
+            elseif($t0.SideIndicator -eq '<='){ 
+                $tfn = $vf19_ATTS[$t0.InputObject].fname 
+                $lang = $vf19_ATTS[$t0.InputObject].lang
             }
+
+            if($MONTY -and $lang -eq 'python'){ copyScript $tfn }
+            elseif($lang -eq 'powershell'){ copyScript $tfn }
         }
         toolCount
     }
@@ -346,8 +343,8 @@ function verChk($1){
         if( $3 -ne 'MACROSS' ){
             $local = "$vf19_TOOLSDIR\$1"
             $dir = $vf19_REPOTOOLS
-            $Global:vf19_LVER = $vf19_LIST1[$1]
-            $vf19_CVER = $vf19_LIST0[$1]
+            $latestv = $vf19_ATTS[$1].ver
+            $runningv = $vf19_LATTS[$1].ver
         }
         else{
             $local = "$vf19_TOOLSROOT\$1"
@@ -359,43 +356,44 @@ function verChk($1){
             ##      selects a tool from the main menu, to check for new versions.
             ##################################################################
             if( $webrepo ){ 
-                $Global:vf19_LVER = ((curl.exe -ks -A MACROSS "$dir/$1") | Select -Index 2 ) -replace "^#_ver "
-                #$Global:vf19_LVER = (([System.Text.Encoding]::UTF8.GetString($(Invoke-WebRequest -UseBasicParsing "$dir/$1").content) -join '') -split "`n")[1] -replace "#_ver "
+                $Global:vf19_LATESTVER = ((curl.exe -ks -A MACROSS "$dir/$1") | Select -Index 1 ) -replace "^#_ver "
+                #$Global:vf19_LATESTVER = (([System.Text.Encoding]::UTF8.GetString($(Invoke-WebRequest -UseBasicParsing "$dir/$1").content) -join '') -split "`n")[1] -replace "#_ver "
             }
             else{ 
-                $Global:vf19_LVER = (Get-Content "$dir\$1" | Select -Index 1) -replace "^.+ " 
+                $Global:vf19_LATESTVER = (Get-Content "$dir\$1" | Select -Index 1) -replace "^.+ " 
             }
-            $vf19_CVER = (Get-Content "$local" | Select -Index 1) -replace "^.+ "
+            $latestv = $vf19_LATESTVER
+            $runningv = (Get-Content "$local" | Select -Index 1) -replace "^.+ "
         }
 
 
         if( $2 -eq 'refresh' ){
-            dlNew $1 $vf19_LVER
+            dlNew $1 $latestv
         }
-        elseif( $vf19_CVER -lt $vf19_LVER ){
+        elseif( $runningv -lt $latestv ){
             if( $2 -eq 'verify' ){
                 splashPage
                 w "`n"
                 w "     UPDATE FAILED!`n" y
-                errLog ERROR "$USR - failed updating $1 to version $vf19_LVER"
+                errLog ERROR "$USR - failed updating $1 to version $latestv"
                 slp 3
                 $Global:vf19_Z = 'GO'
                 Return
             }
             elseif( $3 -eq "MACROSS" ){
                 w "`n`n     $3 needs to update to v" y -i
-                w "$vf19_LVER" -i m
+                w "$latestv" -i m
                 w ". Hit ENTER to continue." y
                 Read-Host
-                dlNew $1 $vf19_LVER
+                dlNew $1 $latestv
             }
             else{
                 splashPage
                 w "`n"
-                w "     $3 v$vf19_LVER is live. Hit ENTER to update." -i y
+                w "     $3 v$latestv is live. Hit ENTER to update." -i y
                 Read-Host
 
-                dlNew $1 $Global:vf19_LVER
+                dlNew $1 $latestv
             }
         }
     }
