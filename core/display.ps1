@@ -46,11 +46,11 @@ function splashPage(){
         '
         getThis $b
         Write-Host -f CYAN "$vf19_READ"
-        Write-Host ' ' -NoNewline; sep '=' 70 'c'
+        Write-Host ' ' -NoNewline; sep '=' 70 c
         Write-Host -f YELLOW "               Welcome to Multi-API-Cross-Search, " -NoNewline;
         Write-Host -f CYAN "$USR"
         Write-Host -f YELLOW "                   Host: $hn  ||  IP: $ip"
-        Write-Host ' ' -NoNewline; sep '=' 70 'c'
+        Write-Host ' ' -NoNewline; sep '=' 70 c
         getThis 4pWR; $va = ''; $vb = $vf19_READ
         1..62 | %{$va += $vf19_READ}
         if($vc -gt 0){1..$vc | %{$vb += $vf19_READ}}
@@ -778,18 +778,19 @@ function startUp([switch]$init=$false){
         }$ml=setML;getThis -h $ml[13]; . $([scriptblock]::Create("$vf19_READ"))
         battroid -n vf19_TMP -v "$([string]$env:LOCALAPPDATA)\Temp\MACROSS"
         battroid -n vf19_GPOD -v $([System.Tuple]::Create($(e),$(e)))
+
+        ## MOD SECTION ##
+        ## You can set additional user default preferences here, but you'll also need to add extra
+        ## code where appropriate for those preferences to take effect (see the validation.ps1 file for
+        ## the "persist_protoculture" setting, for example)
         if( ! (Test-Path "$vf19_TOOLSROOT\core\preferences.txt")){
             "persist_protoculture=true`nuse_pythonv2=false" | Out-File "$vf19_TOOLSROOT\core\preferences.txt"
         }
         
-        ## Verify required config file
-        if(! (Test-Path $($vf19_CONFIG[0]))){ 
-            if($vf19_CONFIG[0] -Like "http*"){
-                try{ curl.exe --silent $vf19_CONFIG[0] | sls 'MACROSS' }
-                catch{ setConfig }
-            }
-            else{ setConfig }
-        }
+        ## Verify required config files
+        if($vf19_CONFIG[0] -Like "http*"){ if( -not (curl.exe -sk $vf19_CONFIG[0] | sls 'MACROSS') ){setConfig} }
+        elseif(! (Test-Path $($vf19_CONFIG[0]))){ setConfig }
+        
         userPrefs
 
         ## MOD SECTION! ##
@@ -836,13 +837,14 @@ function startUp([switch]$init=$false){
         
         foreach($c in $b){
             $d = $c.Substring(0,3)
-            $e = $c -replace "^..."
+            $e = $c -replace "^$d"
             $defs.Add($d,$e)
-            if($MONTY -and $d -ne 'mad'){ $p += $c }
+            if($MONTY -and $d -ne 'a2z'){ $p += $c }
         }
         battroid -n vf19_MPOD -v $defs; getThis $vf19_MPOD.int
         battroid -n N_ -v @($vf19_READ,$([int[]](($vf19_READ -split '') -ne '')))
         if($p.length -gt 0){ $Global:vf19_PYPOD = $p -join(',') }
+
     }
 }
 
@@ -979,7 +981,7 @@ function chooseMod(){
         elseif( $vf19_Z -Match "^debug" ){
             if($vf19_Z -Match ' '){ $p = $($vf19_Z -replace "^debug ") }
             else{ $p = $null }
-            debugMacross $p
+            cls; debugMacross $p
         }
         Clear-Variable -Force vf19_Z
 
