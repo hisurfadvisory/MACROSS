@@ -1,14 +1,11 @@
 ## MACROSS shared utilities
 
 ## These values can only be set after all initializations have finished
-function finalSet(){   
-    getThis $vf19_MPOD.enr
-    battroid -n vf19_RSRC -v $vf19_READ
-    getThis $vf19_MPOD.log
-    battroid -n vf19_LOG -v $vf19_READ
-    getThis $vf19_MPOD.rep
-    battroid -n vf19_REPOCORE -v $vf19_READ
-    if($vf19_REPOCORE -ne 'n'){
+function finalSet(){
+    getThis $vf19_MPOD.enr; battroid -n vf19_RSRC -v $vf19_READ
+    getThis $vf19_MPOD.log; battroid -n vf19_LOG -v $vf19_READ
+    getThis $vf19_MPOD.rep; battroid -n vf19_REPOCORE -v $vf19_READ
+    if($vf19_REPOCORE -ne 'None'){
         <# If you want to control tier-level access, change the $vf19_REPOCORE location in MACROSS.ps1
            and store master copies of your tools there. That way, MACROSS will be able to auto download 
            tier-appropriate tools to each analyst. You can use the configuration wizard to store the
@@ -30,18 +27,20 @@ function finalSet(){
         }
 
         ## Check whether the config files are stored on a server:
-        if( $vf19_REPOCORE -Like "http*" ){
+        if( -not $vf19_REPOTOOLS -and $vf19_REPOCORE -Like "http*" ){
             ## MOD SECTION ##
             ## Uncomment this line if you are storing config files on a local server that is using 
             ## self-signed TLS certs; ONLY DO THIS IF YOU FULLY TRUST THE CERTIFICATE CHAIN!
 
             #[System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
 
-            if(! $vf19_ATTS){
+            if($vf19_ATTS.count -eq 0){
                 try{ 
-                    $g = [System.Net.Webrequest]::Create($vf19_REPOCORE).getResponse()
-                    if($g.statusCode -eq 200){ fs_ -d '/' }else{ fs_ -e }
-                    $g.close()
+                    #$g = [System.Net.WebRequest]::Create($vf19_REPOCORE).getResponse()
+                    #if($g.statusCode -eq 200){ fs_ -d '/' }else{ fs_ -e }
+                    #$g.close()
+                    if((curl.exe -ski -A MACROSS "$vf19_REPOCORE/" | Select -Index 0) -Like "HTTP*OK"){ fs_ -d '/' }
+                    else{ fs_ -e }
                 }
                 catch{ fs_ -e }
             }
@@ -71,18 +70,12 @@ function finalSet(){
 
 ################################################################>
 function debugMacross($1,[switch]$continue=$true){
-    if($continue){
-        splashPage
-        ''
-        w '                        MACROSS DEBUG MODE
-        ' y
-    }
     macrossHelp show
     ''
     $rst = $(setCC -b); getThis IFRoYXQgaXMgYSBwcml2aWxlZ2VkIGNvbW1hbmQu; $bm = $vf19_READ
     
     if($1){
-        if($1 -Match $rst -and ! $ad){w "$bm`n`n" 'r' 'bl'; $ad = setConfig -a}
+        if($1 -Match $rst -and ! $ad){w "$bm`n`n" r bl; $ad = setConfig -a}
         if(($ad -eq $vf19_GPOD.Item1) -or ($1 -notMatch $rst)){
             startUp;if($1 -eq 'help'){macrossHelp dev;macrossHelp show}
             elseif($1 -Like "help *"){macrossHelp $($1 -replace "help ");macrossHelp show}
@@ -535,7 +528,7 @@ function extras($1){
         'strings'='stringz'
         'shell'='runSomething'
         'splash'='easterEgg'
-        'refresh'="dlNew 'MACROSS.ps1' $vf19_LVER"
+        'refresh'="dlNew 'MACROSS.ps1' $vf19_LATESTVER"
     }
 
     . $([scriptblock]::Create("$($ex[$1])"))
@@ -606,7 +599,7 @@ function pyCross(){
         w2f $result $filenm
         if(-not(Test-Path -Path "$($vf19_PYG[0])\$filenm")){
             $em = "Failed write to $filenm for $caller_"
-            errLog ERROR "MACROSS(pyCross)" $em
+            errLog ERROR "$USR/MACROSS(pyCross)" $em
             w "ERROR! $em " -f r -b bl
             slp 3
         }
@@ -698,7 +691,8 @@ function getHash(){
 
     getHash [-f FILE] [-a MD5|SHA256]
 
-    Get the hash of a file. The -f and -a values are both required.
+    Get the hash of a file. The -f and -a values are both required. This only returns the
+    hash, and cuts out all the crap Windows adds in that nobody cares about.
     
     ||examples||
     Usage:  
@@ -1167,7 +1161,7 @@ function houseKeeping(){
             Write-Host -f CYAN '
             ...Delete action failed!
             '
-            errLog INFO "MACROSS(houseKeeping)" "Failed to delete $($_.Name) for $2"
+            errLog INFO "$USR/MACROSS(houseKeeping)" "Failed to delete $($_.Name) for $2"
         }
         else{
             $Script:fcount = $fcount - 1
@@ -1194,7 +1188,7 @@ function houseKeeping(){
                     $dn = $_.Name
                     Write-Host -f CYAN "  Deleting $dn...."
                     rmFiles $dn
-                    errLog INFO "MACROSS(houseKeeping)" "Deleted $($_.Name) for $2"
+                    errLog INFO "$USR/MACROSS(houseKeeping)" "Deleted $($_.Name) for $2"
                     slp 1
                 }
         }
@@ -1208,7 +1202,7 @@ function houseKeeping(){
                         $dn = $_.Name
                         Write-Host -f CYAN "  Deleting $dn...."
                         rmFiles $dn
-                        errLog INFO "MACROSS(houseKeeping)" "Deleted $($_.Name) for $2"
+                        errLog INFO "$USR/MACROSS(houseKeeping)" "Deleted $($_.Name) for $2"
                         slp 1 
                     }
             }
