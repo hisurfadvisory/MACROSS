@@ -54,8 +54,6 @@ if( ! $CALLER ){ transitionSplash 4 2 }
 ## ASCII splashes
 function splashPage1a(){
     cls
-    if( ! $pythonsrc ){
-        disVer 'GUBABA'
     
     $b = 'ICAgICAg4paI4paI4paI4paI4paI4paI4pWXIOKWiOKWiOKVlyAgIOKWiOKWiOKVl+KWiOKWiOKWi
     OKWiOKWiOKWiOKVlyAg4paI4paI4paI4paI4paI4pWXIOKWiOKWiOKWiOKWiOKWiOKWiOKVlyAg4paI4paI
@@ -72,19 +70,14 @@ function splashPage1a(){
     DilZ0gIOKVmuKVkOKVkOKVkOKVkOKVkOKVnSDilZrilZDilZDilZDilZDilZDilZ0g4pWa4pWQ4pWdICDil
     ZrilZDilZ3ilZrilZDilZDilZDilZDilZDilZ0g4pWa4pWQ4pWdICDilZrilZDilZ0='
     getThis $b
-    w '
-    '
+    w "`n"
     w $vf19_READ y
-    }
-    else{
-    w '
-    '
-    }
+
 }
 function splashPage1b(){
     ''
     w '   =======================================================' y
-    w   "              Gubaba v$($vf19_LATTS['GUBABA'].ver) (Windows Event Lookups) 
+    w   "              Gubaba v$($vf19_LATTS.GUBABA.ver) (Windows Event Lookups) 
     
     " c
 }
@@ -93,7 +86,7 @@ function splashPage1b(){
 if( $HELP ){
     splashPage1a
     splashPage1b
-    $vf19_LATTS['GUBABA'].toolInfo() | %{
+    $vf19_LATTS.GUBABA.toolInfo() | %{
         w $_ y
     }
     w "
@@ -211,12 +204,13 @@ $dyrl_gub_VALIDWD = [regex]"^[a-zA-Z][\w ,-]+$"
 
 
 if( $pythonsrc ){
-    getThis $vf19_MPOD['enr']; $dyrl_gub_TABLE = "$vf19_READ\gubaba.json"
+    getThis $vf19_MPOD.enr; $dyrl_gub_TABLE = "$vf19_READ\gubaba.json"
     if( ! (Test-Path "$dyrl_gub_TABLE") ){
         Write-Host "  Error... MACROSS hasn't specified a location to build my reference table!"
         slp 2
         Exit
     }
+    $dyrl_gub_QUERY = (Get-Content "$($vf19_PYG[0])\PROTOCULTURE.eod" | ConvertFrom-Json).target
 }
 elseif( Test-Path "$vf19_RSRC\gubaba.json" ){  ## Check if there is an alternate path to the resources folder
     $dyrl_gub_TABLE = "$vf19_RSRC\gubaba.json"
@@ -268,3 +262,5 @@ else{
         }
     }
 }
+
+
