@@ -195,17 +195,13 @@ function setUser($1,[switch]$c=$false,[switch]$i=$false){
         battroid -n vf19_USRCHK -v $USR
 
         $aTIER=@{};$uTIER=@{}
-        if($vf19_CONFIG[2] -Like "http*"){
-            $aconf = (curl.exe $vf19_CONFIG[2]) -Join ''
-            if($error[0] -Like "*curl*"){
-                errLog ERROR "$USR could not retrieve $($vf19_CONFIG[2]) during startup"
-            }
+        if($vf19_UNSPACY[2]){
+            $aconf = ($vf19_UNSPACY[2]) -Join ''
         }
-        else{ $aconf=(gc $vf19_CONFIG[2]) -Join '' }
-        $vf19_MPOD.keys | where{$_ -Match "tr[1-3]"} | %{
+        $vf19_MPOD.keys | ?{$_ -Match "tr[1-3]"} | %{
             getThis $vf19_MPOD[$_]; $uTIER.Add($_,$vf19_READ)
         }
-        $vf19_MPOD.keys | where{$_ -Match "ta[1-3]"} | %{
+        $vf19_MPOD.keys | ?{$_ -Match "ta[1-3]"} | %{
             getThis $vf19_MPOD[$_]; $aTIER.Add($_,$vf19_READ)
         }
         $id = Get-Random -min 10000000 -max 9999999999
@@ -234,6 +230,7 @@ function setUser($1,[switch]$c=$false,[switch]$i=$false){
             battroid -n vf19_USERAUTH -v $false
             tup 5 $true $true; $skip = $true
             errLog AUTH "$USR launched MACROSS with no tier permissions required"
+            finalSet
         }
         else{
             ## Multiple methods because every use-case is different...
@@ -278,6 +275,7 @@ function setUser($1,[switch]$c=$false,[switch]$i=$false){
             battroid -n vf19_DTOP -v "$env:USERPROFILE\Desktop"
             battroid -n vf19_modifier -v $idm; battroid -n vf19_check -v $idc
             errLog AUTH "$USR successfully launched MACROSS ($env:COMPUTERNAME)"
+            finalSet
         }
         rv id,idm,idc,priv
         varCleanup -t
@@ -326,7 +324,7 @@ function eMsg($m='ERROR: that module is unavailable!',$c='c'){
     if($m.getType().Name -eq 'String' -and $m -ne 'ERROR: that module is unavailable!'){
         Write-Host -f $cc " $m
         "
-        errLog ERROR "$USR/MACROSS" $m
+        errLog ERROR "MACROSS" $m
     }
     elseif($m.getType().Name -eq 'Int32'){
         Write-Host -f $cc " $($msgs[$m])
@@ -450,7 +448,7 @@ function pyENV([switch]$c=$false){
         if( $HELP ){ $env:HELP = 'T' }
         else{
             startUp; $l = ''
-            $vf19_MPOD.keys | Sort -Descending | where{$_ -ne 'mad'} | %{
+            $vf19_MPOD.keys | Sort -Descending | where{$_ -ne 'a2z'} | %{
                 $l += $($_ + '::' + "$($vf19_MPOD[$_])" + ';')
             }
             $l = $l -replace ";$"
