@@ -1,5 +1,5 @@
 #_sdf1 Targeted Active Directory Hunting
-#_ver 1.1
+#_ver 1.2
 #_class 2,admin,search active-directory account properties,powershell,HiSurfAdvisory,0,none
 
 <#
@@ -9,18 +9,24 @@
     the instances of "service-" in this script with your organization's naming scheme.
     This helps shorten the amount of returns you might receive, though you may
     not always want to do so!
+
     
-    Review the lines surrounding any "MOD SECTION" comments for tips on how to tweak
-    for your own uses if necessary.
+    Review the sections at lines 370 & 490... you can modify these sections to better
+    suit your network. For example, the lines following
+
+        $dyrl_sn_T = availableTypes -v 'active-directory user,EDR' -e
+
+    is where you can write instructions to match your own EDR script's requirements,
+    if necessary.
+
 
 #>
 
 
-
 if($HELP){
     cls
-    w '    ' -i; w " NOME v$($vf19_LATTS['NOME'].ver) " y bl
-    Write-Host -f YELLOW "
+    w '     ' -i; w "  NOME v$($vf19_LATTS.NOME.ver) " y bl
+    w "
 
     NOME provides a quick way to hunt for anomalies in Active Directory. You
     can select between property lists for users or computers, both of which
@@ -31,7 +37,7 @@ if($HELP){
     you need to search specific GPO memberships.
 
     Hit ENTER to go back.
-    "
+    " y
     Read-Host; Return
 }
 
@@ -39,8 +45,7 @@ if($HELP){
 
 function splashPage(){
     cls
-    w '
-    '
+    w "`n"
     $b = 'ICAgICAgICAgIOKWiOKWiOKWiOKVlyAgIOKWiOKWiOKVlyDilojilojilojilojilojilojilZcg4paI4paI4paI4pWXICAg4paI4pa
     I4paI4pWX4paI4paI4paI4paI4paI4paI4paI4pWXCiAgICAgICAgICDilojilojilojilojilZcgIOKWiOKWiOKVkeKWiOKWiOKVlOKVkOKV
     kOKVkOKWiOKWiOKVl+KWiOKWiOKWiOKWiOKVlyDilojilojilojilojilZHilojilojilZTilZDilZDilZDilZDilZ0KICAgICAgICAgIOKWi
@@ -52,9 +57,8 @@ function splashPage(){
     Wa4pWQ4pWd4pWa4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWdCiAgPT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT0
     9PT09PT09CiAgICBGaW5kIHVzZXJzIG9yIGhvc3RzIGJ5IEFjdGl2ZS1EaXJlY3RvcnkgcHJvcGVydGllcw=='
     getThis $b
-    Write-Host -f YELLOW $vf19_READ
+    w $vf19_READ y
 }
-
 
 ## Uncommon and boolean values
 $dyrl_sn_userslist = @{
@@ -64,7 +68,7 @@ $dyrl_sn_userslist = @{
     '04'='badPasswordTime';
     '05'='CanonicalName';
     '06'='CN (Full name)';
-    '07'='Created (days)';
+    '07'='createTimeStamp (days)';
     '08'='Deleted (days)';
     '09'='Department';
     '10'='Description';
@@ -73,7 +77,7 @@ $dyrl_sn_userslist = @{
     '13'='isDeleted';
     '14'='DoesNotRequirePreAuth (b)';
     '15'='EmailAddress';
-    '16'='EmployeeID (EDIPI)';
+    '16'='EmployeeID';
     '17'='Enabled (b)';
     '18'='HomeDirectory';
     '19'='HomeDrive';
@@ -107,11 +111,11 @@ $dyrl_sn_userslist = @{
     '47'='samAccountName';
     '48'='SID';
     '49'='telephoneNumber';
-    '50'='Title (EDIPI)';
+    '50'='Title';
     '51'='TrustedForDelegation (b)';
     '52'='TrustedToAuthForDelegation (b)';
-    '53'='uid (EDIPI)';
-    '54'='userPrincipalName (EDIPI)'
+    '53'='uid';
+    '54'='userPrincipalName'
 }
 
 
@@ -144,7 +148,7 @@ $dyrl_sn_hostslist = @{
     '25'='OperatingSystem';
     '26'='OperatingSystemVersion';
     '27'='PasswordExpired (b)';
-    '28'='PasswordLastSet';
+    '28'='PasswordLastSet (days)';
     '29'='PasswordNeverExpires (b)';
     '30'='ProtectedFromAccidentalDeletion (b)';
     '31'='PasswordNotRequired (b)';
@@ -154,7 +158,7 @@ $dyrl_sn_hostslist = @{
 }
 
 
-## Properties that are integer-values
+## Properties that are int-only
 $dyrl_sn_intlist = @(
     'logonCount',
     'badLogonCount',
@@ -174,7 +178,7 @@ function searchAD($1,$2){
     $filters = @(); $filterstring = ''
     $specific = @()
     w ''
-    w '       ' -i
+    w '        ' -i
     w " ACTIVE DIRECTORY -- SEARCH $2 SETTINGS" bl w
     w ''
     
@@ -189,7 +193,7 @@ function searchAD($1,$2){
             $k2 = '0' + $k2
         }
         $v1 = $1[$k1]; $v2 = $1[$k2]
-        if($v1 -in $t2_wo_intlist){$c1 = 'c'}
+        if($v1 -in $dyrl_sn_intlist){$c1 = 'c'}
         $n = 24 - $($v1.length)
         while($n -gt 0){
             $v1 = $v1 + ' '
@@ -197,10 +201,10 @@ function searchAD($1,$2){
         }
         w " $($k1 -replace "^0",' ')." -i
         if($v2){
-            if($v2 -in $t2_wo_intlist){$c2 = 'c'}
+            if($v2 -in $dyrl_sn_intlist){$c2 = 'c'}
             w " $v1" $c1 -i
             w " $($k2 -replace "^0",' ')." -i
-            w " $v2" $c2
+            w $v2 $c2
         }
         else{
             w " $v1" $c1
@@ -211,8 +215,10 @@ function searchAD($1,$2){
         w '
         
         '
-        w '  ' g -i
-        w 'Properties with a (b) can only be True/False; those in blue are integer-only! ' bl y
+        w '   ' g -i
+        w ' Properties with a (b) can only be True/False; those in blue are integer-only! ' bl y
+        w '   ' g -i
+        w ' For properties with (days), enter a number of days back to search, or $null. ' bl y
         w "
     Enter the number for each property you want to search, followed by
     a colon and the value you're filtering on. for multiple filters,
@@ -223,13 +229,13 @@ function searchAD($1,$2){
     -Operators > and < can be used for integer properties
     " g
     
-        w '   Example filters --
+        w '    Example filters --
         ' g
-        w '    17:some string value,16:true,7:3/15/2024' 'c' -i
-        w ' (Search multiple properties)' g
-        w '    43:some string value' c -i
-        w '    (Search a single property)' g
-        w '    3:>10' c -i
+        w '     17:some string value,16:true,7:30' 'c' -i
+        w '  (Search multiple properties)' g
+        w '     43:some string value' c -i
+        w '               (Search a single property)' g
+        w '     3:>10           ' c -i
         w '                   (Search an int property for values 10 & higher)
         ' g
         w '
@@ -258,10 +264,12 @@ function searchAD($1,$2){
     foreach($filter in $filters){
         $c--
         $property = $1[$filter.keys]
-        $specific += $($property -replace " \(EDIPI\)$",".*" -replace " \(\w+\)$")
+        $specific += $($property -replace " \(\w+\)$")
         if($property -Like "*days)"){
-            $filterstring = $filterstring + '$_.' + $property + " -gt `"$((Get-Date).AddDays(-$fv))`" "
-            $filterstring = $filterstring + ' -and $_.' + $property + " -lt `"$(Get-Date)`""
+            $nd=$filter.values
+            $property = $property -replace " .days.$"
+            $filterstring = $filterstring + '$_.' + $property + " -ge `"`$((Get-Date).AddDays(-$nd))`" "
+            $filterstring = $filterstring + '-and $_.' + $property + " -lt `"`$(Get-Date)`""
         }
         elseif($property -Like "* (b)"){
             ## Set boolean filters
@@ -272,7 +280,7 @@ function searchAD($1,$2){
                 $filterstring = $filterstring + '$_.' + $($property -replace " \(b\)$")
             }
         }
-        elseif($property -in $t2_wo_intlist){
+        elseif($property -in $dyrl_sn_intlist){
             if($filter.values -Match "^<\d+$"){
                 $filterstring = $filterstring + '$_.' + $property + ' -lt ' + [string]$($filter.values -replace "<")
             }
@@ -297,10 +305,10 @@ function searchAD($1,$2){
     Searching...' g
     
     ## Debugging
-    if($hk_OPT1){while($z -ne 'q'){$z = read-host 'debug'; iex "$z"; w "`n`n" }rv -force hk_OPT1 -scope global; Exit}
+    if($vf19_OPT1){while($z -ne 'q'){$z = read-host 'debug'; iex "$z"; w "`n`n" }rv -force vf19_OPT1 -scope global; Exit}
 
 
-    $matches = . $([scriptblock]::Create("$($cmdlet[$2]) -filter * -properties * | ?{$filterstring}"))
+    $matches = . $([scriptblock]::Create("$($cmdlet[$2]) -filter * -properties * | where{$filterstring}"))
 
 
     if(! $matches){ 
@@ -317,12 +325,14 @@ function showAccounts($1,$2,$3){
     $1 | %{
         $U = $_
         if($computer){
-            screenResultsAlt -h $([string]$i + '. ' + $U.Name) -k 'SYSTEM' -v $U.OS
+            screenResultsAlt $([string]$i + '. ' + $U.Name) 'SYSTEM' $U.OS
         }
         else{
-            screenResultsAlt -h $([string]$i + '. ' + $U.displayName) -k 'ACCOUNT' -v $U.samAccountName
+            screenResultsAlt $([string]$i + '. ' + $U.displayName) 'ACCOUNT' $U.samAccountName
         }
         screenResultsAlt -k 'DESCRIPTION' -v $U.description
+        screenResultsAlt -k 'CREATED' -v $U.whenCreated
+        screenResultsAlt -k 'LAST LOGON' -v $U.lastLogonDate
         $2 | %{
             screenResultsAlt -k "$_" -v "$($U.$_)"
         }
@@ -330,15 +340,15 @@ function showAccounts($1,$2,$3){
         $i++
     }
     ''
-    w ' Enter the number of an account to review,' c -i
+    w ' Enter the number of an account to review, ' c -i
     if($limit -ge 0){
-        w 'hit ENTER for the next 10,' c
+        w 'hit ENTER for the next 10, ' c
     }
-    w ' "n" for a new search or "q" to quit:  ' c -i
+    w '"n" for a new search or "q" to quit:  ' c -i
     $z = Read-Host
 
     if($z -eq 'q'){
-        rv dyrl_sn_*; Exit
+        rv dyrl_sn_*;  Exit
     }
     elseif($z -eq 'n'){
         $Script:dyrl_sn_quit = $true
@@ -347,82 +357,84 @@ function showAccounts($1,$2,$3){
     elseif($z -eq ''){
         Return
     }
-    else{
+    elseif([int]$z){
+        
+        $focus = $dyrl_sn_list[$z]
+        
 
-        $focus = $dyrl_sn_list[([int]$z - 1)]
-        $focus
-
-        $check = availableTypes 'edr' -e
-        if($check.count -gt 0){ $dyrl_sn_EDRQ = $true; rv check }
-        $dyrl_sn_T = availableTypes 'active-directory,edr'  ## Get any scripts that query EDR or AD
-        if($dyrl_sn_T.count -ge 1){
-            ''
-            screenResults '         Enter one of the tools below for more data, or hit ENTER to skip.'
-            
-                $dyrl_sn_T | %{
-                    screenResults $_ $(TL $_).valtype
-                }
-                screenResults -e
-            
-            ''
-            $z = Read-Host '  '
-
-            #########################  MOD SECTION   #########################
-            ########   MODIFY THIS BLOCK IF YOU USE A SPECIFIC EDR SOLUTION
-            if((TL $z).valtype -eq 'EDR'){
-                if($dyrl_sn_EDRQ -and $dyrl_sn_computer){
-                    $Global:PROTOCULTURE = $focus.name -replace "\..+"            ## Remove domain from local hostname
-                    $qtype = 'hlkup'                                              ## Tell GERWALK to search by hostname
-                }
-                elseif($dyrl_sn_EDRQ){
-                    $Global:PROTOCULTURE = $focus.samAccountName -replace "\\\w"  ## Remove domain from username
-                    $qtype = 'usrlkup'                                            ## Tell GERWALK to search by username
-                }
-                $er = (collab $z 'NOME' $qtype)
-            }
-            elseif((TL $z).valtype -like "active-d*"){
-                if($SINGER -eq 'NOME'){
-                    $Global:PROTOCULTURE = $focus.samAccountName -replace "\\\w"
-                }
-                else{
-                    $Global:PROTOCULTURE = $focus.name -replace "\..+"   ## Remove domain from hostname
-                }
-                $ar = collab $z 'NOME'
-            }
-            ########   END OF EDR SECTION
+        ''
+        screenResults '         Enter one of the tool names below for more data, or hit ENTER to skip.'
+        if($dyrl_sn_computer){
+            $collablist = @(availableTypes -v 'active-directory usernames & computers,EDR,IPs & hostnames' -e)
+            $Global:PROTOCULTURE = "$($focus.name -replace "\.+")" ## Remove domain from hostnames
+            $extra = 'hlkup'
         }
-        
-        
-        if($er){
-            if(($er).count -gt 2){
-                $rr = $($er[1] | ConvertFrom-Json).results
-                $l = $er[2]
+        else{
+            $collablist = @(availableTypes -v 'active-directory usernames & computers,EDR' -e)
+            $Global:PROTOCULTURE = "$($focus.samAccountName -replace "\\\S+")" ## Remove domain from usernames
+            $extra = 'usrlkup'
+        }
+        $collablist | %{
+            screenResults $_ $vf19_LATTS[$_].valtype
+        }
+        screenResults -e
+        ''
+        $z = Read-Host '  '
+
+
+        if($z -in $vf19_LATTS.keys){
+            w '
+            '
+            if($vf19_LATTS[$z].valtype -eq 'EDR'){
+                $r = (collab $z NOME $extra)
+                    if($r){
+                        if(($r).count -gt 2){
+                            $rr = $($r[1] | ConvertFrom-Json).results
+                            $l = $r[2]
+                        }
+                        else{
+                            $rr = $($r[0] | ConvertFrom-Json).results
+                            $l = $r[1]
+                        }
+                    if($rr){
+                        $ct = 0
+                        $total = ($rr).count
+
+                        screenResults "   Recent activity for $PROTOCULTURE (unsorted; system processes omitted)"
+                        screenResults 'c~HOSTNAME' 'c~ACTIVITY' 'c~DATE'
+
+                        while($ct -lt $total){
+                            if("$(($rr.process_name[$ct]))" -notIn $l){
+                                [string]$cmdl = $($rr.cmdline[$ct])
+                                screenResults "$(($rr.hostname[$ct]))  $(($rr.username[$ct]))" "$(($rr.process_name[$ct]))" "$(($rr.start[$ct]))"
+                            }
+                            $ct++
+                        }
+
+                        screenResults -e
+                        w '
+                        '
+                        w '   Hit ENTER to continue.' c
+                        Read-Host
+                        showAccounts $1 $2 $3
+                    }
+                }
+            }
+            elseif($vf19_LATTS[$z].rtype -ne 'onscreen'){
+                $rrr = collab $z NOME  ## Clean this up later
             }
             else{
-                $rr = $($er[0] | ConvertFrom-Json).results
-                $l = $er[1]
-            }
-            if($rr){
-                $ct = 0
-                $total = ($rr).count
-    
-                screenResults "   Recent activity for $PROTOCULTURE (unsorted; system processes omitted)"
-                screenResults 'c~HOSTNAME' 'c~ACTIVITY' 'c~DATE'
-    
-                while($ct -lt $total){
-                    if("$(($rr.process_name[$ct]))" -notIn $l){
-                        [string]$cmdl = $($rr.cmdline[$ct])
-                        screenResults "$(($rr.hostname[$ct]))  $(($rr.username[$ct]))" "$(($rr.process_name[$ct]))" "$(($rr.start[$ct]))"
-                    }
-                    $ct++
-                }
-    
-                screenResults -e
-                w '
-                '
-                w '  Hit ENTER to continue.' c
-                Read-Host
+                ''
+                collab $z NOME
                 showAccounts $1 $2 $3
+            }
+
+            if($rrr){
+                ''
+                $outfile = 'NOME_' + $PROTOCULTURE + '.txt'
+                $rrr | Out-File "$vf19_DTOP\$outfile"
+                w "     Results were written to $outfile on your desktop.
+                "
             }
         }
         else{
@@ -441,21 +453,18 @@ function cv(){
 }
 
 
-transitionSplash 9 2
-
 while($dyrl_sn_Z -ne 'c'){
     $dyrl_sn_quit = $false
-    $SINGER = $null
     splashPage
-    w "`n`n"
-    w '                                SELECT A SINGER:
+	w "`n`n"
+    w '                                 SELECT A SINGER:
     ' g
-    w '  1. Sheryl Nome (hunt for USER properties)
+    w '   1. Sheryl Nome (hunt for USER properties)
        ' g
-    w '  2. Sharon Apple (hunt for COMPUTER properties)
+    w '   2. Sharon Apple (hunt for COMPUTER properties)
 
     ' g
-    w '  (type "c" to cancel):  ' g -i
+    w '   (type "c" to cancel):  ' g -i
 
     $dyrl_sn_Z = Read-Host
 
@@ -483,48 +492,45 @@ while($dyrl_sn_Z -ne 'c'){
             Out-File "$vf19_DTOP\ad_user_search.csv" -Append
         }
         ''
-        w '  Results have been written to "ad_user_search.csv" on your desktop.' y
+        w '   Results have been written to "ad_user_search.csv" on your desktop.' y
         slp 1
     }
 
 
-    ######################################################################
-    ## Modify the -Like, -Match, etc. values below to match up with the naming
-    ## scheme of your network for service accounts and external users
-    ######################################################################
+    ## MOD SECTION ##
+	## Change the "like" and "match" values below to match your enterprise's service accounts and remote
+	## users, if you have a way to identify them easily.
     if($dyrl_sn_accounts[0] -ne 0){
         $dyrl_sn_Z = $null
         $dyrl_sn_total = $dyrl_sn_accounts[0].count
-        $dyrl_sn_svca = ($dyrl_sn_accounts[0] | where{$_.samAccountName -Like "service*"})
-        $dyrl_sn_svcn = ($dyrl_sn_accounts[0] | where{$_.samAccountName -notLike "service*"})
-        $dyrl_sn_extu = ($dyrl_sn_accounts[0] | where{$_.samAccountName -Match "^ext\-"})
-        $dyrl_sn_extn = ($dyrl_sn_accounts[0] | where{$_.samAccountName -notMatch "^ext\-"})
+        $dyrl_sn_svca = ($dyrl_sn_accounts[0] | ?{$_.samAccountName -Like "service*"})
+        $dyrl_sn_svcn = ($dyrl_sn_accounts[0] | ?{$_.samAccountName -notLike "service*"})
+        $dyrl_sn_extu = ($dyrl_sn_accounts[0] | ?{$_.Description -Match "(external|remote)"})
+        $dyrl_sn_extn = ($dyrl_sn_accounts[0] | ?{$_.Description -notMatch "(external|remote)"})
         if(-not $dyrl_sn_svca.count){$dyrl_sn_sc=0}else{$dyrl_sn_sc = $dyrl_sn_svca.count}
         if(-not $dyrl_sn_extu.count){$dyrl_sn_ec=0}else{$dyrl_sn_ec = $dyrl_sn_extu.count}
-        w '
-
-        '
+        w "`n`n"
         if($dyrl_sn_total -gt 21){
-            w "  There are " g -i
+            w "   There are" g -i
             w "$dyrl_sn_total" y -i
             w " accounts matching your search (" g -i
             w "$($dyrl_sn_sc)" c -i
-            w  " service and " g -i
-            w "$($dyrl_sn_ec)" c -i
+            w  " 'svc.' and" g -i
+            w " $($dyrl_sn_ec)" c -i
             w " external accounts )" g
-            w '  Enter one or more of the following choices (examples, "fo" to view' g
-            w '  and save user accounts, or "s" to view service accounts):' g
-            w '   -"a" to display them all' g
+            w '   Enter one or more of the following choices (examples, "fo" to view' g
+            w '   and save user accounts, or "s" to view service accounts):' g
+            w '    -"a" to display them all' g
         if($dyrl_sn_sc -gt 0){
-            w '   -"s" to view service accounts
+            w '    -"s" to view service accounts
     -"o" to omit service accounts' g
         }if($dyrl_sn_ec -gt 0){
-            w '   -"e" to view external accounts
+            w '    -"e" to view external accounts
     -"i" to ignore external accounts' g
         }
-            w '   -"f" to write them to a file on your desktop
+            w '    -"f" to write them to a file on your desktop
     -"q" to quit' g 
-            w '   > ' g -i
+            w '    > ' g -i
             $dyrl_sn_Z = Read-Host
             if($dyrl_sn_Z -eq 'q'){
                 Exit
@@ -573,9 +579,10 @@ while($dyrl_sn_Z -ne 'c'){
     
         No accounts found matching
         ' g
-        w "$($dyrl_sn_accounts[2])" w
+        w " $($dyrl_sn_accounts[2])" w
         w '
         Hit ENTER to continue.' g; Read-Host
     }
 }
+
 
