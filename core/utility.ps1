@@ -711,7 +711,7 @@ function getHash(){
     $type = @('md5','sha256')
 
     if( Test-Path -Path $file ){
-        if($alg -in $type){ Return (Get-HashFile $file -a $alg).hash }
+        if($alg -in $type){ Return (Get-FileHash $file -a $alg).hash }
     }
 }
 
