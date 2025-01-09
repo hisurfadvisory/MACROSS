@@ -16,7 +16,8 @@ function whereConfigs(){
         if($_ -Like "http*"){ $2.Add($(curl.exe -sk -A MACROSS $_)) > $null }
         else{ $2.Add($(Get-Content $_)) > $null }
     }
-    Return $2.toArray()
+    if($2[0] -ne $null){ Return $2.toArray() }
+    else{ Return $false }
 }
 
 
@@ -27,19 +28,24 @@ function setConfig(){
         [switch]$s = $false,
         [switch]$u = $false
     )
-    $ecfg_=$vf19_CONFIG[0]
-
+    
     
     if(-not $vf19_UNSPACY){
         $Global:vf19_UNSPACY = whereConfigs
-        $sigchk = [IO.MemoryStream]::New([byte[]][char[]]$($vf19_UNSPACY[0])); slp 400 -m
-        if((Get-FileHash -InputStream $sigchk -Algorithm SHA256).hash -ne $vf19_UNSPACY[1]){
-            w "`n"; eMsg -m " Configuration file signatures do not match! Cannot load configurations." -c y
-            Exit
-        }
-        else{
-            $ccfg=($vf19_UNSPACY[0]).count;$current_config = $vf19_UNSPACY[0][2..$ccfg_]
-            if($vf19_UNSPACY[2]){$acfg_ = $vf19_UNSPACY[2]}
+        if($vf19_UNSPACY){
+            <#if($vf19_UNSPACY[1] -notMatch "\w"){
+                w "`n"; eMsg -m " Configuration checksums missing! Cannot load configurations." -c y
+                Exit
+            }
+            $sigchk = [IO.MemoryStream]::New([byte[]][char[]]$($vf19_UNSPACY[0] -Join '')); slp 400 -m
+            if((Get-FileHash -InputStream $sigchk -Algorithm SHA256).hash -ne $vf19_UNSPACY[1]){
+                w "`n"; eMsg -m " Configuration checksums do not match! Cannot load configurations." -c y
+                Exit
+            }
+            else{#>
+                $ccfg=($vf19_UNSPACY[0]).count;$current_config = $vf19_UNSPACY[0][2..$ccfg_]
+                if($vf19_UNSPACY[2]){$acfg_ = $vf19_UNSPACY[2]}
+            #}
         }
     }
     if($acfg_){ $current_analyst=$true }
@@ -400,6 +406,10 @@ function setConfig(){
                 $confirm.BackColor = 'BLUE'
                 $confirm.Text = 'CONFIRM SETTINGS'
                 $confirm.Add_Click({
+                    ## For log server/SEIM, the errLog function needs the IP/hostname WITHOUT any protocol prefix
+                    if($keylogc.Text -Like "http*"){
+                        $keylogc.Text = ($keylogc.Text) -replace "http[s]*://"
+                    }
                     $Script:clicked = $true
                     $Script:list.Add('rep',$(getThis -e $keyrepo.Text))
                     $Script:list.Add('int',$(getThis -e $keyint.Text))
@@ -581,7 +591,9 @@ function setConfig(){
         $("$((1..32 | %{$(Get-Random -min 0 -max 9)}) -Join '')" + "$np" ) | Out-File $of -Append
         setBlocks "$($write[1])" $kk 'config.conf'
         Remove-Item -Path "$vf19_TMP\macross_cfg.temp" -Force
-        (getHash $of sha256).toUpper() | Out-File "$vf19_TOOLSROOT\launch.conf"
+        $sigwrt = [IO.MemoryStream]::New([byte[]][char[]]$((gc $of) -Join '')); slp 400 -m
+        ((Get-FileHash -InputStream $sigwrt -Algorithm SHA256).hash).toUpper() | Out-File "$vf19_TOOLSROOT\launch.conf"
+        #(getHash $of sha256).toUpper() | Out-File "$vf19_TOOLSROOT\launch.conf"
 
         sep '=' 72 g; sep '=' 72 g
 
@@ -645,6 +657,11 @@ function setConfig(){
 }
 function setCC([switch]$c=$false,[switch]$b=$false){
     if(! $Global:vf19_UNSPACY){$Global:vf19_UNSPACY=whereConfigs}
+    $sigchk = [IO.MemoryStream]::New([byte[]][char[]]$($vf19_UNSPACY[0] -Join '')); slp 400 -m
+    if((Get-FileHash -InputStream $sigchk -Algorithm SHA256).hash -ne $vf19_UNSPACY[1]){
+        w "`n"
+        eMsg -m " Configuration checksum mismatched or null! Cannot load configurations." -c y; Exit
+    }
     if($b){startUp;getThis $vf19_MPOD.bl0
     rv -Force vf19_MPOD,vf19_PYPOD -Scope Global;Return $vf19_READ}
     $cc=$vf19_UNSPACY[0][1].Substring(32)
