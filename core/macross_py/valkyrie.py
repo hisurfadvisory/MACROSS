@@ -120,7 +120,7 @@ class macross:
 ################################################################
 ###############  FUNCTION DEFINITIONS  #########################
 ################################################################
-def help():
+def help() -> None:
     print('''
  MACROSS automatically sets this module path in $env:PYTHONPATH so you can import
  it in your script without any hassle.
@@ -169,7 +169,7 @@ def help():
  ''')
 
 ## Alias to write colorized text to screen
-def w(TEXT,C1='rs',C2=None,i=False,u=False):
+def w(TEXT,C1='rs',C2=None,i=False,u=False) -> None:
     ''' Pass this function your text/string as arg 1, and the first letter of the
  color you want as arg2 ("bl" for black). Send a second color to highlight 
  the text.
@@ -206,7 +206,7 @@ def w(TEXT,C1='rs',C2=None,i=False,u=False):
             print(lead + TEXT + tail)
 
 ## Sleep function for pausing scripts when needed
-def slp(s):
+def slp(s) -> None:
     """ The 'slp' function will pause your script for the number of seconds you
  pass to it. Usage:
 
@@ -215,7 +215,7 @@ def slp(s):
     ts(s)
 
 ## Write MACROSS message logs
-def errLog(forward=False,*fields):
+def errLog(forward=False,*fields) -> None:
     ''' You can use this to write messages to MACROSS' log files. Timestamps are
  automatically added. The first arg *must* be True or False to tell the function
  whether or not to forward your log message to an external log collector (this
@@ -269,7 +269,7 @@ def dS(d):
         osrm(d)
 
 
-def rgx(pattern,string,replace = None):
+def rgx(pattern,string,replace = None) -> str:
     ''' Perform pattern matching/replacement (re.search and re.sub)
  USAGE:
     Search a string:
@@ -320,7 +320,7 @@ def psc(cc=None,cr=None):
 ## Verify the existence of a path, file or directory.
 ## Send what you're looking to verify as arg 1, and its type ("dir" vs. "file") as optional arg 2
 ## This function returns true/false
-def drfl(check,method = 'e'):
+def drfl(check,method = 'e') -> bool:
     ''' Check if a path exists. Send "file" or "dir" as the second argument
  (optional). Usage:
 
@@ -336,7 +336,7 @@ def drfl(check,method = 'e'):
     return a
 
 
-def availableTypes(val,la=".*",ea=".*",ra=".*",exact=False):
+def availableTypes(val,la=".*",ea=".*",ra=".*",exact=False) -> list:
     """ Use this function to search for tools with matching MACROSS
  attributes. Matching tools are returned in a list that you can
  forward to the collab function.
@@ -369,17 +369,17 @@ def availableTypes(val,la=".*",ea=".*",ra=".*",exact=False):
 ####   PYTHON COLLAB ~~~~~~~~~~~IMPORTANT!!!!!!~~~~~~~~~~~~~~~  ######################
 ######################################################################################
 ## If you want your MACROSS powershell scripts to be able to respond to python requests,
-## you **MUST** include these parameter checks to ensure your powershell script can run
-## as expected:
+## you **MUST** include these parameter checks at the start of your powershell script to 
+## ensure it can run as expected:
 ##
-##          param($pythonsrc=$null)
-##          if($pythonsrc -ne $null){
-##              foreach($core in gci "$PSScriptRoot\..\core\*.ps1"){ . $core.fullname }
+##          param( $pythonsrc=$null )     ## You can also include any other params needed
+##          if( $pythonsrc -ne $null ){
+##              foreach( $core in gci "$PSScriptRoot\..\core\*.ps1" ){ . $core.fullname }
 ##              restoreMacross
 ##          }
 ##
-## The restoreMacross() powershell function will reload all of the resources that get
-## lost when you launch python.
+## The "restoreMacross" powershell function will load all of the required resources
+## in a new, temporary session outside of your current MACROSS session.
 ######################################################################################
 def collab(Tool,Caller,Protoculture,ap = None):
     ''' The python "collab" function writes your PROTOCULTURE value to an ".eod"
@@ -482,7 +482,7 @@ def collab(Tool,Caller,Protoculture,ap = None):
 ## it will will be set to the C: drive, which you can change via the first
 ## argument (opendir). The second optional arg (filter) can limit by file
 ## extensions; default is to list all files. This arg has to be passed as a list.
-def getFile(opendir = 'C:\\',filter = (('All files', '*.*'),('All files', '*.*'))):
+def getFile(opendir = 'C:\\',filter = (('All files', '*.*'),('All files', '*.*'))) -> str:
     """The getFile function opens a dialog window for users to select a file. You
 can pass in optional arguments 1) to set the default location for the dialog,
 and 2) limit the selection\nby file extension. Usage: 
@@ -509,7 +509,7 @@ and 2) limit the selection\nby file extension. Usage:
 ##
 ## Your mileage may vary depending on the strings that get passed in; I sometimes
 ## get a display with broken columns. It usually works pretty well, though.
-def screenResults(A = 'endr',B = None,C = None):
+def screenResults(A = 'endr',B = None,C = None) -> None:
     '''(Usage example) Write 3 columns, with the second column in green:
 
     valkyrie.screenResults(string1,'g~'+string2,string3)
@@ -790,7 +790,7 @@ write the closing row boundary.'''
             
 
 
-def getThis(v,e = 0,ee = 'utf8'):
+def getThis(v,e = 0,ee = 'utf8') -> str:
     """ This is the same as MACROSS' powershell function 'getThis'. Your
  first argument is the encoded string you want to de/encode, and your
  second arg will be:
