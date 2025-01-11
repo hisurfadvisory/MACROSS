@@ -104,7 +104,7 @@ function debugMacross($1,[switch]$continue=$true){
                 4. Cancel
             
             OR Type "logs" to review MACROSS log files,' g
-            if($MONTY[1]){ w '
+            if($MONTY){ w '
             OR Type "python" to open a MACROSS python session for testing,' g}
             w '
             OR Enter any command to begin testing/debugging within powershell
