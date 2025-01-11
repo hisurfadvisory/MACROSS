@@ -4,22 +4,28 @@
 
 from sys import argv
 from json import loads
-import valkyrie as vk
+
+## If you only want to import parts of MACROSS' valkyrie module, remember to also import these critical
+## values if you need them: MPOD (so you can decrypt from the config.conf file using the getThis function), 
+## PROTOCULTURE (if your script can be called via the collab function), HELP and CALLER
+from valkyrie import w,psc,slp,getThis,availableTypes,collab,screenResults,PROTOCULTURE,HELP,CALLER
+
 L = len(argv)
 spiritia = False  ## "spiritia" is used as an alt arg/param in addition to, or instead of, PROTOCULTURE.
     
-## MACROSS can send a single optional arg, if your script is coded to accept one
+## MACROSS can send a single optional arg, if your script is coded to accept one; powershell defines this
+## optional arg as $spiritia, so I keep it the same in python
 if L == 2:
     spiritia = argv[1]
     
 
-## The valkyrie.psc() function is just "os.system()"
-## Using arg "cc" executes commands, while using "cr" gives you back the results as usable data.
-vk.psc(cc='cls')  
+## The valkyrie.psc() function uses different subfunctions of python's "os.system()"
+## Using arg "cc" executes commands, while using "cr" gives you back any results as usable data.
+psc(cc='cls')  
 
 ## If the user selected this script with the "help" option, the valkyrie module will set the
 ## HELP value to True so that your help/description message can be displayed.
-if vk.HELP:
+if HELP:
     print("""
     This is a simple python script to demonstrate how MACROSS calls powershell and python 
     tools interchangeably.
@@ -50,78 +56,82 @@ def splashPage(alt=False):
         eKWiOKWiOKWiOKWiOKWiOKWiOKWiOKVkeKWiOKWiOKVkSAg4paI4paI4pWRCiAgICAgICAg4pWa4pWQ4pW\
         dICAgICDilZrilZDilZ3ilZrilZDilZ3ilZrilZDilZDilZDilZDilZDilZDilZ3ilZrilZDilZ0gIOKVm\
         uKVkOKVnQo='
-    STR = vk.getThis(b)
+    STR = getThis(b)
     print("\n")
     if alt:
-        vk.w(STR,'m')
+        w(STR,'m')
     else:
-        vk.w(STR,'y')
+        w(STR,'y')
     print("\n\n")
 
 
+def main():
+    ## Use availableTypes() to generate lists of relevant scripts you can forward data to, 
+    ## regardless of scripts being added/removed from your modules folder. If you look at 
+    ## GUBABA's .valtype, it is "windows event id lookup". You can search for exact or 
+    ## partial-matching valtypes. The "la" arg is specifying which language we require from
+    ## potential collab scripts.
+    TOOL = availableTypes('event id',la='powershell')[0]
 
-## Use availableTypes() to generate lists of relevant scripts you can forward data to, 
-## regardless of scripts being added/removed from your modules folder. If you look at 
-## GUBABA's .valtype, it is "windows event id lookup". You can search for exact or 
-## partial-matching valtypes. The "la" arg is specifying which language we require from
-## potential collab scripts.
-TOOL = vk.availableTypes('event id',la='powershell')[0]
+    ## The standard rule for MACROSS scripts is that they automatically act on the
+    ## global value PROTOCULTURE, if it exists.
+    if PROTOCULTURE:
+        ## In this section, MISA is using availableTypes() to view the CALLER script's macross
+        ## class, specifically the ".valtype" value. Using the macross class attributes lets 
+        ## you write your tools to respond appropriately no matter which script is 
+        ## calling yours. MISA will only reply to queries from scripts with the .valtype 
+        ## "demo script" and the .lang "powershell". You can also do this manually if you've
+        ## imported valkyrie's LATTS dictionary, for example:
+        ##      vtype = LATTS[CALLER].valtype; vlang = LATTS[CALLER].lang
 
-## The standard rule for MACROSS scripts is that they automatically act on the
-## global value PROTOCULTURE, if it exists.
-if vk.PROTOCULTURE:
-    ## In this section, MISA is looking at the CALLER script's macross class,
-    ## specifically the ".valtype" value. Using the macross class attributes lets 
-    ## you write your tools to respond appropriately no matter which script is 
-    ## calling yours. MISA will only reply to queries from scripts with the .valtype 
-    ## "demo script" and the .lang "powershell".
-    if vk.CALLER:
-        vtype = vk.LATTS[vk.CALLER].valtype
-        vlang = vk.LATTS[vk.CALLER].lang
-        if vtype == 'demo script' and vlang == 'powershell':
-            splashPage(alt=True)
-            vk.w('CALLER: ','g',i=True); vk.w(vk.CALLER,'y')
+
+        if CALLER:
+            filter: list = availableTypes(val="demo script",la="powershell")
+            if CALLER in filter:
+                splashPage(alt=True)
+                w('CALLER: ','g',i=True); w(CALLER,'y')
+            else:
+                exit()
+        
+        w('PROTOCULTURE: ','g',i=True); w(PROTOCULTURE,'y')
+        print("\n\n")
+        w(CALLER+" used the collab function to send your value to MISA.\n",'m')
+        test = collab(TOOL,CALLER,PROTOCULTURE)
+        slp(2)
+    else:
+        splashPage()
+        w('''Enter a search term or ID related to Windows events to see if GUBABA 
+    can find it: ''','g',i=True)
+        Z: str = input()
+        test = collab(TOOL,'MISA',Z)
+
+    if test:
+        w("MISA has processed your search via "+TOOL+".\n\n",'g')
+
+        
+        ## The powershell GUBABA script responds with hashtables; MACROSS has a powershell function called
+        ## pyCross that your scripts can use to write a $PROTOCULTURE value to the PROTOCULTURE.eod file 
+        ## within the core\macross_py\garbage_io folder. The python valkyrie.collab() function uses this 
+        ## file to send and retrieve PROTOCULTURE values back and forth between python and powershell.
+        for i in test.keys():
+            t = str(test[i][0])
+            v = str(test[i])
+            ## Both the powershell and python modules contain useful utilities you can use, such as
+            ## screenResults(), which formats large blocks of text into columns
+            screenResults('y~'+t+'-'+'ID '+i,v)
+        screenResults()
+        if CALLER:
+            w("\nHit ENTER to return to "+CALLER,'g')
         else:
-            exit()
-    
-    vk.w('PROTOCULTURE: ','g',i=True); vk.w(vk.PROTOCULTURE,'y')
-    print("\n\n")
-    vk.w(vk.CALLER+" used the collab function to send your value to MISA.\n",'m')
-    test = vk.collab(TOOL,vk.CALLER,vk.PROTOCULTURE)
-    vk.slp(2)
-else:
-    splashPage()
-    vk.w('''Enter a search term or ID related to Windows events to see if GUBABA 
-can find it: ''','g',i=True)
-    Z = input()
-    test = vk.collab(TOOL,'MISA',Z)
-
-if test:
-    vk.w("MISA has processed your search via "+TOOL+".\n\n",'g')
-
-    
-    ## The powershell GUBABA script responds with hashtables; MACROSS has a powershell function called
-    ## pyCross that your scripts can use to write a $PROTOCULTURE value to the PROTOCULTURE.eod file 
-    ## within the core\macross_py\garbage_io folder. The python valkyrie.collab() function uses this 
-    ## file to send and retrieve PROTOCULTURE values back and forth between python and powershell.
-    for i in test.keys():
-        t = str(test[i][0])
-        v = str(test[i])
-        ## Both the powershell and python modules contain useful utilities you can use, such as
-        ## screenResults(), which formats large blocks of text into columns
-        vk.screenResults('y~'+t+'-'+'ID '+i,v)
-    vk.screenResults()
-    if vk.CALLER:
-        vk.w("\nHit ENTER to return to "+vk.CALLER,'g')
+            w("\nHit ENTER to quit back to the menu.",'g')
     else:
-        vk.w("\nHit ENTER to quit back to the menu.",'g')
-else:
-    if vk.CALLER:
-        vk.w("\nHit ENTER to return to "+vk.CALLER,'g')
-    else:
-        vk.w("\nNo results. Hit ENTER to quit back to the menu.",'c')
+        if CALLER:
+            w("\nHit ENTER to return to "+CALLER,'g')
+        else:
+            w("\nNo results. Hit ENTER to quit back to the menu.",'c')
+
+    input()
 
 
-
-
-input()
+if __name__ == "__main__":
+    main()
