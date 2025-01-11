@@ -116,7 +116,7 @@ if($HELP){
 ## When MACROSS' collab() function is used, it sets the calling script's name as $CALLER.
 ## In this way, you can both track what script is calling, and what the $CALLER's [macross]
 ## class attributes are so you can automatically tailor responses. All tools and their
-## attributes are tracked in the array $vf19_LATTS.
+## attributes are tracked in the array $vf19_LATTS in powershell, or LATTS in python.
 if($CALLER -and $vf19_LATTS.$CALLER.valtype -Like "*user*"){
     w " Congratulations Caller! " g
     w " Hit ENTER to continue." -i g; Read-Host
@@ -143,9 +143,9 @@ else{
         w "Enter a keyword or ID number to search for an event ID: " g -i
 
         ## Where it makes sense, have your scripts automatically act on $PROTOCULTURE any time it has a value
-        $Global:PROTOCULTURE = Read-Host
+        $z = Read-Host
     }
-
+    $Global:PROTOCULTURE = $z
 
     ## The availableTypes function collects all of the scripts in the modules folder that match
     ## your [macross] criteria. In this example, I search for the .valtype "demo" and the  
@@ -192,14 +192,17 @@ else{
                 
 
                 ## MACROSS offers a few different ways to display your data. "screenResults" Can take large
-                ## blocks of info and split them evenly into columns.
+                ## blocks of info and split them evenly into rows & columns. If you begin your string with 
+                ## the first letter of a color, like "c" for cyan, along with the ~ character, it tells 
+                ## screenResults to colorize the text with colors other than the default. This is useful for 
+                ## highlighting data that matches parameters you may be interested in.
                 screenResults "c~$k" $v
             }
             screenResults -e
         }
     }
 
-    w "`n"
+    "`n"
 
     if(Test-Path -Path $vf19_PYG[1]){
 
