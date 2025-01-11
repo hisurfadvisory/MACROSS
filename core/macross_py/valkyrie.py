@@ -286,20 +286,9 @@ def rgx(pattern,string,replace = None) -> str:
     return r
 
 
-##  Run windows commands when needed using os lib
-##  Typically, I call this function with one arg -- a powershell command to launch one of
-##  the MACROSS *.ps1 scripts and whatever parameters that powershell script requires.
-##  If you need to collect values from the script, or from a quick command like "hostname" or 
-##  "ping", call valkyrie.psc() with an empty value as the first arg, and your command as the second:
-
-##          var = valkyrie.psc(cr='ping 192.168.1.1')
-
-##  Feel free to modify this however you need; you might even need to import the entire os library--
-##  everyone has different use-cases, especially with python-based APIs! Just make sure to enact your
-##  changes across ALL of the MACROSS functions and scripts!
 def psc(cc=None,cr=None):
-    """ The psc function uses os.system() to execute any Windows commands 
- that you might require. Send your arg as "cc" to simply execute a
+    """ The psc function uses subfunctions of os.system() to execute any Windows  
+ commands that you might require. Send your arg as "cc" to simply execute a
  task; use "cr" instead if you need to save the result from the task.
  
  USAGE:
@@ -322,9 +311,9 @@ def psc(cc=None,cr=None):
 ## This function returns true/false
 def drfl(check,method = 'e') -> bool:
     ''' Check if a path exists. Send "file" or "dir" as the second argument
- (optional). Usage:
+ to specify files vs. folders (optional). Usage:
 
-    drfl(path_to_check,optional)
+    drfl(path_to_check,<"file"|"dir">)
     '''
     if method == 'file':
         a = path.isfile(check)
