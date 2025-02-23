@@ -711,7 +711,7 @@ if($MONTY){
                     
                     ''
                     Write-Host '            '; -NoNewline;
-                    w " INTEL ASSESSMENT: $((gci "$dumps\*dump").count) potential targets. " -f y -b bl
+                    w " INTEL ASSESSMENT: $((gci "$dumps\*dump").count) potential targets. " -f y -b k
                     w '
                     '
                     
@@ -1153,8 +1153,8 @@ do{
 
 
         # Get required vars and run the search
-        w '======         ~~ PDF SEARCHES ARE *ALWAYS* CASE-SENSITIVE ~~       ======' -f y -b bl
-        w '======           ~~ REGEX IS UNRELIABLE FOR PDF SEARCHES ~~         ======' -f y -b bl
+        w '======         ~~ PDF SEARCHES ARE *ALWAYS* CASE-SENSITIVE ~~       ======' -f y -b k
+        w '======           ~~ REGEX IS UNRELIABLE FOR PDF SEARCHES ~~         ======' -f y -b k
         w ' Type "regex " (without quotes) followed by your expression to match a' g
         w ' pattern, otherwise just enter your string or comma-separated keywords:' g
         w '  >  ' -i 
@@ -1420,3 +1420,5 @@ if( $GOBACK ){
 Remove-Variable dyrl_eli_*,GOBACK,COMEBACK
 Remove-Variable dyrl_eli_* -Scope Script
 Return
+
+
