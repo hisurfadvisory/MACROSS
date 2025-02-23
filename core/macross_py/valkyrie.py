@@ -9,18 +9,17 @@
 ## sort of controls in place to restrict who can install stuff. Modify and add functions or
 ## classes here as necessary for your environment (classes go at the very bottom).
 import base64 as b64
-import array as arr
 from datetime import datetime as dt
 from os import chdir,path,getenv,environ
 from os import system as osys
 from os import popen as osop
-from os import getcwd as pwd
+#from os import getcwd as pwd
 from os import remove as osrm
 from json import dumps,load
 from time import sleep as ts
 from tkinter import Tk
 from tkinter.filedialog import askopenfilename as aof
-import math
+from math import ceil
 import socket
 from re import search,sub
 
@@ -66,6 +65,31 @@ if getenv('MPOD'):
         fuel = missile.split(':')[1]
         MPOD[payload] = fuel
     del missile,payload,fuel
+
+
+
+################################################################
+## Convert powershell's [macross] objects to python macross class
+################################################################
+if GBIO:
+    attfile = GBIO + '\\\\LATTS.eod'
+    if drfl(attfile,method='file'):
+        global LATTS; LATTS = {}
+        with open(attfile) as af:
+            pa = load(af)
+            for tool in pa:
+                l = []
+                K = tool
+                V = pa[tool]
+                for i in V:
+                    l.append(str(i))
+                ATT = macross(l[0],l[1],l[2],l[3],l[4],l[5],l[6],l[7],l[8],l[9])
+                LATTS.update({K:ATT})
+        af.close()
+        del pa,i,K,V,tool,attfile,af
+
+
+
 
 
 ## Enable colorized terminal in Windows
@@ -729,9 +753,9 @@ write the closing row boundary.'''
         elif CT2 != None:
             if CT1 > CT2 and CT2 != 0:
                 if CT2 == 1:
-                    MIDDLE = math.ceil((CT1/2) - 1)
+                    MIDDLE = ceil((CT1/2) - 1)
                 else:
-                    MIDDLE = math.ceil((CT1/CT2) - 1)
+                    MIDDLE = ceil((CT1/CT2) - 1)
 
                 for Block in BLOCK1:
                     if LINENUM < MIDDLE:
@@ -756,9 +780,9 @@ write the closing row boundary.'''
                             w(c,'g')
             elif CT2 > CT1 and CT1 != 0:
                 if CT1 == 1:
-                    MIDDLE = math.ceil((CT2/2) - 1)
+                    MIDDLE = ceil((CT2/2) - 1)
                 else:
-                    MIDDLE = math.ceil((CT2/CT1) - 1)
+                    MIDDLE = ceil((CT2/CT1) - 1)
 
                 for Block in BLOCK2:
                     csep(c,'g')
@@ -836,26 +860,4 @@ def getThis(v,e = 0,ee = 'utf8') -> str:
             newval = newval + hb
         
     return newval
-
-
-################################################################
-## Convert powershell's [macross] objects to python macross class
-################################################################
-if GBIO:
-    attfile = GBIO + '\\\\LATTS.eod'
-    if drfl(attfile,method='file'):
-        global LATTS; LATTS = {}
-        with open(attfile) as af:
-            pa = load(af)
-            for tool in pa:
-                l = []
-                K = tool
-                V = pa[tool]
-                for i in V:
-                    l.append(str(i))
-                ATT = macross(l[0],l[1],l[2],l[3],l[4],l[5],l[6],l[7],l[8],l[9])
-                LATTS.update({K:ATT})
-        af.close()
-        del pa,i,K,V,tool,attfile,af
-
 
