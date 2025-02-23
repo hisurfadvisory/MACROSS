@@ -75,7 +75,7 @@ function debugMacross($1,[switch]$continue=$true){
     $rst = $(setCC -b); getThis IFRoYXQgaXMgYSBwcml2aWxlZ2VkIGNvbW1hbmQu; $bm = $vf19_READ
     
     if($1){
-        if($1 -Match $rst -and ! $ad){w "$bm`n`n" r bl; $ad = setConfig -a}
+        if($1 -Match $rst -and ! $ad){w "$bm`n`n" r k; $ad = setConfig -a}
         if(($ad -eq $vf19_GPOD.Item1) -or ($1 -notMatch $rst)){
             startUp;if($1 -eq 'help'){macrossHelp dev;macrossHelp show}
             elseif($1 -Like "help *"){macrossHelp $($1 -replace "help ");macrossHelp show}
@@ -600,7 +600,7 @@ function pyCross(){
         if(-not(Test-Path -Path "$($vf19_PYG[0])\$filenm")){
             $em = "Failed write to $filenm for $caller_"
             errLog ERROR "$USR/MACROSS(pyCross)" $em
-            w "ERROR! $em " -f r -b bl
+            w "ERROR! $em " -f r -b k
             slp 3
         }
     }
@@ -711,7 +711,7 @@ function getHash(){
     $type = @('md5','sha256')
 
     if( Test-Path -Path $file ){
-        if($alg -in $type){ Return (Get-FileHash $file -a $alg).hash }
+        if($alg -in $type){ Return (Get-FileHash "$file" -a $alg).hash }
     }
 }
 
@@ -872,7 +872,7 @@ function sheetz(){
     # Add reference to the Microsoft Excel assembly
     try{ Add-Type -AssemblyName Microsoft.Office.Interop.Excel }
     catch{
-        w '    ' -i; w 'Microsoft Excel is not installed!' r bl
+        w '    ' -i; w 'Microsoft Excel is not installed!' r k
         w ''; slp 2; Return
     }
 
