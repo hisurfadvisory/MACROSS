@@ -25,7 +25,7 @@
 
 if($HELP){
     cls
-    w '     ' -i; w "  NOME v$($vf19_LATTS.NOME.ver) " y bl
+    w '     ' -i; w "  NOME v$($vf19_LATTS.NOME.ver) " y k
     w "
 
     NOME provides a quick way to hunt for anomalies in Active Directory. You
@@ -179,7 +179,7 @@ function searchAD($1,$2){
     $specific = @()
     w ''
     w '        ' -i
-    w " ACTIVE DIRECTORY -- SEARCH $2 SETTINGS" bl w
+    w " ACTIVE DIRECTORY -- SEARCH $2 SETTINGS" k w
     w ''
     
     $i = 1
@@ -216,9 +216,9 @@ function searchAD($1,$2){
         
         '
         w '   ' g -i
-        w ' Properties with a (b) can only be True/False; those in blue are integer-only! ' bl y
+        w ' Properties with a (b) can only be True/False; those in blue are integer-only! ' k y
         w '   ' g -i
-        w ' For properties with (days), enter a number of days back to search, or $null. ' bl y
+        w ' For properties with (days), enter a number of days back to search, or $null. ' k y
         w "
     Enter the number for each property you want to search, followed by
     a colon and the value you're filtering on. for multiple filters,
