@@ -1,13 +1,4 @@
 
-
-################################################################
-###################    IMPORT SECTION    #######################
-################################################################
-## Trying to only load what we need to start with for common use in a given MACROSS session.
-## We don't want to consume a bunch of memory for nothing, and we also don't want to assume
-## that we can just pip install whatever we want to. Hopefully most organizations have some
-## sort of controls in place to restrict who can install stuff. Modify and add functions or
-## classes here as necessary for your environment (classes go at the very bottom).
 import base64 as b64
 from datetime import datetime as dt
 from os import chdir,path,getenv,environ
@@ -25,12 +16,29 @@ from re import search,sub
 
 
 ################################################################
+####################   CLASS DEFINITIONS   #####################
+################################################################
+class macross:
+	def __init__(self,n,ac,p,vt,l,au,e,r,vr,f):
+		self.name = n
+		self.access = ac
+		self.priv = p
+		self.valtype = vt
+		self.lang = l
+		self.author = au
+		self.evalmax = e
+		self.rtype = r
+		self.ver = vr
+		self.fname = f
+
+
+################################################################
 ## Set default MACROSS values:
 ## var names will be the same as their powershell versions,
 ## but **without** the "vf19_" or "dyrl_" prefixes.
 ################################################################
-global PROTOCULTURE,CALLER,HELP,USR,GBIO,RSRC,DTOP,TOOLSROOT,TOOLSDIR,LOGS,M_,N_,ROBOTECH,MPOD
-PROTOCULTURE,CALLER,HELP,USR,GBIO,RSRC,DTOP,TOOLSROOT,TOOLSDIR,LOGS,M_,N_,ROBOTECH,MPOD = [False] * 14
+global PROTOCULTURE,CALLER,HELP,USR,GBIO,RSRC,DTOP,TOOLSROOT,TOOLSDIR,LOGS,M_,N_,LATTS,ROBOTECH,MPOD
+PROTOCULTURE,CALLER,HELP,USR,GBIO,RSRC,DTOP,TOOLSROOT,TOOLSDIR,LOGS,M_,N_,LATTS,ROBOTECH,MPOD = [False] * 15
 if getenv('PROTOCULTURE'):
     PROTOCULTURE = getenv('PROTOCULTURE')
 
@@ -58,6 +66,7 @@ if getenv('MACROSS'):
     GBIO = TOOLSROOT + '\\\\core\\\\macross_py\\\\garbage_io'
     TOOLSDIR = TOOLSROOT + '\\\\modules'
 
+## Load the missile pod
 if getenv('MPOD'):
     MPOD = {}
     for missile in getenv('MPOD').split(';'):
@@ -66,15 +75,11 @@ if getenv('MPOD'):
         MPOD[payload] = fuel
     del missile,payload,fuel
 
-
-
-################################################################
 ## Convert powershell's [macross] objects to python macross class
-################################################################
 if GBIO:
     attfile = GBIO + '\\\\LATTS.eod'
-    if drfl(attfile,method='file'):
-        global LATTS; LATTS = {}
+    if path.isfile(attfile):
+        LATTS = {}
         with open(attfile) as af:
             pa = load(af)
             for tool in pa:
@@ -86,9 +91,7 @@ if GBIO:
                 ATT = macross(l[0],l[1],l[2],l[3],l[4],l[5],l[6],l[7],l[8],l[9])
                 LATTS.update({K:ATT})
         af.close()
-        del pa,i,K,V,tool,attfile,af
-
-
+        del ATT,pa,i,K,V,tool,attfile,af
 
 
 
@@ -118,25 +121,26 @@ bcolo = {
 }
 
 
-################################################################
-####################   CLASS DEFINITIONS   #####################
-################################################################
-class macross:
-	def __init__(self,n,ac,p,vt,l,au,e,r,vr,f):
-		self.name = n
-		self.access = ac
-		self.priv = p
-		self.valtype = vt
-		self.lang = l
-		self.author = au
-		self.evalmax = e
-		self.rtype = r
-		self.ver = vr
-		self.fname = f
 
 ################################################################
 ###############  FUNCTION DEFINITIONS  #########################
 ################################################################
+def drfl(check,method = 'e') -> bool:
+    ''' Check if a path exists. Send "file" or "dir" as the second argument
+ to specify files vs. folders (optional). Usage:
+
+    drfl(path_to_check,<"file"|"dir">)
+    '''
+    if method == 'file':
+        a = path.isfile(check)
+    elif method == 'dir':
+        a = path.isdir(check)
+    elif method == 'e':
+        a = path.exists(check)
+
+    return a
+
+
 def help() -> None:
     print('''
  MACROSS automatically sets this module path in $env:PYTHONPATH so you can import
@@ -330,26 +334,6 @@ def psc(cc=None,cr=None):
     if cr:
         TASK = osop(cr)
         return TASK.read()
-
-
-## Also from the os library, *path* has lots of common uses for MACROSS
-## Verify the existence of a path, file or directory.
-## Send what you're looking to verify as arg 1, and its type ("dir" vs. "file") as optional arg 2
-## This function returns true/false
-def drfl(check,method = 'e') -> bool:
-    ''' Check if a path exists. Send "file" or "dir" as the second argument
- to specify files vs. folders (optional). Usage:
-
-    drfl(path_to_check,<"file"|"dir">)
-    '''
-    if method == 'file':
-        a = path.isfile(check)
-    elif method == 'dir':
-        a = path.isdir(check)
-    elif method == 'e':
-        a = path.exists(check)
-
-    return a
 
 
 def availableTypes(val,la=".*",ea=".*",ra=".*",exact=False) -> list:
