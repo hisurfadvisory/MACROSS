@@ -1,4 +1,56 @@
+'''
+ MACROSS automatically sets this module path in $env:PYTHONPATH so you can import
+ it in your script without any hassle.
 
+ The valkyrie module will automatically set several MACROSS values for you, including:
+
+    valkyrie.PROTOCULTURE         -> if there is an active $PROTOCULTURE value
+    valkyrie.USR                  -> your Windows account name
+    valkyrie.DTOP                 -> your desktop path
+    valkyrie.N_                   -> the $N_ list of mathing obfuscation numbers
+    valkyrie.TOOLSROOT            -> the MACROSS root folder path
+    valkyrie.TOOLSDIR             -> the modules\ folder path
+    valkyrie.GBIO                 -> the garbage_io\ folder path
+    valkyrie.MPOD                 -> a python dictionary of $vf19_MPOD**
+    valkyrie.LOG                  -> the location of MACROSS' log files
+    valkyrie.ROBOTECH             -> True if powershell $vf19_ROBOTECH is $true
+    valkyrie.HELP                 -> True if powershell $HELP is $true
+
+If you import this module without MACROSS, these values are all set to False, and
+the following functions will not return any responses:
+          
+    valkyrie.availableTypes()
+    valkyrie.collab()
+    valkyrie.errLog()
+
+ ** Use valkyrie.getThis() to decrypt the values you set in MACROSS' config.conf
+ file. The valkyrie.MPOD dictionary contains the same key-value pairs as the
+ $vf19_MPOD hashtable in powershell. Example to read from the resources folder
+ location that you configured:
+
+ resource_folder = valkyrie.getThis(valkyrie.MPOD['enr'])
+
+ Note that some valkyrie functions operate differently than their powershell
+ counterparts! For example, unlike the powershell getThis function, 
+ valkyrie.getThis() does not write to vf19_READ, it just returns your results.
+
+ Additionally, to aid in sharing query results back and forth between powershell
+ and python, the valkyrie folder contains a subfolder called 'garbage_io'. MACROSS
+ scripts can write their outputs into this directory, using ".eod" files. When
+ python is assigning or reading PROTOCULTURE values for powershell, that value is
+ stored in the PROTOCULTURE.eod file.
+
+ See the collab() function down below, as well as the pyCross() function in utility.p1
+ for more details. MACROSS typically handles everything to do with .eod files in the
+ background, but you can create your own for specific scripts if necessary.
+
+ MACROSS powershell scripts already know the location of this folder as $vf19_PYG[0]. 
+ In python it is referenced with the variable GBIO.
+
+ All .eod files in the garbage_io folder are automatically deleted when MACROSS exits 
+ or starts up.
+
+ '''
 import base64 as b64
 from datetime import datetime as dt
 from os import chdir,path,getenv,environ
@@ -141,61 +193,6 @@ def drfl(check,method = 'e') -> bool:
     return a
 
 
-def help() -> None:
-    print('''
- MACROSS automatically sets this module path in $env:PYTHONPATH so you can import
- it in your script without any hassle.
-
- The valkyrie module will automatically set several MACROSS values for you, including:
-
-    valkyrie.PROTOCULTURE         -> if there is an active $PROTOCULTURE value
-    valkyrie.USR                  -> your Windows account name
-    valkyrie.DTOP                 -> your desktop path
-    valkyrie.N_                   -> the $N_ list of mathing obfuscation numbers
-    valkyrie.TOOLSROOT            -> the MACROSS root folder path
-    valkyrie.TOOLSDIR             -> the modules\ folder path
-    valkyrie.GBIO                 -> the garbage_io\ folder path
-    valkyrie.MPOD                 -> a python dictionary of $vf19_MPOD**
-    valkyrie.LOG                  -> the location of MACROSS' log files
-    valkyrie.ROBOTECH             -> True if powershell $vf19_ROBOTECH is $true
-    valkyrie.HELP                 -> True if powershell $HELP is $true
-
-If you import this module without MACROSS, these values are all set to False, and
-the following functions will not return any responses:
-          
-    valkyrie.availableTypes()
-    valkyrie.collab()
-    valkyrie.errLog()
-
- ** Use valkyrie.getThis() to decrypt the values you set in MACROSS' config.conf
- file. The valkyrie.MPOD dictionary contains the same key-value pairs as the
- $vf19_MPOD hashtable in powershell. Example to read from the resources folder
- location that you configured:
-
- resource_folder = valkyrie.getThis(valkyrie.MPOD['enr'])
-
- Note that some valkyrie functions operate differently than their powershell
- counterparts! For example, unlike the powershell getThis function, 
- valkyrie.getThis() does not write to vf19_READ, it just returns your results.
-
- Additionally, to aid in sharing query results back and forth between powershell
- and python, the valkyrie folder contains a subfolder called 'garbage_io'. MACROSS
- scripts can write their outputs into this directory, using ".eod" files. When
- python is assigning or reading PROTOCULTURE values for powershell, that value is
- stored in the PROTOCULTURE.eod file.
-
- See the collab() function down below, as well as the pyCross() function in utility.p1
- for more details. MACROSS typically handles everything to do with .eod files in the
- background, but you can create your own for specific scripts if necessary.
-
- MACROSS powershell scripts already know the location of this folder as $vf19_PYG[0]. 
- In python it is referenced with the variable GBIO.
-
- All .eod files in the garbage_io folder are automatically deleted when MACROSS exits 
- or starts up.
-
- ''')
-
 ## Alias to write colorized text to screen
 def w(TEXT,C1='rs',C2=None,i=False,u=False) -> None:
     ''' Pass this function your text/string as arg 1, and the first letter of the
@@ -205,7 +202,7 @@ def w(TEXT,C1='rs',C2=None,i=False,u=False) -> None:
  Setting u=True will underline the text. Setting i=True for "inline" will write 
  the next block of text on the same line as the last.
 
- Colors: (c)yan, (g)reen, (y)ellow, (r)ed, (m)agenta, (bl)ack, (b)lue
+ Colors: (c)yan, (g)reen, (y)ellow, (r)ed, (m)agenta, blac(k), (b)lue
  (default is (w)hite)
 
  USAGE:
@@ -239,7 +236,8 @@ def slp(s) -> None:
  pass to it. Usage:
 
     valkyrie.slp(3)
-    ^^ Will pause your script for 3 seconds\n"""
+    ^^ Will pause your script for 3 seconds
+    """
     ts(s)
 
 
@@ -293,7 +291,9 @@ def errLog(forward=False,*fields) -> None:
 
 def dS(d):
     ''' Delete files.
- USAGE:\n\tvalkyrie.dS(path_to_file)'''
+
+ USAGE:
+    valkyrie.dS(path_to_file)'''
     confirm = input('''
     Are you sure you want to delete''',d)
     if search("^y",confirm):
@@ -498,9 +498,9 @@ def collab(Tool,Caller,Protoculture,ap = None):
 def getFile(opendir = 'C:\\',filter = (('All files', '*.*'),('All files', '*.*'))) -> str:
     """The getFile function opens a dialog window for users to select a file. You
 can pass in optional arguments 1) to set the default location for the dialog,
-and 2) limit the selection\nby file extension. Usage: 
+and 2) limit the selection by file extension. Usage: 
 
-    FILE = getFile('your\\directory\\to\\file',(('Adobe Acrobat Document', '*.pdf'),('All files', '*.*')))
+    FILE = getFile('directory\\to\\file',(('Adobe Acrobat Document', '*.pdf'),('All files', '*.*')))
     
     """
     Tk().withdraw()
@@ -528,8 +528,10 @@ def screenResults(A = 'endr',B = None,C = None) -> None:
     valkyrie.screenResults(string1,'g~'+string2,string3)
 
 Each string value is optional, and will be written to screen in separate
-rows & columns.\nYou can send the first letter of a color ("k" for black)
-and "~" to colorize text, for example "c~Value" to write "Value" in cyan.
+rows & columns.
+
+You can send the first letter of a color ("k" for black) and "~" to colorize
+text, for example "c~Value" to write "Value" in cyan.
 
 Colors:(c)yan, (bl)ack, (b)lue, (r)ed, (y)ellow, (w)hite, (m)agenta, and
 (ul) for underline.
