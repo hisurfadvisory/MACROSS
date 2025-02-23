@@ -223,7 +223,7 @@ function setConfig(){
                 else{
                     $attempt++
                     getThis $ml[3]
-                    w "  $vf19_READ  " r bl
+                    w "  $vf19_READ  " r k
                     ''
                 }
             }
@@ -713,7 +713,7 @@ function setNewRole($file,$role,$array,[switch]$c=$false){
         w '
         '; Return
     }
-    elseif($c){ w ' NOTICE: ' r bl -i; w 'Could not find any analyst.conf file.' c bl; Return}
+    elseif($c){ w ' NOTICE: ' r k -i; w 'Could not find any analyst.conf file.' c k; Return}
     if($array){
         $json = New-Object System.Collections.Generic.List[string]
         $json.Add('{'); foreach($tk in $array.keys | Sort){
