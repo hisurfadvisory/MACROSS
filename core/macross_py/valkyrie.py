@@ -1,4 +1,3 @@
-"""The valkyrie library is a set of MACROSS functions converted from powershell to python."""
 
 
 ################################################################
@@ -31,24 +30,18 @@ from re import search,sub
 ## var names will be the same as their powershell versions,
 ## but **without** the "vf19_" or "dyrl_" prefixes.
 ################################################################
-global PROTOCULTURE,CALLER,HELP
+global PROTOCULTURE,CALLER,HELP,USR,GBIO,RSRC,DTOP,TOOLSROOT,TOOLSDIR,LOGS,M_,N_,ROBOTECH,MPOD
+PROTOCULTURE,CALLER,HELP,USR,GBIO,RSRC,DTOP,TOOLSROOT,TOOLSDIR,LOGS,M_,N_,ROBOTECH,MPOD = [False] * 14
 if getenv('PROTOCULTURE'):
     PROTOCULTURE = getenv('PROTOCULTURE')
-else:
-    PROTOCULTURE = False
 
 if getenv('CALLER'):
     CALLER = getenv('CALLER')
-else:
-    CALLER = False
 
 if getenv('HELP'):
     HELP = True
-else:
-    HELP = False
 
 if getenv('MACROSS'):
-    global USR,GBIO,RSRC,DTOP,TOOLSROOT,TOOLSDIR,LOGS,M_,N_,ROBOTECH
     M = getenv('MACROSS').split(';')
     TOOLSROOT = M[0]
     DTOP = M[1]
@@ -67,7 +60,7 @@ if getenv('MACROSS'):
     TOOLSDIR = TOOLSROOT + '\\\\modules'
 
 if getenv('MPOD'):
-    global MPOD; MPOD = {}
+    MPOD = {}
     for missile in getenv('MPOD').split(';'):
         payload = missile.split(':')[0]
         fuel = missile.split(':')[1]
@@ -84,13 +77,13 @@ fcolo = {
 'y':'\033[93m',
 'b':'\033[94m',
 'r':'\033[91m',
-'bl':'\033[30m',
+'k':'\033[30m',
 'ul':'\033[4m',
 'w':'\033[97m',
 'rs':'\033[0m'      ## Reset formatting to default
 }
 bcolo = {
-'bl':'\033[40m',
+'k':'\033[40m',
 'r':'\033[101m',
 'g':'\033[102m',
 'y':'\033[103m',
@@ -139,6 +132,13 @@ def help() -> None:
     valkyrie.ROBOTECH             -> True if powershell $vf19_ROBOTECH is $true
     valkyrie.HELP                 -> True if powershell $HELP is $true
 
+If you import this module without MACROSS, these values are all set to False, and
+the following functions will not return any responses:
+          
+    valkyrie.availableTypes()
+    valkyrie.collab()
+    valkyrie.errLog()
+
  ** Use valkyrie.getThis() to decrypt the values you set in MACROSS' config.conf
  file. The valkyrie.MPOD dictionary contains the same key-value pairs as the
  $vf19_MPOD hashtable in powershell. Example to read from the resources folder
@@ -171,7 +171,7 @@ def help() -> None:
 ## Alias to write colorized text to screen
 def w(TEXT,C1='rs',C2=None,i=False,u=False) -> None:
     ''' Pass this function your text/string as arg 1, and the first letter of the
- color you want as arg2 ("bl" for black). Send a second color to highlight 
+ color you want as arg2 ("k" for black). Send a second color to highlight 
  the text.
  
  Setting u=True will underline the text. Setting i=True for "inline" will write 
@@ -214,6 +214,7 @@ def slp(s) -> None:
     ^^ Will pause your script for 3 seconds\n"""
     ts(s)
 
+
 ## Write MACROSS message logs
 def errLog(forward=False,*fields) -> None:
     ''' You can use this to write messages to MACROSS' log files. Timestamps are
@@ -223,6 +224,8 @@ def errLog(forward=False,*fields) -> None:
  list as 'elc'). If you forward logs, the timestamp will be converted to UTC.
  
  Message fields get written in the order they are passed.
+
+ **This function only works when launched within MACROSS.
 
  USAGE:
     Create a local log with no forwarding:
@@ -235,7 +238,7 @@ def errLog(forward=False,*fields) -> None:
 
     ## If logging is enabled, there should already be a logfile present;
     ## otherwise logging will be ignored
-    if drfl(LOG,'file'):
+    if LOG and drfl(LOG,'file'):
         df = dt.now().strftime("%Y-%m-%d")
         F = ''
         fd = 'Get-Date -f "yyyy/MM/dd` hh:mm:ss:ms"'
@@ -330,6 +333,8 @@ def availableTypes(val,la=".*",ea=".*",ra=".*",exact=False) -> list:
  attributes. Matching tools are returned in a list that you can
  forward to the collab function.
 
+ **This function only works when launched within MACROSS.
+
  USAGE: 
 
     tools = valkyrie.availableTypes(val,language,maxArguments,responseType,exact)
@@ -337,6 +342,11 @@ def availableTypes(val,la=".*",ea=".*",ra=".*",exact=False) -> list:
  The first arg is the tool's MACROSS valType, and is the only required
  arg. If you want to specify exact matches for the valType, send exact=True
     """
+
+    ## The library is likely being used without MACROSS if LATTS is "False"
+    if not LATTS:
+        return
+
     res = []
     for t in LATTS:
         L = str(LATTS[t].lang)
@@ -374,6 +384,8 @@ def collab(Tool,Caller,Protoculture,ap = None):
     ''' The python "collab" function writes your PROTOCULTURE value to an ".eod"
  file in the GBIO folder for the powershell script to read and write its results to.
 
+ **This function only works when launched within MACROSS.
+
  USAGE:
  If the PROTOCULTURE.eod file's "result" field is "PS_", the "target" field is meant
  to be python's PROTOCULTURE value. You can check it with:
@@ -400,6 +412,10 @@ def collab(Tool,Caller,Protoculture,ap = None):
  The PROTOCULTURE.eod file will remain the default PROTOCULTURE value in MACROSS until
  you delete it from the menu or exit MACROSS.
  '''
+    
+    ## The library is likely being used without MACROSS if GBIO is "False"
+    if not GBIO:
+        return
     
     protofile = GBIO + '\\\\PROTOCULTURE.eod'
     '''
@@ -489,7 +505,7 @@ and 2) limit the selection\nby file extension. Usage:
 ## Same as MACROSS' screenResults function, with minor differences.
 ##
 ## For each arg, begin with the first letter of a powershell-compatible color
-## ("bl" for black, "b" for blue, and no purple but "m" for magenta) and a "~"
+## ("k" for black, "b" for blue, and no purple but "m" for magenta) and a "~"
 ## char.  Example:  screenResults("c~My output is written to screen in cyan.")
 ##
 ## Pass in up to three values, each of which will be type-wrapped into its
@@ -504,7 +520,7 @@ def screenResults(A = 'endr',B = None,C = None) -> None:
     valkyrie.screenResults(string1,'g~'+string2,string3)
 
 Each string value is optional, and will be written to screen in separate
-rows & columns.\nYou can send the first letter of a color ("bl" for black)
+rows & columns.\nYou can send the first letter of a color ("k" for black)
 and "~" to colorize text, for example "c~Value" to write "Value" in cyan.
 
 Colors:(c)yan, (bl)ack, (b)lue, (r)ed, (y)ellow, (w)hite, (m)agenta, and
@@ -825,20 +841,21 @@ def getThis(v,e = 0,ee = 'utf8') -> str:
 ################################################################
 ## Convert powershell's [macross] objects to python macross class
 ################################################################
-attfile = GBIO + '\\\\LATTS.eod'
-if drfl(attfile,method='file'):
-    global LATTS; LATTS = {}
-    with open(attfile) as af:
-        pa = load(af)
-        for tool in pa:
-            l = []
-            K = tool
-            V = pa[tool]
-            for i in V:
-                l.append(str(i))
-            ATT = macross(l[0],l[1],l[2],l[3],l[4],l[5],l[6],l[7],l[8],l[9])
-            LATTS.update({K:ATT})
-    af.close()
-    del pa,i,K,V,tool,attfile,af
+if GBIO:
+    attfile = GBIO + '\\\\LATTS.eod'
+    if drfl(attfile,method='file'):
+        global LATTS; LATTS = {}
+        with open(attfile) as af:
+            pa = load(af)
+            for tool in pa:
+                l = []
+                K = tool
+                V = pa[tool]
+                for i in V:
+                    l.append(str(i))
+                ATT = macross(l[0],l[1],l[2],l[3],l[4],l[5],l[6],l[7],l[8],l[9])
+                LATTS.update({K:ATT})
+        af.close()
+        del pa,i,K,V,tool,attfile,af
 
 
