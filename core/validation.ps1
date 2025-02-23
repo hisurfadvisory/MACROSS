@@ -24,84 +24,94 @@ function userPrefs([switch]$proto=$false,[switch]$py=$false){
     $Global:vf19_PREFS = $plist
 }
 
+
 function yorn(){
     <#
     ||longhelp||
 
-    yorn [-s SCRIPTNAME] [-t TASK] [-q Alternate Question]
+    yorn [-s SCRIPTNAME] [-t TASKNAME] [-q ALT_TEXT] [-b BUTTON SCHEME] [-i ICON] [-d DEFAULT BUTTON]
 
-    Quickly get input from users on whether to continue a task. yorn opens a 
-    "Yes/No" window for the user to click on. Returns 'Yes' or 'No' so  you 
-    can kill tasks or perform other actions as the user chooses.
+    Quickly get input from users on whether to continue a task.
     
-    The default question is "Do you want to continue $task?", where $task is 
-    the value you supply with -t, but you can substitute your own question by
-    using -q (-t and -q cannot be used together)
+    Opens a "Yes/No" window for the user to click on. Returns 'Yes' or 'No' so 
+    you can kill tasks or continue as the user chooses.
     
+    The default question box asks "Do you want to continue $TASK?" where $TASK
+    is the value you send with -t. You can send an alternate question with -q, 
+    but -t and -q cannot be used together.
 
+    The default button selected for the user is "2", but you can change this with
+    "-d" (Minimum 1, Max 3 depending on the scheme).
 
-    If you want to modify the window options that get displayed, change
-    these numbers within the function in "validation.ps1".
+    If you want to modify the window options that get displayed, send the number
+    associated with -b (BUTTONS) or -i (ICONS) below:
     
-    ICONS:                   BUTTONS:
-    Stop          16         OK               0
-    Question      32         OKCancel         1
-    Exclamation   48         AbortRetryIgnore 2
-    Information   64         YesNoCancel      3
-                             YesNo            4
-                             RetryCancel      5
+        ICONS:                   BUTTON SCHEMES:
+        Stop          16         OK               0
+        Question      32         OKCancel         1
+        Exclamation   48         AbortRetryIgnore 2
+        Information   64         YesNoCancel      3
+                                 YesNo            4
+                                 RetryCancel      5
                             
     
     ||examples||
+
+    ## Change the default button scheme (scheme 0 only has one button, so set the default using "-d 1"):
+    yorn -s $SCRIPTNAME -t $TASK -b 0 -i 48 -d 1
     
+    ## Get the user's response:
     if( $(yorn -s 'SCRIPTNAME' -t $CURRENT_TASK) -eq 'No' ){
         $STOP_DOING_TASK
     }
 
-    $var = yorn -s 'SCRIPTNAME -q 'Do you want to write outputs to a file?'
-    if($var -eq 'Yes'){ $write_to_file }
+    ## Use a custom text string (-q) to get the response:
+    if( $(yorn -s 'SCRIPTNAME' -q 'Do you want to write results to file?') -eq 'Yes' ){
+        $write_to_file
+    }
     
     #>
     param(
         [Parameter(Mandatory)]
         [string]$scriptname,
-        [string]$task=$null,
-        [string]$question=$null
+        [string]$task,
+        [string]$question,
+        [int]$button=4,
+        [int]$icon=32,
+        [int]$default=2
     )
     [void][System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms')
     
-
-    ## MOD SECTION! ##
-    <# # Uncomment these and add more parameters if you want to modify this
-       # function to offer more options
+    
     $Buttons = @{
-        0='OK'
-        1='OKCancel'
-        2='AbortRetryIgnore'
-        3='YesNoCancel'
-        4='YesNo'
+        0='OK';
+        1='OKCancel';
+        2='AbortRetryIgnore';
+        3='YesNoCancel';
+        4='YesNo';
         5='RetryCancel'
     }
     $Icons = @{
-        16='Stop'
-        32='Question'
-        48='Exclamation'
+        16='Stop';
+        32='Question';
+        48='Exclamation';
         64='Information'
     }
-    #>
     
-    if($question){ $1 = $question }
-    else{ $1 = "Do you want to continue $task`?" }
+
+    if($question){ $msg = $question }
+    else{ $msg = "Do you want to continue $($task)?" }
     
 
     Return [System.Windows.Forms.MessageBox]::Show(
-        "$1",           # Window Message
-        "$scriptname",  # Window Title
-        "YesNo",        # Button scheme
-        "Question",     # Icon
-        "Button2"       # Set default button choice
+        "$msg",                     # Window Message
+        "$scriptname",              # Window Title
+        "$($Buttons[$button])",     # Button scheme
+        "$($Icons[$icon])",         # Icon
+        "Button$default"            # Set default button choice
     )
 }
+
 
 <################################
 
@@ -295,7 +305,7 @@ function eMsg($m='ERROR: that module is unavailable!',$c='c'){
 
     Accepts two parameters: -m is the number of the message you want to select from the $msgs 
     list, OR your own custom error message string. -c is the first letter of the color you want 
-    the error to write onscreen (or "bl" for black; default is cyan).
+    the error to write onscreen (or "k" for black; default is cyan).
 
     ||examples||
     Display an authentication warning:
