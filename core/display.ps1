@@ -8,7 +8,7 @@ $vf19_CONSOLEW = (Get-Host).UI.RawUI.MaxWindowSize.Width
 $Global:vf19_colors = @{
     'w'='white'
     'b'='blue'
-    'bl'='black'
+    'k'='black'
     'g'='green'
     'r'='red'
     'y'='yellow'
@@ -39,6 +39,7 @@ function splashPage(){
         ## $ip ignores the local APIPA range
         $ip = $(ipconfig | Select-String "IPv4 Address" | where{$_ -notLike "* 169.254*"}) -replace "^.* : "
         $hn = $env:COMPUTERNAME
+        $psv = $PSVersionTable.PSVersion -Join ''
         $vl = $vr.length; if( $vl -lt 3){$vc=4}elseif( $vl -le 4 ){$vc=3}
         elseif( $vl -le 5 ){$vc=1}else{$vc=0}
         cls
@@ -49,7 +50,7 @@ function splashPage(){
         Write-Host ' ' -NoNewline; sep '=' 70 c
         Write-Host -f YELLOW "               Welcome to Multi-API-Cross-Search, " -NoNewline;
         Write-Host -f CYAN "$USR"
-        Write-Host -f YELLOW "                   Host: $hn  ||  IP: $ip"
+        Write-Host -f YELLOW "   Host: $hn  ||  IP: $ip ||  Powershell $psv"
         Write-Host ' ' -NoNewline; sep '=' 70 c
         getThis 4pWR; $va = ''; $vb = $vf19_READ
         1..62 | %{$va += $vf19_READ}
@@ -69,7 +70,7 @@ function splashPage(){
         Calling without parameters just lists the Local Attributes table.
         #>
         $helps = @{
-            'w'= @{'d'="Alias for 'Write-Host'. Send your string as the first parameter, and the first letter of the color you want to use ('bl' for black, 'b' for blue). The default text color is white. Send another letter as the third parameter to set a highlight color. If you want to set the 'NoNewline' option, use -i. Underline with -u.";'u'='Usage: w "your text" "[b|bl|c|g|m|r|y]" "[b|bl|c|g|m|r|y]"'}
+            'w'= @{'d'="Alias for 'Write-Host'. Send your string as the first parameter, and the first letter of the color you want to use ('k' for black, 'b' for blue). The default text color is white. Send another letter as the third parameter to set a highlight color. If you want to set the 'NoNewline' option, use -i. Underline with -u.";'u'='Usage: w "your text" "[b|bl|c|g|m|r|y]" "[b|bl|c|g|m|r|y]"'}
             'screenResults'= @{'d'="Display large outputs to screen in a table format. Colorize the text by adding '<color letter>~' to the beginning of your value, i.e. g~$('$'+'value') will write green text. Send a single param, -e to create the closing border after your final values.";'u'='Usage: screenResults $VALUE1 $OPTIONAL_VALUE2 $OPTIONAL_VALUE3'}
             'screenResultsAlt'= @{'d'="Similar to screenResults; send the 'header' items of your list first, followed by $('$'+'KEY1') and $('$'+'VALUE1'). If you have more than 2 key-values under each 'header', make the first parameter of each subsequent call 'next'.";'u'='Usage: screenResultsAlt $HEADER $KEY1 $VALUE1; screenResultsAlt "next" $KEY2 $VALUE2'}
             'ord'= @{'d'='Get the decimal value of a text character';'u'='Usage: ord [text char]'}
@@ -77,16 +78,16 @@ function splashPage(){
             'sheetz'= @{'d'="Output results to an excel worksheet. First parameter is the name of your spreadsheet. Second parameter is the values you're writing, separated by commas. Third parameter is the row to start writing in. If you are adding values to an existing sheet, set this to the next empty row, otherwise set to 1. -Fourth parameter is comma-separated column names, OR if you are editing an existing sheet/don't need column headers, you can send the number of columns you require. -You can colorize text by adding a 'color~' to the beginning of any field in the first parameter's comma-separated list, or colorize the cell by adding 'cellColor~textColor~' to the value.";'u'='Usage: sheetz "myspreadsheet.xlsx"  [comma separated values]  [the next empty row number]  [total number of columns to write|comma-separated column names]'}
             'getThis'= @{'d'="Decode base64 and hex values to plaintext in the global variable $('$'+'vf19_READ'); encode plaintext to base64 string";'u'='Usage: getThis $string [1 to decode hex|0 to encode base64|none to decode base64]'}
             'getFile'= @{'d'='Open a dialog window to let analysts select a file from any local/network location';'u'='Usage: $file = getFile'}
-            'yorn'= @{'d'='Open a "yes/no" dialog to get response from analysts so your script can perform an action they choose.';'u'='Usage: if( $( yorn "SCRIPTNAME" $CURRENT_TASK ) -eq "No") { $STOP_DOING_TASK }'}
+            'yorn'= @{'d'='Open a "yes/no" dialog to get response from analysts so your script can perform an action they choose.';'u'='Usage: $answer =yorn -t $task -s $script_name'}
             'pyCross'= @{'d'="Write your powershell script's results to a json file (PROTOCULTURE.eod) that can later be read by MACROSS python scripts. This file is written to a folder, 'core\macross_py\garbage_io', that MACROSS regularly empties. You only need to send the name of your script as param1 and your values as param2. If you need to write something other than the default json, send an alternate filename in param3, and your data will be written as-is to another .eod file.";'u'='Usage: pyCross "myScriptName" $VALUES_TO_WRITE $optional_alt_filename'}
             'stringz'= @{'d'="Extract ASCII characters from binary files. Call this function without parameters to open a nav window and select a file. Use -s to save in a text file.";'u'="Usage: stringz [-s (optional)]"}
-            'eMsg'= @{'d'="Send an integer 0-3 as the first parameter to display a canned message, or send your own message as the first parameter.  The second parameter is optional and will change the text color (send the first letter or 'bl' for black)";'u'='Usage: eMsg [message number|your custom msg] [text color (optional)]'}
+            'eMsg'= @{'d'="Send an integer 0-3 as the first parameter to display a canned message, or send your own message as the first parameter.  The second parameter is optional and will change the text color (send the first letter or 'k' for black)";'u'='Usage: eMsg [message number|your custom msg] [text color (optional)]'}
             'errLog'= @{'d'="Write messages to MACROSS' log folder. Timestamps are added automatically. You can read these logs by typing 'debug' into MACROSS' main menu.";'u'='Usage: errLog [message level, examples: "INFO"|"WARN"|"ERROR"] [message field 1] [message field 2]'}
             'availableTypes'= @{'d'='Search MACROSS tools by their .valtype attribute';'u'='Usage: availableTypes [search term(s)] [optional .lang] [optional exact search terms]'}
             'collab'= @{'d'="Enrich or collect data from other MACROSS scripts. An optional value can be sent as parameter three if the called script's .evalmax value is 2.";'u'='Usage: collab [scriptToCall.extension] [yourScriptName] [optional value]'}
             'getHash'= @{'d'='Get the hash of a file.';'u'='Usage: getHash [filepath] [md5|sha256]'}
             'houseKeeping'= @{'d'="Displays a list of existing reports your script has created, and gives the option of deleting one or more of them if no longer needed.";'u'="Usage: houseKeeping [directory containing your script's report outputs] [yourScriptName]"}
-            'sep'= @{'d'='Create a separator line to write on screen if you want to separate simple outputs being displayed.';'u'='Usage: sep [character(s) you want to create line from] [length you want the line to be] [-c b|bl|c|m|r|y|w (optional color)]'}
+            'sep'= @{'d'='Create a separator line to write on screen if you want to separate simple outputs being displayed.';'u'='Usage: sep [character(s) you want to create line from] [length you want the line to be] [-c b|k|c|m|r|y|w (optional color)]'}
             'slp'= @{'d'="Alias for 'start-sleep' to pause your scripts. Send the number of seconds to pause as parameter one. Use -m if you want to pause in milliseconds instead.";'u'='Usage: slp [number of seconds] [-m milliseconds]'}
             'transitionSplash'= @{'d'='This function contains various ASCII art from the MACROSS anime. You can add your own ASCII art here.';'u'='Usage: transitionSplash [1-8]'}
         }
@@ -675,7 +676,7 @@ function w(){
     I got sick of typing "Write-Host", gimme a break powershell.
 
     Send your text as the first param, and the **first letter** of the text color you 
-    want to colorize with ("bl" for black, "b" for blue) with -f.
+    want to colorize with ("k" for black, "b" for blue) with -f.
     
     You can set the background color for the text with -b, and use -i to set the 
     "-NoNewLine" option (continue writing more text on the same line).
@@ -692,7 +693,7 @@ function w(){
 
     Set background color to black with default text color white:
     
-        w "A string of text." -b bl
+        w "A string of text." -b k
 
 
     #>
@@ -899,7 +900,7 @@ function chooseMod(){
 
     SJW -menu     ## check user's privilege LOL
     if( $PROTOCULTURE ){
-        w '      ' -i; w ' PROTOCULTURE IS HOT (enter "proto" to view & clear it) ' r bl 
+        w '      ' -i; w ' PROTOCULTURE IS HOT (enter "proto" to view & clear it) ' r k 
     }
     ''
 
