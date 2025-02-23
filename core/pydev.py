@@ -7,7 +7,7 @@ import valkyrie as vk
 def main():
     IN = None
     vk.screenResults("y~UTILITIES LIST","availableTypes, screenResults, collab, dS, drfl, errLog, getFile, getThis, help, osrm, osys, psc, psp, rgx, slp, ts, w")
-    vk.screenResults('Type "vk.help()" for valkyrie descriptions, or help() with any of the above valkyrie functions to view their help messages. Example: help(vk.collab)')
+    vk.screenResults('Type help(vk.Function) to view the help message for any of the above utilities. Example: help(vk.collab)')
     vk.screenResults()
     vk.w('''
         The MACROSS valkyrie module has been imported as "vk", and all the standard 
