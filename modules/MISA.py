@@ -7,10 +7,11 @@ from json import loads
 
 ## If you only want to import parts of MACROSS' valkyrie module, remember to also import these critical
 ## values if you need them: MPOD (so you can decrypt from the config.conf file using the getThis function), 
-## PROTOCULTURE (if your script can be called via the collab function), HELP and CALLER
+## PROTOCULTURE (if your script can be called via the collab function), along with HELP and CALLER
+## so you can display the help screen, or determine the calling script.
 from valkyrie import w,psc,slp,getThis,availableTypes,collab,screenResults,PROTOCULTURE,HELP,CALLER
 
-L = len(argv)
+L: int = len(argv)
 spiritia = False  ## "spiritia" is used as an alt arg/param in addition to, or instead of, PROTOCULTURE.
     
 ## MACROSS can send a single optional arg, if your script is coded to accept one; powershell defines this
@@ -45,7 +46,7 @@ if HELP:
     exit()
 
 
-def splashPage(alt=False):
+def splashPage(alt=False) -> None:
     b = 'ICAgICAgICDilojilojilojilZcgICDilojilojilojilZfilojilojilZfilojilojilojilojilojil\
         ojilojilZcg4paI4paI4paI4paI4paI4pWXIAogICAgICAgIOKWiOKWiOKWiOKWiOKVlyDilojilojiloj\
         ilojilZHilojilojilZHilojilojilZTilZDilZDilZDilZDilZ3ilojilojilZTilZDilZDilojilojil\
@@ -59,22 +60,28 @@ def splashPage(alt=False):
     STR = getThis(b)
     print("\n")
     if alt:
+        ## The valkyrie module's w() function, like the powershell version, is a quick and easy
+        ## way to display formatted text onscreen.
         w(STR,'m')
     else:
         w(STR,'y')
     print("\n\n")
 
 
-def main():
-    ## Use availableTypes() to generate lists of relevant scripts you can forward data to, 
-    ## regardless of scripts being added/removed from your modules folder. If you look at 
-    ## GUBABA's .valtype, it is "windows event id lookup". You can search for exact or 
-    ## partial-matching valtypes. The "la" arg is specifying which language we require from
-    ## potential collab scripts.
-    TOOL = availableTypes('event id',la='powershell')[0]
+def main() -> None:
+    ## Use valkyrie.availableTypes() to generate lists of relevant scripts you can forward 
+    ## data to, regardless of scripts being added/removed from your modules folder. If you
+    ## look at GUBABA's .valtype, it is "windows event id lookup". You can search for exact 
+    ## (using exact=True) or partial-matching valtypes. The "la" arg is specifying which 
+    ## language we require from potential collab scripts.
+
+    ## valkyrie.availableTypes() returns lists, and in this demo I know Gubaba is going to 
+    ## be the first and only item even without setting exact=True... unless you have added
+    ## more scripts with the words "event id" in their .valtype!
+    TOOL: list = availableTypes('event id',la='powershell')[0]
 
     ## The standard rule for MACROSS scripts is that they automatically act on the
-    ## global value PROTOCULTURE, if it exists.
+    ## global value PROTOCULTURE, if it is not null/empty.
     if PROTOCULTURE:
         ## In this section, MISA is using availableTypes() to view the CALLER script's macross
         ## class, specifically the ".valtype" value. Using the macross class attributes lets 
@@ -86,16 +93,17 @@ def main():
 
 
         if CALLER:
-            filter: list = availableTypes(val="demo script",la="powershell")
+            filter: list = availableTypes(val="demo script",exact=True,la="powershell")
             if CALLER in filter:
                 splashPage(alt=True)
                 w('CALLER: ','g',i=True); w(CALLER,'y')
             else:
                 exit()
         
-        w('PROTOCULTURE: ','g',i=True); w(PROTOCULTURE,'y')
+        w('PROTOCULTURE: ','g',i=True)
+        w(PROTOCULTURE,'y')
         print("\n\n")
-        w(CALLER+" used the collab function to send your value to MISA.\n",'m')
+        w(f"{CALLER} used the collab function to send your value to MISA.\n",'m')
         test = collab(TOOL,CALLER,PROTOCULTURE)
         slp(2)
     else:
@@ -105,8 +113,10 @@ def main():
         Z: str = input()
         test = collab(TOOL,'MISA',Z)
 
+    rtext: str = f"\nHit ENTER to return to {CALLER}"
+
     if test:
-        w("MISA has processed your search via "+TOOL+".\n\n",'g')
+        w(f"MISA has processed your search via {TOOL}.\n\n",'g')
 
         
         ## The powershell GUBABA script responds with hashtables; MACROSS has a powershell function called
@@ -118,15 +128,15 @@ def main():
             v = str(test[i])
             ## Both the powershell and python modules contain useful utilities you can use, such as
             ## screenResults(), which formats large blocks of text into columns
-            screenResults('y~'+t+'-'+'ID '+i,v)
+            screenResults(f"y~{t}-ID {i}",v)
         screenResults()
         if CALLER:
-            w("\nHit ENTER to return to "+CALLER,'g')
+            w(rtext,'g')
         else:
             w("\nHit ENTER to quit back to the menu.",'g')
     else:
         if CALLER:
-            w("\nHit ENTER to return to "+CALLER,'g')
+            w(rtext,'g')
         else:
             w("\nNo results. Hit ENTER to quit back to the menu.",'c')
 
