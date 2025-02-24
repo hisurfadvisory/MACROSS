@@ -141,27 +141,26 @@ else{
 
     while($z -notMatch "\w{3,}"){
         w "Enter a keyword or ID number to search for an event ID: " g -i
-
-        ## Where it makes sense, have your scripts automatically act on $PROTOCULTURE any time it has a value
         $z = Read-Host
     }
+
+    ## Where it makes sense, have your scripts automatically act on $PROTOCULTURE any time it has a value
     $Global:PROTOCULTURE = $z
 
     ## The availableTypes function collects all of the scripts in the modules folder that match
-    ## your [macross] criteria. In this example, I search for the .valtype "demo" and the  
-    ## .lang value "python" (MISA is the only script that will match). You can also search by 
-    ## response types, or ".rtype"
-    $list = availableTypes -v demo -l python
+    ## your [macross] criteria. In this example, I search for the .valtype "demo script" and the  
+    ## .lang value "python" (MISA is the only script that will match).  The -e option forces exact
+    ## matches, otherwise you'll get back tools that match all the words you use in -v.
+    ## You can also search by response types (.rtype).
+    $list = availableTypes -v 'demo script' -l python -e
 
-    ## The collab function loads whatever script you require next, within your MACROSS session
-    ## In this basic demo, I'm just pushing your search over to the python script MISA, who
-    ## will then forward it to GUBABA. This is only meant to demonstrate how to get data from
-    ## one script to the next for evaluations.
+    ## The collab function loads whatever script you require next, within your MACROSS session.
+    ## In this basic demo, I'm just calling the python script MISA, who will see the $PROTOCULTURE
+    ## and forward it to the GUBABA powershell script. This is only meant to demonstrate how to get
+    ## data from one script to the next for evaluations.
     Foreach($pytool in $list){
         
         collab $pytool HIKARU
-        ''
-
 
         ## When values are forwarded to python scripts, the MACROSS valkyrie python library provides
         ## its own collab function. Instead of writing $global variables, it writes search results
@@ -169,7 +168,7 @@ else{
         ## in powershell scripts).
 
         if(Test-Path -Path $vf19_PYG[1]){
-            w " HIKARU is now reading MISA's response from `n" g
+            w "`n HIKARU is now reading MISA's response from `n" g
             w "  $($vf19_PYG[1])`n"
             w " and will show you the same results:" g
 
@@ -195,7 +194,8 @@ else{
                 ## blocks of info and split them evenly into rows & columns. If you begin your string with 
                 ## the first letter of a color, like "c" for cyan, along with the ~ character, it tells 
                 ## screenResults to colorize the text with colors other than the default. This is useful for 
-                ## highlighting data that matches parameters you may be interested in.
+                ## highlighting data that matches parameters you may be interested in. (There is also 
+                ## "screenResultsAlt" which writes smaller outputs in a header-list format.)
                 screenResults "c~$k" $v
             }
             screenResults -e
