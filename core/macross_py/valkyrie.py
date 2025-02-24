@@ -67,21 +67,18 @@ import socket
 from re import search,sub
 
 
-################################################################
-####################   CLASS DEFINITIONS   #####################
-################################################################
 class macross:
-	def __init__(self,n,ac,p,vt,l,au,e,r,vr,f):
-		self.name = n
-		self.access = ac
-		self.priv = p
-		self.valtype = vt
-		self.lang = l
-		self.author = au
-		self.evalmax = e
-		self.rtype = r
-		self.ver = vr
-		self.fname = f
+	def __init__(self,name,access,priv,valtype,lang,author,evalmax,rtype,ver,fname):
+		self.name = name
+		self.access = access
+		self.priv = priv
+		self.valtype = valtype
+		self.lang = lang
+		self.author = author
+		self.evalmax = evalmax
+		self.rtype = rtype
+		self.ver = ver
+		self.fname = fname
 
 
 ################################################################
@@ -355,7 +352,7 @@ def availableTypes(val,la=".*",ea=".*",ra=".*",exact=False) -> list:
     if not LATTS:
         return
 
-    res = []
+    res: list = []
     for t in LATTS:
         L = str(LATTS[t].lang)
         E = str(LATTS[t].evalmax)
@@ -425,7 +422,7 @@ def collab(Tool,Caller,Protoculture,ap = None):
     if not GBIO:
         return
     
-    protofile = GBIO + '\\\\PROTOCULTURE.eod'
+    protofile = f"{GBIO}\\\\PROTOCULTURE.eod"
     '''
     with open(protofile) as d:
         readproto = load(d)
@@ -444,9 +441,9 @@ def collab(Tool,Caller,Protoculture,ap = None):
 
     Tool = LATTS[Tool].fname
     chdir(TOOLSROOT)
-    fullpath = TOOLSDIR + '\\\\' + Tool
-    empty = 'WAITING'
-    pr = ''
+    fullpath = f"{TOOLSDIR}\\\\{Tool}"
+    empty = "WAITING"
+    pr: str = ""
 
     ## MOD SECTION ##
     # If your Protoculture value is a huge dictionary, this function won't do a good job
@@ -477,7 +474,7 @@ def collab(Tool,Caller,Protoculture,ap = None):
             
     outf.close()
 
-    call = 'powershell.exe ' + fullpath + ' -pythonsrc ' + Caller
+    call = f"powershell.exe {fullpath} -pythonsrc {Caller}"
     if ap != None:
         call = ap + '~' + call
     psc(cc=call)
