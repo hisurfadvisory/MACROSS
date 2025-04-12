@@ -16,7 +16,7 @@
     valkyrie.ROBOTECH             -> True if powershell $vf19_ROBOTECH is $true (default False)
     valkyrie.HELP                 -> True if powershell $HELP is $true (default False)
 
-If you import this module without MACROSS, these values are all set to False, and
+If you want to use this library without MACROSS, these values are all set to False, and
 the following functions will not return any responses:
           
     valkyrie.availableTypes()
@@ -104,7 +104,7 @@ class macross:
             f"access={self.access}",
             f"priv={self.priv}",
             f"valtype={self.valtype}",
-            f"lan={self.lang}",
+            f"lang={self.lang}",
             f"author={self.author}",
             f"evalmax={self.evalmax}",
             f"rtype={self.rtype}",
@@ -119,8 +119,8 @@ class macross:
 ## var names will be the same as their powershell versions,
 ## but **without** the "vf19_" or "dyrl_" prefixes.
 ################################################################
-global PROTOCULTURE,CALLER,HELP,USR,GBIO,RSRC,DTOP,TOOLSROOT,TOOLSDIR,LOGS,M_,N_,LATTS,ROBOTECH,MPOD
-PROTOCULTURE,CALLER,HELP,USR,GBIO,RSRC,DTOP,TOOLSROOT,TOOLSDIR,LOGS,M_,N_,LATTS,ROBOTECH,MPOD = [False] * 15
+global PROTOCULTURE,CALLER,HELP,USR,GBIO,RSRC,DTOP,TOOLSROOT,TOOLSDIR,LOGS,N_,LATTS,ROBOTECH,MPOD
+PROTOCULTURE,CALLER,HELP,USR,GBIO,RSRC,DTOP,TOOLSROOT,TOOLSDIR,LOGS,N_,LATTS,ROBOTECH,MPOD = [False] * 14
 if getenv('PROTOCULTURE'):
     PROTOCULTURE = getenv('PROTOCULTURE')
 
@@ -152,8 +152,8 @@ if getenv('MACROSS'):
 if getenv('MPOD'):
     MPOD = {}
     for missile in getenv('MPOD').split(';'):
-        payload = missile.split(':')[0]
-        fuel = missile.split(':')[1]
+        payload = missile.split('::')[0]
+        fuel = missile.split('::')[1]
         MPOD[payload] = fuel
     del missile,payload,fuel
 
@@ -318,12 +318,12 @@ def errLog(forward=False,*fields) -> None:
                     s.close()
 
             except Exception as e:
-                w(f"ERROR: Could not write to logfile {LOG}!","y")
+                w(f"ERROR: Could not write to logfile at\n{LOG}!","y")
                 w(f"{e}\n")
 
 
-def delF(d) -> None:
-    ''' Delete files.\n\n USAGE:\n\n\tvalkyrie.delF(path_to_file)'''
+def delf(d) -> None:
+    ''' Delete files.\n\n USAGE:\n\n\tvalkyrie.delf(path_to_file)'''
     confirm = input(f'''
     Are you sure you want to delete {d}?''')
     if search("^y",confirm):
@@ -367,19 +367,36 @@ def psc(cc=None,cr=None):
         return TASK.read()
 
 
-def availableTypes(val,la=".*",ea=".*",ra=".*",exact=False) -> list | None:
-    """ Use this function to search for tools with matching MACROSS
- attributes. Matching tools are returned in a list that you can
- forward to the collab function.
+def availableTypes(val,la=".*",ea=".*",ra=".*",exact:bool=False) -> list | None:
+    """ Use this function to search for tools with matching MACROSS attributes. Matching tools are returned 
+ in a list that you can forward to the valkyrie.collab() function. 
+
+ You can view attributes within the python debugger:
+
+    print(repr(valkyrie.LATTS[tool_name]))
 
  **This function only works when launched within MACROSS.
 
  USAGE: 
 
-    tools = valkyrie.availableTypes(val,language,maxArguments,responseType,exactmatch)
+    tools = valkyrie.availableTypes(val,language,maxArguments,responseType,exact)
 
- The first arg is the tool's MACROSS valType, and is the only required
- arg. If you want to specify exact matches for the valType, send exact=True
+ The first arg is the tool's MACROSS valType, and is the only required arg.
+ 
+ Setting the arg exact=True will force exact matches for your val arg.
+
+ EXAMPLES:
+ 
+    # Retrive a list of powershell tools that perform Active-Directory lookups
+    ad_tools = valkyrie.availableTypes('active directory',lang='powershell')
+
+    # Retrive a list of tools with the exact .valtype "active directory computer lookups"
+    pc_lookups = valkyrie.availableTypes('active directory computer lookups',lang='powershell',exact=True)
+
+    # Retrieve a list of tools that can parse IOCs from threat-intel, and can accept 2 args, and 
+    # returns findings as a csv file
+    ioc_tools = valkyrie.availableTypes('ioc,indicators',maxArguments=2,responseType='csv')
+
     """
 
     ## The library is likely being used without MACROSS if LATTS is "False"
@@ -433,30 +450,31 @@ def collab(Tool=None,Caller=None,Protoculture=None,ap=None):
  to be python's PROTOCULTURE value. You can retrieve a dict of the file's contents by 
  calling the function without any arguments:
 
-        c = collab()
+        c = valkyrie.collab()
         c['target']
         c['result']  ## If "PS_", set 'target' as your PROTOCULTURE, otherwise 'result'
                      ## should be PROTOCULTURE
 
- And after processing the PROTOCULTURE, write your results:
+ After processing the PROTOCULTURE, write your results:
 
-        collab(Protoculture=<script results>)
+        valkyrie.collab(Protoculture=<script results>)
 
  If you want to pass values to powershell tools:
 
-        collab(Tool,Caller,Protoculture,ap)
+        valkyrie.collab(Tool,Caller,Protoculture,ap)
         
  where Tool is the powershell script you're calling (no extension), Caller is the name of 
- your python script, and PROTOCULTURE is the value you need powershell to evaluate. You can  
- also send an additional parameter (ap) if the powershell script accepts one.
+ your python script, and Protoculture is the value you need powershell to evaluate. You can  
+ also send an additional parameter (ap=) if the powershell script accepts one.
 
  "core\\macross_py\\garbage_io\\PROTOCULTURE.eod" is a json file that contains the key-values
- Caller.target (the PROTOCULTURE value) and Caller.result. If the powershell script has a 
- response for your python script, it will be written to the Caller.result field of 
+ "Caller.target" (the PROTOCULTURE value) and "Caller.result". If the powershell script has a 
+ response for your python script, it will be written to the "Caller.result" field of 
  PROTOCULTURE.eod, where this function will retrieve it and forward it to your script.
 
  The PROTOCULTURE.eod file will remain the default PROTOCULTURE value in MACROSS until
  you delete it from the menu or exit MACROSS.
+
  """
     
     ## The library is likely being used without MACROSS if GBIO is "False"
@@ -551,8 +569,9 @@ def getFile(opendir="C:\\",filter='all') -> str:
 
  USAGE: 
 
-    PDFDOC = getFile(opendir='directory\\to\\file',filter='pdf')
-    ZIPFILE = getFile(filter='zip')
+    PDFDOC = valkyrie.getFile(opendir='directory\\to\\file',filter='pdf')
+    ZIPFILE = valkyrie.getFile(filter='zip')
+    REPORT = valkyrie.getFile(filter='dox')
     
     """
     ft = {
@@ -872,12 +891,12 @@ def screenResults(A='endr',B=None,C=None) -> None:
             
 
 
-def getThis(v,e='b',encd='utf8') -> str:
+def getThis(v,action='b',encd='utf8') -> str:
     """ This is the same as MACROSS' powershell function 'getThis'. Your
  first argument is the encoded string you want to de/encode, and your
- second arg will be:
+ second arg (action=) will be:
 
-    'b'' if decoding base64 (default action), or
+    'b' if decoding base64 (default action), or
     'h' if decoding hexadecimal, or
     'eb' if encoding to base64, or
     'eh' if encoding to hexadecimal.
@@ -886,27 +905,28 @@ def getThis(v,e='b',encd='utf8') -> str:
  "vf19_READ", it just returns your processed string.
 
  You can pass an optional arg encd= to specify the out-encoding (ascii,
- ANSI, etc, default is UTF-8).
+ ANSI, etc.; default is UTF-8).
 
  Usage:
-    PLAINTEXTASCII = valkyrie.getThis(base64string,encd='ascii')
-    PLAINTEXT = valkyrie.getThis(hexstring,'h')
-    HEX = valkyrie.getThis('plaintext','eh')
-    BASE64 = valkyrie.getThis('plaintext','eb')
+    PLAINTEXT       = valkyrie.getThis(base64string)
+    PLAINTEXTASCII  = valkyrie.getThis(base64string,encd='ascii')
+    PLAINTEXT       = valkyrie.getThis(hexstring,'h')
+    HEX             = valkyrie.getThis('plaintext','eh')
+    BASE64          = valkyrie.getThis('plaintext','eb')
 
     """
-    if e == 'b':
+    if action == 'b':
         newval = b64.b64decode(v)
         newval = newval.decode(encd)
-    elif e == 'h':
+    elif action == 'h':
         if search('0x',v):
             v = sub('0x','',v)
         if search(' ',v):
             v = sub(' ','',v)
         newval = bytes.fromhex(v).decode(encd)
-    elif e == 'eb':
+    elif action == 'eb':
         newval = str(b64.b64encode(v.encode()).decode())
-    elif e == 'eh':
+    elif action == 'eh':
         newval = ''
         for b in v:
             hb = "{0:02x}".format(ord(b)).upper()
