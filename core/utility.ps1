@@ -117,7 +117,7 @@ function debugMacross($1,[switch]$continue=$true){
                 Return
             }
             elseif($z -eq 'python'){
-                startUp; $pyATTS = pyATTS; pyENV; cls
+                pyATTS; pyENV; cls
                 py "$vf19_TOOLSROOT\core\pydev.py"
                 varCleanup
             }
