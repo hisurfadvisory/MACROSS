@@ -6,15 +6,15 @@
 
     valkyrie.PROTOCULTURE         -> if there is an active $PROTOCULTURE value
     valkyrie.USR                  -> your Windows account name
-    valkyrie.DTOP                 -> your desktop path
+    valkyrie.DTOP                 -> the desktop path set by MACROSS
     valkyrie.N_                   -> the $N_ list of mathing obfuscation numbers
     valkyrie.TOOLSROOT            -> the MACROSS root folder path
-    valkyrie.TOOLSDIR             -> the modules\ folder path
-    valkyrie.GBIO                 -> the garbage_io\ folder path
+    valkyrie.TOOLSDIR             -> the modules\\ folder path
+    valkyrie.GBIO                 -> the garbage_io\\ folder path
     valkyrie.MPOD                 -> a python dictionary of $vf19_MPOD**
     valkyrie.LOG                  -> the location of MACROSS' log files
-    valkyrie.ROBOTECH             -> True if powershell $vf19_ROBOTECH is $true
-    valkyrie.HELP                 -> True if powershell $HELP is $true
+    valkyrie.ROBOTECH             -> True if powershell $vf19_ROBOTECH is $true (default False)
+    valkyrie.HELP                 -> True if powershell $HELP is $true (default False)
 
 If you import this module without MACROSS, these values are all set to False, and
 the following functions will not return any responses:
@@ -53,11 +53,8 @@ the following functions will not return any responses:
  '''
 import base64 as b64
 from datetime import datetime as dt
-from os import chdir,path,getenv,environ
-from os import system as osys
-from os import popen as osop
+from os import chdir,path,getenv,environ,system,popen,remove
 #from os import getcwd as pwd
-from os import remove as osrm
 from json import dumps,load
 from time import sleep as ts
 from tkinter import Tk
@@ -68,17 +65,53 @@ from re import search,sub
 
 
 class macross:
-	def __init__(self,name,access,priv,valtype,lang,author,evalmax,rtype,ver,fname):
-		self.name = name
-		self.access = access
-		self.priv = priv
-		self.valtype = valtype
-		self.lang = lang
-		self.author = author
-		self.evalmax = evalmax
-		self.rtype = rtype
-		self.ver = ver
-		self.fname = fname
+    """ Create attribute properties for tracking and launching MACROSS tools.
+    """
+    def __init__(self,name,access,priv,valtype,lang,author,evalmax,rtype,ver,fname):
+        self.name = name
+        self.access = access
+        self.priv = priv
+        self.valtype = valtype
+        self.lang = lang
+        self.author = author
+        self.evalmax = evalmax
+        self.rtype = rtype
+        self.ver = ver
+        self.fname = fname
+
+    def __str__(self):
+        atts: dict = {
+            "Name":self.name,
+            "Access":self.access,
+            "Privilege":self.priv,
+            "Evaluates":self.valtype,
+            "Language":self.lang,
+            "Author":self.author,
+            "Max Args":self.evalmax,
+            "Response":self.rtype,
+            "Version":self.ver,
+            "Fullname":self.fname
+        }
+        attrs: list = []
+        labels: int = len(max(atts.keys(),key=len))
+        for A in atts.keys():
+            attrs.append(f"{A: <{labels}}: {atts[A]}")
+        return "\n".join(attrs)
+    
+    def __repr__(self):
+        return_string: list = [
+            f"name={self.name}",
+            f"access={self.access}",
+            f"priv={self.priv}",
+            f"valtype={self.valtype}",
+            f"lan={self.lang}",
+            f"author={self.author}",
+            f"evalmax={self.evalmax}",
+            f"rtype={self.rtype}",
+            f"ver={self.ver}",
+            f"fname={self.fname}"
+        ]
+        return f"macross({', '.join(return_string)})"
 
 
 ################################################################
@@ -145,28 +178,28 @@ if GBIO:
 
 
 ## Enable colorized terminal in Windows
-osys('color')
-fcolo = {
-'g':'\033[92m',
-'c':'\033[96m',
-'m':'\033[95m',
-'y':'\033[93m',
-'b':'\033[94m',
-'r':'\033[91m',
-'k':'\033[30m',
-'ul':'\033[4m',
-'w':'\033[97m',
-'rs':'\033[0m'      ## Reset formatting to default
+system('color')
+fcolor = {
+    'g':'\033[92m',
+    'c':'\033[96m',
+    'm':'\033[95m',
+    'y':'\033[93m',
+    'b':'\033[94m',
+    'r':'\033[91m',
+    'k':'\033[30m',
+    'ul':'\033[4m',
+    'w':'\033[97m',
+    'rs':'\033[0m'      ## Reset formatting to default
 }
-bcolo = {
-'k':'\033[40m',
-'r':'\033[101m',
-'g':'\033[102m',
-'y':'\033[103m',
-'b':'\033[104m',
-'m':'\033[105m',
-'c':'\033[106m',
-'w':'\033[107m'
+bcolor = {
+    'k':'\033[40m',
+    'r':'\033[101m',
+    'g':'\033[102m',
+    'y':'\033[103m',
+    'b':'\033[104m',
+    'm':'\033[105m',
+    'c':'\033[106m',
+    'w':'\033[107m'
 }
 
 
@@ -212,18 +245,18 @@ def w(TEXT,C1='rs',C2=None,i=False,u=False) -> None:
     valkyrie.w(text,'w','r')
 
     '''
-    lead = fcolo[C1]
-    tail = fcolo['rs']
+    lead = fcolor[C1]
+    tail = fcolor['rs']
     if u:
-        lead = fcolo['ul'] + lead
+        lead = fcolor['ul'] + lead
     if i == True:
         if C2 != None:
-            print(lead + bcolo[C2] + TEXT + tail,end="")
+            print(lead + bcolor[C2] + TEXT + tail,end="")
         else:
             print(lead + TEXT + tail,end="")
     else:
         if C2 != None:
-            print(lead + bcolo[C2] + TEXT + tail)
+            print(lead + bcolor[C2] + TEXT + tail)
         else:
             print(lead + TEXT + tail)
 
@@ -263,38 +296,38 @@ def errLog(forward=False,*fields) -> None:
     ## otherwise logging will be ignored
     if LOG and drfl(LOG,'file'):
         df = dt.now().strftime("%Y-%m-%d")
-        F = ''
-        fd = 'Get-Date -f "yyyy/MM/dd` hh:mm:ss:ms"'
+        fd: str = 'Get-Date -f "yyyy/MM/dd` hh:mm:ss:ms"'
         UT = psc(cr='powershell.exe -command "(Get-Date).toUniversalTime()|"'+fd).rstrip()
         LT = str(dt.now().strftime("%Y-%m-%d %H:%M:%S"))
 
         if fields:
-            for field in fields:
-                F = F + f"{field}\t"
+            try:
+                F: list = []
+                for field in fields:
+                    F.append(f"{field}")
+                F = "\t".join(F).rstrip()
+                ewrite = str(getThis(f"{LT}\t{F}",'eb'))
 
-        F = F.rstrip()
-        ewrite = str(getThis(f"{LT}\t{F}",2))
+                with open(LOG,'a') as L:
+                    L.write(str(f"{ewrite}\n"))
 
-        with open(LOG,'a') as L:
-            L.write(str(f"{ewrite}\n"))
-        L.close()
+                if forward and MPOD['elc']:
+                    logserver = getThis(MPOD['elc'])
+                    s = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+                    s.sendto(f"{UT}\t{F}",(logserver,514))
+                    s.close()
 
-        if forward and MPOD['elc']:
-            logserver = getThis(MPOD['elc'])
-            s = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
-            s.sendto(f"{UT}\t{F}",(logserver,514))
-            s.close()
+            except Exception as e:
+                w(f"ERROR: Could not write to logfile {LOG}!","y")
+                w(f"{e}\n")
 
 
-def dS(d):
-    ''' Delete files.
-
- USAGE:
-    valkyrie.dS(path_to_file)'''
-    confirm = input('''
-    Are you sure you want to delete''',d)
+def delF(d) -> None:
+    ''' Delete files.\n\n USAGE:\n\n\tvalkyrie.delF(path_to_file)'''
+    confirm = input(f'''
+    Are you sure you want to delete {d}?''')
     if search("^y",confirm):
-        osrm(d)
+        remove(d)
 
 
 def rgx(pattern,string,replace = None) -> str:
@@ -315,9 +348,10 @@ def rgx(pattern,string,replace = None) -> str:
 
 
 def psc(cc=None,cr=None):
-    """ The psc function uses subfunctions of os.system() to execute any Windows  
- commands that you might require. Send your arg as "cc" to simply execute a
- task; use "cr" instead if you need to save the result from the task.
+    """ The psc function uses subfunctions of os.system() and os.popen() to   
+ execute any Windows commands that you might require. Send your arg as "cc" 
+ to simply execute a task; use "cr" instead if you need to save the result 
+ from the task.
  
  USAGE:
 
@@ -327,13 +361,13 @@ def psc(cc=None,cr=None):
     result = valkyrie.psc(cr='powershell.exe "get-aduser -filter *"')
     ^^ Will return your AD enumeration as a usable object"""
     if cc:
-        osys(cc)
+        system(cc)
     if cr:
-        TASK = osop(cr)
+        TASK = popen(cr)
         return TASK.read()
 
 
-def availableTypes(val,la=".*",ea=".*",ra=".*",exact=False) -> list:
+def availableTypes(val,la=".*",ea=".*",ra=".*",exact=False) -> list | None:
     """ Use this function to search for tools with matching MACROSS
  attributes. Matching tools are returned in a list that you can
  forward to the collab function.
@@ -342,7 +376,7 @@ def availableTypes(val,la=".*",ea=".*",ra=".*",exact=False) -> list:
 
  USAGE: 
 
-    tools = valkyrie.availableTypes(val,language,maxArguments,responseType,exact)
+    tools = valkyrie.availableTypes(val,language,maxArguments,responseType,exactmatch)
 
  The first arg is the tool's MACROSS valType, and is the only required
  arg. If you want to specify exact matches for the valType, send exact=True
@@ -350,7 +384,7 @@ def availableTypes(val,la=".*",ea=".*",ra=".*",exact=False) -> list:
 
     ## The library is likely being used without MACROSS if LATTS is "False"
     if not LATTS:
-        return
+        return None
 
     res: list = []
     for t in LATTS:
@@ -369,14 +403,17 @@ def availableTypes(val,la=".*",ea=".*",ra=".*",exact=False) -> list:
 
     return res
 
+
+def collab(Tool=None,Caller=None,Protoculture=None,ap=None):
+    """
 ######################################################################################
 ####   PYTHON COLLAB ~~~~~~~~~~~IMPORTANT!!!!!!~~~~~~~~~~~~~~~  ######################
 ######################################################################################
 ## If you want your MACROSS powershell scripts to be able to respond to python requests,
-## you **MUST** include these parameter checks at the start of your powershell script to 
+## you **MUST** include this parameter check at the start of your powershell script to 
 ## ensure it can run as expected:
 ##
-##          param( $pythonsrc=$null )     ## You can also include any other params needed
+##          param( [string]$pythonsrc=$null )     ## You can also include any other params needed
 ##          if( $pythonsrc -ne $null ){
 ##              foreach( $core in gci "$PSScriptRoot\..\core\*.ps1" ){ . $core.fullname }
 ##              restoreMacross
@@ -385,21 +422,25 @@ def availableTypes(val,la=".*",ea=".*",ra=".*",exact=False) -> list:
 ## The "restoreMacross" powershell function will load all of the required resources
 ## in a new, temporary session outside of your current MACROSS session.
 ######################################################################################
-def collab(Tool,Caller,Protoculture,ap = None):
-    ''' The python "collab" function writes your PROTOCULTURE value to an ".eod"
+
+ The python "collab" function writes your PROTOCULTURE value to an ".eod"
  file in the GBIO folder for the powershell script to read and write its results to.
 
  **This function only works when launched within MACROSS.
 
  USAGE:
  If the PROTOCULTURE.eod file's "result" field is "PS_", the "target" field is meant
- to be python's PROTOCULTURE value. You can check it with:
+ to be python's PROTOCULTURE value. You can retrieve a dict of the file's contents by 
+ calling the function without any arguments:
 
-        collab()
+        c = collab()
+        c['target']
+        c['result']  ## If "PS_", set 'target' as your PROTOCULTURE, otherwise 'result'
+                     ## should be PROTOCULTURE
 
  And after processing the PROTOCULTURE, write your results:
 
-        collab(PROTOCULTURE=<script results>)
+        collab(Protoculture=<script results>)
 
  If you want to pass values to powershell tools:
 
@@ -409,132 +450,161 @@ def collab(Tool,Caller,Protoculture,ap = None):
  your python script, and PROTOCULTURE is the value you need powershell to evaluate. You can  
  also send an additional parameter (ap) if the powershell script accepts one.
 
- "core\macross_py\garbage_io\PROTOCULTURE.eod" is a json file that contains the key-values
+ "core\\macross_py\\garbage_io\\PROTOCULTURE.eod" is a json file that contains the key-values
  Caller.target (the PROTOCULTURE value) and Caller.result. If the powershell script has a 
  response for your python script, it will be written to the Caller.result field of 
  PROTOCULTURE.eod, where this function will retrieve it and forward it to your script.
 
  The PROTOCULTURE.eod file will remain the default PROTOCULTURE value in MACROSS until
  you delete it from the menu or exit MACROSS.
- '''
+ """
     
     ## The library is likely being used without MACROSS if GBIO is "False"
     if not GBIO:
-        return
+        return None
     
     protofile = f"{GBIO}\\\\PROTOCULTURE.eod"
-    '''
-    with open(protofile) as d:
-        readproto = load(d)
-    d.close()
-    for rp in readproto:
-        if readproto[rp]['result'] == 'PS_':
-            if not Protoculture:
-                PROTOCULTURE = readproto[rp]['target']
-            else:
-                readproto[rp]['result'] = Protoculture
-                with open(protofile, 'w') as dd:
-                    d.write(readproto)
-                dd.close()
-            return
-            '''
 
-    Tool = LATTS[Tool].fname
-    chdir(TOOLSROOT)
-    fullpath = f"{TOOLSDIR}\\\\{Tool}"
-    empty = "WAITING"
-    pr: str = ""
+    def getProto(pf) -> list | str:
+        if not drfl(pf,"file"):
+            return f"{pf} does not exist!"
+        
+        target_pairs: dict = {}
+        with open(pf) as d:
+            read_proto = load(d)
 
-    ## MOD SECTION ##
-    # If your Protoculture value is a huge dictionary, this function won't do a good job
-    # of passing it back to powershell. Tweak it however you need to.
-    if type(Protoculture) == list:
-        for P in Protoculture:
-            P = f"[{P}]"
-            pr = f"{pr},{P}"
-        pr = rgx("^,",pr,"")
-    elif type(Protoculture) == dict:
-        pr = "["
-        for P in Protoculture.keys():
-            pr = pr + ",{\"" + P + '\": ' + f"\"{Protoculture[P]}\"" + "}" 
-        pr = rgx("[,",pr,"")
+        for rp in read_proto:
+            target_pairs["target"] = read_proto[rp]["target"]
+            target_pairs["result"] = read_proto[rp]["result"]
+
+        return target_pairs
+    
+    if not Protoculture:
+        return getProto(protofile)
     else:
-        pr = str(Protoculture)
+        Tool = LATTS[Tool].fname
+        chdir(TOOLSROOT)
+        fullpath = f"{TOOLSDIR}\\\\{Tool}"
+        empty = "WAITING"
+        pr: list = []
+
+        ## MOD SECTION ##
+        # If your Protoculture value is a huge dictionary, this function may not do a good job
+        # of passing it back to powershell. Tweak it however you need to.
+        if type(Protoculture) == list:
+            for P in Protoculture:
+                pr.append(f"[{P}]")
+        elif type(Protoculture) == dict:
+            for P in Protoculture.keys():
+                pr.append("{\""+f"{P}\":\"{Protoculture[P]}\""+"}")
+        else:
+            del pr
+            pr = str(Protoculture)
+
+        if type(pr) != str:
+            ",".join(pr)
+
+        proto = {Caller:{"target":pr,"result":empty}}
+
+        if getenv("MPOD"):
+            environ["MPOD"] = getenv("MPOD")
+        if getenv("MACROSS"):
+            environ["MACROSS"] = getenv("MACROSS")
+
+        with open(protofile,"w") as outf: 
+            outf.write(dumps(proto))
+
+        call = f"powershell.exe {fullpath} -pythonsrc {Caller}"
+        if ap != None:
+            call = ap + "~" + call
+        psc(cc=call)
+
+        with open(protofile) as r:
+            res = load(r)
+
+        if res[Caller]["result"] and res[Caller]["result"] != empty:
+            return res[Caller]["result"]
+        else:
+            return False
 
 
-    proto = {Caller:{'target':pr,'result':empty}}
+def getFile(opendir="C:\\",filter='all') -> str:
+    """ The getFile() function opens a dialog window for users to select a file. You
+ can pass in optional arguments opendir= to set the default location for the dialog,
+ and filter= to limit the selection by filetype. 
 
-    if getenv('MPOD'):
-        environ['MPOD'] = getenv('MPOD')
-    if getenv('MACROSS'):
-        environ['MACROSS'] = getenv('MACROSS')
+ TYPES:
+    'all' = All filetypes (default)
+    'csv' = Comma-separated value format
+    'doc' = pdf, doc, docx, rtf files
+    'dox' = Microsoft Word formats
+    'exe' = Executables
+    'msg' = Saved email messages
+    'mso' = All common Microsoft Office formats
+    'pdf' = pdf files
+    'ppt' = Microsoft Powerpoint formats
+    'scr' = Common script types
+    'txt' = Plaintext .txt files
+    'web' = htm, html, css, js, json, aspx, php files
+    'xls' = Microsoft Excel formats
+    'zip' = zip, gz, 7z, rar files
 
-    with open(protofile, 'w') as outf: 
-        outf.write(dumps(proto))
-            
-    outf.close()
+ USAGE: 
 
-    call = f"powershell.exe {fullpath} -pythonsrc {Caller}"
-    if ap != None:
-        call = ap + '~' + call
-    psc(cc=call)
-
-    with open(protofile) as r:
-        res = load(r)
-
-    if res[Caller]['result'] and res[Caller]['result'] != empty:
-        return res[Caller]['result']
-    else:
-        return False
-
-
-## Same as MACROSS' getFile function; if you do not provide an initial directory,
-## it will will be set to the C: drive, which you can change via the first
-## argument (opendir). The second optional arg (filter) can limit by file
-## extensions; default is to list all files. This arg has to be passed as a list.
-def getFile(opendir = 'C:\\',filter = (('All files', '*.*'),('All files', '*.*'))) -> str:
-    """The getFile function opens a dialog window for users to select a file. You
-can pass in optional arguments 1) to set the default location for the dialog,
-and 2) limit the selection by file extension. Usage: 
-
-    FILE = getFile('directory\\to\\file',(('Adobe Acrobat Document', '*.pdf'),('All files', '*.*')))
+    PDFDOC = getFile(opendir='directory\\to\\file',filter='pdf')
+    ZIPFILE = getFile(filter='zip')
     
     """
+    ft = {
+        'all':(("All files", "*.*"),("All files", "*.*")),
+        'exe':(("Executables", "*.exe"),("All files", "*.exe")),
+        'txt':(("Text files", "*.txt"),("Text files", "*.txt")),
+        'msg':(("Email message", "*.msg"),("Email message", "*.msg")),
+        'mso':(("Microsoft Office", "*.doc"),("Microsoft Office", "*.docx"),("Microsoft Office", "*.xls"),("Microsoft Office", "*.xlsx"),\
+               ("Microsoft Office", "*.one"),("Microsoft Office", "*.ppt"),("Microsoft Office", "*.pptx"),("Microsoft Office", "*.accdb"),
+               ("Microsoft Office", "*.accde"),("Microsoft Office", "*.ost"),("Microsoft Office", "*.pst")),
+        'dox':(("MS Word Doc", "*.docx"),("MS Word Doc", "*.doc")),
+        'scr':(("Script files", "*.ps1"),("Script files", "*.psm"),("Script files", "*.py"),("Script files", "*.pyc"),("Script files", "*.pyd"),\
+               ("Script files", "*.bat"),("Script files", "*.lua"),("Script files", "*.js")),
+        'ppt':(("MS Powerpoint", "*.pptx"),("MS Powerpoint", "*.ppt")),
+        'xls':(("Excel Spreadsheet", "*.xlsx"),("Excel Spreadsheet", "*.xls")),
+        'pdf':(("Acrobat Portable Document", "*.pdf"),("Acrobat Portable Document", "*.pdf")),
+        'csv':(("Comma-Separated Document", "*.csv"),("Comma-Separated Document", "*.csv")),
+        'web':(("Web Files", "*.html"),("Web Files", "*.htm"),("Web Files", "*.css"),("Web Files", "*.js"),("Web Files", "*.aspx"),\
+               ("Web Files", "*.php"),("Web Files", "*.json")),
+        'zip':(("Compressed", "*.zip"),("Compressed", "*.rar"),("Compressed", "*.7z"),("Compressed", "*.tar"),("Compressed", "*.gz")),
+        'doc':(("Document Types", "*.docx"),("Document Types", "*.doc"),("Document Types", "*.rtf"),("Document Types", "*.pdf"),\
+               ("Document Types", "*.xls"),("Document Types", "*.xlsx")),
+    }
     Tk().withdraw()
     if filter:
-        chooser = aof(initialdir=opendir,filetypes=filter)
+        chooser = aof(initialdir=opendir,filetypes=ft[filter])
         
     return chooser
  
 
-## Same as MACROSS' screenResults function, with minor differences.
-##
-## For each arg, begin with the first letter of a powershell-compatible color
-## ("k" for black, "b" for blue, and no purple but "m" for magenta) and a "~"
-## char.  Example:  screenResults("c~My output is written to screen in cyan.")
-##
-## Pass in up to three values, each of which will be type-wrapped into its
-## own column on screen. Call this function WITHOUT any values to write
-## the closing row of "≡≡≡" characters.
-##
-## Your mileage may vary depending on the strings that get passed in; I sometimes
-## get a display with broken columns. It usually works pretty well, though.
-def screenResults(A = 'endr',B = None,C = None) -> None:
-    '''(Usage example) Write 3 columns, with the second column in green:
+def screenResults(A='endr',B=None,C=None) -> None:
+    """ Each string value is optional, and will be written to screen in separate
+ rows & columns.
 
-    valkyrie.screenResults(string1,'g~'+string2,string3)
+ You can send the first letter of a color ("k" for black) and "~" to colorize
+ text, for example "c~Value" to write "Value" in cyan.
 
-Each string value is optional, and will be written to screen in separate
-rows & columns.
+ Formatting options: (c)yan, blac(k), (b)lue, (r)ed, (y)ellow, (w)hite, (m)agenta, and
+ (ul) for underline.
 
-You can send the first letter of a color ("k" for black) and "~" to colorize
-text, for example "c~Value" to write "Value" in cyan.
+ To finish your outputs, call the function again without any values to
+ write the closing row boundary.
 
-Colors:(c)yan, (bl)ack, (b)lue, (r)ed, (y)ellow, (w)hite, (m)agenta, and
-(ul) for underline.
+ ** Your mileage may vary depending on the strings that get passed in; I sometimes
+ get a display with broken columns. It usually works pretty well, though.
 
-To finish your outputs, call the function again without any values to
-write the closing row boundary.'''
+ EXAMPLE: Write 3 columns, with the second column in green:
+
+    valkyrie.screenResults(string1,f"g~{string2}",string3)
+    valkyrie.screenResults()
+
+"""
     atc = btc = ctc = None      ## Default text color
     c = chr(8214)
     RC = chr(8801)
@@ -553,7 +623,7 @@ write the closing row boundary.'''
         ## Write text to a block without newlines
         def csep(text,tc=None):
             if tc != None:
-                print(fcolo[tc] + text + fcolo['rs'], end = ' ')
+                print(fcolor[tc] + text + fcolor['rs'], end = ' ')
             else:
                 print(text, end = ' ')
 
@@ -567,7 +637,7 @@ write the closing row boundary.'''
             if o3 > MAX:
                 SPACE = outputs.count(' ')
                 if SPACE > 0:
-                    outputs = rgx('(\s\s+|\t|`n)',outputs,' ')  ## Remove tabs/newlines from string
+                    outputs = rgx('(\\s\\s+|\\t|`n)',outputs,' ')  ## Remove tabs/newlines from string
                     #outputs = rgx('\\',outputs,'\\\\')          ## Escape backslash chars
                     P = outputs.split(' ')                      ## Create an array with each word as a value
                     WIDE = 0
@@ -597,7 +667,7 @@ write the closing row boundary.'''
                         o1.append(Word)
                     else:
                         BLOCK = ' '.join(o1)
-                        BLOCK = rgx('\s{2,}',BLOCK,' ')  ## Remove multi-spaced chars
+                        BLOCK = rgx('\\s{2,}',BLOCK,' ')  ## Remove multi-spaced chars
                         BL = len(BLOCK)
                         if BL > MAX:                     ## Cut extra long strings without whitespace
                             CUT = MAX + 1
@@ -667,7 +737,7 @@ write the closing row boundary.'''
         else:
             CT3 = None
             CT2 = None
-            BLOCK1 = genBlocks(A,89,87) #genBlocks(A,96,95)
+            BLOCK1 = genBlocks(A,88,87) #genBlocks(A,96,95)
 
         CT1 = len(BLOCK1)
 
@@ -802,44 +872,44 @@ write the closing row boundary.'''
             
 
 
-def getThis(v,e = 0,ee = 'utf8') -> str:
+def getThis(v,e='b',encd='utf8') -> str:
     """ This is the same as MACROSS' powershell function 'getThis'. Your
  first argument is the encoded string you want to de/encode, and your
  second arg will be:
 
-    (0) if decoding base64 (default action), or
-    (1) if decoding hexadecimal, or
-    (2) if encoding to base64, or
-    (3) if encoding to hexadecimal.
+    'b'' if decoding base64 (default action), or
+    'h' if decoding hexadecimal, or
+    'eb' if encoding to base64, or
+    'eh' if encoding to hexadecimal.
 
  Unlike the powershell function, this function does NOT write to
-"vf19_READ", it just returns your processed string.
+ "vf19_READ", it just returns your processed string.
 
- You can pass an optional 3rd arg to specify the out-encoding (ascii,
+ You can pass an optional arg encd= to specify the out-encoding (ascii,
  ANSI, etc, default is UTF-8).
 
  Usage:
-    PLAINTEXTASCII = valkyrie.getThis(base64string,0,'ascii')
-    PLAINTEXT = valkyrie.getThis(hexstring,1)
-    HEX = valkyrie.getThis('plaintext',3)
-    BASE64 = valkyrie.getThis('plaintext',2)
+    PLAINTEXTASCII = valkyrie.getThis(base64string,encd='ascii')
+    PLAINTEXT = valkyrie.getThis(hexstring,'h')
+    HEX = valkyrie.getThis('plaintext','eh')
+    BASE64 = valkyrie.getThis('plaintext','eb')
 
     """
-    if e == 0:
+    if e == 'b':
         newval = b64.b64decode(v)
-        newval = newval.decode(ee)
-    elif e == 1:
+        newval = newval.decode(encd)
+    elif e == 'h':
         if search('0x',v):
             v = sub('0x','',v)
         if search(' ',v):
             v = sub(' ','',v)
-        newval = bytes.fromhex(v).decode(ee)
-    elif e == 2:
+        newval = bytes.fromhex(v).decode(encd)
+    elif e == 'eb':
         newval = str(b64.b64encode(v.encode()).decode())
-    elif e == 3:
+    elif e == 'eh':
         newval = ''
         for b in v:
-            hb = '0x' + "{0:02x}".format(ord(b))
+            hb = "{0:02x}".format(ord(b)).upper()
             newval = newval + hb
         
     return newval
