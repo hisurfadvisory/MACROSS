@@ -1,37 +1,36 @@
 """
 The valkyrie library is a set of MACROSS functions converted from powershell to python.
 
-version 1.5
+version 1.6
 
 https://github.com/hisurfadvisory/MACROSS
 
 """
 from .valkyrie import (
-    help,
-    w,
-    slp,
-    errLog,
-    dS,
-    rgx,
-    psc,
-    drfl,
     availableTypes,
     collab,
-    getFile,
-    screenResults,
+    delf,
+    drfl,
+    errLog,
     getThis,
-    PROTOCULTURE,
+    getFile,
+    help,
+    psc,
+    rgx,
+    screenResults,
+    slp,
+    w,
     CALLER,
-    HELP,
-    USR,
-    GBIO,
-    RSRC,
     DTOP,
+    GBIO,
+    HELP,
+    LOGS,
+    MPOD,
+    N_,
+    PROTOCULTURE,
+    ROBOTECH,
+    RSRC,
     TOOLSROOT,
     TOOLSDIR,
-    LOGS,
-    M_,
-    N_,
-    ROBOTECH,
-    MPOD
+    USR
 )
