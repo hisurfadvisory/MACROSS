@@ -1,4 +1,4 @@
-'''
+"""
  MACROSS automatically sets this module path in $env:PYTHONPATH so you can import
  it in your script without any hassle.
 
@@ -50,7 +50,7 @@ the following functions will not return any responses:
  All .eod files in the garbage_io folder are automatically deleted when MACROSS exits 
  or starts up.
 
- '''
+ """
 import base64 as b64
 from datetime import datetime as dt
 from os import chdir,path,getenv,environ,system,popen,remove
@@ -59,6 +59,7 @@ from json import dumps,load
 from time import sleep as ts
 from tkinter import Tk
 from tkinter.filedialog import askopenfilename as aof
+from tkinter.filedialog import askdirectory as aod
 from math import ceil
 import socket
 from re import search,sub
@@ -119,19 +120,16 @@ class macross:
 ## var names will be the same as their powershell versions,
 ## but **without** the "vf19_" or "dyrl_" prefixes.
 ################################################################
-global PROTOCULTURE,CALLER,HELP,USR,GBIO,RSRC,DTOP,TOOLSROOT,TOOLSDIR,LOGS,N_,LATTS,ROBOTECH,MPOD
-PROTOCULTURE,CALLER,HELP,USR,GBIO,RSRC,DTOP,TOOLSROOT,TOOLSDIR,LOGS,N_,LATTS,ROBOTECH,MPOD = [False] * 14
-if getenv('PROTOCULTURE'):
-    PROTOCULTURE = getenv('PROTOCULTURE')
+global PROTOCULTURE,CALLER,HELP,USR,GBIO,RSRC,DTOP,TOOLSROOT,TOOLSDIR,LOGS,N_,LATTS,\
+    ROBOTECH,MPOD,protofile
+PROTOCULTURE,CALLER,HELP,USR,GBIO,RSRC,DTOP,TOOLSROOT,TOOLSDIR,LOGS,N_,LATTS,\
+    ROBOTECH,MPOD,protofile = [False] * 15
 
-if getenv('CALLER'):
-    CALLER = getenv('CALLER')
-
-if getenv('HELP'):
+if getenv("HELP"):
     HELP = True
 
-if getenv('MACROSS'):
-    M = getenv('MACROSS').split(';')
+if getenv("MACROSS"):
+    M = getenv("MACROSS").split(";")
     TOOLSROOT = M[0]
     DTOP = M[1]
     RSRC = M[2]
@@ -143,23 +141,47 @@ if getenv('MACROSS'):
     del n,n_
     USR = M[5]
     CALLER = M[6]
-    if M[7] == 'T':
+    if M[7] == "T":
         ROBOTECH = True
-    GBIO = TOOLSROOT + '\\\\core\\\\macross_py\\\\garbage_io'
-    TOOLSDIR = TOOLSROOT + '\\\\modules'
+    GBIO = TOOLSROOT + "\\\\core\\\\macross_py\\\\garbage_io"
+    TOOLSDIR = TOOLSROOT + "\\\\modules"
+
+
+## Set python's PROTOCULTURE tracker
+temp = False
+if GBIO:
+    protofile = f"{GBIO}\\\\PROTOCULTURE.eod"
+
+## Set default PROTOCULTURE and CALLER values; 
+## powershell and python require different methods
+try:
+    with open(protofile) as tmp:
+        temp = load(tmp)
+except:
+    pass
+if getenv("CALLER"):
+    CALLER = getenv("CALLER")
+elif temp:
+    CALLER = [i for i in temp.keys()][0]
+if getenv("PROTOCULTURE"):
+    PROTOCULTURE = getenv("PROTOCULTURE")
+elif temp:
+    PROTOCULTURE = temp[CALLER]["result"]
+del temp
+
 
 ## Load the missile pod
-if getenv('MPOD'):
+if getenv("MPOD"):
     MPOD = {}
-    for missile in getenv('MPOD').split(';'):
-        payload = missile.split('::')[0]
-        fuel = missile.split('::')[1]
+    for missile in getenv("MPOD").split(";"):
+        payload = missile.split("::")[0]
+        fuel = missile.split("::")[1]
         MPOD[payload] = fuel
     del missile,payload,fuel
 
 ## Convert powershell's [macross] objects to python macross class
 if GBIO:
-    attfile = GBIO + '\\\\LATTS.eod'
+    attfile = f"{GBIO}\\\\LATTS.eod"
     if path.isfile(attfile):
         LATTS = {}
         with open(attfile) as af:
@@ -178,28 +200,28 @@ if GBIO:
 
 
 ## Enable colorized terminal in Windows
-system('color')
+system("color")
 fcolor = {
-    'g':'\033[92m',
-    'c':'\033[96m',
-    'm':'\033[95m',
-    'y':'\033[93m',
-    'b':'\033[94m',
-    'r':'\033[91m',
-    'k':'\033[30m',
-    'ul':'\033[4m',
-    'w':'\033[97m',
-    'rs':'\033[0m'      ## Reset formatting to default
+    "g":"\033[92m",
+    "c":"\033[96m",
+    "m":"\033[95m",
+    "y":"\033[93m",
+    "b":"\033[94m",
+    "r":"\033[91m",
+    "k":"\033[30m",
+    "ul":"\033[4m",
+    "w":"\033[97m",
+    "rs":"\033[0m"      ## Reset formatting to default
 }
 bcolor = {
-    'k':'\033[40m',
-    'r':'\033[101m',
-    'g':'\033[102m',
-    'y':'\033[103m',
-    'b':'\033[104m',
-    'm':'\033[105m',
-    'c':'\033[106m',
-    'w':'\033[107m'
+    "k":"\033[40m",
+    "r":"\033[101m",
+    "g":"\033[102m",
+    "y":"\033[103m",
+    "b":"\033[104m",
+    "m":"\033[105m",
+    "c":"\033[106m",
+    "w":"\033[107m"
 }
 
 
@@ -207,12 +229,19 @@ bcolor = {
 ################################################################
 ###############  FUNCTION DEFINITIONS  #########################
 ################################################################
-def drfl(check,method = 'e') -> bool:
-    ''' Check if a path exists. Send "file" or "dir" as the second argument
+def drfl(check,method="e") -> bool:
+    """ Check if a path exists. Send "file" or "dir" as the second argument
  to specify files vs. folders (optional). Usage:
 
+ OPTIONS
+    method: specify if checking a file or folder. Default checks for both.
+        'file' = does filepath exist
+        'dir' = 'does folder exist
+
+ USAGE
     drfl(path_to_check,<"file"|"dir">)
-    '''
+
+    """
     if method == 'file':
         a = path.isfile(check)
     elif method == 'dir':
@@ -224,8 +253,8 @@ def drfl(check,method = 'e') -> bool:
 
 
 ## Alias to write colorized text to screen
-def w(TEXT,C1='rs',C2=None,i=False,u=False) -> None:
-    ''' Pass this function your text/string as arg 1, and the first letter of the
+def w(TEXT,C1="rs",C2=None,i=False,u=False) -> None:
+    """ Pass this function your text/string as arg 1, and the first letter of the
  color you want as arg2 ("k" for black). Send a second color to highlight 
  the text.
  
@@ -244,11 +273,11 @@ def w(TEXT,C1='rs',C2=None,i=False,u=False) -> None:
     valkyrie.w(text,'y',i=True)
     valkyrie.w(text,'w','r')
 
-    '''
+    """
     lead = fcolor[C1]
-    tail = fcolor['rs']
+    tail = fcolor["rs"]
     if u:
-        lead = fcolor['ul'] + lead
+        lead = fcolor["ul"] + lead
     if i == True:
         if C2 != None:
             print(lead + bcolor[C2] + TEXT + tail,end="")
@@ -262,7 +291,7 @@ def w(TEXT,C1='rs',C2=None,i=False,u=False) -> None:
 
 ## Sleep function for pausing scripts when needed
 def slp(s) -> None:
-    """ The 'slp' function will pause your script for the number of seconds you
+    """ The "slp" function will pause your script for the number of seconds you
  pass to it. Usage:
 
     valkyrie.slp(3)
@@ -273,7 +302,7 @@ def slp(s) -> None:
 
 ## Write MACROSS message logs
 def errLog(forward=False,*fields) -> None:
-    ''' You can use this to write messages to MACROSS' log files. Timestamps are
+    """ You can use this to write messages to MACROSS' log files. Timestamps are
  automatically added. The first arg *must* be True or False to tell the function
  whether or not to forward your log message to an external log collector (this
  requires that you define the url of the log collector in MACROSS' $vf19_MPOD
@@ -290,7 +319,7 @@ def errLog(forward=False,*fields) -> None:
     Create a local log and forward it to a log collector:
     valkyrie.errLog(True,"ERROR","The quick brown fox","jumped over the lazy dog")
 
-    '''
+    """
 
     ## If logging is enabled, there should already be a logfile present;
     ## otherwise logging will be ignored
@@ -323,28 +352,79 @@ def errLog(forward=False,*fields) -> None:
 
 
 def delf(d) -> None:
-    ''' Delete files.\n\n USAGE:\n\n\tvalkyrie.delf(path_to_file)'''
-    confirm = input(f'''
-    Are you sure you want to delete {d}?''')
+    """ Delete files.\n\n USAGE:\n\n\tvalkyrie.delf(path_to_file)"""
+    confirm = input(f"""
+    Are you sure you want to delete {d}?""")
     if search("^y",confirm):
         remove(d)
 
-
 def rgx(pattern,string,replace = None) -> str:
-    ''' Perform pattern matching/replacement (re.search and re.sub)
+    """ Perform pattern matching/replacement (re.search and re.sub)
  USAGE:
     Search a string:
     valkyrie.rgx(pattern,string)
 
     Replace a string:
     valkyrie.rgx(pattern,string,replace)
- '''
+ """
     if replace == None:
         r = search(pattern,string)
     else:
         r = sub(pattern,replace,string)
 
     return r
+
+
+def pyCross(Caller:str,res:any=False,tgt:any=False) -> None:
+    """ This function writes your tool outputs to the PROTOCULTURE.eod file so
+ that it can be read by python scripts. This overwrites any existing files!
+
+ OPTIONS
+    Caller = The CALLER script
+    res = The response from the called script
+    tgt = The target value specified by the calling script
+    
+ USAGE
+ 
+    valkyrie.pyCross(c=CALLER,res=ip_address)
+    valkyrie.pyCross(c=CALLER,tgt=ip_address)
+    
+    """
+    
+    if not drfl(protofile,"file"):
+        return False
+
+    def dataType_(d):
+        ll: list = []
+        if type(d) == list:
+            for D in d:
+                ll.append(f"[{D}]")
+        elif type(d) == dict:
+            for D in d.keys():
+                ll.append("{\""+f"{D}\":\"{d[D]}\""+"}")
+        else:
+            del ll
+            ll = str(d)
+        return ll
+    
+    with open(protofile) as rdf:
+        read_from = load(rdf)
+
+    cc = [k for k in read_from.keys()][0]
+    
+    if res:
+        res = dataType_(res)
+    else:
+        res = read_from[cc]["result"]
+    if tgt:
+        tgt = dataType_(tgt)
+    else:
+        tgt = read_from[cc]["target"]
+    
+    write_to = {Caller:{"result":res,"target":tgt}}
+
+    with open(protofile,"w") as wrf:
+        wrf.write(dumps(write_to))
 
 
 def psc(cc=None,cr=None):
@@ -355,11 +435,13 @@ def psc(cc=None,cr=None):
  
  USAGE:
 
+    # Launch a powershell script with args, but not save any outputs
     valkyrie.psc(cc='powershell.exe "filepath\\myscript.ps1" "argument 1"')
-    ^^ Will launch a powershell script with args, but not save any outputs
     
+    # Return your AD enumeration as a usable object
     result = valkyrie.psc(cr='powershell.exe "get-aduser -filter *"')
-    ^^ Will return your AD enumeration as a usable object"""
+
+    """
     if cc:
         system(cc)
     if cr:
@@ -371,7 +453,8 @@ def availableTypes(val,la=".*",ea=".*",ra=".*",exact:bool=False) -> list | None:
     """ Use this function to search for tools with matching MACROSS attributes. Matching tools are returned 
  in a list that you can forward to the valkyrie.collab() function. 
 
- You can view attributes within the python debugger:
+ You can view attributes by looking at the third line of any MACROSS script, or by
+ using the python debugger:
 
     print(repr(valkyrie.LATTS[tool_name]))
 
@@ -394,7 +477,7 @@ def availableTypes(val,la=".*",ea=".*",ra=".*",exact:bool=False) -> list | None:
     pc_lookups = valkyrie.availableTypes('active directory computer lookups',lang='powershell',exact=True)
 
     # Retrieve a list of tools that can parse IOCs from threat-intel, and can accept 2 args, and 
-    # returns findings as a csv file
+    # returns findings as a csv file, and can be written either in python or powershell
     ioc_tools = valkyrie.availableTypes('ioc,indicators',maxArguments=2,responseType='csv')
 
     """
@@ -410,7 +493,9 @@ def availableTypes(val,la=".*",ea=".*",ra=".*",exact:bool=False) -> list | None:
         R = str(LATTS[t].rtype)
         N = str(LATTS[t].name)
         V = str(LATTS[t].valtype)
-        ml = rgx(la,L); me = rgx(str(ea),E); mr = rgx(ra,R)
+        ml = rgx(la,L)
+        me = rgx(str(ea),E)
+        mr = rgx(ra,R)
         if ml and me and mr:
             if exact == True:
                 if val == V:
@@ -421,7 +506,7 @@ def availableTypes(val,la=".*",ea=".*",ra=".*",exact:bool=False) -> list | None:
     return res
 
 
-def collab(Tool=None,Caller=None,Protoculture=None,ap=None):
+def collab(Tool=None,Caller=None,Protoculture=None,spiritia=None):
     """
 ######################################################################################
 ####   PYTHON COLLAB ~~~~~~~~~~~IMPORTANT!!!!!!~~~~~~~~~~~~~~~  ######################
@@ -445,15 +530,22 @@ def collab(Tool=None,Caller=None,Protoculture=None,ap=None):
 
  **This function only works when launched within MACROSS.
 
+ OPTIONS
+    Tool           = the name of the script you're calling
+    Caller         = the name of your script
+    Protoculture   = the value that needs to be investigated/enriched (global PROTOCULTURE)
+    spiritia       = "alt param", if the script you send Protoculture to can accept an 
+                    addition arg/parameter, set it here
+
  USAGE:
- If the PROTOCULTURE.eod file's "result" field is "PS_", the "target" field is meant
+ If the PROTOCULTURE.eod file's "result" field is "PS_", then the "target" field is meant
  to be python's PROTOCULTURE value. You can retrieve a dict of the file's contents by 
  calling the function without any arguments:
 
         c = valkyrie.collab()
         c['target']
-        c['result']  ## If "PS_", set 'target' as your PROTOCULTURE, otherwise 'result'
-                     ## should be PROTOCULTURE
+        c['result']  ## If result is "PS_", set 'target' as your PROTOCULTURE, otherwise 
+                     ## 'result' should be PROTOCULTURE
 
  After processing the PROTOCULTURE, write your results:
 
@@ -461,11 +553,14 @@ def collab(Tool=None,Caller=None,Protoculture=None,ap=None):
 
  If you want to pass values to powershell tools:
 
-        valkyrie.collab(Tool,Caller,Protoculture,ap)
+        tool = "OtherScript"
+        caller = "MyScript"
+        protoculture = "some ioc value"
+        valkyrie.collab(Tool,Caller,Protoculture,spiritia)
         
  where Tool is the powershell script you're calling (no extension), Caller is the name of 
  your python script, and Protoculture is the value you need powershell to evaluate. You can  
- also send an additional parameter (ap=) if the powershell script accepts one.
+ also send an additional parameter (spiritia=) if the powershell script accepts one.
 
  "core\\macross_py\\garbage_io\\PROTOCULTURE.eod" is a json file that contains the key-values
  "Caller.target" (the PROTOCULTURE value) and "Caller.result". If the powershell script has a 
@@ -480,8 +575,8 @@ def collab(Tool=None,Caller=None,Protoculture=None,ap=None):
     ## The library is likely being used without MACROSS if GBIO is "False"
     if not GBIO:
         return None
-    
-    protofile = f"{GBIO}\\\\PROTOCULTURE.eod"
+
+    #protofile = f"{GBIO}\\\\PROTOCULTURE.eod"
 
     def getProto(pf) -> list | str:
         if not drfl(pf,"file"):
@@ -497,18 +592,19 @@ def collab(Tool=None,Caller=None,Protoculture=None,ap=None):
 
         return target_pairs
     
-    if not Protoculture:
-        return getProto(protofile)
+    if not Tool and not Protoculture:
+        if drfl(protofile,'file'):
+            return getProto(protofile)  # Read the existing PROTOCULTURE.eod file
     else:
-        Tool = LATTS[Tool].fname
+        L = LATTS[Tool].lang
+        R = LATTS[Tool].rtype
+        Tool = LATTS[Tool].fname        # The MACROSS script to collaborate with
         chdir(TOOLSROOT)
         fullpath = f"{TOOLSDIR}\\\\{Tool}"
-        empty = "WAITING"
-        pr: list = []
+        empty = "WAITING"   # This lets python know whether or not powershell writes results to PROTOCULTURE.eod
+        pr: list = []       # Create the contents to write into PROTOCULTURE.eod file
 
-        ## MOD SECTION ##
-        # If your Protoculture value is a huge dictionary, this function may not do a good job
-        # of passing it back to powershell. Tweak it however you need to.
+
         if type(Protoculture) == list:
             for P in Protoculture:
                 pr.append(f"[{P}]")
@@ -519,23 +615,33 @@ def collab(Tool=None,Caller=None,Protoculture=None,ap=None):
             del pr
             pr = str(Protoculture)
 
-        if type(pr) != str:
-            ",".join(pr)
+        #if type(pr) != str:
+        #    ",".join(pr)
 
         proto = {Caller:{"target":pr,"result":empty}}
 
+        # Jumping back to powershell requires temporarily creating new env
         if getenv("MPOD"):
             environ["MPOD"] = getenv("MPOD")
         if getenv("MACROSS"):
             environ["MACROSS"] = getenv("MACROSS")
 
+        # Write new PROTOCULTURE.eod or overwrite exisiting one
         with open(protofile,"w") as outf: 
             outf.write(dumps(proto))
 
-        call = f"powershell.exe {fullpath} -pythonsrc {Caller}"
-        if ap != None:
-            call = ap + "~" + call
-        psc(cc=call)
+        # Launching a MACROSS script from python requires a brand new session
+        if L == 'powershell':
+            call = f"powershell.exe {fullpath} -pythonsrc {Caller}"
+            if spiritia != None:
+                call = spiritia + "~" + call
+            psc(cc=call)
+        else:
+            call = f"py {fullpath} {spiritia}"
+            environ["PROTOCULTURE"] = proto[Caller]["target"]
+            environ["CALLER"] = Caller
+            environ["PYTHONPATH"] = getenv("PYTHONPATH")
+            psc(cc=call)
 
         with open(protofile) as r:
             res = load(r)
@@ -546,12 +652,15 @@ def collab(Tool=None,Caller=None,Protoculture=None,ap=None):
             return False
 
 
-def getFile(opendir="C:\\",filter='all') -> str:
-    """ The getFile() function opens a dialog window for users to select a file. You
- can pass in optional arguments opendir= to set the default location for the dialog,
- and filter= to limit the selection by filetype. 
+def getFile(opendir="C:\\",filter='all',folder:bool=False) -> str:
+    """ The getFile() function opens a dialog window for users to select a file. 
 
- TYPES:
+ OPTIONS
+ opendir: the default directory to being selection search. Default is "C:\\"
+
+ folder: set to True if you need users to only select a folder path
+
+ filter: limit user selections to type of file
     'all' = All filetypes (default)
     'csv' = Comma-separated value format
     'doc' = pdf, doc, docx, rtf files
@@ -565,41 +674,49 @@ def getFile(opendir="C:\\",filter='all') -> str:
     'txt' = Plaintext .txt files
     'web' = htm, html, css, js, json, aspx, php files
     'xls' = Microsoft Excel formats
-    'zip' = zip, gz, 7z, rar files
+    'zip' = zip, gz, 7z, jar, rar files
 
- USAGE: 
+ USAGE:
 
+    FOLDER_PATH = valkyrie.getFile(folder=True,opendir='directory\\to\\file')
     PDFDOC = valkyrie.getFile(opendir='directory\\to\\file',filter='pdf')
     ZIPFILE = valkyrie.getFile(filter='zip')
     REPORT = valkyrie.getFile(filter='dox')
+    XYZ_FILE = valkyrie.getFile(filter='xyz')
     
     """
     ft = {
         'all':(("All files", "*.*"),("All files", "*.*")),
-        'exe':(("Executables", "*.exe"),("All files", "*.exe")),
-        'txt':(("Text files", "*.txt"),("Text files", "*.txt")),
+        'csv':(("Comma-Separated Document", "*.csv"),("Comma-Separated Document", "*.csv")),
+        'custom':(("Custom Filetype", f"*.{filter}"),("Custom Filetype", f"*.{filter}")),
+        'doc':(("Document Types", "*.docx"),("Document Types", "*.doc"),("Document Types", "*.rtf"),("Document Types", "*.pdf"),\
+               ("Document Types", "*.xls"),("Document Types", "*.xlsx")),
+        'dox':(("MS Word Doc", "*.docx"),("MS Word Doc", "*.doc")),
+        'exe':(("Executables", "*.exe"),("Executables", "*.exe")),
         'msg':(("Email message", "*.msg"),("Email message", "*.msg")),
         'mso':(("Microsoft Office", "*.doc"),("Microsoft Office", "*.docx"),("Microsoft Office", "*.xls"),("Microsoft Office", "*.xlsx"),\
                ("Microsoft Office", "*.one"),("Microsoft Office", "*.ppt"),("Microsoft Office", "*.pptx"),("Microsoft Office", "*.accdb"),
                ("Microsoft Office", "*.accde"),("Microsoft Office", "*.ost"),("Microsoft Office", "*.pst")),
-        'dox':(("MS Word Doc", "*.docx"),("MS Word Doc", "*.doc")),
-        'scr':(("Script files", "*.ps1"),("Script files", "*.psm"),("Script files", "*.py"),("Script files", "*.pyc"),("Script files", "*.pyd"),\
-               ("Script files", "*.bat"),("Script files", "*.lua"),("Script files", "*.js")),
+        'pdf':(("Portable Document Format", "*.pdf"),("Portable Document Format", "*.pdf")),
         'ppt':(("MS Powerpoint", "*.pptx"),("MS Powerpoint", "*.ppt")),
-        'xls':(("Excel Spreadsheet", "*.xlsx"),("Excel Spreadsheet", "*.xls")),
-        'pdf':(("Acrobat Portable Document", "*.pdf"),("Acrobat Portable Document", "*.pdf")),
-        'csv':(("Comma-Separated Document", "*.csv"),("Comma-Separated Document", "*.csv")),
+        'scr':(("Script files", "*.ps1"),("Script files", "*.psm"),("Script files", "*.py"),("Script files", "*.pyc"),\
+               ("Script files", "*.pyd"),("Script files", "*.bat"),("Script files", "*.lua"),("Script files", "*.js")),
+        'txt':(("Text files", "*.txt"),("Text files", "*.txt")),
         'web':(("Web Files", "*.html"),("Web Files", "*.htm"),("Web Files", "*.css"),("Web Files", "*.js"),("Web Files", "*.aspx"),\
                ("Web Files", "*.php"),("Web Files", "*.json")),
-        'zip':(("Compressed", "*.zip"),("Compressed", "*.rar"),("Compressed", "*.7z"),("Compressed", "*.tar"),("Compressed", "*.gz")),
-        'doc':(("Document Types", "*.docx"),("Document Types", "*.doc"),("Document Types", "*.rtf"),("Document Types", "*.pdf"),\
-               ("Document Types", "*.xls"),("Document Types", "*.xlsx")),
+        'xls':(("Excel Spreadsheet", "*.xlsx"),("Excel Spreadsheet", "*.xls")),
+        'zip':(("Compressed", "*.zip"),("Compressed", "*.rar"),("Compressed", "*.7z"),("Compressed", "*.tar"),("Compressed", "*.gz"),\
+               ("Compressed", "*.jar"))
     }
     Tk().withdraw()
-    if filter:
-        chooser = aof(initialdir=opendir,filetypes=ft[filter])
-        
-    return chooser
+    FT = ft[filter]
+    if folder:
+        selection = aod(initialdir=opendir)
+    else:
+        if filter not in ft.keys():
+            FT = ft['custom']
+        selection = aof(initialdir=opendir,filetypes=FT)
+    return selection
  
 
 def screenResults(A='endr',B=None,C=None) -> None:
@@ -783,13 +900,13 @@ def screenResults(A='endr',B=None,C=None) -> None:
 
         w(r,'g')
 
-        '''
+        """
         Outputs will get formatted to screen based on:
             -how many values got passed in (1, 2, or 3)
             -how many words are in each output
             -which outputs have the most words in them
             -I hate math
-        '''
+        """
         if CT3 != None:
             COUNTDOWN = CT1 + CT2 + CT3
             while COUNTDOWN != 0:
