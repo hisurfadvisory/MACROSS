@@ -16,6 +16,7 @@ from .valkyrie import (
     getFile,
     help,
     psc,
+    pyCross,
     rgx,
     screenResults,
     slp,
