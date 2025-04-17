@@ -52,7 +52,12 @@ the following functions will not return any responses:
 
  **Code your python automations so that if valkyrie.HELP is True, they'll display their
  help/description documentation. MACROSS automatically sets this value when a user
- enters "help" in the main menu, then clears it when your script exits.
+ enters "help" in the main menu, then clears it when your script exits. 
+
+ ************************************************************************************
+ ****                                  IMPORTANT                                 ****
+ ************************************************************************************
+ If HELP is True, MACROSS does *not* convert any of its other core values!
 
  """
 from vkclasses import *
