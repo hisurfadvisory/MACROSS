@@ -280,7 +280,8 @@ function setUser($1,[switch]$c=$false,[switch]$i=$false){
             ## MOD SECTION ##
             ##############################################################################
             ## These should point $vf19_DTOP to your desktop 99% of the time, but you can change the
-            ## -v value if your environment is different.
+            ## -v value if your environment is different. I added this var because of encounters
+            ## with goofy profile settings.
             #battroid -n vf19_DTOP -v "C:\Users\$USR\Desktop"
             battroid -n vf19_DTOP -v "$env:USERPROFILE\Desktop"
             battroid -n vf19_modifier -v $idm; battroid -n vf19_check -v $idc
@@ -361,6 +362,7 @@ function varCleanup([switch]$c=$false,[switch]$t=$false){
 
     ## Clear the custom python resources
     if($env:MPOD){Remove-Item env:MPOD}
+    if($env:MACROSS){Remove-Item env:MACROSS}
     if($env:CALLER){Remove-Item env:CALLER}
     if($env:PROTOCULTURE){Remove-Item env:PROTOCULTURE}
 
@@ -455,18 +457,18 @@ function pyENV([switch]$c=$false){
         Remove-Item env:PROTOCULTURE,env:MPOD,env:MACROSS,env:HELP
     }
     else{
-        if( $HELP ){ $env:HELP = 'T' }
+        if( $HELP ){ $env:HELP = 'T'; $HELP = $false }
         else{
-            startUp; $l = ''
+            $ap = 'F'; $rt = 'F'
+            startUp; $l = New-Object System.Collections.ArrayList
             $vf19_MPOD.keys | Sort -Descending | where{$_ -ne 'a2z'} | %{
-                $l += $($_ + '::' + "$($vf19_MPOD[$_])" + ';')
+                $l.add($($_ + '::' + "$($vf19_MPOD[$_])")) | Out-Null
             }
-            $l = $l -replace ";$"
-            $env:MPOD = $l
+            $env:MPOD = "$($l -join ';')"
             if( $vf19_ROBOTECH ){ $rt = 'T' }
-            else{ $rt = 'F' }
-            $logfile = "$vf19_LOG\$(Get-Date -format 'yyyy-MM-dd').log"
-            $env:MACROSS = "$vf19_TOOLSROOT;$vf19_DTOP;$vf19_RSRC;$logfile;$($N_[0]);$USR;$CALLER;$rt"
+            if($vf19_OPT1){ $rt = $vf19_OPT1 }
+            $logfile = "$vf19_LOG\$(Get-Date -format 'yyyy-MM-dd')`.log"
+            $env:MACROSS = "$vf19_TOOLSROOT;$vf19_DTOP;$vf19_RSRC;$logfile;$($N_[0]);$USR;$CALLER;$rt;$ap"
             if($PROTOCULTURE){ $env:PROTOCULTURE = $PROTOCULTURE }
         }
     }
