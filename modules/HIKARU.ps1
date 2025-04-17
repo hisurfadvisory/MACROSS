@@ -1,5 +1,5 @@
 #_sdf1 Demo - Review My Code
-#_ver 0.2
+#_ver 0.3
 #_class 0,user,demo script,powershell,HiSurfAdvisory,0,none
 
 <#
@@ -170,35 +170,43 @@ else{
         if(Test-Path -Path $vf19_PYG[1]){
             w "`n HIKARU is now reading MISA's response from `n" g
             w "  $($vf19_PYG[1])`n"
-            w " and will show you the same results:" g
+            w " and will show you the same results:`n" g
 
 
             ## When your script is going to read a python response from PROTOCULTURE.eod, the top-level item
             ## should be your script's name. The "result" item is where you'll find the python script's response
-            ## to your collab query. Make sure you know what the previous script's output or ".rtype" is,  
-            ## if it's a large hashtable it may get written to PROTOCULTURE.eod as one or more nested json objects!
+            ## to your collab query. By default, it has a string value of "WAITING". Make sure you know what the 
+            ## collaborating script's output or ".rtype" is; if it's a large hashtable it may get written to 
+            ## PROTOCULTURE.eod as one or more nested json objects, or even just a list of strings!
             ## The file is located in "core\macross_py\garbage_io\" and gets regularly deleted after use.
-            $readFromPy = (Get-Content $vf19_PYG[1] | ConvertFrom-Json).HIKARU.result
-            
-            Foreach($k in $readFromPy.PSObject.Properties.Name){
+            $readFromPy = (Get-Content $vf19_PYG[1] |  ConvertFrom-Json).HIKARU.result
+            $type = $readFromPy.getType().BaseType.Name
 
-                if(($readFromPy.$k).getType().Name -eq 'String'){
-                    $v = $readFromPy.$k
-                }
-                else{
-                    $v = "$($readFromPy.$k[0]) -- $($readFromPy.$k[1])"
-                }
-                
-
+            ## The initial "result" value when you launch collab for a python script is "WAITING". If you launch
+            ## collab, and find that "result" is still "WAITING", there was no result from the collaborating script.
+            if($readFromPy -eq 'WAITING' -or -not $readFromPy){
                 ## MACROSS offers a few different ways to display your data. "screenResults" Can take large
                 ## blocks of info and split them evenly into rows & columns. If you begin your string with 
                 ## the first letter of a color, like "c" for cyan, along with the ~ character, it tells 
                 ## screenResults to colorize the text with colors other than the default. This is useful for 
                 ## highlighting data that matches parameters you may be interested in. (There is also 
-                ## "screenResultsAlt" which writes smaller outputs in a header-list format.)
-                screenResults "c~$k" $v
+                ## "screenResultsAlt" which prints smaller outputs in a header-list formatting.)
+
+                screenResultsAlt -h "MISA'S RESPONSE" -k "$PROTOCULTURE" -v "r~Nothing found!"
+                screenResultsAlt -e
             }
-            screenResults -e
+            elseif($type -eq 'Array'){
+                # You'll need to play with formatting when dealing with different outputs between powershell,
+                # python and various APIs. In this case, I know a successful response will result in an array 
+                # of strings that *should* be hashtables.
+                $readFromPy | %{
+                    $kv = $_ | ConvertFrom-Json
+                    $k = $kv.PSObject.Properties.Name
+                    $v = $kv.PSObject.Properties.Value
+                    screenResults "c~$k" $v
+                }
+                screenResults -e
+            }
         }
     }
 
