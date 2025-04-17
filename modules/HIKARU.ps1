@@ -130,17 +130,16 @@ else{
     ## underlining and highlighting.
     w "
 
-    This demo will ask you for a search term to find a Windows event ID. The keyword(s) 
-    you enter here will be sent to the MISA python script, which will then forward it to 
-    the GUBABA.ps1 script and retrieve GUBABA's results.
+ This demo will ask you for a search term to find a Windows event ID. The keyword(s) 
+ you enter here will be sent to the MISA python script, which will then forward it to 
+ the GUBABA.ps1 script and retrieve GUBABA's results.
 
-    This is a very simple demonstration of how you can connect your scripts together. View
-    the code in HIKARU.ps1 and MISA.py to see how the `"availableTypes`" and `"collab`"
-    functions are used to connect scripts wherever you find it useful to do so.
-    " g
+ This is a very simple demonstration of how you can connect your scripts together. View
+ the code in HIKARU.ps1, CLAUDIA.py and MISA.py to see how the `"availableTypes`" and 
+ `"collab`" functions are used to connect scripts wherever you find it useful to do so.`n" g
 
     while($z -notMatch "\w{3,}"){
-        w "Enter a keyword or ID number to search for an event ID: " g -i
+        w " Enter a keyword or ID number to search for an event ID: " g -i
         $z = Read-Host
     }
 
@@ -168,9 +167,20 @@ else{
         ## in powershell scripts).
 
         if(Test-Path -Path $vf19_PYG[1]){
+
+            ## MACROSS' yorn function lets you get quick responses from users in various ways
+            $q = "Now we are demonstrating MACROSS' yorn function.`nThis allows you to get quick responses from users in various ways.`n`nClick Yes or No to continue."
+            $yorn = yorn -s HIKARU -i 64 -q $q
+
+            w "`n You can use MACROSS' yorn function to let users select branching tasks." c
+            w ' You selected ' c -i
+            w $yorn y -i
+            w " using that function. Hit ENTER to continue.`n`n" c
+            Read-Host
             w "`n HIKARU is now reading MISA's response from `n" g
             w "  $($vf19_PYG[1])`n"
             w " and will show you the same results:`n" g
+            
 
 
             ## When your script is going to read a python response from PROTOCULTURE.eod, the top-level item
@@ -216,20 +226,25 @@ else{
 
         ## The "sep" function lets you quickly generate division lines to break up
         ## blocks of text. You can use any character or pattern of characters you like!
-        sep '~@~' 25 -c g; sep '~@~' 25 -c g
+        ## MACROSS also provides the "ord" and "chr" functions for converting between
+        ## char and ordinal representations. I can never remember how to do it in
+        ## powershell so I just aliased them with the python syntax.
+        #sep '~@~' 25 -c g; sep '~@~' 25 -c g
+        $line = chr 9553
+        sep $line 75 -c g; sep '~|~' 25 -c g
         w "
-    The garbage_io folder can be referenced by your scripts as `$vf19_PYG[0] if
-    necessary, and it gets cleaned out every time MACROSS starts & exits. The function 
-    `"pyCross`" can be used by your powershell scripts to write values to this folder 
-    for python scripts to read, and vice versa.
+ The garbage_io folder can be referenced by your scripts as `$vf19_PYG[0] if
+ necessary, and it gets cleaned out every time MACROSS starts & exits. The function 
+ `"pyCross`" can be used by your powershell scripts to write values to this folder 
+ for python scripts to read, and vice versa.
 
-    The default file used is a json-format PROTOCULTURE.eod, but pyCross will create
-    files with different names if you choose.
+ The default file used is a json-format PROTOCULTURE.eod, but pyCross will create
+ files with different names if you choose.
 
-    Type `"debug`" in the main menu to load the debugger, where you can read help files
-    for all of MACROSS' utility functions, and test them out in a mini-playground
-    (including python).
-    " g
+ Type `"debug`" in the main menu to load the debugger, where you can read help files
+ for all of MACROSS' utility functions, and test them out in a mini-playground
+ (including python).
+ " g
         while($z -ne 'e'){
             w "Enter `"e`" to exit: " -i y
             $z = Read-Host
