@@ -6,6 +6,7 @@ version 1.6
 https://github.com/hisurfadvisory/MACROSS
 
 """
+import vkclasses
 from .valkyrie import (
     availableTypes,
     collab,
