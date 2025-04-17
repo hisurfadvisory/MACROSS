@@ -11,10 +11,10 @@
     valkyrie.TOOLSROOT            -> the MACROSS root folder path
     valkyrie.TOOLSDIR             -> the modules\\ folder path
     valkyrie.GBIO                 -> the garbage_io\\ folder path
-    valkyrie.MPOD                 -> a python dictionary of $vf19_MPOD**
+    valkyrie.MPOD                 -> a python dictionary of $vf19_MPOD*
     valkyrie.LOG                  -> the location of MACROSS' log files
-    valkyrie.ROBOTECH             -> True if powershell $vf19_ROBOTECH is $true (default False)
-    valkyrie.HELP                 -> True if powershell $HELP is $true (default False)
+    valkyrie.ROBOTECH             -> if True, the logged-in user has no elevated privileges
+    valkyrie.HELP                 -> if True, python scripts will launch their help pages**
 
 If you want to use this library without MACROSS, these values are all set to False, and
 the following functions will not return any responses:
@@ -23,7 +23,7 @@ the following functions will not return any responses:
     valkyrie.collab()
     valkyrie.errLog()
 
- ** Use valkyrie.getThis() to decrypt the values you set in MACROSS' config.conf
+ * Use valkyrie.getThis() to decrypt the values you set in MACROSS' config.conf
  file. The valkyrie.MPOD dictionary contains the same key-value pairs as the
  $vf19_MPOD hashtable in powershell. Example to read from the resources folder
  location that you configured:
@@ -50,7 +50,12 @@ the following functions will not return any responses:
  All .eod files in the garbage_io folder are automatically deleted when MACROSS exits 
  or starts up.
 
+ **Code your python automations so that if valkyrie.HELP is True, they'll display their
+ help/description documentation. MACROSS automatically sets this value when a user
+ enters "help" in the main menu, then clears it when your script exits.
+
  """
+from vkclasses import *
 import base64 as b64
 from datetime import datetime as dt
 from os import chdir,path,getenv,environ,system,popen,remove
@@ -65,137 +70,91 @@ import socket
 from re import search,sub
 
 
-class macross:
-    """ Create attribute properties for tracking and launching MACROSS tools.
-    """
-    def __init__(self,name,access,priv,valtype,lang,author,evalmax,rtype,ver,fname):
-        self.name = name
-        self.access = access
-        self.priv = priv
-        self.valtype = valtype
-        self.lang = lang
-        self.author = author
-        self.evalmax = evalmax
-        self.rtype = rtype
-        self.ver = ver
-        self.fname = fname
-
-    def __str__(self):
-        atts: dict = {
-            "Name":self.name,
-            "Access":self.access,
-            "Privilege":self.priv,
-            "Evaluates":self.valtype,
-            "Language":self.lang,
-            "Author":self.author,
-            "Max Args":self.evalmax,
-            "Response":self.rtype,
-            "Version":self.ver,
-            "Fullname":self.fname
-        }
-        attrs: list = []
-        labels: int = len(max(atts.keys(),key=len))
-        for A in atts.keys():
-            attrs.append(f"{A: <{labels}}: {atts[A]}")
-        return "\n".join(attrs)
-    
-    def __repr__(self):
-        return_string: list = [
-            f"name={self.name}",
-            f"access={self.access}",
-            f"priv={self.priv}",
-            f"valtype={self.valtype}",
-            f"lang={self.lang}",
-            f"author={self.author}",
-            f"evalmax={self.evalmax}",
-            f"rtype={self.rtype}",
-            f"ver={self.ver}",
-            f"fname={self.fname}"
-        ]
-        return f"macross({', '.join(return_string)})"
-
-
 ################################################################
 ## Set default MACROSS values:
 ## var names will be the same as their powershell versions,
 ## but **without** the "vf19_" or "dyrl_" prefixes.
 ################################################################
 global PROTOCULTURE,CALLER,HELP,USR,GBIO,RSRC,DTOP,TOOLSROOT,TOOLSDIR,LOGS,N_,LATTS,\
-    ROBOTECH,MPOD,protofile
+    ROBOTECH,MPOD,SPIRITIA,protofile
 PROTOCULTURE,CALLER,HELP,USR,GBIO,RSRC,DTOP,TOOLSROOT,TOOLSDIR,LOGS,N_,LATTS,\
-    ROBOTECH,MPOD,protofile = [False] * 15
+    ROBOTECH,MPOD,SPIRITIA,protofile = [False] * 16
 
+## If the user wants to view the help files, there's no need to waste resources 
+## loading anything else.
 if getenv("HELP"):
     HELP = True
-
-if getenv("MACROSS"):
-    M = getenv("MACROSS").split(";")
-    TOOLSROOT = M[0]
-    DTOP = M[1]
-    RSRC = M[2]
-    LOG = M[3]
-    N_ = [int(M[4])]
-    n_ = [int(d) for d in str(M[4])]
-    for n in n_:
-        N_.append(n)
-    del n,n_
-    USR = M[5]
-    CALLER = M[6]
-    if M[7] == "T":
-        ROBOTECH = True
-    GBIO = TOOLSROOT + "\\\\core\\\\macross_py\\\\garbage_io"
-    TOOLSDIR = TOOLSROOT + "\\\\modules"
-
-
-## Set python's PROTOCULTURE tracker
-temp = False
-if GBIO:
-    protofile = f"{GBIO}\\\\PROTOCULTURE.eod"
-
-## Set default PROTOCULTURE and CALLER values; 
-## powershell and python require different methods
-try:
-    with open(protofile) as tmp:
-        temp = load(tmp)
-except:
-    pass
-if getenv("CALLER"):
-    CALLER = getenv("CALLER")
-elif temp:
-    CALLER = [i for i in temp.keys()][0]
-if getenv("PROTOCULTURE"):
-    PROTOCULTURE = getenv("PROTOCULTURE")
-elif temp:
-    PROTOCULTURE = temp[CALLER]["result"]
-del temp
+else:
+    if getenv("MACROSS"):
+        M = getenv("MACROSS").split(";")
+        TOOLSROOT = M[0]
+        DTOP = M[1]
+        RSRC = M[2]
+        LOG = M[3]
+        N_ = [int(M[4])]
+        n_ = [int(d) for d in str(M[4])]
+        for n in n_:
+            N_.append(n)
+        del n,n_
+        USR = M[5]
+        CALLER = M[6]
+        if M[7] == "T":
+            ROBOTECH = True
+        if M[8] != "F":
+            SPIRITIA = M[8]
+        GBIO = TOOLSROOT + "\\\\core\\\\macross_py\\\\garbage_io"
+        TOOLSDIR = TOOLSROOT + "\\\\modules"
 
 
-## Load the missile pod
-if getenv("MPOD"):
-    MPOD = {}
-    for missile in getenv("MPOD").split(";"):
-        payload = missile.split("::")[0]
-        fuel = missile.split("::")[1]
-        MPOD[payload] = fuel
-    del missile,payload,fuel
+    ## Set python's PROTOCULTURE tracker
+    temp = False
+    if GBIO:
+        protofile = f"{GBIO}\\\\PROTOCULTURE.eod"
 
-## Convert powershell's [macross] objects to python macross class
-if GBIO:
-    attfile = f"{GBIO}\\\\LATTS.eod"
-    if path.isfile(attfile):
-        LATTS = {}
-        with open(attfile) as af:
-            pa = load(af)
-            for tool in pa:
-                l = []
-                K = tool
-                V = pa[tool]
-                for i in V:
-                    l.append(str(i))
-                ATT = macross(l[0],l[1],l[2],l[3],l[4],l[5],l[6],l[7],l[8],l[9])
-                LATTS.update({K:ATT})
-        af.close()
-        del ATT,pa,i,K,V,tool,attfile,af
+    ## Set default PROTOCULTURE and CALLER values; 
+    ## powershell and python require different methods
+    try:
+        with open(protofile) as tmp:
+            temp = load(tmp)
+    except:
+        pass
+    if getenv("CALLER"):
+        CALLER = getenv("CALLER")
+    elif temp:
+        CALLER = [i for i in temp.keys()][0]
+    if getenv("PROTOCULTURE"):
+        PROTOCULTURE = getenv("PROTOCULTURE")
+    elif temp:
+        PROTOCULTURE = temp[CALLER]["result"]
+    del temp
+
+
+    ## Load the missile pod
+    if getenv("MPOD"):
+        MPOD = {}
+        for missile in getenv("MPOD").split(";"):
+            payload = missile.split("::")[0]
+            fuel = missile.split("::")[1]
+            MPOD[payload] = fuel
+        del missile,payload,fuel
+
+    ## Convert powershell's [macross] objects to python macross class
+    if GBIO:
+        attfile = f"{GBIO}\\\\LATTS.eod"
+        if path.isfile(attfile):
+            LATTS = {}
+            with open(attfile) as af:
+                pa = load(af)
+                for tool in pa:
+                    l = []
+                    K = tool
+                    V = pa[tool]
+                    for i in V:
+                        l.append(str(i))
+                    ATT = macross(l[0],l[1],l[2],l[3],l[4],l[5],l[6],l[7],l[8],l[9])
+                    LATTS.update({K:ATT})
+            af.close()
+            del ATT,pa,i,K,V,tool,attfile,af
 
 
 
@@ -375,12 +334,12 @@ def rgx(pattern,string,replace = None) -> str:
     return r
 
 
-def pyCross(Caller:str,res:any=False,tgt:any=False) -> None:
+def pyCross(kix:str,res:any=False,tgt:any=False,collaborate:bool=False):
     """ This function writes your tool outputs to the PROTOCULTURE.eod file so
  that it can be read by python scripts. This overwrites any existing files!
 
  OPTIONS
-    Caller = The CALLER script
+    kix = The key index; should be the name of the CALLER script
     res = The response from the called script
     tgt = The target value specified by the calling script
     
@@ -391,9 +350,6 @@ def pyCross(Caller:str,res:any=False,tgt:any=False) -> None:
     
     """
     
-    if not drfl(protofile,"file"):
-        return False
-
     def dataType_(d):
         ll: list = []
         if type(d) == list:
@@ -401,12 +357,25 @@ def pyCross(Caller:str,res:any=False,tgt:any=False) -> None:
                 ll.append(f"[{D}]")
         elif type(d) == dict:
             for D in d.keys():
-                ll.append("{\""+f"{D}\":\"{d[D]}\""+"}")
+                ll.append(f'\u007b"{D}":"{d[D]}"\u007d')
         else:
             del ll
             ll = str(d)
         return ll
     
+    def writeProto_(k,r,t):
+        write_to = {k:{"result":r,"target":t}}
+        with open(protofile,"w") as wrf:
+            wrf.write(dumps(write_to))
+        return write_to
+
+    if collaborate:
+        wp = writeProto_(kix,res,tgt)
+        return wp
+    
+    if not drfl(protofile,"file"):
+        return False
+
     with open(protofile) as rdf:
         read_from = load(rdf)
 
@@ -421,10 +390,7 @@ def pyCross(Caller:str,res:any=False,tgt:any=False) -> None:
     else:
         tgt = read_from[cc]["target"]
     
-    write_to = {Caller:{"result":res,"target":tgt}}
-
-    with open(protofile,"w") as wrf:
-        wrf.write(dumps(write_to))
+    nil = writeProto_(kix,res,tgt)
 
 
 def psc(cc=None,cr=None):
@@ -602,23 +568,9 @@ def collab(Tool=None,Caller=None,Protoculture=None,spiritia=None):
         chdir(TOOLSROOT)
         fullpath = f"{TOOLSDIR}\\\\{Tool}"
         empty = "WAITING"   # This lets python know whether or not powershell writes results to PROTOCULTURE.eod
-        pr: list = []       # Create the contents to write into PROTOCULTURE.eod file
+        #pr: list = []       # Create the contents to write into PROTOCULTURE.eod file
 
-
-        if type(Protoculture) == list:
-            for P in Protoculture:
-                pr.append(f"[{P}]")
-        elif type(Protoculture) == dict:
-            for P in Protoculture.keys():
-                pr.append("{\""+f"{P}\":\"{Protoculture[P]}\""+"}")
-        else:
-            del pr
-            pr = str(Protoculture)
-
-        #if type(pr) != str:
-        #    ",".join(pr)
-
-        proto = {Caller:{"target":pr,"result":empty}}
+        proto = pyCross(kix=Caller,res=empty,tgt=Protoculture,collaborate=True)
 
         # Jumping back to powershell requires temporarily creating new env
         if getenv("MPOD"):
@@ -626,22 +578,19 @@ def collab(Tool=None,Caller=None,Protoculture=None,spiritia=None):
         if getenv("MACROSS"):
             environ["MACROSS"] = getenv("MACROSS")
 
-        # Write new PROTOCULTURE.eod or overwrite exisiting one
-        with open(protofile,"w") as outf: 
-            outf.write(dumps(proto))
 
         # Launching a MACROSS script from python requires a brand new session
         if L == 'powershell':
             call = f"powershell.exe {fullpath} -pythonsrc {Caller}"
             if spiritia != None:
                 call = spiritia + "~" + call
-            psc(cc=call)
         else:
             call = f"py {fullpath} {spiritia}"
             environ["PROTOCULTURE"] = proto[Caller]["target"]
             environ["CALLER"] = Caller
             environ["PYTHONPATH"] = getenv("PYTHONPATH")
-            psc(cc=call)
+
+        psc(cc=call)
 
         with open(protofile) as r:
             res = load(r)
