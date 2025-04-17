@@ -61,7 +61,8 @@ the following functions will not return any responses:
 
  """
 from vkclasses import *
-import base64 as b64
+from base64 import b64decode as bdec
+from base64 import b64encode as benc
 from datetime import datetime as dt
 from os import chdir,path,getenv,environ,system,popen,remove
 #from os import getcwd as pwd
@@ -982,13 +983,13 @@ def getThis(v,action='b',encd='utf8') -> str:
     PLAINTEXT       = valkyrie.getThis(base64string)
     PLAINTEXTASCII  = valkyrie.getThis(base64string,encd='ascii')
     PLAINTEXT       = valkyrie.getThis(hexstring,'h')
+    UTF16_TEXT      = valkyrie.getThis(v=hexstring,action='h',encd='utf16')
     HEX             = valkyrie.getThis('plaintext','eh')
     BASE64          = valkyrie.getThis('plaintext','eb')
 
     """
     if action == 'b':
-        newval = b64.b64decode(v)
-        newval = newval.decode(encd)
+        newval = bdec(v).decode(encd)
     elif action == 'h':
         if search('0x',v):
             v = sub('0x','',v)
@@ -996,12 +997,13 @@ def getThis(v,action='b',encd='utf8') -> str:
             v = sub(' ','',v)
         newval = bytes.fromhex(v).decode(encd)
     elif action == 'eb':
-        newval = str(b64.b64encode(v.encode()).decode())
+        newval = str(benc(v.encode()).decode())
     elif action == 'eh':
-        newval = ''
+        newval = []
         for b in v:
             hb = "{0:02x}".format(ord(b)).upper()
-            newval = newval + hb
+            newval.append(hb)
+        newval = str(''.join(newval))
         
     return newval
 
