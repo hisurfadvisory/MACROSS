@@ -1,4 +1,4 @@
-#_sdf1 Demo - Review My Code
+#_sdf1 Demo - Review this code
 #_ver 0.3
 #_class 0,user,demo script,powershell,HiSurfAdvisory,0,none
 
@@ -70,12 +70,9 @@ function splashPage(){
     DilZ3ilZrilZDilZ0gIOKVmuKVkOKVneKVmuKVkOKVnSAg4pWa4pWQ4pWdIOKVmuKVkOKVkOKVkOK
     VkOKVkOKVnSA='
     getThis $b
-    Write-Host '
-    '
-    Write-Host -f YELLOW $vf19_READ
-    Write-Host -f CYAN '       A demo of MACROSS as an automation hub
-    
-    '
+    "`n"
+    w $vf19_READ y
+    w "          A demo of MACROSS as an automation hub`n`n" c
     }
     
 }
@@ -132,7 +129,9 @@ else{
 
  This demo will ask you for a search term to find a Windows event ID. The keyword(s) 
  you enter here will be sent to the MISA python script, which will then forward it to 
- the GUBABA.ps1 script and retrieve GUBABA's results.
+ the GUBABA.ps1 script and retrieve GUBABA's results. MACROSS assigns the focus of
+ you searches/investigations as `$PROTOCULTURE; your automations should be written to
+ automatically act on `$PROTOCULTURE when it exists.
 
  This is a very simple demonstration of how you can connect your scripts together. View
  the code in HIKARU.ps1, CLAUDIA.py and MISA.py to see how the `"availableTypes`" and 
@@ -143,15 +142,16 @@ else{
         $z = Read-Host
     }
 
-    ## Where it makes sense, have your scripts automatically act on $PROTOCULTURE any time it has a value
+    ## Where it makes sense, have your scripts automatically act on $PROTOCULTURE any time it has 
+    ## a value
     $Global:PROTOCULTURE = $z
 
     ## The availableTypes function collects all of the scripts in the modules folder that match
-    ## your [macross] criteria. In this example, I search for the .valtype "demo script" and the  
-    ## .lang value "python" (MISA is the only script that will match).  The -e option forces exact
-    ## matches, otherwise you'll get back tools that match all the words you use in -v.
-    ## You can also search by response types (.rtype).
-    $list = availableTypes -v 'demo script' -l python -e
+    ## your [macross] criteria. In this example, I search for the .valtype with -v and the  
+    ## .lang value with -l.  The -e option forces exact matches, otherwise you'll get back tools 
+    ## that match all the words you use in -v. (MISA is the only script that will match the filter
+    ## below.) You can also use -r to search by response types (.rtype).
+    $list = availableTypes -v "demo script for python" -l python -e
 
     ## The collab function loads whatever script you require next, within your MACROSS session.
     ## In this basic demo, I'm just calling the python script MISA, who will see the $PROTOCULTURE
@@ -168,7 +168,8 @@ else{
 
         if(Test-Path -Path $vf19_PYG[1]){
 
-            ## MACROSS' yorn function lets you get quick responses from users in various ways
+            ## MACROSS' yorn function lets you get quick responses from users in various ways. Enter 
+            ## "debug" in the main menu to view help descriptions of this and other built-in utilities.
             $q = "Now we are demonstrating MACROSS' yorn function.`nThis allows you to get quick responses from users in various ways.`n`nClick Yes or No to continue."
             $yorn = yorn -s HIKARU -i 64 -q $q
 
@@ -177,11 +178,7 @@ else{
             w $yorn y -i
             w " using that function. Hit ENTER to continue.`n`n" c
             Read-Host
-            w "`n HIKARU is now reading MISA's response from `n" g
-            w "  $($vf19_PYG[1])`n"
-            w " and will show you the same results:`n" g
             
-
 
             ## When your script is going to read a python response from PROTOCULTURE.eod, the top-level item
             ## should be your script's name. The "result" item is where you'll find the python script's response
@@ -223,6 +220,13 @@ else{
     "`n"
 
     if(Test-Path -Path $vf19_PYG[1]){
+        
+        w "`n HIKARU grabbed MISA's response from `n" g
+        w "  $($vf19_PYG[1])`n"
+        w " and printed the same results above. The " g -i
+        w "core\macross_py\garbage_io" y
+        w " folder is MACROSS' way of tracking changes to the PROTOCULTURE value" g
+        w " between powershell & python.`n`n" g
 
         ## The "sep" function lets you quickly generate division lines to break up
         ## blocks of text. You can use any character or pattern of characters you like!
