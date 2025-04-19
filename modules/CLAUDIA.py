@@ -1,10 +1,10 @@
-#_sdf1 Python collab demo
+#_sdf1 Demo - Review this code
 #_ver 0.1
-#_class 0,user,demo script,python,HiSurfAdvisory,0,dictionary
+#_class 0,user,demo script,python,HiSurfAdvisory,0,none
 
 
 # The HELP value means that a user wants to view the help/description page.
-from valkyrie import w,HELP
+from valkyrie import w,HELP,LATTS
 if HELP:
     w("""
     This script is a companion to HIKARU, performing the same demonstration
@@ -42,14 +42,14 @@ else:
         # scripts based on their macross-class attributes. In this case, I know this specific filter
         # will only return the script MISA. These attributes are set according to the third line
         # of a MACROSS script, which begins with "#_class ".
-        partner = (availableTypes(val='demo script',la='python',ra='onscreen'))[0]
+        partner = (availableTypes(val="demo script",la="python",ra="onscreen"))[0]
 
-        w(f"\n\nThis is a simple demo. I am sending the search term \"{keywords}\" to {partner}.","g")
-        w("If any results are found, they'll print below.","g")
-        w("\nNote that the GUBABA.ps1, HIKARU.py and MISA.py scripts must be present in the ","g")
-        w("modules folder, and the gubaba.json file must be present in the resources folder","g")
-        w("for these demonstrations to work.","g")
-        w("\n\nHit ENTER to continue.","g",i=True)
+        w(f"\n\n This is a simple demo. I am sending the search term \"{keywords}\" to {partner}.","g")
+        w(" If any results are found, they'll print below.","g")
+        w("\n Note that the GUBABA.ps1, HIKARU.py and MISA.py scripts must be present in the ","g")
+        w(" modules folder, and the gubaba.json file must be present in the resources folder","g")
+        w(" for these demonstrations to work.","g")
+        w("\n\n Hit ENTER to continue.","g",i=True)
         input()
 
         # The collab function handles creating and clearing the necessary global values, including
@@ -58,7 +58,7 @@ else:
         t = collab(Tool=partner,Caller="CLAUDIA",Protoculture=keywords)
         print("\n")
         screenResults(f"y~{' '*29}Welcome back to CLAUDIA")
-        screenResults(f"c~{' '*20}MISA's response after searching with GUBABA:")
+        screenResults(f"c~{' '*11}CLAUDIA grabs MISA's response from the PROTOCULTURE.eod file:")
         screenResults()
         for i in t:
             r = loads(i)
