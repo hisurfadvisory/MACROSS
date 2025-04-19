@@ -1,6 +1,6 @@
-#_sdf1 Demo - Python Automation
+#_sdf1 Demo - Review this code
 #_ver 0.3
-#_class 0,user,demo script,python,HiSurfAdvisory,2,onscreen
+#_class 0,user,demo script for python,python,HiSurfAdvisory,2,onscreen
 
 
 from valkyrie import w,HELP
@@ -100,8 +100,8 @@ else:
             ## In this section, MISA is using availableTypes() to view the CALLER script's macross
             ## class, specifically the ".valtype" value. Using the macross class attributes lets 
             ## you write your tools to respond appropriately no matter which script is 
-            ## calling yours. MISA will only reply to queries from scripts with the .valtype 
-            ## "demo script". You can also do this manually if you've imported valkyrie's LATTS 
+            ## calling yours. MISA will only reply to queries from scripts with a .valtype that
+            ## contains "Demo". You can also do this manually if you've imported valkyrie's LATTS 
             ## dictionary, for example:
             ##      vtype = valkyrie.LATTS[CALLER].valtype; vlang = valkyrie.LATTS[CALLER].lang
 
@@ -135,9 +135,9 @@ else:
                 # pyCross function to update the PROTOCULTURE.eod file that the original 
                 # script will read to get MISA's response. That script will be looking for  
                 # its own name in the CALLER field, so we need to use the original_caller
-                # variable. You can use collab as often as you want, but just make sure
-                # you're keeping track of the original CALLER so that it can get the
-                # data it needs!
+                # variable as the key index (kix). You can use collab as often as you want, 
+                # but just make sure you're keeping track of the original CALLER script so  
+                # that it can get the data it needs!
 
                 pyCross(kix=CALLER,res=id_list)
                 
@@ -152,8 +152,8 @@ else:
 
         else:
             splashPage()
-            w("""" Enter a search term or ID related to Windows events to see if GUBABA 
-        can find it: ""","g",i=True)
+            w(""" Enter a search term or ID related to Windows events to see if GUBABA 
+ can find it: ""","g",i=True)
             Z: str = input()
             id_list = collab(TOOL,"MISA",Z)
 
