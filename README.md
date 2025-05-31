@@ -15,7 +15,7 @@ MACROSS came about because I got tired of handjamming cmdlets and copying everyt
 <br><br>
 
 <b><u>Important Note 1:</u></b> There are some very basic access controls that can be used with MACROSS, however, they can be easily bypassed by anyone with any scripting experience. If your environment enforces code-signing, this isn't an issue, but keep this in mind and don't treat MACROSS like a super secure storage application.<br><br>
-<b><u>Important Note 2:</u></b> MACROSS makes two very important assumptions -- Assumption #1 is that your host is running powershell 5+ and optionally, python 3+; Assumption #2 is your corporate policy doesn't allow for installing third-party modules or software whenever you like.<br>
+<b><u>Important Note 2:</u></b> MACROSS makes two very important assumptions -- Assumption #1 is that your host is running powershell 5+ and optionally, python 3+; Assumption #2 is that your corporate policy doesn't allow for installing third-party modules or software whenever you like, which is why tasks like scanning PDFs is done in a clunky way.<br>
 
 <br><br>
 <img src="https://raw.githubusercontent.com/hisurfadvisory/MACROSS/main/configpanel.PNG">
