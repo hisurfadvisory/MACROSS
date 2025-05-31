@@ -372,6 +372,89 @@ function getThis(){
 }
 
 
+function getBlox(){
+    <#
+    ||longhelp||
+
+    getBlox [-t <TITLE> ] [-i <INSTRUCTION> ] [-p <PRE-FILLED TEXT> ]
+
+    When your tool needs users to enter a large block of text, this function
+    opens a dialog box where users can type or paste those blocks.
+
+    You must use -t to send a title (required)
+    
+    The default instruction is
+
+    "Use this entry form to add your input."
+    
+    but you can send a different instruction with the -i option. Using the -p
+    option allows you to pre-populate the entry form with any text you want.
+
+    ||examples||
+
+    $textblock = getBlox -t 'My Tool Needs Strings' -p "Enter strings in this box"
+    $ip_list = getBlox -t 'My Tool Needs IPs' -i 'Only enter a list of IPs in this box:'
+
+
+    #>
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$title,
+        [string]$instruction="Use this entry form to add your input.",
+        [string]$pretext=$null
+    )
+    Add-Type -AssemblyName System.Windows.Forms
+    [System.Windws.Forms.Application]::EnableVisualStyles()
+
+    $textEntry = New-Object System.Windows.Forms.Form
+    $textEntry.Text = "$title"
+    $textEntry.Font = [System.Drawing.Font]::New("Tahoma",9)
+    $textEntry.Forecolor = 'WHITE'
+    $textEntry.size = New-Object System.Drawing.Size(1000,550)
+    $textEntry.BackColor = 'BLACK'
+    $textEntry.StartPosition = 'CenterScreen'
+
+    $boxMessage = New-Object System.Windows.Forms.Label
+    $boxMessage.Location = New-Object System.Drawing.Point(10,15)
+    $boxMessage.Size = New-Object System.Drawing.Size(980,45)
+    $boxMessage.Font = [System.Drawing.Font]::New("Tahoma",10)
+    $boxMessage.ForeColor = 'YELLOW'
+    $boxMessage.Text = "USE `"CTRL+Enter`" TO ADD A NEW LINE`N$instruction"
+    $textEntry.Controls.Add($boxMessage)
+
+    $entryBlock = New-Object System.Windows.Forms.TextBox
+    $entryBlock.Location = New-Object System.Drawing.Point(10,105)
+    $entryBlock.Size = New-Object System.Drawing.Size(980,300)
+    $entryBlock.Font = [System.Drawing.Font]::New("Tahoma",10)
+    $entryBlock.Text = $pretext
+    $entryBlock.MultiLine = $true
+    $entryBlock.Scrollbars = 'Vertical'
+    $textEntry.Controls.Add($entryBlock)
+
+    $confirm = New-Object System.Windows.Forms.Button
+    $confirm.Location = New-Object System.Drawing.Point(425,435)
+    $confirm.Size = New-Object System.Drawing.Size(175,35)
+    $confirm.ForeColor = 'YELLOW'
+    $confirm.BackColor = 'BLUE'
+    $confirm.Text = 'Confirm Entry'
+    $textEntry.AcceptButton = $confirm
+    $confirm.Add_Click({
+        $Script:clicked = $true
+        $Script:block = $entryBlock.Lines
+        $textEntry.Close()
+    })
+    $textEntry.Controls.Add($confirm)
+
+    $textEntry.TopMost = $true
+    $t = $textEntry.ShowDialog()
+
+    if($clicked){
+        $b = $block
+        Remove-Variable block,clicked -Scope Script
+        Return $b
+    }
+}
+
 
 
 ## I can never remember how to convert unicode in powershell, just rename it to match python
