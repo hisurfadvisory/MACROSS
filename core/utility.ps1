@@ -419,7 +419,7 @@ function getBlox(){
     $boxMessage.Size = New-Object System.Drawing.Size(980,45)
     $boxMessage.Font = [System.Drawing.Font]::New("Tahoma",10)
     $boxMessage.ForeColor = 'YELLOW'
-    $boxMessage.Text = "USE `"CTRL+Enter`" TO ADD A NEW LINE`N$instruction"
+    $boxMessage.Text = "USE `"CTRL+Enter`" TO ADD A NEW LINE`n$instruction"
     $textEntry.Controls.Add($boxMessage)
 
     $entryBlock = New-Object System.Windows.Forms.TextBox
