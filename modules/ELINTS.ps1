@@ -17,6 +17,10 @@
     This script does NOT incorporate iTextSharp for scanning PDF files
     at this time, instead it uses Didier Stevens' pdf-parser python
     script (see the pdfScan function later in this script for details.)
+    In order to scan through PDF files, you'll need python installed, and 
+    Didier Steven's pdf-parser script copied into your local core folder:
+
+  https://github.com/DidierStevens/DidierStevensSuite/blob/master/pdf-parser.py
 	
 	I've used what can be copy-pasted rather than installed, because you
     can't assume you'll be able to install whatever you like on a 
@@ -44,15 +48,16 @@
 ###################################################################################
 ###       README ~~~~~~~~~ MACROSS PYTHON INTEGRATION EXAMPLE
 ###################################################################################
-## If you want your powershell scripts to work with MACROSS python scripts,
-## copy-paste this check to restore all the values that get lost when transitioning
-## via both the powershell and python versions of the collab function.
+## If you want your powershell scripts to collaborate with MACROSS python scripts,
+## copy-paste this check into YOUR custom powershell code to restore all the values 
+## that get lost when transitioning via both the powershell and python versions of 
+##the collab function.
 param(
     [string]$pythonsrc = $null  ## The python collab function will set this value
 )
 if( $pythonsrc ){
 
-    ## This will be the name of the python script calling this one
+    ## This will be the name of the python script calling ELINTS.ps1
     $Global:CALLER = $pythonsrc
 
     ## This is a unique temporary session, so launch the core scripts to get their functions
@@ -65,10 +70,11 @@ if( $pythonsrc ){
     ## ELINTS is expecting a list of filepaths when called
     $Global:PROTOCULTURE = $PROTOCULTURE | ConvertTo-Json | ConvertFrom-Json
     
-    ## Note that just like the powershell version, the python collab function can also
+    ## Note that just like the powershell version, the python collab() function can also
     ## send an alternate param to your scripts when relevant. So, you can write your  
     ## scripts to accept a value in addition to (or instead of) $PROTOCULTURE, if necessary.
 }
+
 
 ## Set EDR access if one exists
 $EDR = @(availabletypes -v edr -e)[0]
