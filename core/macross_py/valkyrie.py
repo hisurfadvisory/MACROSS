@@ -965,7 +965,7 @@ def screenResults(A='endr',B=None,C=None) -> None:
 
 def getThis(v,action='b',encd='utf8') -> str:
     """ This is the same as MACROSS' powershell function 'getThis'. Your
- first argument is the encoded string you want to de/encode, and your
+ first argument (v=) is the string value you want to de/encode, and your
  second arg (action=) will be:
 
     'b' if decoding base64 (default action), or
