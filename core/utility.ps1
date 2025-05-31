@@ -1111,42 +1111,75 @@ function sheetz(){
 
 
 
-function getFile([string]$filter){
+
+function getFile([string]$type='all',[switch]$folder=$false){
     <#
     ||longhelp||
 
-    getFile [-f FILTER]
+    getFile [-type FILTER] [-folder TRUE|FALSE]
 
     This opens a dialog window so the user can specify a filepath to whatever.
+
+    The -folder option limits user selections to folders only.
     
-    Param -f is optional, and allows you to specify a filetype to select, OR
-    to select a folder instead of a file. The default is to show all files for 
-    selection.
+    Use the -t option to limit selections to certain filetypes:
+    'all' = All filetypes (default)
+    'csv' = Comma-separated value format
+    'doc' = pdf, doc, docx, rtf files
+    'dox' = Microsoft Word formats
+    'exe' = Executables
+    'msg' = Saved email messages
+    'mso' = All common Microsoft Office formats
+    'pdf' = pdf files
+    'ppt' = Microsoft Powerpoint formats
+    'scr' = Common script types
+    'txt' = Plaintext .txt files
+    'web' = htm, html, css, js, json, aspx, php files
+    'xls' = Microsoft Excel formats
+    'zip' = zip, gz, 7z, rar files
+
+    If you are asking users for a filetype not listed above, you can send the file
+    extension as type.
     
     ||examples||
     Ask user to select any filetype:
     
         $file_to_read = getFile
     
-    Ask user for a .txt file:
+    Ask user for a .pdf file:
     
-        $file_to_read = getFile -f 'Text Document (.txt)|*.txt'
+        $file_to_read = getFile -type pdf
+
+    Ask user for a custom file that uses file extension ".xyz":
+    
+        $file_to_read = getFile -type xyz
 
     Ask user to select a folder:
 
-        $folder = getFile -f folder
+        $folder = getFile -folder
         
     #>
-    [System.Reflection.Assembly]::LoadWithPartialName("System.windows.forms") | Out-Null
+    $ft = @{
+        'all'='All files *.*|*.*';
+        'csv'='Comma-Separated Document|*.csv; *.csv';
+        'doc'='Document Types|*.doc; *.docx; *.pdf; *.rtf|MS Word|*.doc; *.docx|Portable Document Format|*.pdf|MS Excel|*.xls; *.xlsx';
+        'dox'='MS Word|*.doc; *.docx';
+        'exe'='Executables|*.exe; *.exe)';
+        'msg'='Email messages|*.msg; *.msg';
+        'mso'='Microsoft Office|*.doc; *.docx; *.xls; *.xlsx; *.one; *.ppt; *.pptx; *.accdb; *.accde; *.ost; *.pst';
+        'pdf'='Portable Document Format|*.pdf; *.pdf)';
+        'ppt'='MS Powerpoint|*.ppt; *.pptx';
+        'scr'='Script Files|*.psm; *.ps1; *.py; *.pyc; *.pyd; *.lua; *.bat; *.js)';
+        'txt'='Text Files|*.txt; *.txt)';
+        'web'='Web Files|*.html; *.html; *.css; *.php; *.aspx; *.js; *.json)';
+        'xls'='MS Excel|*.xls; *.xlsx)';
+        'zip'='Zipped|*.zip; *.rar; *.gz; *.7z; *.tar; *.jar)'
+    }
 
-    if($filter -eq 'folder'){
-        $f = New-Object System.Windows.Forms.FolderBrowserDialog
-    }
-    else{
-        $o = New-Object System.Windows.Forms.OpenFileDialog
-    }
+    [System.Reflection.Assembly]::LoadWithPartialName("System.windows.forms") | Out-Null
     
-    if($f){
+    if($folder){
+        $f = New-Object System.Windows.Forms.FolderBrowserDialog
         #$f.rootfolder = $wherever
         $f.Description = "Select a folder"
         $f.SelectedPath = 'C:\'
@@ -1160,21 +1193,17 @@ function getFile([string]$filter){
         
     }
     else{
+        if($type -and ($type -notIn $ft.keys)){ $filter = "Custom Filetype|*.$type; *.$type" }
+        else{ $filter = $ft[$type] }
+        $o = New-Object System.Windows.Forms.OpenFileDialog
         #$o.initialDirectory = $vf19_DTOP  ## this got annoying for selecting multiple files
         $o.InitialDirectory = $wherever
-        if($filter){
-            $o.filter = $filter
-        }
-        else{
-            $o.filter = "All files (*.*)| *.*"
-        }
+        $o.filter = $filter
         $o.ShowDialog() | Out-Null
         $o.filename
     }
 
 }
-
-
 
 
 
