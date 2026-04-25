@@ -21,14 +21,8 @@ MACROSS came about because I got tired of handjamming cmdlets and copying everyt
 <img src="https://raw.githubusercontent.com/hisurfadvisory/MACROSS/main/configpanel.png">
 <br><br>
 
-When you use MACROSS for the first time, a config wizard walks you through the process of generating a configuration file. To disable or ignore any of these configurations, simply enter 'None' in the appropriate field (except the mathing field, it requires an int value!). By default, you need to move this configuration file into the \core folder after it's generated, but if you want to store it somewhere more secure, change the $vf19_CONFIG value in the MACROSS.ps1 file (search for "MOD SECTION" comment lines).<br>
-&emsp;-Master Repository: if you want to distribute master copies to multiple users in your enterprise, enter its location here. MACROSS will check it at each startup.<br><br>
-&emsp;-Debugging blacklist: the debugger is accessible by all users, so you can enter a regular expression (or keep the default one) that prevents anyone from executing commands you want to restrict, unless they enter the admin password.<br><br>
-&emsp;-Log server: one of MACROSS' core utilities is a log writer to help with troubleshooting or auditing. It provides the option to forward its logs to a log collector or SEIM, if your organization uses one.<br><br>
-&emsp;-Mathing Obfuscation Key: add an integer of any length here, and it will be stored in a list called "$N_". $N_[0] is the original value, and the rest of the index is the $N_[0] value split into single digits. You can use this for any equation or network scripting where you'd prefer not to have the numbers hardcoded in plaintext.<br><br>
-&emsp;-Enrichments Folder: this is the location of files your scripts might regularly acccess (csv, json, etc.). The default is MACROSS' own resources folder.<br><br>
-&emsp;-Location for logs: this is the location where MACROSS will write its logs to. The default is MACROSS' own resources\logs folder.<br><br>
-&emsp;-Additional configs: Once these required values have been entered, you'll have an opportunity to add more, if you want. You can also launch the config wizard later on by typing "config" in the main menu.<br><br>
+When you use MACROSS for the first time, a config wizard walks you through the process of generating a configuration file. To disable or ignore any of these configurations, simply enter 'None' in the appropriate field.<br>
+&emsp;-Master Repository: if you want to distribute master copies to multiple users in your enterprise, enter its location here. MACROSS will check it at each startup. (NOTE: this version of MACROSS broke the previous version's checks for web & file server locations, so it's currently limited to loading files from network shares. I'll fix this in a later update.)<br><br>
 <br><br><br>
 
 Once you've entered all the initial configurations and launched MACROSS, you can start testing and modifying:<br>
