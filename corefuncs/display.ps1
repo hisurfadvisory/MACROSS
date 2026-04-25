@@ -1011,6 +1011,9 @@ function startUp([switch]$init=$false,$refresh=$null,$new){
         if(! (Test-Path "$dyrl_RESOURCES\logs")){
             New-Item -Path "$dyrl_RESOURCES" -Type Directory -Name logs | Out-Null
         }
+        if(! (Test-Path "$dyrl_PYLIB\garbage_io")){
+            New-Item -Path "$dyrl_PYLIB" -Type Directory -Name garbage_io | Out-Null
+        }
         $Global:dyrl_TMP = "$env:LOCALAPPDATA\Temp\MACROSS"
         if(! (Test-Path $dyrl_TMP)){
             New-Item -Path "$env:LOCALAPPDATA\Temp\" -Type Directory -Name MACROSS | Out-Null
