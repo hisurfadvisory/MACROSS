@@ -18,7 +18,7 @@ MACROSS came about because I got tired of handjamming cmdlets and copying everyt
 <img src="https://raw.githubusercontent.com/hisurfadvisory/MACROSS/main/configpanel.png">
 <br><br>
 
-When you use MACROSS for the first time, a config wizard walks you through the process of generating a configuration file. To disable or ignore any of these configurations, simply enter 'None' in the appropriate field.<br>
+When you use MACROSS for the first time, a config wizard walks you through the process of generating a configuration file. To disable or ignore any of these configurations, simply enter 'None' in the appropriate field. It also asks you to create a password, which is used when you want to update the configuration file.<br>
 &emsp;-Master Repository: if you want to distribute master copies to multiple users in your enterprise, enter its location here. MACROSS will check it at each startup. (NOTE: this version of MACROSS broke the previous version's checks for web & file server locations, so it's currently limited to loading files from network shares. I'll fix this in a later update.)<br><br>
 <br><br><br>
 
