@@ -14,10 +14,6 @@ The purpose of MACROSS is to make automation tasks available to everyone on your
 MACROSS came about because I got tired of handjamming cmdlets and copying everything into notepad. I wanted a way to automatically send search results to other cmdlets or scripts while being able to come back to previous results, or pull information directly from APIs to avoid going to multiple web interfaces. Eventually I created a single front-end to handle doing all of these queries in whatever sequence I needed. It is written in powershell because all the initial automations were for active-directory and windows desktop tasks. It does include its own python library, macross, so that python scripts can also be used.
 <br><br>
 
-<br><br>
-<img src="https://raw.githubusercontent.com/hisurfadvisory/MACROSS/main/example.png">
-<br><br>
-
 When you use MACROSS for the first time, a config wizard walks you through the process of generating a configuration file. To disable or ignore any of these configurations, simply enter 'None' in the appropriate field. It also asks you to create a password, which is used when you want to update the configuration file.<br>
 &emsp;-Master Repository: if you want to distribute master copies to multiple users in your enterprise, enter its location here. MACROSS will check it at each startup. (NOTE: this version of MACROSS broke the previous version's checks for web & file server locations, so it's currently limited to loading files from network shares. I'll fix this in a later update.)<br><br>
 <br><br><br>
