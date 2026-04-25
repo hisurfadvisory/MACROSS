@@ -18,7 +18,7 @@ MACROSS came about because I got tired of handjamming cmdlets and copying everyt
 <b><u>Important Note 2:</u></b> MACROSS makes two very important assumptions -- Assumption #1 is that your host is running powershell 5+ and optionally, python 3+; Assumption #2 is that your corporate policy doesn't allow for installing third-party modules or software whenever you like, which is why tasks like scanning PDFs is done in a clunky way.<br>
 
 <br><br>
-<img src="https://raw.githubusercontent.com/hisurfadvisory/MACROSS/main/configpanel.PNG">
+<img src="https://raw.githubusercontent.com/hisurfadvisory/MACROSS/main/configpanel.png">
 <br><br>
 
 When you use MACROSS for the first time, a config wizard walks you through the process of generating a configuration file. To disable or ignore any of these configurations, simply enter 'None' in the appropriate field (except the mathing field, it requires an int value!). By default, you need to move this configuration file into the \core folder after it's generated, but if you want to store it somewhere more secure, change the $vf19_CONFIG value in the MACROSS.ps1 file (search for "MOD SECTION" comment lines).<br>
