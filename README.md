@@ -15,7 +15,7 @@ MACROSS came about because I got tired of handjamming cmdlets and copying everyt
 <br><br>
 
 <br><br>
-<img src="https://raw.githubusercontent.com/hisurfadvisory/MACROSS/main/configpanel.png">
+<img src="https://raw.githubusercontent.com/hisurfadvisory/MACROSS/main/example.png">
 <br><br>
 
 When you use MACROSS for the first time, a config wizard walks you through the process of generating a configuration file. To disable or ignore any of these configurations, simply enter 'None' in the appropriate field. It also asks you to create a password, which is used when you want to update the configuration file.<br>
