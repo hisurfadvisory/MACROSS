@@ -42,7 +42,7 @@ function varCleanup([switch]$c,[switch]$s){
         if($env:PYTHONPATH -Like "*$dyrl_PYLIB*"){
             $env:PYTHONPATH = $env:PYTHONPATH -replace "$dyrl_PYLIB;*"
         }
-        Remove-Variable -Force dyrl_*,MONTY,USR -Scope Global
+        Remove-Variable -Force dyrl_*,MONTY,ROBOTECH,USR -Scope Global
     }
     else{ $Global:dyrl_MPAGE = 0 }    ## Reset the main menu
 }
