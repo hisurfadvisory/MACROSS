@@ -168,7 +168,7 @@
 
                 $USR is the local user
                 $dyrl_HN0 is the local hostname
-                $dyrl_ROBOTECH is set 'True' when users do not have admin privilege. This allows
+                $ROBOTECH is set 'True' when users do not have admin privilege. This allows
                     disabling functions that do not work without administrive privs.
                 $HELP is set to 'true' if a user enters 'help' with their diamond selection
                     in the main menu. Your diamond should be coded to present a help
@@ -192,7 +192,7 @@
                 $dyrl_RESOURCES is the local macross_core\corefuncs\resources folder where you store 
                     any extra files needed (images, etc.; doesn't get cleared until exit)
                 $dyrl_OUTFILES is the local MACROSS\outputs folder you can use for writing 
-                    common files into (doesn't get cleared until exit)
+                    common files into
                 $dyrl_OPT1 gets set when a user appends an 's' to their module selection
                     (e.g. 3s). This allows your diamond to switch modes or provide added
                     functionality that normally wouldn't be used/needed.
@@ -256,14 +256,6 @@
 
         
 #>
-
-param{
-    [Parameter(Mandatory=$false)]
-    [string]$portable,
-    [Parameter(Mandatory=$false)]
-    [string]$outfolder
-}
-
 
 ##################################
 ## Start fresh & >/dev/null any errors
@@ -345,7 +337,7 @@ lockIn -n dyrl_MODS -v "$dyrl_MACROSS\diamonds"                      ## Your pri
 lockin -n dyrl_PYLIB -v "$dyrl_MACROSS\corefuncs\pycross"           ## The macross python library
 lockIn -n dyrl_PLUGINS -v "$dyrl_MACROSS\corefuncs\plugins"         ## Additional custom modules/functions go in $dyrl_PLUGINS
 lockIn -n dyrl_RESOURCES -v "$dyrl_MACROSS\corefuncs\resources"     ## Any common csv/json/whatever files your diamonds might need go in $dyrl_RESOURCES
-lockIn -n dyrl_OUTFILES -v  "$dyrl_MACROSS\outputs"                 ## Use $dyrl_OUTFILES for default outputs
+lockIn -n dyrl_OUTFILES -v  "$dyrl_MACROSS\outputs"                 ## Use $dyrl_OUTFILES for writing file outputs
 lockIn -n dyrl_CONFIG -v "$dyrl_MACROSS\corefuncs\macross.conf"     ## The core configuration file
 lockIn -n sn99 -v 'macross_pad99'
 cls 
