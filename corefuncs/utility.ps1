@@ -189,9 +189,10 @@ function extras($1){
     elseif($1 -eq 'shell'){runSomething}
     elseif($1 -eq 'refresh'){dlNew MACROSS $dyrl_LATESTVER}
     elseif($1 -eq 'refreshall'){refall_}
+    elseif($1 -eq 'splash'){0..11 | %{minmay -a $_ -s 2}}
     elseif($1 -eq 'file'){ flkup_ }
     elseif($1 -eq 'export'){ upWrite -e }
-    elseif($1 -eq 'terminate'){
+    elseif($1 -eq 'proto'){
         if($PROTOCULTURE){ Remove-Variable -Force PROTOCULTURE -Scope Global }
         cleanGBIO -s
     }
