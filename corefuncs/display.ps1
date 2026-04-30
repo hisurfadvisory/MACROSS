@@ -1068,7 +1068,8 @@ function diamondSelect(){
         'passw',
         'pydev',
         'shell',
-        'terminate',
+        'splash',
+        'proto',
         'file',
         'refresh',
         'refreshall'
