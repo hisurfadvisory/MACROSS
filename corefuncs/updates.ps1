@@ -60,7 +60,7 @@ function diamondCount(){
                 if($dyrl_ATTS[$rname].priv -eq 'user'){
                     $Global:dyrl_REPOCT++
                 }
-                elseif( ! $dyrl_ROBOTECH -and $dyrl_ATTS[$rname].priv -eq 'admin' ){
+                elseif( ! $ROBOTECH -and $dyrl_ATTS[$rname].priv -eq 'admin' ){
                     $Global:dyrl_REPOCT++
                 }
             }
@@ -68,7 +68,7 @@ function diamondCount(){
                 if($dyrl_ATTS[$rname].priv -eq 'user'){
                     $Global:dyrl_REPOCT++
                 }
-                elseif( ! $dyrl_ROBOTECH -and $dyrl_ATTS[$rname].priv -eq 'admin' ){
+                elseif( ! $ROBOTECH -and $dyrl_ATTS[$rname].priv -eq 'admin' ){
                     $Global:dyrl_REPOCT++
                 }
             }
@@ -76,7 +76,7 @@ function diamondCount(){
                 if($dyrl_ATTS[$rname].priv -eq 'user'){
                     $Global:dyrl_REPOCT++
                 }
-                elseif( ! $dyrl_ROBOTECH -and $dyrl_ATTS[$rname].priv -eq 'admin' ){
+                elseif( ! $ROBOTECH -and $dyrl_ATTS[$rname].priv -eq 'admin' ){
                     $Global:dyrl_REPOCT++
                 }
             }
@@ -117,7 +117,7 @@ function look4New(){
 
     $LIST0=@{}; $LIST1=@{}
     $dyrl_LATTS.keys | %{ $LIST0.Add($dyrl_LATTS[$_].fname,$dyrl_LATTS[$_].ver) }
-    if($dyrl_ROBOTECH){$dyrl_ATTS.keys | ?{$dyrl_ATTS[$_].priv -ne 'admin'} | %{$LIST1.Add($dyrl_ATTS[$_].fname,$dyrl_ATTS[$_].ver)}}
+    if($ROBOTECH){$dyrl_ATTS.keys | ?{$dyrl_ATTS[$_].priv -ne 'admin'} | %{$LIST1.Add($dyrl_ATTS[$_].fname,$dyrl_ATTS[$_].ver)}}
     else{ $dyrl_ATTS.keys | %{ $LIST1.Add($dyrl_ATTS[$_].fname,$dyrl_ATTS[$_].ver) }}
     $LIST1.keys | %{
         $k = $_ -replace "\..+$"
