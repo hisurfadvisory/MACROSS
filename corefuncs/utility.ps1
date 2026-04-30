@@ -454,7 +454,7 @@ function consoleDebug($x=$null,$ch=$null){
 
 
 ## ARS and CTRL+ALT+DEL won't let you update your own password when it expires SMH
-if(! $dyrl_NOPE){
+if(! $ROBOTECH){
 function updatePass(){
     splashPage
     $PSR = "C:\Users\$USR\AppData\Roaming\Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt"
