@@ -260,17 +260,17 @@ function pyENV([switch]$c,$nval="11,153,731"){
         if($env:HELP){ Remove-Item env:HELP }
     }
     else{
-        $np = 'F'; $opt = 'F'
+        $RB = 'F'; $opt = 'F'
         startUp; $l = mkList
         $dyrl_CONF.keys | Sort -Descending | ?{$_ -notIn @('di1','di2','sky')} | %{
             $l.add($_ + '::' + "$($dyrl_CONF[$_])") | Out-Null
         }
         $psv = $PSVersionTable.PSVersion.Major
         $env:MACCONF = "$($l -join ';')"
-        if($dyrl_NOPE){ $np = 'T' }
+        if($ROBOTECH){ $RB = 'T' }
         if($dyrl_OPT1){ $opt = 'T' }
         $logfile = "$dyrl_LOG\$(Get-Date -format 'yyyy-MM-dd')`.log"
-        $env:MACROSS = "$dyrl_MACROSS;$dyrl_OUTFILES;$dyrl_CONTENT;$dyrl_LOG;$nval;$USR;$dyrl_TMP;$np;$opt;$psv"
+        $env:MACROSS = "$dyrl_MACROSS;$dyrl_OUTFILES;$dyrl_CONTENT;$dyrl_LOG;$nval;$USR;$dyrl_TMP;$RB;$opt;$psv"
         if($PROTOCULTURE){ $env:PROTOCULTURE = $PROTOCULTURE }
         if($CALLER){ $env:CALLER = $CALLER }
     }
