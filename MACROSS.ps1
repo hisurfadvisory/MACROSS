@@ -250,7 +250,7 @@
         
             In python, global variable names do not bother with a "dyrl_" prefix, since the
             entire python session is torn down as soon as the diamond finishes. So, 
-            $dyrl_CONTENT is just CONTENT, $dyrl_ROBOTECH is just NOPE, etc. 
+            $dyrl_CONTENT is just CONTENT, hk_OUTFILES is just OUTFILES, etc. 
         
         10. To modify the macross.conf file, type "config" in the main menu.
 
