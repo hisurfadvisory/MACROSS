@@ -1110,7 +1110,7 @@ function diamondSelect(){
     sep '=' 72 c
     w "`n"
 
-    if( $dyrl_NOPE ){
+    if( $ROBOTECH ){
         w '              ****YOU ARE NOT LOGGED IN AS ADMIN**** ' y
         w "       Some tools are not available without admin privilege.`n" y
     }
@@ -1136,7 +1136,7 @@ function diamondSelect(){
     w "   -Type" g -i
     w "strings" y -i
     w "to extract text from a binary." g
-    if( ! $dyrl_NOPE ){
+    if( ! $ROBOTECH ){
         w "   -Type" g -i
         w 'phone' y -i
         w " for phone number lookups" g
