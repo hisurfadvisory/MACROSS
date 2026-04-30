@@ -26,7 +26,7 @@
     automatically killed by MACROSS when the main menu loads again.
 
     *You can have diamonds containing privileged functions that are still usable without them. Simply
-    add a truthy check for $dyrl_ROBOTECH; if it is $true, the user does not have admin privilege to execute
+    add a truthy check for $ROBOTECH; if it is $true, the user does not have admin privilege to execute
     it.
 
 #>
@@ -112,7 +112,7 @@ if($HELP){
             ever need to bother with this.
         $dyrl_TMP = the Temp\MACROSS folder located in %LOCALAPPDATA%
         $dyrl_HN0 = your workstation's hostname
-        $dyrl_ROBOTECH = tracks whether you have elevated privileges to run admin tasks;
+        $ROBOTECH = tracks whether you have elevated privileges to run admin tasks;
             $false means you can do admin-level things.
 #>
 
@@ -238,8 +238,8 @@ else{
     
 
     ## At startup, MACROSS performs a quick check for administrative privileges, and uses the global value
-    ## $dyrl_ROBOTECH so your automation can skip any tasks that require elevated permissions. 
-    if($dyrl_ROBOTECH){ $block3 = 'r~You are not logged in as an admin.' }
+    ## $ROBOTECH so your automation can skip any tasks that require elevated permissions. 
+    if($ROBOTECH){ $block3 = 'r~You are not logged in as an admin.' }
     else{ $block3 = 'g~You are logged in as an admin.' }
 
     ## If you enabled logging during setup, the errLog function can record activity for your auditing & troubleshooting;
