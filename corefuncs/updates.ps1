@@ -1,7 +1,7 @@
 ## Functions to automate checking for diamond updates
 
 <################################
-    Check if local nmods folder has all relevant tools; checks for python scripts
+    Check if local diamonds folder has all relevant tools; checks for python scripts
      if python is installed.
     Generates the $dyrl_ATTS & $dyrl_LATTS arrays that contains class attributes for
      each MACROSS script
@@ -9,13 +9,13 @@
 function diamondCount(){
     $valid = @('#_sdf1','#_ver','#_class')
     Remove-Variable -Force dyrl_ATTS,dyrl_LATTS -Scope Global   ## Clear old lists from memory
-    $Global:dyrl_ATTS = [ordered]@{}              ## Collect MACROSS class info for repo tools
-    $Global:dyrl_LATTS = [ordered]@{}             ## Collect MACROSS class info for local tools
-    $Global:dyrl_FILECT = 0                       ## Track how many tools are installed locally
-    $Global:dyrl_REPOCT = 0                       ## Track how many tools are available in each dynamic repo's path
+    $Global:dyrl_ATTS = [ordered]@{}              ## Collect MACROSS class info for master diamonds
+    $Global:dyrl_LATTS = [ordered]@{}             ## Collect MACROSS class info for local diamonds
+    $Global:dyrl_FILECT = 0                       ## Track how many diamonds are installed locally
+    $Global:dyrl_REPOCT = 0                       ## Track how many diamonds are available in each dynamic repo's path
     $menunum = 0                                ## Create selector for the main menu
-    if( $MONTY ){ $ext = "*.p*"; $pa = '' }     ## Count python tools
-    else{ $ext = "*.ps*" }                      ## Ignore python tools if python not installed
+    if( $MONTY ){ $ext = "*.p*"; $pa = '' }     ## Count python diamonds
+    else{ $ext = "*.ps*" }                      ## Ignore python diamonds if python not installed
     
     ## Record the local toolset
     foreach( $lc in (Get-ChildItem -File "$dyrl_MODS\$ext" | Sort -Property Name)){
@@ -29,10 +29,10 @@ function diamondCount(){
             $ldesc = $check[0] -replace "^\S+ " -replace ',',' '
             $lver = $check[1] -replace "^\S+ "
             $lclass = $check[2] -replace "^\S+ "
-            $lname = $lc.Name -replace "\..+$"                      ## Strip the file extension
+            $lname = $lc.Name -replace "\..+$"                        ## Strip the file extension
             $Global:dyrl_FILECT++                                     ## Increment total file count
             [macross]$lsc = $lname + ",$lclass" + ",$lver" + ",$($lc.Name)" + ",$ldesc,$menunum"   ## Create custom [macross] object
-            $Global:dyrl_LATTS.Add($lname,$lsc)                       ## Only collect macross attributes for the user's scripts
+            $Global:dyrl_LATTS.Add($lname,$lsc)                       ## Only collect macross attributes for the user's diamonds
         }
     }
     $menunum = 0; if( $MONTY ){ pyATTS }  ## python iz yer frend
@@ -54,8 +54,8 @@ function diamondCount(){
             $Global:dyrl_ATTS.Add($rname,$rsc)
             
             
-            ## Track the number of master scripts relevant to the user, to compare against local count
-            ## and make sure they download all available tools
+            ## Track the number of master diamonds relevant to the user, to compare against local count
+            ## and make sure they download all available diamonds
             if($dyrl_ACCESSTIER.Item3 -and $dyrl_ATTS[$rname].access -In @('common','tier3')){
                 if($dyrl_ATTS[$rname].priv -eq 'user'){
                     $Global:dyrl_REPOCT++
@@ -87,10 +87,8 @@ function diamondCount(){
 }
 
 <################################
-   Check the repo for new scripts that need to be downloaded
-   Match the $script.access to the user's $dyrl_IR/$dyrl_DCO assignment
-   On initial run, the nmods folder will be empty, so just add all the
-   repo tools to the $mismatch_list.
+   Check the repo for new diamonds that need to be downloaded
+   Match the $script.access to the user's assignment
 ################################>
 function look4New(){
     ## Perform final check and copy scripts
@@ -155,7 +153,7 @@ function look4New(){
     if( $dyrl_MISMATCH -and ! $dyrl_SILENCED){
         Remove-Variable -Force dyrl_MISMATCH -Scope Global
         $mismatch_list = Compare-Object -ReferenceObject $($LIST0.keys) -DifferenceObject $($LIST1.keys)
-        w "`n    You have scripts that are not in the master repository:`n" y
+        w "`n    You have diamonds that are not in the master repository:`n" y
         foreach( $a in $mismatch_list ){
             w "      $($a.InputObject)" c
         }
