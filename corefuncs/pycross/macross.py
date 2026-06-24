@@ -1,8 +1,7 @@
-"""
-    The macross library is a set of MACROSS functions converted from powershell to python.
+""" MACROSS ce v1.0 python conversion of MACROSS powershell utilities
 
     IMPORTANT:
-    To facilitate your powershell diamonds being able to respond to python queries, you
+    To facilitate your powershell scripts being able to respond to python queries, you
     need to include this check at the start of your **powershell** code in the modules
     folder:
 
@@ -14,35 +13,135 @@
         spaceFold
     }
 
-    The above will load MACROSS' core functions in a unique session, then execute the
-    spaceFold function to restore all of MACROSS' default configs in that session
-    so that the powershell diamond will have all the resources it might require.
+    The above will load MACROSS's core functions in a unique session, then execute the
+    spaceFold function to restore all of MACROSS's default configs in that session
+    so that the powershell script will have all the resources it might require.
 
     Additionally, to aid in sharing query results back and forth between powershell and
-    python, the pycross folder contains a subfolder called 'garbage_io'. MACROSS powershell
-    diamonds can write their outputs into this directory, using *.mac7 files, whenever they 
-    get called from python (there is a built-in powershell utility called "pyCross" specifically 
+    python, the pynet folder contains a subfolder called 'garbage_io'. MACROSS powershell
+    scripts can write their outputs into this directory, using *.vf1 files, whenever they
+    get called from python (there is a built-in powershell utility called "pyCross" specifically
     to do this). These are plaintext json files that facilitate sharing data between python
     and powershell.
 
-    When using the macross.valkyrie() function, your investigation value gets written to the
-    file PROTOCULTURE.mac7; the tool you call with valkyrie will read the PROTOCULTURE value from 
-    the mac7 file, then writes its response to that file. Finally, the valkyrie function will read  
-    and return the response to your python diamond.
+    When using the macross.collab() function, your investigation value gets written to the
+    file PROTOCULTURE.vf1; the diamond you call with collab will read the PROTOCULTURE value from
+    the t800 file, then writes its response to that file. Finally, the collab function will read
+    and return the response to your python script.
 
-    IMPORTANT: line 726 in the valkyrie() function is commented out; it runs an execution policy
-    bypass in powershell to make sure the called powershell diamond will run. However, this may
-    violate your organization's policy and trip security alerts. Only uncomment this line if 
-    you are experiencing issue with valkyrie() and you will not be violating policy!
-
-    All mac7 files are automatically deleted when MACROSS exits cleanly, or when MACROSS
+    All t800 files are automatically deleted when MACROSS exits cleanly, or when MACROSS
     starts after a crash where it did not get to delete them when expected.
 
     ** The tkinter library was removed from this library as it no longer functions with
     the portable python environment. This has made the getFile() function a little buggy.
     The tkinter-reliant code is left in place in case I figure out how to make it work again.
 
-    
+    This library imports a lot of common functions, so I just make them available here
+    to avoid having to code multiple imports into a script. i.e. instead of importing
+    libs like re, os or datetime, you might be able to just use macross.rgx(),
+    macross.psc() or macross.cdate() to do the basics.
+
+ CLASSES
+
+    macross
+        Applies MACROSS properties to each diamond script
+
+ DATA
+    PROTOCULTURE
+        The investigation value for diamond scripts to process
+
+    CALLER
+        The name of the diamond script querying other diamonds
+
+    DESKTOP
+        The path to your desktop
+
+    PSVER
+        The major version of powershell currently in use
+
+    USR
+        The logged in user
+
+    ROBOTECH
+        If true, the user doesn't have elevated system/network privilege
+
+    HELP
+        Check if user is requesting to view a diamond's help message
+
+    GBIO
+        Path to the local garbage_io folder that contains the
+        PROTOCULTURE.mori file
+
+    OUTFILES
+        Path to the local MACROSS output folder
+
+    PLUGINS
+        Path to the local MACROSS plugins folder
+
+    RESOURCES
+        Path to the local MACROSS resources folder
+
+    CONTENT
+        Path to the remote MACROSS resources folder (default will be
+        the same as RESOURCES if not configured)
+
+    LATTS
+        A dictionary of all local diamonds and their macross class attributes
+
+
+
+ FUNCTIONS
+
+    collab():
+        sends your data to a MACROSS diamond
+
+    cdate():
+        get the current date + time
+
+    delfile():
+        delete a file
+
+    errLog():
+        write to a MACROSS error log
+
+    findDiamond():
+        find relevant MACROSS diamonds to process your data
+
+    getFile():
+        open a dialog to select files or folders
+
+    ispath():
+        verify a file or folder path is valid
+
+    minmay():
+        display a terminator image.
+
+    kawamori():
+        decrypt a MACROSS data key
+
+    psc():
+        execute a system command
+
+    gerwalk():
+        decode/encode base64 or hexadecimal
+
+    rgx():
+        search and replace with regular expressions
+
+    screenResults():
+        format blocks of text into a table of up to 3 columns
+
+    skyWriter():
+        generate ascii-art of large block words
+
+    slp():
+        sleep for n seconds/milliseconds
+
+    w():
+        onscreen text formatting
+
+
+
 """
 
 
@@ -56,13 +155,13 @@ from time import sleep as ts
 from math import ceil
 from random import randint
 import base64 as b64
+import socket
 import ctypes
 from ctypes import *
 from ctypes import wintypes
 from re import match,search,sub
 
-## tkinter library makes the getFile function a lot smoother;
-## using a portable exe breaks it, though.
+## tkinter library makes the getFile function a lot smoother
 nokinter = False
 try:
     from tkinter import Tk
@@ -72,15 +171,73 @@ except:
     nokinter = True
 
 
-## Default values for use in MACROSS python diamonds
-global TEMPENV,PROTOCULTURE,CALLER,CONTENT,HELP,LATTS,MACROOT,MODS,DESKTOP,\
-LOGS,N_,OPT1,USR,TMP,GBIO,ROBOTECH,CONF,proto_file,PLUGINS,RESOURCES,OUTFILES,PSVER
-TEMPENV,PROTOCULTURE,CALLER,CONTENT,HELP,LATTS,MACROOT,MODS,DESKTOP,\
-LOGS,N_,OPT1,USR,TMP,GBIO,ROBOTECH,CONF,PLUGINS,RESOURCES,OUTFILES,PSVER = [False] * 21
+################################################################
+####################  CLASSES SECTION  #########################
+################################################################
+class macross:
+    """ Create attribute properties for tracking and launching MACROSS diamonds.
+    """
+    def __init__(self,n,ac,p,vt,l,au,e,r,v,f):
+        self.name = n               ## The filename minus extension, used as the script's ID in MACROSS
+        self.access = ac            ## tier 1, 2, 3 or "common" for all tiers
+        self.priv = p               ## admin or user
+        self.valtype = vt           ## What function does your diamond script perform
+        self.lang = l               ## powershell or python
+        self.author = au
+        self.evalmax = int(e)       ## The number of params/args accepted by the script
+        self.rtype = r              ## The type of response given by the script
+        try:
+            self.ver = float(v)     ## Version number
+        except:
+            self.ver = float('.'.join(v.split('.')[:2]))
+        self.fname = f              ## The filename including the extension
+
+    def __str__(self):
+        atts: dict = {
+            "Name":self.name,
+            "Access":self.access,
+            "Privilege":self.priv,
+            "Evaluates":self.valtype,
+            "Language":self.lang,
+            "Author":self.author,
+            "Max Args":self.evalmax,
+            "Response":self.rtype,
+            "Version":self.ver,
+            "Fullname":self.fname
+        }
+        attrs: list = []
+        labels: int = len(max(atts.keys(),key=len))
+        for A in atts.keys():
+            attrs.append(f"{A: <{labels}}: {atts[A]}")
+        return "\n".join(attrs)
+
+    def __repr__(self):
+        return_string: list = [
+            f"name={self.name}",
+            f"access={self.access}",
+            f"priv={self.priv}",
+            f"valtype={self.valtype}",
+            f"lang={self.lang}",
+            f"author={self.author}",
+            f"evalmax={self.evalmax}",
+            f"rtype={self.rtype}",
+            f"ver={self.ver}",
+            f"fname={self.fname}"
+        ]
+        return f"macross({', '.join(return_string)})"
 
 
 
-## Set all default MACROSS values to keep python diamonds from trippin'
+
+## Default values for use in MACROSS python scripts
+global TEMPENV,PROTOCULTURE,CALLER,CONTENT,HELP,LATTS,MACROOT,DIAMONDS,DESKTOP,\
+LOGS,N_,OPT1,USR,TMP,GBIO,ROBOTECH,CONF,sc_file,PLUGINS,RESOURCES,OUTFILES,MACPY,PSVER
+TEMPENV,PROTOCULTURE,CALLER,CONTENT,HELP,LATTS,MACROOT,DIAMONDS,DESKTOP,\
+LOGS,N_,OPT1,USR,TMP,GBIO,ROBOTECH,CONF,PLUGINS,RESOURCES,OUTFILES,MACPY,PSVER = [False] * 22
+
+
+
+## Set all default MACROSS values to keep python scripts from trippin'
 if getenv("HELP"):
     HELP: bool = True
 if getenv("LOCALAPPDATA"):
@@ -92,7 +249,7 @@ if getenv("MACROSS"):
     TEMPENV = [getenv("MACROSS")]
     snet = getenv("MACROSS").split(";")
     MACROOT: str = snet[0]
-    MODS: str = f"{MACROOT}\\diamonds"
+    DIAMONDS: str = f"{MACROOT}\\diamonds"
     PLUGINS: str = f"{MACROOT}\\corefuncs\\plugins"
     RESOURCES: str = f"{MACROOT}\\corefuncs\\resources"
     OUTFILES: str = f"{MACROOT.replace("\\macross_core","")}\\outputs"
@@ -109,23 +266,24 @@ if getenv("MACROSS"):
             ROBOTECH: bool = True
         if snet[8] == "T":
             OPT1: bool = True
-        GBIO: str = f"{MACROOT}\\corefuncs\\pycross\\garbage_io"
+        GBIO: str = f"{MACROOT}\\\\corefuncs\\\\pynet\\\\garbage_io"
+        MACPY: str = snet[9]
+        PSVER: int = int(snet[10])
         del n1,n2,n3
-    PSVER = int(snet[9])
     del snet
 
 
 ## Set python's PROTOCULTURE tracker
 temp = False
 if GBIO:
-    proto_file = f"{GBIO}\\\\PROTOCULTURE.mac7"
+    sc_file = f"{GBIO}\\\\PROTOCULTURE.vf1"
 
-## Set default PROTOCULTURE and CALLER values; 
+## Set default PROTOCULTURE and CALLER values;
 ## powershell and python require different methods
 try:
-    ## This checks for values in the temp file created by the "valkyrie" function
+    ## This checks for values in the temp file created by the "collab" function
     ## in both powershell and python for sharing data between the two
-    with open(proto_file) as tmp:
+    with open(sc_file) as tmp:
         temp = load(tmp)
 except:
     pass
@@ -141,10 +299,12 @@ elif temp:
     PROTOCULTURE = temp[CALLER]["result"]
 del temp
 
-if getenv("MACCONF"):
-    TEMPENV.append(getenv("MACCONF"))
+## Calling powershell from a python script using "collab" requires duplicating the
+## MACROSS environment vars into a new temporary powershell session.
+if getenv("MACONF"):
+    TEMPENV.append(getenv("MACONF"))
     CONF: dict = {}
-    for d in getenv("MACCONF").split(';'):
+    for d in getenv("MACONF").split(';'):
         k = d.split('::')[0]
         v = d.split('::')[1]
         CONF[k] = v
@@ -152,63 +312,15 @@ if getenv("MACCONF"):
 
 ## Convert powershell's [macross] objects to python macross class
 if GBIO:
-    class macross:
-        def __init__(self,n,ac,p,vt,l,au,e,r,v,f):
-            self.name = n               ## The filename minus extension, used as the diamond's ID in MACROSS
-            self.access = ac            ## tier 1, 2, 3 or "common" for all tiers
-            self.priv = p               ## admin or user
-            self.valtype = vt           ## What function does your diamond perform
-            self.lang = l               ## powershell or python
-            self.author = au
-            self.evalmax = int(e)       ## The number of params/args accepted by the diamond
-            self.rtype = r              ## The type of response given by the diamond
-            self.ver = float(v)         ## Version number
-            self.fname = f              ## The filename including the extension
-            
-        def __str__(self):
-            atts: dict = {
-                "Name":self.name,
-                "Access":self.access,
-                "Privilege":self.priv,
-                "Evaluates":self.valtype,
-                "Language":self.lang,
-                "Author":self.author,
-                "Max Args":self.evalmax,
-                "Response":self.rtype,
-                "Version":self.ver,
-                "Fullname":self.fname
-            }
-            attrs: list = []
-            labels: int = len(max(atts.keys(),key=len))
-            for A in atts.keys():
-                attrs.append(f"{A: <{labels}}: {atts[A]}")
-            return "\n".join(attrs)
-        
-        def __repr__(self):
-            return_string: list = [
-                f"name={self.name}",
-                f"access={self.access}",
-                f"priv={self.priv}",
-                f"valtype={self.valtype}",
-                f"lang={self.lang}",
-                f"author={self.author}",
-                f"evalmax={self.evalmax}",
-                f"rtype={self.rtype}",
-                f"ver={self.ver}",
-                f"fname={self.fname}"
-            ]
-            return f"macross({', '.join(return_string)})"
-
-
-    attfile = f"{GBIO}\\\\LATTS.mac7"
+    attfile = f"{GBIO}\\\\LATTS.vf1"
     if path.isfile(attfile):
         LATTS = {}
         with open(attfile) as af:
             pa = load(af)
-            for tool in pa:
+            for diamond in pa:
                 l = []
-                K = tool
-                V = pa[tool]
+                K = diamond
+                V = pa[diamond]
                 for i in V.keys():
                     l.append(str(V[i]))
                 ATT = macross(
@@ -222,10 +334,9 @@ if GBIO:
                     r=l[7],
                     v=l[8],
                     f=l[9])
-                #LATTS.update({K:ATT})
-                LATTS[K] = ATT
+                LATTS.update({K:ATT})
 
-        del ATT,pa,i,K,V,tool,attfile,af
+        del ATT,pa,i,K,V,diamond,attfile,af
 
 
 
@@ -262,7 +373,7 @@ bcolor = {
 ###############  FUNCTION DEFINITIONS  #########################
 ################################################################
 def ispath(check,p=None) -> bool:
-    """ Check if a path exists. Send p="file" or p="dir" to specify files vs. 
+    """ Check if a path exists. Send p="file" or p="dir" to specify files vs.
  folders (optional). Default checks either.
 
  OPTIONS
@@ -288,10 +399,10 @@ def ispath(check,p=None) -> bool:
 ## Alias to write colorized text to screen
 def w(TEXT,f="rs",b="n",i=False,u=False) -> None:
     """ Pass this function your text/string as arg 1, and the first letter of the
- color you want as arg2 ("k" for black). Send a second color to highlight 
+ color you want as arg2 ("k" for black). Send a second color to highlight
  the text (args f and b respectively).
- 
- Setting u=True will underline the text. Setting i=True for "inline" will write 
+
+ Setting u=True will underline the text. Setting i=True for "inline" will write
  the next block of text on the same line as the last.
 
  Colors: (c)yan, (g)reen, (y)ellow, (r)ed, (m)agenta, blac(k), (b)lue
@@ -323,41 +434,42 @@ def w(TEXT,f="rs",b="n",i=False,u=False) -> None:
         print(lead + TEXT + tail,end=endln)
 
 def minmay(i=0):
-    """ Display 1 of 2 Terminator images by supplying either 0 or 1.
+    """ Display 1 of 12 Macross eries images by supplying a number between 0-11.
     """
-    if i in range(0,2):
-        j = f"{RESOURCES}\\splash.json"
+    if i in range(0,11):
+        j = f"{RESOURCES}\\macross_art.json"
         with open(j) as o:
-            splashes = loads(o.read())
-        splash = reString(splashes["term"][i])
-        print(splash)
+            arts = loads(o.read())
+        art = gerwalk(arts["art"][i])
+        title = arts["titles"][i]
+        print(f"{art}\n\n{title}")
 
-def battroid(text=None,b=False):
+def skyWriter(text=None,b=False):
     """ Rewrite your console text in blocky ascii art style. Single words only,
  and whitespace is stripped out except when used at the beginning of your string.
 
- Alternately, the "b" option returns the separator bar used in 
- MACROSS' main menu.
+ Alternately, the "b" option returns the separator bar used in
+ MACROSS's main menu.
 
- This requires the "alphanum.json" file included in MACROSS' local resource folder.
+ This requires the "alphanum.json" file included in MACROSS's local resource folder.
 
  USAGE:
 
-    title = battroid('hello')
-    bar = battroid(b=True)
+    title = skyWriter('hello')
+    bar = skyWriter(b=True)
 
     """
     if b:
         return chr(9553)
-    
+
     alpha = f"{RESOURCES}\\alphanum.json"
     if not ispath(alpha,p="file"):
         return f"ERROR! Missing required file\n{alpha}"
-    
+
     title = []
     with open(alpha) as o:
         alphanum = loads(o.read())
-    decoded = reString("".join(alphanum["alpha"]))
+    decoded = gerwalk("".join(alphanum["alpha"]))
     reference = loads(decoded)
     buffer = " " * len(sub("\\w+","",text))
     text = [t for t in text if t in reference]
@@ -374,21 +486,17 @@ def battroid(text=None,b=False):
 
 
 
-def slp(s=0,m=0) -> None:
-    """ The "slp" function will pause your diamond for the number of seconds you
- pass to it. Use m= for milliseconds.
+def slp(s,m=False) -> None:
+    """ The "slp" function will pause your script for the number of seconds you
+ pass to it. Set m=True for milliseconds.
 
- USAGE: 
-    Pause your diamond for 3 seconds
+ USAGE: Pause your script for 3 seconds
     slp(3)
 
-    Pause for 500 ms
-    slp(m=500)
-    
     """
-    if m and isinstance(m,int):
-        ts(m//1000)
-    elif s and isinstance(s,int):
+    if m:
+        ts(s//1000)
+    else:
         ts(s)
 
 
@@ -409,8 +517,8 @@ def cdate(hms=False,d="/"):
 
 
 def errLog(*fields):
-    """ Write messages to MACROSS' log file. Timestamps are added automatically
- as the first field. Send any number of fields for your log entry, but the 
+    """ Write messages to MACROSS's log file. Timestamps are added automatically
+ as the first field. Send any number of fields for your log entry, but the
  first field should be the log type (ERROR, INFO, etc.)
 
  **This function gives no response if executed outside of MACROSS, or if
@@ -420,7 +528,7 @@ def errLog(*fields):
     errLog("<ERROR|INFO|WARN>","message field 1","message field 2"...)
 
     """
-    
+
     ## Default path to MACROSS logs must be configured in setup
     if LOGS == 'none' or not ispath(LOGS):
         return
@@ -434,7 +542,7 @@ def errLog(*fields):
         for f in fields:
             msg = str(f"{msg}\t{f}")
 
-    msge = reString(msg,2) + "\n"
+    msge = gerwalk(msg,2) + "\n"
 
     if ispath(current_log,p="file"):
         with open(current_log,"a") as cl:
@@ -456,7 +564,7 @@ def delfile(d,force=False) -> None:
 
 
 def rgx(pattern,string,replace=None,exact=False) -> str:
-    """ Perform pattern matching/replacement. The pattern and string arguments are 
+    """ Perform pattern matching/replacement. The pattern and string arguments are
  required; add a third positional arg to perform replacement action. Use
  exact=True to perform exact pattern-matching. I had to import re for tasks
  in this library anyway, might as well make it part of macross.
@@ -489,24 +597,24 @@ def rgx(pattern,string,replace=None,exact=False) -> str:
             return r
 
 
-def gerwalk(cid: str) -> str:
-    """ Retrieve MACROSS keys for use in your diamonds.  Keys must
- be generated in MACROSS' powershell gerwalk function; this
+def kawamori(cid: str) -> str:
+    """ Retrieve MACROSS keys for use in your scripts.  Keys must
+ be generated in MACROSS's powershell kawamori function; this
  python implementation can only retrieve existing keys, and only
  within the same configuration that created the key.
 
  USAGE:
-    
-    temp_key = gerwalk(<your macross id>) 
+
+    temp_key = kawamori(<your macross id>)
 
     """
-    
-    F = f"{RESOURCES}\\{cid}.ger"
+
+    F = f"{RESOURCES}\\kawa\\{cid}.mori"
     if not N_:
         return "MACROSS is not configured."
     elif not ispath(F,p="file"):
         nokey = f"Key {cid} does not exist"
-        errLog("ERROR","MACROSS.gerwalk()",nokey)
+        errLog("ERROR","MACROSS.kawamori()",nokey)
         return f"{nokey}!"
 
     assembler1 = []
@@ -516,8 +624,8 @@ def gerwalk(cid: str) -> str:
 
     with open(F) as o:
         combine = "".join([c for c in o.read().split("\n") if "#" not in c])
-    
-    compacted = (reString(combine.strip())).split(".")
+
+    compacted = (gerwalk(combine.strip())).split(".")
     nc = int(compacted[0])
     n = nc
     try:
@@ -528,7 +636,7 @@ def gerwalk(cid: str) -> str:
                 n = il2
             else:
                 n -= 1
-        
+
         n = nc
 
         for a in assembler1:
@@ -539,23 +647,23 @@ def gerwalk(cid: str) -> str:
                 n = il1
             else:
                 n -= 1
-        
+
         return "".join(assembler2[::-1])
     except:
         return None
-    
+
 
 def psc(cc=None,cr=None) -> any:
-    """ The psc function uses subfunctions of os.system() and os.popen() to   
- execute any Windows commands that you might require. Send your arg as "cc" 
- to simply execute a task; use "cr" instead if you need to save the result 
+    """ The psc function uses subfunctions of os.system() and os.popen() to
+ execute any Windows commands that you might require. Send your arg as "cc"
+ to simply execute a task; use "cr" instead if you need to save the result
  from the task.
- 
+
  USAGE EXAMPLES:
 
-    # Launch a powershell diamond with args, but won't save any outputs
+    # Launch a powershell script with args, but won't save any outputs
     psc(cc='powershell.exe "filepath\\myscript.ps1" "argument 1"')
-    
+
     # Return your AD enumeration as a usable object
     result = psc(cr='powershell.exe "get-aduser -filter *"')
 
@@ -567,34 +675,34 @@ def psc(cc=None,cr=None) -> any:
         return TASK.read()
 
 
-def findDF(val:any,lang:str=".*",emax:int=None,rtype:str=".*",exact:bool=False) -> list:
-    """ Use this function to search for tools with matching MACROSS attributes. Matching 
- tools are returned in a list that you can forward to the 
- valkyrie() function. 
+def findDiamond(val:any,lang:str=".*",emax:int=None,rtype:str=".*",exact:bool=False) -> list:
+    """ Use this function to search for diamonds with matching MACROSS attributes. Matching
+ diamonds are returned in a list that you can forward to the
+ collab() function.
 
- You can view attributes by looking at the third line of any MACROSS diamond.
+ You can view attributes by looking at the third line of any MACROSS script.
 
  **This function only works when launched within MACROSS.
 
- OPTIONS: 
+ OPTIONS:
     val   = The valtype attribute(s) to filter (required)
     lang  = The lang attribute to filter
     emax  = The evalmax attribute to filter
     rtype = The rtype attribute to filter
     exact = Force exact matches for valtype attributes
- 
+
 
  EXAMPLES:
- 
-    # Retrive a list of powershell tools that perform Active-Directory lookups
-    ad_tools = findDF(val='active directory',lang='powershell')
 
-    # Retrive a list of tools with the exact .valtype "active directory computer lookups"
-    pc_lookups = findDF(val='active directory computer lookups',lang='powershell',exact=True)
+    # Retrive a list of powershell diamonds that perform Active-Directory lookups
+    ad_diamonds = findDiamond(val='active directory',lang='powershell')
 
-    # Retrieve a list of tools that can parse IOCs from threat-intel, and can accept 2 args, and 
+    # Retrive a list of diamonds with the exact .valtype "active directory computer lookups"
+    pc_lookups = findDiamond(val='active directory computer lookups',lang='powershell',exact=True)
+
+    # Retrieve a list of diamonds that can parse IOCs from threat-intel, and can accept 2 args, and
     # returns findings as a csv file, and can be written either in python or powershell
-    ioc_tools = findDF(val='ioc,indicators',emax=2,rtype='csv')
+    ioc_diamonds = findDiamond(val='ioc,indicators',emax=2,rtype='csv')
 
     """
 
@@ -624,25 +732,21 @@ def findDF(val:any,lang:str=".*",emax:int=None,rtype:str=".*",exact:bool=False) 
     return res
 
 
-def valkyrie(Diamond:str=None,
-    Caller:str=None,
-    Protoculture:any=None,
-    Spiritia:any=None,
-    response:bool=False) -> any:
+def collab(Diamond:str=None,Caller:str=None,Protoculture:any=None,deculture:any=None,response:bool=False) -> any:
     """
 ######################################################################################
 ####   PYTHON COLLAB ~~~~~~~~~~~IMPORTANT!!!!!!~~~~~~~~~~~~~~~  ######################
 ######################################################################################
-## If you want your MACROSS powershell diamonds to be able to respond to python requests,
-## you **MUST** include this parameter check at the start of your powershell file to 
-## ensure it can run as expected (an optional $spiritia param can accept another value
+## If you want your MACROSS powershell scripts to be able to respond to python requests,
+## you **MUST** include this parameter check at the start of your powershell script to
+## ensure it can run as expected (an optional $deculture param can accept another value
 ## as well):
 ##
 ##          param( [string]$pythonsrc=$null )     ## You can also include any other params needed
 ##          if( $pythonsrc -ne $null ){
 ##              $Global:CALLER = $pythonsrc
 ##              foreach( $core in gci "$PSScriptRoot\\..\\corefuncs\\*.ps1" |
-##                Where-Object{$core.name -ne 'configurations.ps1'}){ 
+##                Where-Object{$core.name -ne 'configurations.ps1'}){
 ##                     . $core.fullname
 ##                  }
 ##              spaceFold
@@ -652,117 +756,93 @@ def valkyrie(Diamond:str=None,
 ## in a new, temporary session outside of your current MACROSS session.
 ######################################################################################
 
- The python "valkyrie" function writes your PROTOCULTURE value to a ".mac7"
- file in the GBIO folder for the powershell diamond to read and write its results to.
+ The python "collab" function writes your PROTOCULTURE value to a ".vf1"
+ file in the GBIO folder for the powershell script to read and write its results to.
 
  **This function only works when launched within MACROSS.
 
  OPTIONS
-    Diamond         = the name of the diamond you're calling
-    Caller          = the name of your diamond
+    Diamond            = the name of the script you're calling
+    Caller          = the name of your script
     Protoculture    = the value that needs to be investigated/enriched (global PROTOCULTURE)
-    Spiritia        = "alt param", if the diamond you send Protoculture to can accept an 
+    deculture       = "alt param", if the script you send Protoculture to can accept an
                         addition arg/parameter, set it here
-    response        = set True if you're only writing data to the PROTOCULTURE.mac7 file
-                        for diamonds to read from, and not requesting them to send data back
+    response        = set True if you're only writing data to the PROTOCULTURE.vf1 file
+                    for diamonds to read from, and not requesting them to send data back
 
  USAGE:
- If the PROTOCULTURE.mac7 file's "result" field is "PS_", then the "protoculture" field is meant
- to be python's PROTOCULTURE value. You can retrieve a dict of the file's contents by 
+ If the PROTOCULTURE.vf1 file's "result" field is "PS_", then the "target" field is meant
+ to be python's PROTOCULTURE value. You can retrieve a dict of the file's contents by
  calling the function without any arguments:
 
-        c = valkyrie()
+        c = collab()
         c['caller']
-        c['protoculture']
-        c['spiritia']
-        c['result']  ## If 'result' == "WAITING", the 'protoculture' field should be your
+        c['target']
+        c['result']  ## If 'result' == "WAITING", the 'target' field should be your
                      ## PROTOCULTURE value.
-                     ## If 'result' == "PS_", valkyrie will swap 'protoculture' & 'result' for you, as
-                     ## powershell added its PROTOCULTURE response to the initial protoculture field
+                     ## If 'result' == "PS_", collab will swap 'target' & 'result' for you, as
+                     ## powershell added its PROTOCULTURE response to the initial target field
 
  After processing the PROTOCULTURE value, write your results for powershell to retrieve:
 
-        valkyrie(Protoculture=<script results>,response=True)
+        collab(Protoculture=<script results>,response=True)
 
- To pass values for powershell to process and send back to your python diamond:
+ To pass values for powershell to process and send back to your python script:
 
-        diamond = <the name of the powershell diamond>
+        diamond = <the name of the powershell script>
         caller = "MyScript"
         protoculture = "some ioc value"
-        spiritia = "some hostname"
-        valkyrie(Diamond=diamond, Caller=caller, Protoculture=protoculture, Spiritia=spiritia)
-        
- where Diamond is the powershell diamond you're calling (no extension), Caller is the name of 
- your python diamond, and Protoculture is the value you need powershell to evaluate. You can  
- also send an additional parameter (Spiritia=) if the powershell diamond accepts one.
+        collab(Diamond=diamond, Caller=caller, Protoculture=protoculture, deculture="optional param")
 
- The macross function "findDF()" can help you find diamonds for forwarding any 
+ where Diamond is the powershell script you're calling (no extension), Caller is the name of
+ your python script, and Protoculture is the value you need powershell to evaluate. You can
+ also send an additional parameter (deculture=) if the powershell script accepts one.
+
+ The macross function "findDiamond()" can help you find scripts for forwarding any
  PROTOCULTURE values to.
 
- "corefuncs\\pycross\\garbage_io\\PROTOCULTURE.mac7" is a json file that contains the key-values
- "Caller.protoculture" (the PROTOCULTURE value) and "Caller.result". If the powershell diamond has a 
- response for your python diamond, it will be written to the "Caller.result" field of 
- PROTOCULTURE.mac7, where this function will retrieve it and forward it to your diamond.
+ "corefuncs\\pynet\\garbage_io\\PROTOCULTURE.vf1" is a json file that contains the key-values
+ "Caller.target" (the PROTOCULTURE value) and "Caller.result". If the powershell script has a
+ response for your python script, it will be written to the "Caller.result" field of
+ PROTOCULTURE.vf1, where this function will retrieve it and forward it to your script.
 
- The PROTOCULTURE.mac7 file will remain the default PROTOCULTURE value in MACROSS until
+ The PROTOCULTURE.vf1 file will remain the default PROTOCULTURE value in MACROSS until
  you delete it from the menu by entering "terminate", or exit MACROSS.
 
- All mac7 files are deleted at startup and exit, so if you want to keep persistent files in
- this directory, change the extension to anything other than ".mac7"
+ All t800 files are deleted at startup and exit, so if you want to keep persistent files in
+ this directory, change the extension to anything other than ".vf1"
 
     """
-    
+
     ## The library is likely being used without MACROSS if GBIO is "False"
     if not GBIO:
         return None
 
-
-    set_policy = None
-    #####################  IMPORTANT!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    ## Your organization may frown on python modifying execution policy in powershell to
-    ## prevent blocking MACROSS scripts. Uncomment this ONLY if your scripts are being
-    ## blocked AND you won't be violating policy!
-    #set_policy = "set-executionpolicy -executionpolicy remotesigned -scope currentuser"
-    PROTOCULTURE,SPIRITIA = [""]*2
-
-    def determineProto(prot):
-        pr = []
-        if type(prot) == list:
-            for P in prot:
-                pr.append(f"[{P}]")
-        elif type(prot) == dict:
-            for P in prot.keys():
-                pr.append("{\""+f"{P}\":\"{prot[P]}\""+"}")
-        else:
-            del pr
-            pr = str(prot)
-        return pr
-
-    ## Create new or update existing PROTOCULTURE.mac7 file
-    def writeProto_(sc:dict=None,pf:str=proto_file) -> None:
+    ## Create new or update existing PROTOCULTURE.vf1 file
+    def writeProto_(sc:dict=None,pf:str=sc_file) -> None:
         with open(pf,"w") as o:
             o.write(dumps(sc))
-    
-    # Read an existing PROTOCULTURE.mac7 file
-    def readProto_(pf=proto_file) -> dict:
-        proto_pairs: dict = {}
+
+    # Read an existing PROTOCULTURE.vf1 file
+    def readProto_(pf=sc_file) -> dict:
+        target_pairs: dict = {}
         with open(pf) as d:
             read_proto = load(d)
-            
-        res = read_proto["result"]
-        proto = read_proto["protoculture"]
-        proto_pairs["caller"] = read_proto["caller"]
-        proto_pairs["spiritia"] = read_proto["spiritia"]
-        if isinstance(res,str) and res == "PS_":
-            proto_pairs["result"] = proto
-            proto_pairs["protoculture"] = res
-        else:
-            proto_pairs["protoculture"] = proto
-            proto_pairs["result"] = res
 
-        return proto_pairs
-    
-    ## Make sure we can define the .mac7 file's primary index
+        for rp in read_proto:
+            res = read_proto[rp]["result"]
+            tar = read_proto[rp]["target"]
+            target_pairs["caller"] = rp
+            if isinstance(res,str) and res == "PS_":
+                target_pairs["result"] = tar
+                target_pairs["target"] = res
+            else:
+                target_pairs["target"] = tar
+                target_pairs["result"] = res
+
+        return target_pairs
+
+    ## Make sure we can define the .vf1 file's primary index
     if Caller:
         use_caller = Caller
     elif CALLER:
@@ -772,49 +852,40 @@ def valkyrie(Diamond:str=None,
         return
 
 
-    if not Diamond and not Protoculture and not Spiritia:
-        if ispath(proto_file,p='file'):
-            return readProto_()  
+    if not Diamond and not Protoculture:
+        if ispath(sc_file,p='file'):
+            return readProto_()
         else:
             return False
-    
-    elif (Spiritia or Protoculture) and ispath(proto_file,p='file'):
+
+    elif Protoculture and ispath(sc_file,p='file'):
         protoculture = {}
-        readin = readProto_(proto_file)
+        readin = readProto_(sc_file)
         c = readin["caller"]
-        ## Give priority to existing Caller value if different from the ID in the .mac7 file
-        if c != use_caller:     
+        ## Give priority to existing Caller value if different from the ID in the .vf1 file
+        if c != use_caller:
             c = use_caller
-        protoculture = readin
-        protoculture["caller"] = c
-        if Protoculture:
-            protoculture["result"] = Protoculture
-        if Spiritia:
-            protoculture["spiritia"] = Spiritia
+        protoculture[c] = readin
+        protoculture[c]["result"] = Protoculture
         writeProto_(sc=protoculture)
         return
+
     else:
         if not Diamond:
             Diamond = use_caller
         L = LATTS[Diamond].lang
         R = LATTS[Diamond].rtype
-        Diamond = LATTS[Diamond].fname        # The MACROSS diamond to query
+        Diamond = LATTS[Diamond].fname        # The MACROSS script to collaborate with
         chdir(MACROOT)
         if L == 'python':
             div = "\\\\"
         else:
             div = "\\"
-        fullpath = f"{MODS}{div}{Diamond}"
-        empty = "WAITING"   # This lets python know whether or not powershell writes results to PROTOCULTURE.mac7
+        fullpath = f"{DIAMONDS}{div}{Diamond}"
+        empty = "WAITING"   # This lets python know whether or not powershell writes results to PROTOCULTURE.vf1
+        pr: list = []       # Create the contents to write into PROTOCULTURE.vf1 file
 
-        if Protoculture:
-            PROTOCULTURE = determineProto(Protoculture)
-        if Spiritia:
-            SPIRITIA = determineProto(Spiritia)
-        
 
-        '''
-        pr: list = []       # Create the contents to write into PROTOCULTURE.mac7 file
         if type(Protoculture) == list:
             for P in Protoculture:
                 pr.append(f"[{P}]")
@@ -825,58 +896,54 @@ def valkyrie(Diamond:str=None,
             del pr
             pr = str(Protoculture)
 
-        protoculture = {use_caller:{"protoculture":pr,"result":empty}}
-        '''
-
-        protoculture = {"caller":use_caller,"protoculture":PROTOCULTURE,"result":empty,"spiritia":SPIRITIA}
+        protoculture = {use_caller:{"target":pr,"result":empty}}
         writeProto_(sc=protoculture)
 
-        # When only writing a response to other diamonds' valkyrie calls, quit here
+        # When only writing a response to other scripts' collab calls, quit here
         if response:
             return
 
         # Jumping back to powershell *may* require temporarily creating a temp env
-        #if getenv("MACCONF"):
-        #    environ["MACCONF"] = getenv("MACCONF")
+        if getenv("MACONF"):
+            environ["MACONF"] = getenv("MACONF")
         if getenv("MACROSS"):
-            environ["MACTEMP"] = getenv("MACROSS")
+            environ["MACROSS"] = getenv("MACROSS")
 
-        
-        # Launching a MACROSS diamond from python requires a brand new session
+
+        # Launching a MACROSS script from python requires a brand new session
         call = None
         if L == 'powershell':
             if PSVER < 7:
                 call = f"powershell.exe {fullpath} -pythonsrc {use_caller}"
             else:
                 call = f"pwsh.exe {fullpath} -pythonsrc {use_caller}"
-            if Spiritia:
-                call = f"{call} -spiritia {Spiritia}"
-        else:
-            call = f"py {fullpath} {Spiritia}"   ## Use sys.argv in your diamond to check for argv[1] if you want to accept Spiritia args
-            environ["PROTOCULTURE"] = protoculture["protoculture"]
-            environ["CALLER"] = use_caller
 
-        if set_policy:
-            psc(cc=set_policy)
+            if deculture != None:
+                #call = f"{deculture}~{call}"
+                call = f"{call} -deculture {deculture}"
+        else:
+            call = f"{MACPY} {fullpath} {deculture}"
+            environ["PROTOCULTURE"] = protoculture[use_caller]["target"]
+            environ["CALLER"] = use_caller
         if call:
             psc(cc=call)
 
         res = readProto_()
 
-        if (res.get("result") and res["result"] != empty) or res.get("spiritia"):
-            return res
+        if res.get("result") and res["result"] != empty:
+            return res["result"]
         else:
             return False
 
 ## getFile() definition
-## Tkinter works best, but that lib doesn't work with the portable executable structure
+## Tkinter works best, but won't work if we use portable environments
 if not nokinter:
-        
-    def getFile(filter:str='all',opendir:str="H:\\",folder:bool=False):
-        """ The getFile() function opens a dialog window for users to select a file. 
+
+    def getFile(filter:str='all',opendir:str="C:\\",folder:bool=False):
+        """ The getFile() function opens a dialog window for users to select a file.
 
     OPTIONS
-    opendir: the default directory to being selection search. Default is "H:\\"
+    opendir: the default directory to being selection search. Default is "C:\\"
 
     folder: set to True if you need users to only select a folder path
 
@@ -896,7 +963,7 @@ if not nokinter:
         'xls' = Microsoft Excel formats
         'zip' = zip, gz, 7z, jar, rar files
 
-        You can send another file extension as a filter for custom file types, if 
+        You can send another file extension as a filter for custom file types, if
         necessary.
 
     USAGE:
@@ -908,7 +975,7 @@ if not nokinter:
 
         # Send any custom extension filter:
         XYZ_FILE = getFile(filter='xyz')
-        
+
         """
         ft = {
             'all':(("All files", "*.*"),("All files", "*.*")),
@@ -944,21 +1011,21 @@ if not nokinter:
             selection = aof(initialdir=opendir,filetypes=FT)
         return selection
 
-else:   
-    def getFile(opendir="H:\\", filter='all', folder:bool=False) -> str:
+else:
+    def getFile(opendir="C:\\", filter='all', folder:bool=False) -> str:
         """
         Open a native Windows file/folder dialog to select a filepath. This function is
         no longer able to use tkinter, so it is a bit buggy.
-        
+
         OPTIONS
-        opendir: the default directory to begin selection. Default is "H:\\"
+        opendir: the default directory to begin selection. Default is "C:\\"
         folder: True -> select folder; False -> select file
         filter: restrict file selection* ->
             'all', 'csv', 'doc', 'dox', 'exe', 'msg', 'mso',
             'pdf', 'ppt', 'scr', 'txt', 'web', 'xls', 'zip', 'custom'
-        
+
             *Selecting an M$ office format like 'xls' filters on both the modern and
-                legacy formats, e.g. 'xls' and 'xlsx' 
+                legacy formats, e.g. 'xls' and 'xlsx'
             *doc vs. dox: 'doc' filters for all common document types, including pdf, xls
                 & rtf; 'dox' filters specifically for M$ Word .doc and .docx
             *web: filters for filetypes commonly associated with web servers, e.g. html,
@@ -1040,7 +1107,7 @@ else:
 
                 ctypes.windll.shell32.SHGetPathFromIDListW(pidl, buf)
                 return buf.value
-            
+
             return browse_for_folder()
 
 
@@ -1109,7 +1176,7 @@ else:
 
 def screenResults(A='endr',B=None,C=None,display=False) -> None:
     """ Print strings to screen in 1, 2 or 3 columns.
-    
+
  Each string value is optional, and will be written to screen in separate
  rows & columns. (Your mileage may vary depending on the strings that get passed
  in; I sometimes get a display with broken columns. It usually works pretty well,
@@ -1121,7 +1188,7 @@ def screenResults(A='endr',B=None,C=None,display=False) -> None:
  Formatting options: (c)yan, blac(k), (b)lue, (r)ed, (y)ellow, (w)hite, (m)agenta,
  and (ul) for underline.
 
- Note that adding formatting or colors to text can sometimes cause the columns 
+ Note that adding formatting or colors to text can sometimes cause the columns
  to break. This isn't quite a 1-for-1 translation from the powershell version.
 
  To finish your outputs, call the function again without any values to
@@ -1142,7 +1209,7 @@ def screenResults(A='endr',B=None,C=None,display=False) -> None:
 
 """
     if display:
-        return reString('7465726D696E61746F72','h')
+        return gerwalk('7465726D696E61746F72','h')
     atc = btc = ctc = None      ## Default text color
     c = chr(8214)
     RC = chr(8801)
@@ -1151,13 +1218,13 @@ def screenResults(A='endr',B=None,C=None,display=False) -> None:
         r = r + RC
     r = r + c
     del(rr)
-    
-    
+
+
     if A == 'endr':
         w(r,'g')
 
     else:
-        
+
         ## Write text to a block without newlines
         def csep_(text,tc=None):
             if tc != None and tc in fcolor:
@@ -1218,7 +1285,7 @@ def screenResults(A='endr',B=None,C=None,display=False) -> None:
                                     BL += 1
 
                             o2.append(BLOCK)
-                                
+
                         o1 = []               ## Reset the list
                         Word = WORD + ' '
                         o1.append(Word)       ## Add the current word to the list
@@ -1238,13 +1305,13 @@ def screenResults(A='endr',B=None,C=None,display=False) -> None:
                                 while L != MAX:
                                     LAST = LAST + ' '
                                     L += 1
-                            
+
                             o2.append(LAST)
 
-                    
+
             return o2
         ## End genBlocks_ nested function
-        
+
         ## Check for highlight tags
         atc,btc,ctc = [None] * 3
         if rgx("^[a-z]{1,2}~",A):
@@ -1256,9 +1323,9 @@ def screenResults(A='endr',B=None,C=None,display=False) -> None:
         if C != None and rgx("^[a-z]{1,2}~",C):
             ctc = rgx("~.+",C,'')
             C = rgx("^[a-z]{1,2}~",C,'')
-            
+
         WIDE1 = len(A)
-        
+
         if B != None:
             WIDE2 = len(B)
             BLOCK1 = genBlocks_(A,23,22)
@@ -1270,7 +1337,7 @@ def screenResults(A='endr',B=None,C=None,display=False) -> None:
             else:
                 CT3 = None
                 BLOCK2 = genBlocks_(B,62,61) #genBlocks_(B,64,62)
-                
+
             CT2 = len(BLOCK2)
 
         else:
@@ -1341,7 +1408,7 @@ def screenResults(A='endr',B=None,C=None,display=False) -> None:
                     csep_(EMPTY3)
 
                 w(c,'g')
-    
+
         elif CT2 != None:
             if CT1 > CT2 and CT2 != 0:
                 if CT2 == 1:
@@ -1410,8 +1477,8 @@ def screenResults(A='endr',B=None,C=None,display=False) -> None:
                 w(c,'g')
 
 
-def reString(v,action='b',encd='utf8') -> str:
-    """ This is the same as MACROSS' powershell function 'reString'. Your
+def gerwalk(v,action='b',encd='utf8') -> str:
+    """ This is the same as MACROSS's powershell function 'gerwalk'. Your
  first argument is the encoded string you want to de/encode, and your
  second arg (action=) will be:
 
@@ -1421,19 +1488,20 @@ def reString(v,action='b',encd='utf8') -> str:
     'eh' if encoding to hexadecimal.
 
  Unlike the powershell function, this function does NOT write to
- "dyrl_READ", it just returns your processed string.
+ "dyrl_PT", it just returns your processed string.
 
  You can pass an optional arg encd= to specify the out-encoding (ascii,
  ANSI, etc.; default is UTF-8).
 
  Usage:
-    PLAINTEXT       = reString(base64string)
-    PLAINTEXTASCII  = reString(base64string,encd='ascii')
-    PLAINTEXT       = reString(hexstring,action='h')
-    HEX             = reString('plaintext',action='eh')
-    BASE64          = reString('plaintext',action='eb')
+    PLAINTEXT       = gerwalk(base64string)
+    PLAINTEXTASCII  = gerwalk(base64string,encd='ascii')
+    PLAINTEXT       = gerwalk(hexstring,action='h')
+    HEX             = gerwalk('plaintext',action='eh')
+    BASE64          = gerwalk('plaintext',action='eb')
 
     """
+    newval = None
     if action == 'b':
         newval = b64.b64decode(v)
         newval = newval.decode(encd)
@@ -1450,7 +1518,8 @@ def reString(v,action='b',encd='utf8') -> str:
         for b in v:
             hb = "{0:02x}".format(ord(b)).upper()
             newval = newval + hb
-        
+
     return newval
+
 
 
