@@ -18,5 +18,5 @@ When you use MACROSS for the first time, a config wizard walks you through the p
 Once you've entered all the initial configurations and launched MACROSS, you can start testing and modifying:<br>
 &emsp;-From the main MACROSS menu, enter "debug" to load a dev session for testing scripts & functions, and viewing helpfiles.<br><br>
 &emsp;-From the main MACROSS menu, enter "config" to change or add settings in your macross.conf file.<br><br>
-&emsp;-There are two example scripts included -- BASARA (python) and HIKARU (powershell). Both of these demonstrate how to use MACROSS' built-in tools. They are located in the diamonds folder. Beyond that, everything you need is in the help comments in the MACROSS.ps1, BASARA.ps1 and MYLENE.ps1 files.
+&emsp;-There are two example scripts included -- BASARA (python) and MYLENE (powershell). Both of these demonstrate how to use MACROSS' built-in tools. They are located in the diamonds folder. Beyond that, everything you need is in the help comments in the MACROSS.ps1, BASARA.ps1 and MYLENE.ps1 files.
 <br><br>
