@@ -1,24 +1,24 @@
-## Functions to automate checking for diamond updates
+## Functions to automate checking for updates
 
 <################################
-    Check if local diamonds folder has all relevant tools; checks for python scripts
+    Check if local diamonds folder has all relevant scripts; checks for python scripts
      if python is installed.
     Generates the $dyrl_ATTS & $dyrl_LATTS arrays that contains class attributes for
      each MACROSS script
 ################################>
-function diamondCount(){
-    $valid = @('#_sdf1','#_ver','#_class')
+function toolCount(){
+    $valid = @('#_SDF1','#_ver','#_class')
     Remove-Variable -Force dyrl_ATTS,dyrl_LATTS -Scope Global   ## Clear old lists from memory
-    $Global:dyrl_ATTS = [ordered]@{}              ## Collect MACROSS class info for master diamonds
-    $Global:dyrl_LATTS = [ordered]@{}             ## Collect MACROSS class info for local diamonds
-    $Global:dyrl_FILECT = 0                       ## Track how many diamonds are installed locally
-    $Global:dyrl_REPOCT = 0                       ## Track how many diamonds are available in each dynamic repo's path
+    $Global:dyrl_ATTS = [ordered]@{}            ## Collect MACROSS class info for repo diamonds
+    $Global:dyrl_LATTS = [ordered]@{}           ## Collect MACROSS class info for local diamonds
+    $Global:dyrl_FILECT = 0                     ## Track how many diamonds are installed locally
+    $Global:dyrl_REPOCT = 0                     ## Track how many diamonds are available in each dynamic repo's path
     $menunum = 0                                ## Create selector for the main menu
-    if( $MONTY ){ $ext = "*.p*"; $pa = '' }     ## Count python diamonds
+    if( $MONTY -or $LIFEOFBRIAN){ $ext = "*.p*"; $pa = '' }     ## Count python diamonds
     else{ $ext = "*.ps*" }                      ## Ignore python diamonds if python not installed
-    
-    ## Record the local toolset
-    foreach( $lc in (Get-ChildItem -File "$dyrl_MODS\$ext" | Sort -Property Name)){
+
+    ## Record the local diamondset
+    foreach( $lc in (Get-ChildItem -File "$dyrl_DIAMONDS\$ext" | Sort -Property Name)){
         $check = gc $lc -First 3
         $lclassed = $true
         0..2 | %{
@@ -29,15 +29,15 @@ function diamondCount(){
             $ldesc = $check[0] -replace "^\S+ " -replace ',',' '
             $lver = $check[1] -replace "^\S+ "
             $lclass = $check[2] -replace "^\S+ "
-            $lname = $lc.Name -replace "\..+$"                        ## Strip the file extension
-            $Global:dyrl_FILECT++                                     ## Increment total file count
-            [macross]$lsc = $lname + ",$lclass" + ",$lver" + ",$($lc.Name)" + ",$ldesc,$menunum"   ## Create custom [macross] object
-            $Global:dyrl_LATTS.Add($lname,$lsc)                       ## Only collect macross attributes for the user's diamonds
+            $lname = $lc.Name -replace "\..+$"                                      ## Strip the file extension
+            $Global:dyrl_FILECT++                                                   ## Increment total file count
+            [macross]$lsc = $lname + ",$lclass" + ",$lver" + ",$($lc.Name)" + ",$ldesc,$menunum"    ## Create custom [macross] object
+            $Global:dyrl_LATTS.Add($lname,$lsc)                                     ## Only collect macross attributes for the user's scripts
         }
     }
-    $menunum = 0; if( $MONTY ){ pyATTS }  ## python iz yer frend
+    $menunum = 0; if( $MONTY ){ pyATTS }
 
-    ## Record the master toolset
+    ## Record the master diamonds
     if($dyrl_CHECKUPDATES){
     foreach( $rc in (Get-ChildItem -File "$dyrl_REPOTOOLS\$ext" | Sort -Property Name)){
         $check = gc $rc -First 3
@@ -52,10 +52,10 @@ function diamondCount(){
             $rname = $rc.Name -replace "\..+$"
             [macross]$rsc = $rname + ",$rclass" + ",$rver" + ",$($rc.Name)" + ",$rdesc,$menunum"
             $Global:dyrl_ATTS.Add($rname,$rsc)
-            
-            
-            ## Track the number of master diamonds relevant to the user, to compare against local count
-            ## and make sure they download all available diamonds
+
+
+            ## Track the number of master scripts relevant to the user, to compare against local count
+            ## and make sure they download all available tools
             if($dyrl_ACCESSTIER.Item3 -and $dyrl_ATTS[$rname].access -In @('common','tier3')){
                 if($dyrl_ATTS[$rname].priv -eq 'user'){
                     $Global:dyrl_REPOCT++
@@ -80,37 +80,37 @@ function diamondCount(){
                     $Global:dyrl_REPOCT++
                 }
             }
-            
+
         }
     }
     }
 }
 
 <################################
-   Check the repo for new diamonds that need to be downloaded
-   Match the $script.access to the user's assignment
+   Check the repo for new/updated files that need to be downloaded
+   Match the $script.access to the user's $ACCESSTIER assignment;
+   do a hash comparison for core function scripts and resource files
+   (use -m option).
+   On initial run, the diamonds folder will be empty, so this function
+   adds all the diamond scripts to the $mismatch_list.
 ################################>
 function look4New(){
     ## Perform final check and copy scripts
     function copyScript($a,$b){
         if($a -eq 'MACROSS.ps1'){ $dir = $dyrl_REPOCORE }
         else{ $dir = $dyrl_REPOTOOLS }
-        
+
         splashPage
         w "`n`n     You are missing '$a'. Installing it now...`n" y
-        Copy-Item -Path "$dir\$a" "$dyrl_MODS\$a"
-        if( Test-Path -Path "$dyrl_MODS\$a" ){
+        Copy-Item -Path "$dir\$a" "$dyrl_DIAMONDS\$a"
+        if( Test-Path -Path "$dyrl_DIAMONDS\$a" ){
             w "        ...$a has been installed in the console!`n" g
-            if($a -eq $dyrl_ATTS.TIPPER.fname){
-                Copy-Item -Path "$dir\corefuncs\plugins\$($tippers[0])" "$dyrl_MACROSS\corefuncs\plugins\$($tippers[0])"
-                Copy-Item -Path "$dir\corefuncs\plugins\$($tippers[1])" "$dyrl_MACROSS\corefuncs\plugins\$($tippers[1])"
-            }
         }
         else{
             w "        ERROR - $a could not be installed!`n" c
             errLog 'ERROR' $USR "Failed to copy $a from master repo."
         }
-        sleep 1
+        slp 1
     }
 
     $LIST0=@{}; $LIST1=@{}
@@ -123,8 +123,8 @@ function look4New(){
         if( ! $dyrl_ACCESSTIER.Item2 -and $dyrl_LATTS[$k].access -eq 'tier2' ){ $LIST1.Remove($_) }
         if( ! $dyrl_ACCESSTIER.Item1 ){ $LIST1.Remove($_) }
     }
-    
-    
+
+
 
     ## Check if local diamond copies already exist
     if($dyrl_FILECT -eq 0){
@@ -146,14 +146,14 @@ function look4New(){
                 copyScript $($t0.InputObject)
             }
         }
-        diamondCount
+        toolCount
     }
-    
+
 
     if( $dyrl_MISMATCH -and ! $dyrl_SILENCED){
         Remove-Variable -Force dyrl_MISMATCH -Scope Global
         $mismatch_list = Compare-Object -ReferenceObject $($LIST0.keys) -DifferenceObject $($LIST1.keys)
-        w "`n    You have diamonds that are not in the master repository:`n" y
+        w "`n    You have scripts that are not in the master repository:`n" y
         foreach( $a in $mismatch_list ){
             w "      $($a.InputObject)" c
         }
@@ -162,14 +162,14 @@ function look4New(){
         if($z -Match "^y"){
             $mismatch_list | %{
                 w "  Deleting $($_.InputObject)" y
-                Remove-Item -Path "$dyrl_MODS\$($_.InputObject)"
-                sleep 1
+                Remove-Item -Path "$dyrl_DIAMONDS\$($_.InputObject)"
+                slp 1
             }
         }
         else{
             w '  Got it, this check will be silenced for the rest of this MACROSS session.' g
             $Global:dyrl_SILENCED = $true
-            sleep 2
+            slp 2
         }
     }
 }
@@ -178,12 +178,12 @@ function look4New(){
    Update latest diamond versions
    $1 is the filepath passed in from verChk function (mandatory)
    $2 is the latest diamond version found by verChk (mandatory)
-   $plugin will download additional files required by certain tools,
-   if any, to the local corefuncs\plugins folder; use -plugin @(list,of,files)
+   $plugin will download additional files required by certain diamonds,
+   if any, to the local ncore\plugins folder; use -plugin @(list,of,files)
 ################################>
 function dlNew($1,$2,$plugin){
-    
-    ## $addons must be a list
+
+    ## $p must be a list
     function addOn($p){
         $pluginsR = "$dyrl_REPOCORE\corefuncs\plugins"
         $pluginsL = "$dyrl_MACROSS\corefuncs\plugins"
@@ -206,9 +206,10 @@ function dlNew($1,$2,$plugin){
                 $dir = $Global:dyrl_REPOCORE
                 Copy-Item -Force -Path "$dir\$1.ps1" "$dyrl_MACROSS"
                 Copy-Item -Recurse -Force -Path "$dir\corefuncs\*" "$dyrl_MACROSS\corefuncs\"
+                runContinue -u
                 w "`n      $1 needs to be restarted. Run it again after it closes. Exiting...`n" y
                 varCleanup -c
-                sleep 2
+                slp 2
                 Exit
             }
             else{
@@ -219,12 +220,12 @@ function dlNew($1,$2,$plugin){
 
                 w "     Updating $1...`n" g
 
-                Copy-Item -Force -Path "$dir\$fn" "$dyrl_MODS\$fn"
-                
+                Copy-Item -Force -Path "$dir\$fn" "$dyrl_DIAMONDS\$fn"
+
                 ## Update all the Tipperer files when necessary
                 if( $1 -eq 'TIPPER' ){ addOn -t }
-                
-                diamondCount           ## Refresh the list of diamond versions
+
+                toolCount           ## Refresh the list of diamond versions
                 verChk $1 'verify'  ## Make sure the new version downloaded correctly
                 w "`n"
                 if( $dyrl_REF ){
@@ -234,17 +235,16 @@ function dlNew($1,$2,$plugin){
                 else{
                     w "     ...$1 has been updated to version $2!" g
                 }
-                sleep 3
+                slp 3
             }
         }
     }
 }
 
 
-
 ################################
 ## Update latest diamond versions
-## $1 is a mandatory value, the diamond name passed in from the functions 'chooseMod' & 'dlNew'
+## $1 is a mandatory value, the diamond name passed in from the functions 'diamondSelect' & 'dlNew'
 ## $2 is an optional verification check passed in from the function 'dlNew'
 ################################
 function verChk($1,$2){
@@ -253,9 +253,9 @@ function verChk($1,$2){
     }
     elseif($dyrl_CHECKUPDATES){
         #$3 = $1 -replace "\.p*"
-        if($1 -ne 'MACROSS'){ 
+        if($1 -ne 'MACROSS'){
             $fn = $dyrl_LATTS[$1].fname
-            $local = "$dyrl_MODS\$fn"
+            $local = "$dyrl_DIAMONDS\$fn"
             $dir = $Global:dyrl_REPOTOOLS
             $Global:dyrl_LATESTVER = $dyrl_ATTS[$1].ver
             $LOCALVER = $dyrl_LATTS[$1].ver
@@ -276,7 +276,7 @@ function verChk($1,$2){
             if( $2 -eq 'verify' ){
                 splashPage
                 w "`n      UPDATE FAILED!" y
-                sleep 3
+                slp 3
                 $Global:dyrl_Z = 'GO'
                 Return
             }
@@ -298,4 +298,20 @@ function verChk($1,$2){
         }
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
