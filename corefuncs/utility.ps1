@@ -1805,6 +1805,10 @@ function kawamori(){  #mp
         [switch]$msg
     )
 
+    if(-not (Test-Path "$dyrl_RESOURCES\kawa")){
+        New-Item -ItemType directory -Name kawa -Path $dyrl_RESOURCES
+    }
+    
     ## In a multi-user setup, you can store keys in a central location
     ## ($dyrl_CONTENT) where all validated users' scripts can read them.
     ## Note that if there are local and central keys with the same ID,
