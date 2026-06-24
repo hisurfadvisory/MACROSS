@@ -17,125 +17,76 @@ $Global:dyrl_colors = @{
     'c'='cyan'
 }
 
-function minmay([int]$a=0,[int]$s){ #mp
+function minmay($s){    #mp
     <#
     ||shorthelp||
-    minmay [-a (int) ART_INDEX] [-s NUMBER OF SECONDS TO DISPLAY]
+    minmay -s <0 - 11>
 
     ||longhelp||
-    This function requires the macart.json file in the local resources folder.
-    
-    Select one of these numbers to get ascii art:
-    
-        0 = VF-1S Battroid "Skull Leader" (default)
-        1 = VF-19 Gerwalk
-        2 = SDF-1
-        3 = VF-1J Fighter
-        4 = Gubaba
-        5 = Lynn Minmay
-        6 = Mylene Jenius
-        7 = Nekki Basara
-        8 = Hikaru Ichijo
-        9 = Sheryl Nome
-        10 = VF-25 Messiah Fighter
-        11 = Konig Monster
-    
-    Use -s <number of seconds> to clear the screen after that many seconds, otherwise 
-    the art will remain for the duration of the next task.
+    Display Macross ascii art. There are 12 images available,
+    0 - 11. Add more in the corefuncs\resources\macross_art.json
+    file.
 
-    You can get a slideshow preview of all these images by typing "splash" in the main
-    menu.
+    Anime note: Lynn Minmay helped defeat the overwhelming military forces
+    of the giant Zentradi military fleets using... 80s JPOP music!
 
-    *otaku note: Lynn Minmay helped defeat the massive Zeltran armada by overwhelming
-    the war-like aliens with music, which had never been heard by Zeltran before!
-    
     ||examples||
-    Display the VF-25 Messiah onscreen for 2 seconds:
     
-        minmay -a 10 -s 2
-    
-    Do the same without clearing the screen:
-    
-        minmay 10 
-        
-    
-    #>
+    ## Display VF-1 Skull Leader portrait:
+        minmay 0
 
-    cls
-    $jsonart = "$dyrl_RESOURCES\macross_art.json"
-    $emsg = "Missing required $jsonart file"
-    
-    if(Test-Path $jsonart){
-        $j = Get-Content $jsonart | ConvertFrom-Json
-        reString $j.art[$a]
-        w "$dyrl_PT`n" y -n
-        w $j.titles[$a] y -n
-        if( [int]$s ){ sleep $s; cls }
+    #>
+    $json = "$dyrl_RESOURCES\macross_art.json"
+    $emsg = "Missing required $json file"
+    if(Test-Path $json){
+        $screens = Get-Content $json | ConvertFrom-Json
+        gerwalk $screens.art[$s]
+        w $dyrl_PT c -n
+        w "`n$($screens.titles[$s])" c
     }
     else{ errMsg $emsg -c y -f 'MACROSS.minmay' }
-    
 }
 
 function splashBanner(){
-    function tod_($t){
-        $t = $(Get-Date -f 'h tt') -Split ' '
-        if($t[1] -eq 'AM'){ Return 'Morning' }
-        if([int]$t[0] -ge 5){ Return 'Evening' }
-        Return 'Afternoon'
-    }
-    function splitInf_($inf,[switch]$h,[switch]$i){
-        if($h){ $inf = " HOST: $inf" }
-        elseif($i){ $inf = " IP: $inf" }
-        while($inf.length -lt 34){
-            $inf = $inf + ' '
-        }
-        Return $inf.substring(0,34)
-    }
-    $welcome = '    '
-    $tod = tod_ 
-    @(37504,27827,27969,39746,32,12458,12524,12494,12454,12479,12530,12461,12465) | %{
+    $welcome = ''
+    @(31361,25731,12521,12502,12495,12540,12488) | %{
         $welcome = "$welcome$(chr $_)"
     }
-    if($env:COMPUTERNAME){ 
+    if($env:COMPUTERNAME){
         $hn = $env:COMPUTERNAME
         if($env:CLIENTNAME){ $hn = "$hn($env:CLIENTNAME)"}
     }
     elseif($env:CLIENTNAME){ $hn = "      $env:CLIENTNAME" }
     elseif($env:ViewClient_Launch_ID){ $hn = "      $env:ViewClient_Launch_ID" }
     $vl = "$dyrl_VERSION".length
-    if(! $dyrl_PSVER){ 
-        $Global:dyrl_PSVER = $(($PSVersionTable.PSVersion -Join '.').substring(0,3))
+    if(! $pver){
+        $Script:pver = $(($PSVersionTable.PSVersion -Join '.').substring(0,3))
     }
-    
-    $b1 = battroid '      MACROSS'
-    $m_ip = setLocal -m
-    
+
+    $b1 = skyWriter '      MACROSS'
+
     cls
     "`n"
-    $bar = battroid -bar
-    $p = "Powershell $dyrl_PSVER, $dyrl_PYVERS"
-    #$infoL = $hn.length + $m_ip.length
-    $hn = splitInf_ "$hn" -h
-    $m_ip = splitInf_ "$m_ip" -i
-    $hinfo = "$hn$bar$m_ip"
+    $bar = skyWriter -bar
+    $p = "Powershell $pver, $dyrl_PYVERS"
+    $hinfo =  " HOST: $hn $bar  IP: $mac_host_ip"
     while($hinfo.length -lt 72){$hinfo += ' '}
     $sep = 67 - $p.length
     w $b1 c -i -n
-    w " v$dyrl_VERSION" c
+    w "    v$dyrl_VERSION" c
     w '' -i; sep '=' 72 c
-    w "  $(splitInf_ "  Good $tod, $USR`!")" y -i -n
-    w "$welcome`!" y
-    w '' -i; sep '=' 72 c
+    w "               $welcome," y -i
+    w $USR
     w '' -i; w $hinfo c -u
     w '' -i; sep $bar $sep c -i -u; w $p c -i -u; sep $bar 3 c -u
+
 }
 
-function battroid($alpha,[switch]$bar=$false){   #mp
+
+function skyWriter($alpha,[switch]$bar=$false){   #mp
     <#
     ||shorthelp||
-    Convert console text to ascii-art block text
-    Usage:
-        skyTitles [-a TEXT_TO_WRITE] [-b BAR_CHARACTER <exclusive from -a>]
+    skyWriter [-a TEXT_TO_WRITE] [-b BAR_CHARACTER <exclusive from -a>]
 
     ||longhelp||
     Convert a single word or letter into ascii block art. Only works with alpahumeric
@@ -150,19 +101,15 @@ function battroid($alpha,[switch]$bar=$false){   #mp
 
     Accepted punctuation/special chars:  ? ! . : - _ @
 
-    *otaku note: "battroid" is the mech (robot) configuration for the transforming
-    valkyrie fighter jets in the Macross series.
-
     ||examples||
 
-    Get a bar and a block title for your diamond, then create a separator of 65 $bar
-    characters:
+    Get a bar and a block title for your script:
 
-        $bar = battroid -b
-        $title = battroid '  MYSCRIPT'
+        $bar = skyWriter -b
+        $title = skyWriter '  MYSCRIPT'
 
         write-host $title
-        sep $bar 65
+        write-host $bar
 
     #>
 
@@ -177,7 +124,7 @@ function battroid($alpha,[switch]$bar=$false){   #mp
     $filter = New-Object System.Collections.Arraylist
     $blocks = $(Get-Content $json | ConvertFrom-Json)
     $blocks = $($blocks.alpha -Join '')
-    reString $blocks
+    gerwalk $blocks
     try{ $ref = $dyrl_PT | ConvertFrom-Json }
     catch{ Read-Host $error[0] }
     foreach($a in $alpha){
@@ -196,12 +143,12 @@ function battroid($alpha,[switch]$bar=$false){   #mp
     Return $title
 }
 
-function dfInfo($tool){   #mp
+function toolInfo($tool){   #mp
     <#
     ||shorthelp||
     Tool attribute summary for help pages
     Usage:
-        dfInfo -t <tool name>
+        toolInfo -t <tool name>
 
     ||longhelp||
     Displays a tool's summary for its help pages.
@@ -210,7 +157,7 @@ function dfInfo($tool){   #mp
 
     Display the .valtype, .author and .ver attributes of MYSCRIPT:
 
-        dfInfo MYSCRIPT
+        toolInfo MYSCRIPT
 
     #>
     w "`n VERSION: " -i
@@ -224,7 +171,7 @@ function dfInfo($tool){   #mp
 
 function macrossHelp($1,[switch]$full=$false,[switch]$help=$false){
     <#
-    Display HELP for internal MACROSS functions. Send the diamond name as parameter 1
+    Display HELP for internal MACROSS functions. Send the tool name as parameter 1
     for its details and usage, or send "dev" to get a full list of descriptions.
     Calling without parameters just lists the Local Attributes table.
     #>
@@ -236,23 +183,35 @@ function macrossHelp($1,[switch]$full=$false,[switch]$help=$false){
         screenResults -e
 
         w "`n`n
-        -MACROSS uses a tamper-resistant session ID. If your session crashes or 
-        you exit by hitting CTRL+C, you will need to completely close powershell, open a
-        new window and launch MACROSS again to generate a new ID, otherwise
-        it may give you a 'security group' error.
+        -MACROSS uses no-tamper session tokens. If your session crashes or
+        you exit by hitting CTRL+C, you will need to completely close powershell,
+        open a new window and launch MACROSS again to generate a new token, otherwise
+        you will get a 'security group' error.
 
         -When a script is running, it will pause if you click anywhere in
         the powershell window. Hitting any key will resume the script, but
         will also enter that key into the next available prompt. Use the
-        BACKSPACE key to avoid getting errors.
+        BACKSPACE or back-arrow keys to avoid getting errors.
 
-        -If you experience any bugs or issues, notify JD.
+        -If you are the MACROSS admin controlling configurations, you need to export
+        your configurations for your team any time you make changes. Type `"export`"
+        in the main menu. Users will need to place your exported file in their corefuncs
+        folder.
+
+        -To add your own automations in MACROSS, reference the first three lines
+        in any diamond script located in the diamonds folder. Your automation will
+        need to mirror the information types in those lines. You can type `"debug`"
+        in the main menu to test how MACROSS's functions would work in your script.
+        When your code is finished, place it in the diamonds folder (it may need
+        to be digitally signed using the LEGIT diamond script).
+
+        -If you experience any bugs or issues, notify the MACROSS admin.
 
         Hit ENTER to go back." y
         Read-Host; Return
     }
     elseif($help){
-        reString $dyrl_CONF.cre
+        gerwalk $dyrl_CONF.cre
         $error[0]
         w "`n  Looks like the last task did not complete smoothly. If you are experiencing
   issues with MACROSS, and using the refresh `"r`" option with tools is not
@@ -310,7 +269,7 @@ function macrossHelp($1,[switch]$full=$false,[switch]$help=$false){
 
     if($1 -eq 'show'){
         screenResults 'w~MACROSS FUNCTIONS' "y~$(($functions | ?{$_ -ne ''} | Sort) -join(', '))"
-        screenResults "w~Type help, or help + one of the above to view details. Type dfList to list all MACROSS diamond properties, or TL + the toolname to view a specific tool."
+        screenResults "w~Type help, or help + one of the above to view details. Type TL to list all MACROSS tool properties, or TL + the toolname to view a specific tool."
         screenResults -e
         Return
     }
@@ -343,11 +302,7 @@ function macrossHelp($1,[switch]$full=$false,[switch]$help=$false){
     else{
         TL
     }
-    "`n"
-    w '$CALLER is the name of the diamond that calls another using the valkyrie function.' g
-    w '$PROTOCULTURE is the global value all diamonds should be coded to act on when necessary.' g
-    w '$spiritia is a parameter/arg value that is used as an additional parameter or arg passed' g
-    w ' to other diamonds.' g
+
     w "`n  Hit ENTER to go back." g
     Read-Host
 
@@ -415,31 +370,31 @@ function screenResults(){   #mp
 
     function saveOrShow_($100,$cy='GREEN',[switch]$nnl,[switch]$endline){
         if($write_to){
-            #if($100 -eq $r){$100 = $fr}    ## Have to play around with the border length when writing to file
+            if($100 -eq $r){$100 = "$fr$c"}
             if(! (Test-Path $write_to)){ noBOM -t "$100`n" -f $write_to }
             elseif($endline){ noBOM -t "$100`n" -f $write_to -a }
             elseif($nnl){ noBOM -t $100 -f $write_to -a }
-            else{ noBOM -t $100 -f $write_to -n }
+            else{ noBOM -t "$100" -f $write_to -n }
         }
         else{
-            if($nnl){ Write-Host -f $cy $100 -NoNewline;}
+            if($nnl){ Write-Host -f $cy $100 -NoNewline}
             else{ Write-Host -f $cy $100 }
         }
     }
 
     ## Clean up trailing empty space
     $strip = [regex]"(\s|\t|\n|\r)+$"
-    $c1 = $c1 -replace $strip
-    if($c2){ $c2 = $c2 -replace $strip }
-    if($c3){ $c3 = $c3 -replace $strip }
+    $c1 = $c1 -replace $dyrl_ASCII -replace $strip,' ' -replace "`n",' ' -replace "`r",' '
+    if($c2){ $c2 = $c2 -replace $dyrl_ASCII -replace $strip,' ' -replace "`n",' ' -replace "`r",' ' }
+    if($c3){ $c3 = $c3 -replace $dyrl_ASCII -replace $strip,' ' -replace "`n",' ' -replace "`r",' ' }
 
-    reString '4pWR'; $c = $dyrl_PT
+    gerwalk '4pWR'; $c = $dyrl_PT
     $r = $c
-    reString '4omh'; $hb = $dyrl_PT
-    1..$tw | %{$r = $r + $hb}; $r = $r + $c
+    gerwalk '4omh'; $hb = $dyrl_PT
+    1..$tw | %{$r += $hb}; $r = "$r$c"
     $fr = $r -replace ".{26}$","$hb"     ## Have to play around with the border length when writing to file
     if($e){
-        saveOrShow_ $r
+        saveOrShow_ $r -n
         Return
     }
     if($c1 -Match $ht){
@@ -453,6 +408,7 @@ function screenResults(){   #mp
     ## and the number of inputs. It tries not to split words but create \newlines
     ## based on whitespace.
     function genBlocks($outputs,$max,$min){
+        if(-not $last){ $last = ' '*($max+1) }
         $o1 = @()
         $o2 = @()
         $o3 = $outputs.length
@@ -463,9 +419,8 @@ function screenResults(){   #mp
                 $wide = 0
             }
             else{
-                $cut = $max - $o3
                 $o2 += $last.Substring(0,$max)
-                $o2 += $last.Substring($cut,-1)
+                if($max -gt $o3){ $o2 += $last.Substring($($max-$o3),-1) }
             }
         }
         else{
@@ -596,7 +551,7 @@ function screenResults(){   #mp
     $index2 = 0
     $index3 = 0
     $linenum = 0
-    saveOrShow_ $r -e
+    saveOrShow_ $r -e #Write-Host -f GREEN $r
 
     <#
     Outputs will get formatted to screen based on:
@@ -660,31 +615,31 @@ function screenResults(){   #mp
 
             $BLOCK1 | %{
                 if($linenum -lt $middle){
-                    saveOrShow_ "$c " -n
-                    saveOrShow_ $_ -c $ncolor -n
-                    saveOrShow_ $c -n
-                    saveOrShow_ $empty2 -n 
-                    saveOrShow_ $c
+                    saveOrShow_ "$c " -n #Write-Host -f GREEN "$c " -NoNewline;
+                    saveOrShow_ $_ -c $ncolor -n #Write-Host -f $ncolor $_ -NoNewline;
+                    saveOrShow_ $c -n #Write-Host -f GREEN $c -NoNewline;
+                    saveOrShow_ $empty2 -n  #Write-Host $empty2 -NoNewline;
+                    saveOrShow_ $c #Write-Host -f GREEN $c
                     $linenum++
                 }
                 else{
-                    saveOrShow_ "$c " -n
-                    saveOrShow_ "$_" -c $ncolor -n
-                    saveOrShow_ $c -n
+                    saveOrShow_ "$c " -n #Write-Host -f GREEN "$c " -NoNewline;
+                    saveOrShow_ "$_" -c $ncolor -n #Write-Host -f $ncolor "$_" -NoNewline;
+                    saveOrShow_ $c -n #Write-Host -f GREEN $c -NoNewline;
                     if($BLOCK2[$index2]){
                         if($v1color){
-                            saveOrShow_ " $($BLOCK2[$index2])" -c $v1color -n
+                            saveOrShow_ " $($BLOCK2[$index2])" -c $v1color -n #Write-Host -f $v1color " $($BLOCK2[$index2])" -NoNewline;
                         }
                         else{
-                            saveOrShow_ " $($BLOCK2[$index2])" -c WHITE -n
+                            saveOrShow_ " $($BLOCK2[$index2])" -c WHITE -n #Write-Host " $($BLOCK2[$index2])" -NoNewline;
                         }
-                        saveOrShow_ $c -e
+                        saveOrShow_ $c -e #Write-Host -f GREEN $c
                         $index2++
                     }
                     else{
                         $linenum = -1
-                        saveOrShow_ $empty2 -n 
-                        saveOrShow_ $c -e
+                        saveOrShow_ $empty2 -n  #Write-Host $empty2 -NoNewline;
+                        saveOrShow_ $c -e #Write-Host -f GREEN $c
                     }
                 }
             }
@@ -699,44 +654,44 @@ function screenResults(){   #mp
             }
 
             $BLOCK2 | %{
-                saveOrShow_ $c -n
+                saveOrShow_ $c -n #Write-Host -f GREEN $c -NoNewline;
                 if($linenum -lt $middle){
-                    saveOrShow_ $empty1  -n
+                    saveOrShow_ $empty1  -n #Write-Host $empty1 -NoNewline;
                     $linenum++
                 }
                 else{
                     if($BLOCK1[$index1]){
-                        saveOrShow_ " $($BLOCK1[$index1])" -c $ncolor -n
+                        saveOrShow_ " $($BLOCK1[$index1])" -c $ncolor -n #Write-Host -f $ncolor " $($BLOCK1[$index1])" -NoNewline;
                         $index1++
                     }
                     else{
                         $linenum = -1
-                        saveOrShow_ $empty1 -n 
+                        saveOrShow_ $empty1 -n  #Write-Host $empty1 -NoNewline;
                     }
                 }
-                saveOrShow_ $c -n
+                saveOrShow_ $c -n #Write-Host -f GREEN $c -NoNewline;
                 if($v1color){
-                    saveOrShow_ " $_" -c $v1color -n
+                    saveOrShow_ " $_" -c $v1color -n #Write-Host -f $v1color " $_" -NoNewline;
                 }
                 else{
-                    saveOrShow_ " $_" -n
+                    saveOrShow_ " $_" -n #Write-Host " $_" -NoNewline;
                 }
-                saveOrShow_ $c -e
+                saveOrShow_ $c -e #Write-Host -f GREEN $c
             }
         }
         else{
             $BLOCK2 | %{
-                saveOrShow_ $c -n
-                saveOrShow_ " $($BLOCK1[$index1])" -c $ncolor -n
+                saveOrShow_ $c -n #Write-Host -f GREEN $c -NoNewline;
+                saveOrShow_ " $($BLOCK1[$index1])" -c $ncolor -n #Write-Host -f $ncolor " $($BLOCK1[$index1])" -NoNewline;
                 $index1++
-                saveOrShow_ $c -n
+                saveOrShow_ $c -n #Write-Host -f GREEN $c -NoNewline;
                 if($v1color){
-                    saveOrShow_ " $_" -c $v1color -n
+                    saveOrShow_ " $_" -c $v1color -n #Write-Host -f $v1color " $_" -NoNewline;
                 }
                 else{
-                    saveOrShow_ " $_" -n
+                    saveOrShow_ " $_" -n #Write-Host " $_" -NoNewline;
                 }
-                saveOrShow_ $c -e
+                saveOrShow_ $c -e #Write-Host -f GREEN $c
             }
         }
 
@@ -745,9 +700,9 @@ function screenResults(){   #mp
     }
     else{
         $BLOCK1 | %{
-            saveOrShow_ "$c " -n
-            saveOrShow_ $_ -c $ncolor -n
-            saveOrShow_ $c -e
+            saveOrShow_ "$c " -n #Write-Host -f GREEN "$c " -NoNewline;
+            saveOrShow_ $_ -c $ncolor -n #Write-Host -f $ncolor $_ -NoNewline;
+            saveOrShow_ $c -e #Write-Host -f GREEN $c
         }
     }
 
@@ -994,6 +949,41 @@ function w(){   #mp
 }
 
 
+
+function slp($s,[switch]$m=$false){   #mp
+    <#
+    ||shorthelp||
+    Alias for 'start-sleep' to pause your scripts. Send the number of seconds to pause;
+    Use -m if you want to pause in milliseconds instead.
+    Usage:
+        slp [number of seconds] -m
+
+    ||longhelp||
+    Alias for "start-sleep". Pass a number of seconds as your first parameter, and
+    'm' as the second parameter if you want to pause in milliseconds instead.
+
+    ||examples||
+    Pause for 5 seconds:
+
+        slp 5
+
+    Pause for 500 milliseconds:
+
+        slp 500 -m
+
+
+    #>
+    if($m){
+        Start-Sleep -Milliseconds $s
+    }
+    else{
+        Start-Sleep -Seconds $s
+    }
+}
+
+
+
+
 ######################################
 ## Perform startup checks
 ######################################
@@ -1004,6 +994,11 @@ function startUp([switch]$init=$false,$refresh=$null,$new){
         $m2 = $([int[]](([int]$2 -split '') -ne ''))
         Return @($nn,$m1,$m2,@($m1[0],$m2[0]))
     }
+    function corefuncsPy_(){
+        $pylocal = "$dyrl_MACROSS\corefuncs\pynet"
+        if(-not $env:PYTHONPATH){ $env:PYTHONPATH = $pylocal }
+        elseif($env:PYTHONPATH -notMatch $pylocal){ $env:PYTHONPATH = "$pylocal;$env:PYTHONPATH" }
+    }
     if($new){
         Return $(summer_ $new[0] $new[1])
     }
@@ -1011,24 +1006,47 @@ function startUp([switch]$init=$false,$refresh=$null,$new){
         if(! (Test-Path "$dyrl_RESOURCES\logs")){
             New-Item -Path "$dyrl_RESOURCES" -Type Directory -Name logs | Out-Null
         }
-        if(! (Test-Path "$dyrl_PYLIB\garbage_io")){
-            New-Item -Path "$dyrl_PYLIB" -Type Directory -Name garbage_io | Out-Null
-        }
         $Global:dyrl_TMP = "$env:LOCALAPPDATA\Temp\MACROSS"
         if(! (Test-Path $dyrl_TMP)){
             New-Item -Path "$env:LOCALAPPDATA\Temp\" -Type Directory -Name MACROSS | Out-Null
         }
         function e(){ Return $(Get-Random -min 10000000000000 -max 99999999999999) }
 
-        #lockIn -n dyrl_HK -v $([System.Tuple]::Create($(e),$(e)))
+        try{ $syspver = "$macver | $(py -V)" }
+        catch{ $syspver = $false }
+        $Global:dyrl_PYOPT = ''
+        $Global:dyrl_PG = @("$dyrl_MACROSS\corefuncs\pynet","$dyrl_MACROSS\corefuncs\pynet\garbage_io")
 
-        if(! (Test-Path "$dyrl_CONFIG")){ runStart }
+        ## Launching macross with -portable $path_to_python gives an alternate python environment to use
+        if($dyrl_PYNET){
+            $lib = $dyrl_PYNET -replace 'python.exe'
+            $macver = "$(& $dyrl_PYNET -V)"
+            if($syspver -and -not $LIFEOFBRIAN){ $Global:LIFEOFBRIAN = $true }
+            if($LIFEOFBRIAN){ corefuncsPy_ }
+            $Global:dyrl_PYVERS = "$macver|$syspver"
+            $Global:MONTY = $true
+        }
+        elseif($syspver){   ## Nothing is ever consistent in Windows
+            $Global:dyrl_PYVERS = "$syspver"
+            corefuncsPy_
+            if(-not $LIFEOFBRIAN){ $Global:LIFEOFBRIAN = $true }
+        }
+        else{
+            $Global:dyrl_PYVERS = "None"
+        }
+
+        lockIn -n dyrl_HK -v $([System.Tuple]::Create($(e),$(e)))
+
+        if(-not (Test-Path $dyrl_CONFIG[0])){
+            if(-not (Test-Path $dyrl_CONFIG[1])){ runStart }
+            else{ Copy-Item -Path $dyrl_CONFIG[1] -Destination $dyrl_CONFIG[0] }
+        }
 
     }
 
     if(! $dyrl_CONF){
         $defs = @{}
-        reString QEBA
+        gerwalk QEBA
         $9 = "$dyrl_PT"
         $b = $(runContinue $refresh) -Split $9
         if(! $b){ Return }
@@ -1041,12 +1059,12 @@ function startUp([switch]$init=$false,$refresh=$null,$new){
         }
 
         lockIn -n dyrl_CONF -v $defs
-        reString $dyrl_CONF.di1; $s1 = [int]$dyrl_PT
-        reString $dyrl_CONF.di2; $s2 = [int]$dyrl_PT
+        gerwalk $dyrl_CONF.di1; $s1 = [int]$dyrl_PT
+        gerwalk $dyrl_CONF.di2; $s2 = [int]$dyrl_PT
         $di = $(summer_ $s1 $s2)
         lockIn -n N_ -v $di
-        reString $dyrl_CONF.dbg
-        if(! $dyrl_BLD ){ $Global:dyrl_BLD = "$([bool][int]$dyrl_PT)" }
+        gerwalk $dyrl_CONF.dbg
+        if(! $dyrl_BLD ){ lockIn -n dyrl_BLD -v "$([bool][int]$dyrl_PT)" }
         if($p.length -gt 0){  $env:dyrl_DL = $p -replace ";$" }
     }
 
@@ -1054,7 +1072,7 @@ function startUp([switch]$init=$false,$refresh=$null,$new){
 
 
 ################################
-## Dynamically generate the main menu with all available scripts
+## Dynamically generate the main menu with all available tools/diamonds
 ################################
 function diamondSelect(){
     $extras = @(
@@ -1068,18 +1086,18 @@ function diamondSelect(){
         'passw',
         'pydev',
         'shell',
-        'splash',
         'proto',
         'file',
         'refresh',
-        'refreshall'
+        'refreshall',
+        'screens'
     )
 
     $row = '  '
 
     $Global:dyrl_pagecount = [math]::truncate(($($dyrl_LATTS.count)/10) + 1)  ## Add another page for every 10 tools
 
-    $skip = $null
+    Remove-Variable -Force skip,total
 
     ## Generate the menu page
     splashBanner
@@ -1115,8 +1133,9 @@ function diamondSelect(){
         w "       Some tools are not available without admin privilege.`n" y
     }
 
-    if(Test-Path -Path "$($dyrl_PG[1])\PROTOCULTURE.mac7"){
-        w '              Enter "proto" to clear $PROTOCULTURE.' -b r -f k
+    if(Test-Path -Path "$($dyrl_PG[1])\PROTOCULTURE.vf1"){
+        w '                     Sarah Connor is alive!            ' -b r -f k
+        w '              Enter "terminate" to clear $PROTOCULTURE.' -b r -f k
     }
 
     if( $dyrl_pagecount -gt 1 ){
@@ -1124,12 +1143,12 @@ function diamondSelect(){
         w "p" y -i
         w "for the next Page." g
     }
-    w "   -Select the module for the diamond you want (" g -i
+    w "   -Select the module for the tool you want (" g -i
     w "1-$($dyrl_LATTS.count)" y -i
     w ")." g
     w '   -Type' g -i
     w 'help' y -i
-    w "to view the help menu, or 'help' and a diamond #." g
+    w "to view the help menu, or 'help' and a tool #." g
     w "   -Type" g -i
     w "shell" y -i
     w "to pause and run your own commands." g
@@ -1150,8 +1169,6 @@ function diamondSelect(){
     w "   -Type" g -i
     w "q" y -i
     w "to quit.`n" g
-
-    if($dyrl_REPOCORE){
     w "                          TROUBLESHOOTING:
    If the console is misbehaving, you can enter" g -i
     w "refresh" c -i
@@ -1163,8 +1180,6 @@ function diamondSelect(){
    (ex. '3r'). Type `"" -i g
     w 'refreshall' c -i -n
     w "`" to download fresh copies of all tools.`n" g -n
-    }
-
     w "                        SELECTION: " g -i
     $Global:dyrl_Z = Read-Host
 
@@ -1198,8 +1213,8 @@ function diamondSelect(){
         else{
             startUp
             $select = "$($dyrl_LATTS.keys | ?{$dyrl_LATTS[$_].pos -eq "$dyrl_Z"})"
-            if($ref){ rv ref; flightDeck $select -r }
-            else{ flightDeck $select }
+            if($ref){ rv ref; loadDiamond $select -r }
+            else{ loadDiamond $select }
         }
 
     }
@@ -1228,6 +1243,9 @@ function scrollPage(){
         diamondSelect
     }
 }
+
+
+
 
 
 
