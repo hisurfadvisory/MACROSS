@@ -4,31 +4,29 @@
 function alphanum([switch]$hex=$false,$rand=0){    #mp
     <#
     ||shorthelp||
-    alphanum [-h HEX CHARS] [-r NUMBER_OF_RAND_TO_RETURN]
+    alphanum [-h HEX CHARS] [-r STRING OF $r RANDOM CHARS]
 
     ||longhelp||
     Returns a list of alphanumeric & special characters. Use -h to only
-    return characters used in hexadecimal bytes. Use -r to return a random
-    string that is $r characters long.
+    return characters used in hexadecimal bytes. Use -r and a length to
+    return a string of random characters that
 
     Index 0 is the lower-upper case alphabet and 0-9, while Index 1
     contains a string of special characters.
 
     ||examples||
-    $hex_chars = alphanum -h        List of A-F and 0-9
-    $random_str = alphanum -r 32    String of 32 random chars
-    $alpha_string = (alphanum)[0]   List of lower & upper alphabet and 0-9
-    $specials = (alphanum)[1]       List of non-alphanumeric chars
-
-    $a = $alpha_string[0]           The letter 'a'
-    $zero = $alpha_string[52]       The number '0'
-    $nine = $alpha_string[61]       The number '9'
-    $aa = $specials[2]              The character '#'
+    $hex_chars = alphanum -h            List of characters used in hexadecimal
+    $random_string = alphanum -r 32     String of 32 random characters
+    $a = (alphanum)[0][0]               The letter 'a'
+    $zero = (alphanum)[0][52]           The number '0'
+    $nine = (alphanum)[0][61]           The number '9'
+    $aa = (alphanum)[1][2]              The character '#'
 
     #>
     $an = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789' -Split '' | ?{$_ -ne ''}
-    $sc = '!@#$%^&*_' -Split '' | ?{$_ -ne ''}
-    if($hex){ $an = '0123456789ABCDEF' -Split '' | ?{$_ -ne ''} }
+    $hc = '0123456789ABCDEF' -Split '' | ?{$_ -ne ''}
+    $sc = '!@#$%^&*_?><' -Split '' | ?{$_ -ne ''}
+    if($hex){ $an = $hc }
     elseif($rand -gt 0){
         $na = @()
         0..$rand | %{$na += $an[$(Get-Random -min 0 -max $an.count)]}
@@ -38,60 +36,27 @@ function alphanum([switch]$hex=$false,$rand=0){    #mp
     Return $an
 }
 
-function cfJson($psobj){   #mp
+function mkList([switch]$h){      #mp
     <#
     ||shorthelp||
-    cfJson [-p DATA_AS_PSOBJECT]
+    mkList [-h <return hashtable instead of array>]
 
     ||longhelp||
-    Convert a custom PSObject directly into a hashtable or array without messing
-    with object trees all day long. This should work with powershell versions
-    5, 6 & 7, though probably unnecessary on 7.
-
-    ||examples||
-
-    ## Convert from a PSObject
-        $my_data = get-content $path_to_file -raw | convertfrom-json
-        $my_json = cfJson -d $mydata
-
-
-    #>
-
-    if($psobj -is [System.Collections.IDictionary]){
-        $dict = @{}
-        foreach($k in $psobj.keys){
-            $dict[$key] = cfJson -d $($psobj[$key])
-        }
-        Return $dict
-    }
-
-    if($psobj -is [System.Collections.IENumerable] -and -not ($psobj -is [string])){
-        $array = mkList
-        foreach($j in $psobj){
-            [void]$array.Add($(cfJson -d $j))
-        }
-        Return $array.toArray()
-    }
-
-    Return $psobj
-}
-
-function mkList(){      #mp
-    <#
-    ||shorthelp||
-    Returns a dynamic array for collecting lists of items.
-
-    ||longhelp||
-    I despise how wordy powershell & .NET are. Use this when you need a dynamic
-    array for large datasets and can't use "@()"
+    I hate how wordy powershell & .NET are. Use this when you need a dynamic
+    array for large datasets and can't use "@()". Use -h to create a hashtable
+    instead.
 
     ||examples||
 
     $list = mkList
-    $list.add('abc 123')
+    [void]$list.add('abc 123')
+
+    $dict = mkList -h
+    $dict['index0'] = $value
 
     #>
-    Return New-Object System.Collections.Arraylist
+    if($h){ Return New-Object System.Collections.Hashtable }
+    else{ Return New-Object System.Collections.Arraylist }
 }
 
 ## Pause the console to run powershell commands in a temporary shell
@@ -116,11 +81,11 @@ function decodeSomething(){
     >  " g -i; $Z = Read-Host
     if($Z -Like "hex*"){
         $Z = $Z -replace "^hex ?",''
-        reString $Z -h
+        gerwalk $Z -h
     }
     elseif($Z -Like "b64*"){
         $Z = $Z -replace "^b64 ?",''
-        reString $Z
+        gerwalk $Z
     }
     elseif($Z -eq 'c'){
         Remove-Variable Z
@@ -169,15 +134,15 @@ function uniStrip($dirty_string){ #mp
 function extras($1){
     function flkup_(){
         $Global:CALLER = 'MACROSS'
-        . "$dyrl_MODS\$($dyrl_LATTS[$((findMods -v edr -e)[0])].fname)"
+        . "$dyrl_DIAMONDS\$($dyrl_LATTS[$((availableTypes -v edr -e)[0])].fname)"
         rv -Force CALLER -Scope Global
     }
     function refall_(){
-        w "`n   This will pull fresh copies of ALL the tools in your nmods folder." g
+        w "`n   This will pull fresh copies of ALL the tools in your diamonds folder." g
         w '  Continue?  ' y -i
         $Z = Read-Host
         if($Z -notMatch "^n"){
-            foreach($f in (gci $dyrl_MODS)){rm -path $f.FullName}
+            foreach($f in (gci $dyrl_DIAMONDS)){rm -path $f.FullName}
         }
     }
 
@@ -189,9 +154,16 @@ function extras($1){
     elseif($1 -eq 'shell'){runSomething}
     elseif($1 -eq 'refresh'){dlNew MACROSS $dyrl_LATESTVER}
     elseif($1 -eq 'refreshall'){refall_}
-    elseif($1 -eq 'splash'){0..11 | %{minmay -a $_ -s 2}}
     elseif($1 -eq 'file'){ flkup_ }
     elseif($1 -eq 'export'){ upWrite -e }
+    elseif($1 -eq 'screens'){ 
+        0..11 | %{
+            cls
+            minmay $_
+            "$(' '*7)command:  minmay $_"
+            sleep 2
+        } 
+    }
     elseif($1 -eq 'proto'){
         if($PROTOCULTURE){ Remove-Variable -Force PROTOCULTURE -Scope Global }
         cleanGBIO -s
@@ -200,7 +172,7 @@ function extras($1){
         "`n`n"
         startUp
         $n = Read-Host 'Enter a name for your key'
-        gerwalk $n -g
+        kawamori $n -g
         "`n Hit ENTER to continue."
         Read-Host
     }
@@ -208,7 +180,7 @@ function extras($1){
         splashBanner
         pyATTS; pyENV
         cls
-        launcher -p -c "$dyrl_MACROSS\corefuncs\pydev.py"
+        & $dyrl_PYNET "$dyrl_MACROSS\corefuncs\pydev.py"
         pyENV -c
     }
 }
@@ -258,22 +230,34 @@ function yellowPages(){
     }
 }
 
+## Python needs to send a terminator back in time to restore defaults in powershell
 function spaceFold(){
     $Global:ErrorActionPreference = 'SilentlyContinue'
-    $Global:dyrl_LATTS = @{}
-    $ss = $env:MACTEMP -Split ';'; $snn = ($ss -Split ',')[4]
+    $Global:dyrl_CONF = @{}; $Global:dyrl_LATTS = @{}
+    $dd = $env:DL -Split ';'
+    $ss = $env:TEMPENV -Split ';'; $snn = ($ss -Split ',')[4]
+    foreach($d in $dd){
+        $Global:dyrl_CONF.Add($(($d -Split ':')[0]),$(($d -Split ':')[1]))
+    }
+    foreach($tool in ($env:LATTS -Split ';')){
+        $ll = @{}
+        $K = $tool -replace "~.+"
+        $V = ($tool -replace "^.+~") -Split ','
+        foreach($i in $V){
+            $kk = ($i -Split '::')[0]
+            $vv = ($i -Split '::')[1]
+            $ll.Add($kk,$vv)
+        }
+        $Global:dyrl_LATTS.Add($K,$ll)
+    }
     $Global:dyrl_MACROSS=$ss[0]; $Global:dyrl_OUTFILES=$ss[1]
     $Global:dyrl_CONTENT=$ss[2]; $Global:dyrl_LOGS=$ss[3];
     $Global:N_=@($snn[0],$([int[]](($snn[0] -split '') -ne '')),$([int[]](($snn[1] -split '') -ne '')));
     $Global:USR=$ss[5]; $Global:dyrl_TMP=$ss[6]
-    $Global:dyrl_MODS="$dyrl_MACROSS\diamonds"
-    $Global:dyrl_PG=@("$dyrl_MACROSS\corefuncs\pycross","$dyrl_MACROSS\corefuncs\pycross\garbage_io")
-    $latts = (Get-Content -raw "$($dyrl_PG[1])\LATTS.mac7" | ConvertFrom-Json)
-    $proto = (Get-Content -raw "$($dyrl_PG[1])\PROTOCULTURE.mac7" | ConvertFrom-Json)
-    if(-not $latts.$CALLER){$latts = cfJson $latts} 
-    if(-not $proto.caller){$proto = cfJson $proto}
-    $Global:dyrl_LATTS = $latts
-    $Global:PROTOCULTURE = $proto.protoculture
+    $Global:dyrl_DIAMONDS="$dyrl_MACROSS\diamonds"
+    $Global:dyrl_PG=@("$dyrl_MACROSS\corefuncs\pynet","$dyrl_MACROSS\corefuncs\pynet\garbage_io")
+    $Global:dyrl_LATTS=(gc "$($dyrl_PG[1])\LATTS.vf1" | ConvertFrom-Json)
+    $Global:PROTOCULTURE=(gc "$($dyrl_PG[1])\PROTOCULTURE.vf1" | ConvertFrom-Json).$CALLER.target
 }
 
 function consoleDebug($x=$null,$ch=$null){
@@ -282,9 +266,9 @@ function consoleDebug($x=$null,$ch=$null){
     macrossHelp show
     ''
     if($x){
-        startUp;reString VGhhdCdzIGEgcHJpdmlsZWdlZCBjb21tYW5kLg==;$ha=$dyrl_PT
-        reString $dyrl_CONF.bl0;$hb=$dyrl_PT;errLog INFO ;slp -m 450
-        if($ch -eq $hb){$if="$USR debug ($x)"}else{varCleanup;$if="$USR debug ($x)"}
+        startUp;gerwalk VGhhdCdzIGEgcHJpdmlsZWdlZCBjb21tYW5kLg==;$ha=$dyrl_PT
+        gerwalk $dyrl_CONF.bl0;$hb=$dyrl_PT;errLog INFO;slp -m 450
+        if($ch -eq $hb){$if="$USR debug ($x)"}elseif($dyrl_BLD){varCleanup;$if="$USR debug ($x)"}
         while(-not $dyrl_CONF.tr1 -and $x -Match $hb){w "$ha`n`n" -b r -f k;startUp -r "$(xEntry)"
         if(-not $dyrl_CONF.tr1){Return}}
         if($x -eq 'help'){
@@ -293,7 +277,8 @@ function consoleDebug($x=$null,$ch=$null){
             macrossHelp show
         }
         elseif($x -Like "help *"){
-            macrossHelp $($x -replace "help ")
+            $x = $x -replace "help "
+            macrossHelp $x
             cls
             macrossHelp show
         }
@@ -331,7 +316,7 @@ function consoleDebug($x=$null,$ch=$null){
 
             if($dyrl_LOG -ne 'none'){w '
             OR Type "logs" to review MACROSS log files,' g}
-            if($MONTY){ w '
+            if($MONTY -or $LIFEOFBRIAN){ w '
             OR Type "python" to open a MACROSS python session for testing,' g}
             w '
             OR Enter any command to begin testing/debugging within powershell' g
@@ -348,7 +333,8 @@ function consoleDebug($x=$null,$ch=$null){
             }
             elseif($z -eq 'python'){
                 startUp;pyATTS;pyENV;if($dyrl_LOG -ne 'none'){errLog INFO 'MACROSS.debug' "pydev success ($dyrl_HN0)"};cls
-                launcher -p -c 'dev'
+                if($dyrl_PYNET){ . $dyrl_PYNET }
+                else{ py }
             }
             elseif($z -notIn 1..3){
                 cls
@@ -360,7 +346,7 @@ function consoleDebug($x=$null,$ch=$null){
                 $c = $ErrorActionPreference
                 Write-Host -f CYAN "
                 Error display is now set to:  $c"
-                sleep 2; consoleDebug
+                slp 2; consoleDebug
             }
         }
         else{
@@ -391,7 +377,7 @@ function consoleDebug($x=$null,$ch=$null){
                 if([int]$z -and $la[$z-1]){
                     $lf = $la[$z-1]; $logmsgs = New-Object System.collections.ArrayList
                     foreach($mm in Get-Content "$dyrl_LOG\$lf"){
-                        reString $mm
+                        gerwalk $mm
                         $logmsgs.Add($dyrl_PT) > $null
                     }
 
@@ -453,17 +439,21 @@ function consoleDebug($x=$null,$ch=$null){
 }
 
 
-## ARS and CTRL+ALT+DEL won't let you update your own password when it expires SMH
+
 if(! $ROBOTECH){
 function updatePass(){
     splashPage
     $PSR = "C:\Users\$USR\AppData\Roaming\Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt"
-    $pls = "$((Get-QADUser -Identity $USR).passwordLastSet)`."
-    Write-Host -f GREEN "
+    try{ $pls = "$((Get-QADUser -Identity $USR).passwordLastSet)`." }
+    catch{
+        errMsg "`"Get-QADUser`" Failed! Try again with a different powershell version (currently $pver)" -c r
+        w 'Hit ENTER to go back.' g; Read-Host; Return
+    }
+    w "
     Your password was last changed on $pls
 
     MACROSS will update your admin password in Active Directory. Hit ENTER to
-    continue, or 'c' to cancel: " -NoNewline;
+    continue, or 'c' to cancel: " g -i
     $a0 = Read-Host
     if($a0 -eq 'c'){
         Return
@@ -492,6 +482,7 @@ function updatePass(){
 
     Set-QADUser -Identity $USR -UserPassword "$b1" -Proxy | Out-Null
 
+
     $date = $(Get-Date)
     $plu = $(Get-QADUser -Identity $USR).passwordLastSet
     $sd = ($($plu) -Split ' ')[0]
@@ -502,31 +493,31 @@ function updatePass(){
 
     ## Compare the current date/time with the .PasswordLastSet time to verify success
     if($sd -eq $cd -and "$($st[0]):$($st)[1]" -eq "$($ct[0]):$($ct[1])"){
-        Write-Host -r GREEN '
+        w '
     Success!
-    '
+    ' g
     }
     else{
-        Write-Host -f CYAN "
+        w "
     Current Date:              $($date)
     New Password Last Set:     $($plu)
 
     If the day+hour match, then you're good to go!
 
     If not, this is the last error collected by Windows:
-    "
-        Write-Host -f YELLOW "
-    $($Error[0])
-        "
+    " c
+        w "
+    $($error[0])
+        " y
     }
 
-    Write-Host -f GREEN '
+    w '
     Hit ENTER to exit.
-    '
+    ' g
 
     ## Don't leave password sitting around
     if(Test-Path -Path $PSR){
-        $pr = $(Get-Content $PSR | %{$_ -replace "(Set-QADUser -Identity $USR -UserPassword .*|$c)",'CYOC MACROSS MSG: PASSWORD ENTRY REDACTED'})
+        $pr = $(Get-Content $PSR | %{$_ -replace "(Set-QADUser -Identity $USR -UserPassword .*|$c)",'MACROSS MSG: PASSWORD ENTRY REDACTED'})
         Set-Content -Path $PSR -Value $pr
     }
     [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($b)
@@ -541,13 +532,15 @@ function updatePass(){
 function stringz($f=$(getFile),[switch]$w=$false){   #mp
     <#
     ||shorthelp||
-    Extract ASCII characters from binary files. Call this function without parameters to open a nav window and select a file.
-    You can also send a filepath as parameter one. If you do not want to keep the output text file, use the -w option.
-    Usage:
-        stringz [-f FILEPATH] [-w WRITE_TO_FILE]
+
+    stringz [-f FILEPATH] [-w WRITE_TO_FILE]
 
     ||longhelp||
     For those deployments when "strings" isn't a default Windows utility.
+
+    Extract ASCII strings/chars from files. Call this function without parameters
+    to open a nav window and select a file. You can use -f to send a filepath.
+    If you do not want to keep the output text file, use the -w option.
 
     Send a filepath, or let the function open a dialog for you.
 
@@ -561,35 +554,46 @@ function stringz($f=$(getFile),[switch]$w=$false){   #mp
         strings <filepath> -w
 
     #>
-    $stringlist = @()
-    $n = 0
 
-    if($f -and $f -ne ''){
+    $of = "$dyrl_OUTFILES\strings.txt"
+
+    if($f -Match "\.(doc|ppt|xls)"){
+        if($w){
+            decodeDoc $f -o $of
+            $stringlist = Get-Content $of
+        }
+        else{ $stringlist = $(decodeDoc $f -n) }
+    }
+    elseif($f -Like "*pdf"){
+        $stringlist = decodePdf $f
+        $stringlist = $($stringlist -Split "`n")
+        if($w){ noBOM -t $stringlist -f $of }
+    }
+    elseif($f -and $f -ne ''){
+        $stringlist = mkList
+        $n = 0
         Get-Content $f | %{
             if( !($_ -cMatch $dyrl_ASCII)){
                 if($w){
                     $n++
-                    Write-Host "  Extracting line $n to stringz.txt..."
-                    $_ | Out-File "$dyrl_SKYFOLDER\stringz.txt" -Append
+                    w "  Extracting line $n to stringz.txt..."
+                    noBOM -t "$_" -f $of -a
                 }
                 else{
-                    $stringlist += $_
+                    [void]$stringlist.Add("$_")
                 }
             }
         }
-
-        if($stringlist.length -gt 0){
-            Return $stringlist
-        }
-        elseif($n -gt 0){
-            Get-Content "$dyrl_SKYFOLDER\stringz.txt"
-            Write-Host "
-            Do you want to delete $dyrl_SKYFOLDER\stringz.txt? " -NoNewline;
-            $z = Read-Host
-            if( $z -eq 'y'){
-                Remove-Item -Path "$dyrl_SKYFOLDER\stringz.txt"
-            }
-        }
+    }
+    if($stringlist.length -gt 0){
+        Return $stringlist
+    }
+    if(Test-Path $of){
+        Get-Content $of
+        w "
+        Do you want to delete $of? " g -i
+        $z = Read-Host
+        if($z -eq 'y'){ Remove-Item -Path "$of" }
     }
 }
 
@@ -598,19 +602,19 @@ function stringz($f=$(getFile),[switch]$w=$false){   #mp
 function getHash(){   #mp
     <#
     ||shorthelp||
-    getHash [-f FILEPATH_OR_STRING] [-a  md5|sha256] [-s HASH_A_STRING]
+    Get the hash of a file or string.
+    Usage:
+        getHash [-f FILEPATH_OR_STRING] [-a  md5|sha256] [-s HASH_A_STRING]
 
     ||longhelp||
-    Get an MD5 or SHA256 (default) hash of a file. Use the CertUtil and
-    .NET methods so powershell v5 won't freak out.
-    
-    Use -s to hash a string instead (This option only returns a SHA256 hash).
+    Get an MD5 or SHA256 hash of a file. Use -s to hash a string instead (This
+    option only returns a SHA256 hash).
 
     ||examples||
     Usage:
 
         $md5 = getHash $filepath md5
-        $sha256 = getHash $filepath
+        $sha = getHash $filepath sha256
         $hashed_string = getHash 'my string of text' -s
 
     #>
@@ -623,17 +627,14 @@ function getHash(){   #mp
 
     $type = @('md5','sha256')
     if($str){
-        $io = [IO.MemoryStream]::New([byte[]][char[]]$fstring)
-        $s = [System.Security.Cryptography.sha256]::Create()
-        $hash = $s.computehash($io)
-        $h = (($hash|%{$_.toString("x2")}) -join '').toUpper()
+        $io = [IO.MemoryStream]::new([byte[]][char[]]$fstring)
+        $h = (Get-FileHash -InputStream $io -Algorithm "$($type[1])").Hash
     }
     elseif( (Test-Path -Path $fstring) -and $alg -in $type){
         $h = (CertUtil -hashfile $fstring $alg)[1]
     }
     Return $h
 }
-
 
 
 function errLog(){   #mp
@@ -643,9 +644,10 @@ function errLog(){   #mp
     read these logs by typing 'debug' into MACROSS's main menu.
     Usage:
         errLog [-l INFO|WARN|ERROR] [-t TEXT_STRING] [-e EXTRA_TEXT_FIELD]
+            [-f FORWARD_TO_SEIM]
 
     ||longhelp||
-    Have your diamonds write to MACROSS logs for troubleshooting/auditing. The default location
+    Have your scripts write to MACROSS logs for troubleshooting/auditing. The default location
     is $dyrl_LOG, wherever you've specified that location to be in the macross.conf file. The current
     timestamp automatically gets written to the log, you don't need to send it. The first param,
     "-level", is required, and should indicate the type of log (ERROR, INFO, etc.). You can send
@@ -653,6 +655,9 @@ function errLog(){   #mp
     TAB-SEPARATED as "-extra".
 
     These logs are written encoded to avoid weirdness, but can be viewed from MACROSS's debug screen.
+
+    If you call this function with the -f option, it will forward the log message to the SEIM,
+    provided that the SEIM's address has been added to MACROSS's configurations.
 
     ||examples||
     errLog $param1 $param2 $param3
@@ -689,11 +694,32 @@ function errLog(){   #mp
         else{
             $msg = "$msg$d$level"
         }
-        $menc = [string]$(reString -e "$local$d$msg")
+        $menc = [string]$(gerwalk -e "$local$d$msg")
 
         ## The second param for StreamWriter is "-Append"; set to $true
         $newout = [System.IO.StreamWriter]::New("$dyrl_LOG\$log",$true)
         $newout.WriteLine("$menc"); $newout.Close()
+
+        if($forward -and ('qrd' -in $dyrl_CONF.keys)){
+            gerwalk $dyrl_CONF.qrd
+            $addr = ($dyrl_PT -Split ':')[0]; $port = ($dyrl_PT -Split ':')[1]
+            if($addr -Match "[a-z]"){ $addr = [System.Net.Dns]::GetHostAddresses("$addr").IPAddressToString }
+            if($addr){
+                $target = [System.Net.IPAddress]::Parse($addr)
+                $sendto = New-Object System.Net.IPEndpoint $target,$port
+
+                $set1 = [System.Net.Sockets.AddressFamily]::InterNetwork
+                $set2 = [System.Net.Sockets.SocketType]::Dgram
+                $proto = [System.Net.Sockets.ProtocolType]::UDP
+                $socket = New-Object System.Net.Sockets.Socket $set1,$set2,$port
+                $socket.Connect($sendto)
+
+                $encoding = [System.Text.Encoding]::UTF8
+                $tosend = $encoding.GetBytes("$utc$d$msg")
+                $fwd = $socket.Send($tosend)
+                $socket.Close()
+            }
+        }
     }
 
 }
@@ -708,6 +734,9 @@ function noBOM(){   #mp
     Powershell doesn't just let you write text using "Out-File" or ">>" to a new file,
     you have to get extra-wordy to tell it specifically not to encode it with BOM.
     Good luck getting anything else to read that file cleanly otherwise.
+
+    The -m option preserves multilines; the default removes newline/carriage returns and
+    writes to a single line.
 
     Use -a to append to the end of a file (if the last line contains text, it will
     begin writing at the end of that line). Use -n to append to the very next line
@@ -768,18 +797,22 @@ function blockwriter(){
         }
     }
     noBOM -f "$dyrl_OUTFILES\$filename" -t $($c -Join '') -m
-
+    <#if($MONTY -and (Test-Path -Path $plugin)){
+        p_
+        . $dyrl_PYNET "$plugin" "$filename" "$block" $maxlen $initial
+        p_ -c
+    }#>
 }
 
 ## Make sure the GBIO folder is cleaned out:
-## this is where .mac7 files are written so python can
+## this is where .vf1 files are written so python can
 ## read powershell outputs
 function cleanGBIO([switch]$s=$false){
     ## Clear $PROTOCULTURE
-    if($s){ Remove-Item -Force "$($dyrl_PG[1])\PROTOCULTURE.mac7"}
+    if($s){ Remove-Item -Force "$($dyrl_PG[1])\PROTOCULTURE.vf1"}
     ## Make sure the GBIO directory is clean
     else{
-        $gb = Get-ChildItem "$($dyrl_PG[1])\*.mac7"
+        $gb = Get-ChildItem "$($dyrl_PG[1])\*.vf1"
         if($gb){
             $gb | %{
                 try{ Remove-Item -Force $_.fullname }
@@ -795,147 +828,119 @@ function cleanGBIO([switch]$s=$false){
 }
 
 
-function kawamori(){   #mp
+function pyNet(){   #mp
     <#
     ||shorthelp||
-    kawamori [-c YOUR_SCRIPTNAME] [-v PROTOCULTURE_VALUE] [-f OUTPUT_FILENAME] [-d DEPTH]
-        [-s SPIRITIA_VALUE]
+    Write your powershell script's results to a json file (PROTOCULTURE.vf1) that can later
+    be read by MACROSS python scripts. This file is written to a folder, 'core\pynet\garbage_io',
+    that MACROSS regularly empties. You only need to send the name of your script as param1 and
+    your values as param2. If you need to write something other than the default json, send an
+    alternate filename in param3, and your data will be written as-is to another .vf1 file.
+    Usage:
+        pyNet [-c YOUR_SCRIPTNAME] [-v WRITE_VALUE] [-f OUTPUT_FILENAME] [-d DEPTH]
 
     ||longhelp||
-    Read/write your $PROTOCULTURE results to a json file (PROTOCULTURE.mac7) so that python
-    & powershell diamonds can share data. This file is written to a the local folder
-    'corefuncs\pycross\garbage_io', which MACROSS regularly empties. You only need to send the 
-    name of your diamond as -c and your values as -v. If you are writing a large set of
-    json data, you change the depth using -d (the default depth is 10).
+    This function lets scripts write results to a file in the directory
+    "corefuncs\pynet\garbage_io"
+    so that python & powershell scripts can easily share the same investigation data during a
+    MACROSS session. Eventually MACROSS will improve the way it handles this.
 
-    If you want to write something other than the default json structure shown below, send an 
-    alternate filename as -f, and your data will be written as a string to another .mac7 file.
-    Whatever the receiving diamond is, it needs to be coded to retrieve your specific file
-    from the path macross.OUTFILES, and to know that the file contains a single string!
+    The .vf1 files are encoded in utf8.
 
-    The .mac7 files are encoded in utf8.
+    REQUIRED:  Your script name, as well as the value you want written to that file ($val1).
+    The default file will be PROTOCULTURE.vf1, written as a json string:
 
-    REQUIRED TO READ: Send the name of your diamond as -c. If there is a python PROTOCULTURE
-    file, it will return a hashtable containing indexes for "caller", "protoculture", "result"
-    and "spiritia".
-
-    REQUIRED TO WRITE:  Your diamond name, as well as the value you want written to that file 
-    ($val1). The default file will be PROTOCULTURE.mac7, written as a json string:
-
-        { $CALLER : { "protoculture":$PROTOCULTURE, "result": $results, "spiritia": $s } }
+        $CALLER : { 'target':$value1, 'result': $value2 }
 
     If you are providing a large json dataset, the default writing depth is 10, but you can
     increase it if necessary using the -d parameter.
 
     If you need something other than this format and want to use a method outside of the
-    valkyrie functions, you can provide an alternative filename as the -f parameter to name the
+    collab functions, you can provide an alternative filename as the -f parameter to name the
     file anything but "PROTOCULTURE", and write whatever type of data you need to it instead.
-    (The ".mac7" extension is still applied). Note that by using -f, kawamori does not format your
+    (The ".vf1" extension is still applied). Note that by using -f, pyNet does not format your
     -v $value at all, it will only write the value to the file, so formatting needs to be
-    performed by your diamond.
+    performed by your script.
 
-    If the PROTOCULTURE.mac7 file already exists, this function will check to see if the "result"
+    If the PROTOCULTURE.vf1 file already exists, this function will check to see if the "result"
     key contains a non-empty value. If so, it assumes this is a response from python to a query
     from powershell, and sets that "result" value as $PROTOCULTURE.
 
-    If "result" is empty, kawamori then assumes you are responding to a python diamond's request,
+    If "result" is empty, pyNet then assumes you are responding to a python script's request,
     and will write your $value to the "result" key of the json. Otherwise, $value gets written to
-    the "protoculture" key in a new PROTOCULTURE.mac7 file.
+    the "target" key in a new PROTOCULTURE.vf1 file.
 
     ||examples||
-    if( $hk_LATTS.$CALLER.lang -eq 'python' ){
+    if( $python_called ){
 
-        # Write the results of the python diamond's request
-        kawamori 'MyScriptName' $value
+        # Write the results of the python script's request
+        pyNet 'myScriptName' $value
 
-        # Include an alternative "spiritia" value
-        kawamorei -c 'MyScriptName' -v $value -s $spiritia_value
-
-        # Or you can just write all the results the diamond found to a string value by
-        # using -f to specify a filename other than "PROTOCULTURE" (it will retain the 
-        # ".mac7" file extension).
+        # Or you can just write all the results the script found
         foreach($line in $eval){
-            kawamori -c 'MyScriptName' -v $line -f 'myResultFile'
+            pyNet 'myScriptName' $line 'myResultFile'
         }
 
     }
 
-    ...and then your python diamond can do whatever with it:
-        json.dumps(open('PATH\\PROTOCULTURE.mac7).read())
-        open('PATH\\myResultFile.mac7').read()
+    ...and then your python script can do whatever with it:
+        json.dumps(open('PATH\\PROTOCULTURE.vf1).read())
+        open('PATH\\myResultFile.vf1').read()
 
-    The file outputs are written with the extension "*.mac7" (including your custom filenames)
+    The file outputs are written with the extension "*.vf1" (including your custom filenames)
     to ensure regular cleanup (see the "cleanGBIO" function elsewhere in this file).
-
-    *otaku note: Shoji Kawamori developed the original Macross series (my favorite anime), 
-    among other classics like "Vision of Escaflowne".
-
-    ||examples||
-
 
     #>
     Param(
         [Parameter(Mandatory)]
         [string]$caller_,
         $v,
-        $s='',
         [string]$f=$null,
         [int]$d=10
     )
 
-    $proto_file = "$($dyrl_PG[1])\PROTOCULTURE.mac7"
+    $s = "$($dyrl_PG[1])\PROTOCULTURE.vf1"
 
-    function em_(){ errMsg -m "$($error[0])" -c r -f 'MACROSS.kawamori' }
-    function w2f_($w,$file=$proto_file){ 
-        #if($w -and ($w -isNot [System.String] -and $v -isNot [System.Int32])){
-        #if($w -is [System.Collections.IDictionary] -or $w -is [System.Collections.IENumerable]){
-        if($w.caller){
-            try{ noBOM -f $file -t "$($w | ConvertTo-Json -Depth $d)" }
+    function em_(){ errMsg -m "$($error[0])" -c r -f 'MACROSS.pyNet' }
+    function w2f_($w,$file=$s){
+        #if($w -isNot [System.String] -and $v -isNot [System.Int32]){
+        if($w.getType().Name -eq 'PSCustomObject'){     ## Assuming a dict was sent as the $v value
+            try{ noBOM -f $file -t "$($w | ConvertTo-Json -Depth $d)" } ## Change depth if necessary...
             catch{ em_ }
         }
         else{
-            try{ noBOM -f $file -t "$w" -encoding 'utf8'}
+            try{ noBOM -f $file -t $w -m }
             catch{ em_ }
         }
         if( ! (Test-Path -Path "$file") ){
-            errLog ERROR "$USR/$caller_" "Failed to write $file file during macross.valkyrie operation ($dyrl_HN0)"
+            errLog ERROR "$USR/$caller_" "Failed to write $file file during macross.collab operation ($dyrl_HN0)"
         }
-    }
-
-    if(! $v -and $s -eq '' -and (Test-Path $proto_file)){
-        Return $(Get-Content -raw $proto_file | ConvertFrom-Json)
     }
 
     if($f){
-        $f = "$($dyrl_PG[1])\$f" + '.mac7'  ## Use custom filename
-        w2f_ $v.toString() -f $f
+        $f = "$($dyrl_PG[1])\$f" + '.vf1'  ## Use custom filename
+        w2f_ $v $f
+    }
+    elseif((Test-Path $s) -and ($caller_ -eq $CALLER)){
+        $j = Get-Content -raw $s | ConvertFrom-Json
+        if($j.$caller_.result -ne 'WAITING'){ $Global:PROTOCULTURE = $jr }
+        else{
+            $j.$caller_.result = $v
+            w2f_ $j
+        }
     }
     else{
-        if((Test-Path $proto_file) -and ($caller_ -eq $CALLER)){
-            $j = Get-Content -raw $proto_file | ConvertFrom-Json
-            if($j -and -not $j.caller){ $j = cfJson $j }
-            $j.spiritia = $s
-            if($j.result -ne 'WAITING'){ $Global:PROTOCULTURE = $j.protoculture }
-            else{ $j.result = $v }
-        }
-        else{
-            $j = @{}
-            $j.caller = $caller_
-            $j.protoculture = $v
-            $j.result = 'PS_'
-            $j.spiritia = $s
-        }
-
-        
+        $j.$caller_.target = $v
         w2f_ $j
     }
 
+
 }
 
-function dfList($t){    #mp
+function TL($t){    #mp
     <#
     ||shorthelp||
-    dfList [-t TOOLNAME]
+    TL [-t TOOLNAME]
 
     ||longhelp||
     Get a full listing of *all* available tools and their [macross] attributes
@@ -943,11 +948,11 @@ function dfList($t){    #mp
     ||examples||
     Call from the main menu with debug:
 
-        debug dfList
+        debug TL
 
-    Get the details for a specific diamondwhile in debugging mode:
+    Get the details for a specific tool while in debugging mode:
 
-        dfList <tool name>
+        TL <tool name>
 
     #>
     if($t){ $dyrl_LATTS[$t].toolInfo() }
@@ -969,7 +974,7 @@ function sheetz(){   #mp
     <#
     ||shorthelp||
     Output results to an excel worksheet. Specify the name of your spreadsheet with
-    -o; -v is the values you're writing, separated by commas. -r is the row to start
+    -o; -v is the values you're writing, separated by "<::>". -r is the row to start
     writing in (default is 1; if you are adding values to an existing sheet, set this
     to the next empty row). Use -h for comma-separated column names, OR if you are
     editing an existing sheet/don't need column headers, you can send the number of
@@ -977,11 +982,11 @@ function sheetz(){   #mp
     of any field in the first parameter's comma-separated list, or colorize the cell
     by adding 'cellColor~textColor~' to the value.
     Usage:
-        sheetz [-o FILENAME] [-v VALUE1,VALUE2...] [-r ROW_NUMBER] [-h COLUMN1,COLUMN2...]
+        sheetz [-o FILENAME] [-v VALUE1<::>VALUE2...] [-r ROW_NUMBER] [-h COLUMN1,COLUMN2...]
             [-s SHEET_NAME1,SHEET_NAME2...]
 
     ||longhelp||
-    Output diamondvalues to an Excel spreadsheet on user's desktop
+    Output tool values to an Excel spreadsheet on user's desktop
 
     (This is very simplistic at the moment; the goal is to eventually make more useful
     spreadsheets when simple CSV files aren't good enough.)
@@ -990,26 +995,27 @@ function sheetz(){   #mp
     -o = (req'd) the name of the output file
         -will always read/write to your desktop
         -do NOT include an extension, sheetz sets it automatically
-    -v = (req'd) cell values, comma-separated. If your cell values contain commas,
-        this function is coded to replace the string "<comma>" with a ","; you should
-        replace all your individual cell value commas with that string to ensure values
-        get written to the correct column/row
+    -v = (req'd) cell values, "<::>"-separated. YOU MUST SEPARATE YOUR CELL VALUES
+        USING THIS PATTERN. This allows your cell text to contain commas and other
+        commonly-used delimiter characters, without mistakenly splitting them into
+        separate cells.
     -r = (optional) the starting row number to write to (default is 1)
-    -h = (optional) column values, OR the number of columns you are writing across
-    -s = (optional) names for individual sheets/tabs, comma-separated.
+    -h = (optional) comma-separated column names, OR the number of columns you are
+        writing across
+    -s = (optional) comma-separated names for individual sheets/tabs.
 
     If only -o and -v are sent, this function will separate -v values and write them as a
     list into column A.
 
     ####### USING MULTIPLE SHEETS WITHIN A WORKBOOK ######
 
-    Tto write values across multiple sheets/tabs, send a **list** of comma-separated values
+    To write values across multiple sheets/tabs, send a **list** of separated values
     in -v instead of a string. For example, to write cells on two tabs, all the cell values
     for each tab should be comma-separated strings within the list:
 
         -v @(
-            'station001,windows 10<comma> licensed,192.168.1.100',
-            'station001,patched on 12/1/2020,online'
+            'station001<::>windows 10, licensed<::>192.168.1.100',
+            'station001<::>patched on 12/1/2020<::>online'
         )
 
     ..and so on. The same method must be used in -h if you are using column headers OR specifying
@@ -1029,7 +1035,7 @@ function sheetz(){   #mp
     lists, and make sure they are arranged **in order** to match the first-thru-last items
     in your -v and -h lists!
 
-    ###### UUPDATING EXISTING WORKBOOKS ######
+    ###### UPDATING EXISTING WORKBOOKS ######
 
     If you're adding values to an existing sheet, the -r parameter lets you specify which
     row to start in. For example, if you know the next empty row is 200, send 200 as a 3rd
@@ -1070,7 +1076,14 @@ function sheetz(){   #mp
 
     EXAMPLE 2
 
-        $hosts = 'host 1,b~w~windows,11,192.168.10.10,host2,linux,r~kali,192.168.10.11'
+        $hosts = @('host 1',
+            'b~w~windows',
+            '11',
+            '192.168.10.10',
+            host2',
+            'linux',
+            'r~kali',
+            '192.168.10.11') -Join '<::>'
         $headers = 'HOST,OS,VER,IP'
         sheetz -o 'myoutput' -v $hosts -r 5 -h $headers
 
@@ -1085,7 +1098,7 @@ function sheetz(){   #mp
             row 6      host 1   windows   11    192.168.10.10
             row 7      host 2   linux     kali  192.168.10.11
 
-    Make sure your diamond is sending your -v values IN ORDER, otherwise they'll get
+    Make sure your script is sending your -v values IN ORDER, otherwise they'll get
     written to the wrong cells! Also, if you're adding values to an existing sheet, don't send the
     headers, sheetz will automatically start writing to the next empty row (or you can specify a row
     in parameter -r, and the number of columns being written, in this case 4 columns (A-D).
@@ -1116,7 +1129,7 @@ function sheetz(){   #mp
         Black: RGB(0,0,0)
         White: RGB(255,255,255)
         Red: RGB(255,0,0)
-        Green: RGB(0,255,0) This green is eye cancer
+        Green!: RGB(0,255,0)
         Blue: RGB(0,0,255)
         Yellow: RGB(255,255,0)
         Magenta: RGB(255,0,255)
@@ -1135,7 +1148,14 @@ function sheetz(){   #mp
         [string]$s='Sheet 1'
     )
 
-    if(! $SHEETZ){ errMsg -f 'MACROSS.sheetz' "Microsoft Excel is not installed!" }
+    if(! $sheetz){ 
+        errMsg -f 'MACROSS.sheetz' -m 'MS Excel is not installed!' -c r
+        Return 
+    }
+
+    w "$(' '*76)" -b g -f k
+    w "Do not click anywhere in the sheet as it is being written, or it may fail! " -b g -f k
+    w "$(' '*76)" -b g -f k
 
     $colors = @{
         'r~' = 255 + (1*256) + (1*256*256);
@@ -1151,13 +1171,11 @@ function sheetz(){   #mp
     $c = 1  ## Start in column A
 
     ## Collect the columns info, make sure it's an array
-    if($h -and $h.getType().Name -eq 'String'){
-        $h = @($h)
-    }
+    if($h -and $h.getType().Name -eq 'String'){ $h = @($h) }
+
     ## Collect cell values, make sure it's an array
-    if($v.getType().Name -eq 'String'){
-        $v = @($v)
-    }
+    if($v.getType().Name -eq 'String'){ $v = @($v) }
+
     ## Collect sheet names, make sure it's an array
     $snames = $s -Split ','
 
@@ -1232,14 +1250,13 @@ function sheetz(){   #mp
 
     $worksheet = $workbook.Worksheets.Item("$newsheet")
 
-    $cell_values = "$($values_table.$newsheet[0])" -Split ','
+    $cell_values = "$($values_table.$newsheet[0])" -Split '<::>'
 
 
     # Write values to cells; if no $h values were passed, just write $cell_values as a list in column A
     if($values_table.$newsheet[1]){
         function columnVals_($rr,$cc,$count){
             Foreach($v1 in $cell_values){
-                $v1 = $v1 -replace '<comma>',','
                 if($v1 -Match "^[a-z]+~[a-z]+~"){
                     $shade_cell = $v1 -replace "~[a-z]+~",'~' -replace "~.+",'~'
                     $shade_text = $v1 -replace "^[a-z]+~?" -replace "~.+",'~'
@@ -1309,7 +1326,6 @@ function sheetz(){   #mp
     }
     else{
         Foreach($v1 in $cell_values){
-            $v1 = $v1 -replace '<comma>',','
             if($v1 -Match "^[a-z]+~[a-z]+~"){
                 $shade_cell = $v1 -replace "~[a-z]+~",'~' -replace "~.+",'~'
                 $shade_text = $v1 -replace "^[a-z]+~?" -replace "~.+",'~'
@@ -1362,13 +1378,13 @@ function sheetz(){   #mp
 }
 
 
-function reString($t,[switch]$hex=$false,[switch]$e=$false){   #mp
+function gerwalk($t,[switch]$hex=$false,[switch]$e=$false){   #mp
     <#
     ||shorthelp||
     Decode base64 and hex values to plaintext in the global variable `$dyrl_PT; encode
     plaintext to hex or base64
     Usage:
-        reString [-t STRING] [-h USE_HEXADECIMAL] [-e ENCODE_PLAINTEXT]
+        gerwalk [-t STRING] [-h USE_HEXADECIMAL] [-e ENCODE_PLAINTEXT]
 
     ||longhelp||
     Deobfuscate your encoded value ($t), plaintext gets saved as $dyrl_PT
@@ -1379,32 +1395,35 @@ function reString($t,[switch]$hex=$false,[switch]$e=$false){   #mp
     is only intended to prevent regular users from seeing your filepaths/URLs, etc.,
     and avoiding automated keyword scanners.
 
-    The reason it always writes to $dyrl_PT instead of just returning a value to your diamond
+    The reason it always writes to $dyrl_PT instead of just returning a value to your script
     is to ensure that decoded plaintext gets wiped from memory every time the MACROSS menu loads.
     Yes, I'm one of those paranoid types, but I can only control my code, not yours!
 
-    This function can also be used by your diamonds for normal decoding tasks, it isn't
+    This function can also be used by your scripts for normal decoding tasks, it isn't
     limited to MACROSS' startup.
 
     ||examples||
     -If you need presistence, you MUST set your new variable to $dyrl_PT **before** this
       function gets called again:
 
-        reString $base64string
+        gerwalk $base64string
         $plaintext = $dyrl_PT
 
     -To decode a hexadecimal string, send the hex and use -h (your hex string can include
       spaces and/or "0x" tags, or neither):
 
-        reString "0x746869732069 730x20 61 200x740x650x7374" -h
+        gerwalk "0x746869732069 730x20 61 200x740x650x7374" -h
         $plaintext = $dyrl_PT
 
     -If you want to ENCODE plaintext, call this function with your plaintext and -e.
       This mode does NOT write to $dyrl_PT!
 
-        $b64 = reString $plaintext -e
-        $hex = reString $plaintext -h -e
+        $b64 = gerwalk $plaintext -e
+        $hex = gerwalk $plaintext -h -e
 
+
+    Anime note: "gerwalk" is the transformation mode of the valkyrie fighters in Macross;
+    a hybrid of the fighter half-transformed into a giant battle-robot.
 
 
     #>
@@ -1464,7 +1483,8 @@ function urlEnc($str,$alt='%20'){   #mp
 function decodePdf($filepath,[switch]$preserve,[switch]$split){   #mp
     <#
     ||shorthelp||
-    decodePdf [-f PATH_TO_FILE] [-preserve (Preserve layout)] [-s (return a list of lines)]
+    decodePdf [-f PATH_TO_FILE] [-preserve (Preserve layout)]
+        [-s (return a list of lines)]
 
     ||longhelp||
     Returns decoded plaintext from PDF documents. The -p option helps
@@ -1482,10 +1502,9 @@ function decodePdf($filepath,[switch]$preserve,[switch]$split){   #mp
 
     $emsg = "Failed to extract text from $filepath"
     $filename = $filepath -replace "^.+\\" -replace "\.\w+$"
-    $readfrom = "$dyrl_TMP\decoded-pdf-$filename.mac7"
-    if($preserve){ $arg = "$("$dyrl_PLUGINS\pdfdecoder.py") $filepath $filename 1" }
-    else{ $args = "$("$dyrl_PLUGINS\pdfdecoder.py") $filepath $filename" }
-    launcher -p -c $args
+    $readfrom = "$dyrl_TMP\decoded-pdf-$filename.vf1"
+    if($preserve){ . $dyrl_PYNET "$dyrl_PLUGINS\pdfdecoder.py" $filepath $filename 1 }
+    else{ . $dyrl_PYNET "$dyrl_PLUGINS\pdfdecoder.py" $filepath $filename }
     if($split){ $text = uniStrip $(Get-Content $readfrom | ?{$_.Trim() -ne ""}) }
     else{ $text = $(uniStrip $(Get-Content -Raw $readfrom)) }
     if($text){
@@ -1498,14 +1517,172 @@ function decodePdf($filepath,[switch]$preserve,[switch]$split){   #mp
     }
 }
 
+function decodeDoc($filepath,[switch]$nosave,$outfile=$null){   #mp
+    <#
+    ||shorthelp||
+    decodeDoc [-f PATH_TO_FILE] [-n NO_OUTPUT_FILE] [-o OUTPUT_FILENAME (optional)]
+
+    ||longhelp||
+    Extract plaintext from Microsoft Office documents without executing them in
+    Word, Excel, or Powerpoint. This function will also extract any macros or VBA
+    scripts it finds and add them to the output file.
+
+    Use -o to specify an output filename, otherwise it will share the same name as
+    the document you're scraping. The .txt files are written to the MACROSS\outputs
+    folder.
+
+    Use -n to receive a hashtable containing macros and plaintext, without saving
+    any output file.
+
+    Currently only handles doc, docx, xls, xlsx, ppt, and pptx files.
+
+    ||examples||
+        ## Get plaintext without saving to file:
+            $plaintext = decodeDoc "C:\Users\Me\Documents\Suspicious.docx" -n
+            $plaintext.vb       ## List of macros, if any
+            $plaintext.pt       ## List of plaintext lines from the document
+
+        ## Write plaintext to "report001.txt" in the outputs folder:
+            decodeDoc "C:\Users\Me\Documents\Suspicious.docx" -o 'report001'
+
+        ## Write plaintext to "Suspicious.txt" in the outputs folder:
+            decodeDoc "C:\Users\Me\Documents\Suspicious.xlsx"
+
+    #>
+
+
+    if($outfile){ $fn = "$outfile`.txt" }
+    else{ $fn = $filepath -replace "^.*\\" -replace "\.\w+$",'.txt' }
+    $fn = "$dyrl_OUTFILES\$fn"
+    $msa = mkList
+    $fnt = mkList
+    if($nosave){ $final = @{} }
+    else{ $final = '' }
+
+    ## Get the contents of each XML extracted from the document
+    function grabXML_($xml){
+        $s = $xml.Open()
+        $r = New-Object -TypeName System.IO.StreamReader($s)
+        $t = $r.ReadToEnd()
+        $s.Close()
+        $r.Close()
+        Return $t
+    }
+
+
+    ## Scan the extracted plaintext for user's keywords
+    function extractText_($pt,$macroname){
+        $kws = mkList
+        $pt | %{
+            $b = $_ -replace $dyrl_ASCII                      ## Dump unreadable bytes
+            if($macroname -eq 'notvba'){
+                $b = $b -replace "<.*?>","`n" -split("`n")    ## Remove office/xml tags, then ignore empty lines
+            }
+            else{
+                $b = $b -replace "<.*$macroname"              ## Look for the line with the macro name
+            }
+            $b | ?{ $_ -ne '' } | %{
+                [void]$kws.Add("$_")
+            }
+        }
+        Return "$($kws -Join "`n")"
+    }
+
+    ##  Compressed office documents have multiple directories and files;
+    ##  Only care about the XMLs containing text or vbs contents
+    if( $filepath -Match "[mx]$" ){
+        Add-Type -Assembly System.IO.Compression.FileSystem        ## Need to uncompress MSOffice stuff
+        $x = [IO.Compression.ZipFile]::OpenRead("$filepath")
+    }
+
+    ## Excel contents are *typically* in "xl\worksheets\Sheet[0-9].xml" and ".\sharedStrings.xml" paths,
+    ## and MSWord contents are in the Document.xml... but we'll search the whole thing anyway. If there is
+    ## noticeable lag we'll go back to just grabbing Document.xml from Word files
+    if( $x ){
+        $err = @("Could not read xml from $fn","failed to extract macro from $fn","$fn text extraction was corrupted")
+        $x.Entries | ?{ $_.Name -Match "\.xml$" } | %{
+            if($_.name -Match "^vba"){
+                try{ $PLAINTEXT = grabXML_ $_  }
+                catch{ errLog ERROR 'MACROSS.decodeDoc' $err; $PLAINTEXT = $false }
+                if($PLAINTEXT){
+                    try{
+                        $ks = extractText_ $PLAINTEXT 'wne:macroName=' ## uncompressed file has VBA info
+                        [void]$msa.Add($ks)
+                    }
+                    catch{
+                        [void]$msa.Add($err[1])
+                    }
+                }
+                else{ [void]$msa.Add($err[1]) }
+            }
+            else{
+                try{ $PLAINTEXT = grabXML_ $_ }
+                catch{ errLog ERROR 'MACROSS.decodeDoc' $err; $PLAINTEXT = $false }
+                if($PLAINTEXT){
+                    try{
+                        $ks = extractText_ $PLAINTEXT 'notvba'
+                        [void]$fnt.Add($ks)
+                    }
+                    catch{
+                        [void]$fnt.Add($err[0])
+                    }
+                }
+                else{ [void]$fnt.Add($err[0]) }
+            }
+        }
+    }
+
+    ## If doc is old 97-2003 non-compressed format, can't use extractText_ function
+    ## because it is for parsing extracted XML files.
+    else{
+        $findvba = Get-Content $filepath
+        $findstr = [IO.File]::ReadLines($filepath)
+
+        ## If 'VBA...DLL' and 'Sub ' are in the same doc, it's likely a macro
+        if( $findvba | Select-String -CaseSensitive 'VBA' | Select-String 'dll' ){
+            $mac = ($findvba | Select-String -Pattern "Sub .+\(\)") -replace $dyrl_ASCII
+            $mac = $mac -replace "^Sub " -replace "\(\)"
+            [void]$msa.Add($mac)
+        }
+        $findstr | %{
+            [void]$fnt.Add($_)
+        }
+        rv findstr,findvba,mac
+    }
+
+    if($nosave){
+        $final.Add('vb',$msa)
+        $final.Add('pt',$fnt)
+        Return $final
+    }
+
+    if($msa.count -gt 0){
+        $final += "FOUND MACROS:`n"
+        $final += "$($msa -Join "`n")"
+        $final += "$('='*65)`n"
+    }
+    $final += "$($fnt -Join "`n")"
+
+    ## Cleanup
+    try{ $x.Dispose() }
+    catch{ $null }
+
+    try{
+        noBOM -t "$final" -f $fn -m
+        notepad.exe $fn
+    }
+    catch{
+        $error[0]
+        Read-Host
+    }
+
+}
 
 function getFile($filter='all',$opendir="H:\",[switch]$directory=$false){   #mp
     <#
     ||shorthelp||
-    Open a dialog window to let analysts select a file from any local/network location
-    Usage:
-        $file = getFile -f [all|csv|doc|dox|exe|msg|mso|pdf|ppt|scr|txt|web|xls|zip]
-        $folder = getFile -d
+    $file = getFile [-f <all|csv|doc|dox|exe|msg|mso|pdf|ppt|scr|txt|web|xls|zip>]
+    $folder = getFile -d
 
     ||longhelp||
     This opens a dialog window so the user can specify a filepath to whatever.
@@ -1592,10 +1769,11 @@ function getFile($filter='all',$opendir="H:\",[switch]$directory=$false){   #mp
 }
 
 
-function gerwalk(){  #mp
+function kawamori(){  #mp
     <#
     ||shorthelp||
-    gerwalk [-c 'ID or name for your key' <REQUIRED>] [-g <GENERATE A NEW KEY>]
+    kawamori [-c 'ID or name for your key' <REQUIRED>] [-g <GENERATE A NEW KEY>]
+        [-l <LOCAL KEYS ONLY>] [-m <SHOW CREATED MSG>]
 
     ||longhelp||
     This is MACROSS's key generator for protecting regularly accessed data or
@@ -1609,24 +1787,32 @@ function gerwalk(){  #mp
     ||examples||
 
     ## Generate a new key and get an ID to use for retrieval:
-        gerwalk 'give_me_a_key' -g
+        kawamori 'give_me_a_key' -g
     ## Retrieve the key's value:
-        $key = gerwalk <macross-id>
+        $key = kawamori <macross-id>
+
+
+    Anime note: Shoji Kawamori is the main creator of the Macross series, along
+    with Vision of Escaflowne, two of the best anime shows ever made IMHO.
+
 
     #>
     param(
         [Parameter(Mandatory=$true)]
         [string]$cid,
-        [switch]$gen
+        [switch]$gen,
+        [switch]$local,
+        [switch]$msg
     )
 
     ## In a multi-user setup, you can store keys in a central location
-    ## ($dyrl_CONTENT) where all validated users' diamonds can read them.
+    ## ($dyrl_CONTENT) where all validated users' scripts can read them.
     ## Note that if there are local and central keys with the same ID,
-    ## the central key takes priority.
-    $checkrep = "$dyrl_CONTENT\$cid.ger"
-    $assembled = "$dyrl_RESOURCES\$cid.ger"
-    if((Test-Path -Path $checkrep)){
+    ## the central key takes priority unless you call this function with
+    ## the -l option.
+    $checkrep = "$dyrl_CONTENT\kawa\$cid.mori"
+    $assembled = "$dyrl_RESOURCES\kawa\$cid.mori"
+    if((Test-Path -Path $checkrep) -and -not $local){
         $content_key = $checkrep
     }
     else{
@@ -1639,35 +1825,35 @@ function gerwalk(){  #mp
         $alpha = (alphanum)[0]
         $tag = $($cid.substring(0,1))
         if($tag -notMatch "\w"){ $tag = 's'}
-        $bid = reString -e $cid
-        $hid = reString -e -h $cid
+        $bid = gerwalk -e $cid
+        $hid = gerwalk -e -h $cid
         $eid = "$tag$bid$hid" -replace "[+=/\.]"; $el = $eid.length
         while($el -lt 35){
             $al = Get-Random -min 0 -max 62
             $eid = "$($eid)$($alpha[$al])"; $el = $eid.length
         }
         $eid = "$($eid.substring(0,15))-$($eid.substring(15,20))"
-        $of = "$dyrl_RESOURCES\$eid`.ger"
+        $of = "$dyrl_RESOURCES\kawa\$eid`.mori"
         $vn = @('kh','kt','sg')
         $vv = @('20232323205354415254204B455920232323',
             '202323232320454E44204B45592023232323',
             '534B594E4554204B455947454E')
         0..2 | %{
-            reString -h $vv[$_]
+            gerwalk -h $vv[$_]
             Set-Variable -Name $vn[$_] -Value $dyrl_PT
         }
         $rawmaterials = getBlox -t $sg -i 'Paste your inputs:'
         $n = 0
         foreach($c in ($rawmaterials.trim() -Split '' | ?{$_ -ne ''})){
             $mod = ($N_[1][$n]+2) * $N_[0]
-            $assembler1.add($(([int](ord $c) * $mod))) | Out-Null
+            [void]$assembler1.add($(([int](ord $c) * $mod)))
             if($n -eq $il1){ $n = 0 }
             else{ $n++ }
         }
         $n = 0
         foreach($c in $assembler1){
             $mod = ($N_[2][$n]+2) * $N_[0]
-            $assembler2.add($([int]$c + $mod)) | Out-Null
+            [void]$assembler2.add($([int]$c + $mod))
             if($n -eq $il2){ $n = 0 }
             else{ $n++ }
         }
@@ -1677,31 +1863,34 @@ function gerwalk(){  #mp
         $assembler2.reverse()
         $assembler2.insert(0,$n)
 
-        $compacting = reString $($assembler2 -Join '.') -e
+        $compacting = gerwalk $($assembler2 -Join '.') -e
         $compacted = mkList
-        $compacted.add($kh) | Out-Null
+        [void]$compacted.add($kh)
         foreach($comp in $compacting -Split "(.{12})" -ne ''){
-            $compacted.add($comp) | Out-Null
+            [void]$compacted.add($comp)
         }
-        $compacted.add($kt) | Out-Null
+        [void]$compacted.add($kt)
 
         $wr = "$($compacted -Join "`n")"
         noBOM -f $of -t $wr
-        errLog INFO 'MACROSS.gerwalk' "Key $eid generated for $cid"
-        w "SAVE THIS ID: $eid"
-        w "Your diamond can now retrieve this value using`n`n`tgerwalk $eid`n`n"
-        w "This key will no longer function if your macross.conf file gets deleted!" y
+        errLog INFO 'MACROSS.kawamori' "Key $eid generated for $cid"
+        if($msg){
+            w "SAVE THIS ID: $eid"
+            w "Your script can now retrieve this value using`n`n`tkawamori $eid`n`n"
+            w "This key will no longer function if your macross.conf file gets deleted!" y
+        }
+        else{ Return $eid }
     }
     else{
         if($content_key -and (Test-Path $content_key)){
             $assembled = $content_key   ## Give preference to files in central storage, if any
         }
         if(! (Test-Path $assembled)){
-            errLog ERROR 'MACROSS.gerwalk' "No key found for $cid"
+            errLog ERROR 'MACROSS.kawamori' "No key found for $cid"
             Return $false #"$cid does not exist!"
         }
         else{
-            reString $((Get-Content $assembled | ?{$_ -notLike '*#*'}) -Join '').trim()
+            gerwalk $((Get-Content $assembled | ?{$_ -notLike '*#*'}) -Join '').trim()
             $compacted = $dyrl_PT -Split '\.'
 
             $nc = [int]$compacted[0]; $n = $nc
@@ -1723,41 +1912,49 @@ function gerwalk(){  #mp
             Return $assembler2 -Join ''
         }
     }
-
 }
 
-
-## Open a dialog box to get large text entries
 function getBlox(){ #mp
     <#
     ||shorthelp||
-    getBlox [-t <TITLE> REQUIRED] [-i <INSTRUCTION> OPTIONAL]
+    getBlox [-t <TITLE> REQUIRED] [-i <INSTRUCTION> OPTIONAL] [-p PREFILL TEXT]
 
     ||longhelp||
-    When your diamondneeds users to enter a large block of text, this function
+    When your tool needs users to enter a large block of text, this function
     opens a dialog box where users can type or paste those blocks.
 
     You must send a title with -t; The default instructions is
     "Use this entry form to add your input", but you can send a different
     instruction with the -i option.
 
+    To pre-fill the text box with string values, use the -p option.
+
     ||examples||
 
     $textblock = getBlox 'My Tool Needs Strings'
     $ip_list = getBlox 'My Tool Needs IPs' -i 'Only enter a list of IPs in this box:'
+
+    ## Open the text box with an existing value for the user to keep or change:
+    $ip = '192.168.1.1'
+    $ip_list = getBlox 'My Tool Needs IPs' -i 'Only enter a list of IPs in this box:' -p $ip
 
 
     #>
     param(
         [Parameter(Mandatory=$true)]
         [string]$title,
-        [string]$instruction="--- Use this entry form to add your input ---"
+        [string]$instruction="--- Use this entry form to add your input ---",
+        [string]$prefill=$null
     )
+
+    ## Preserve newlines
+    if($prefill){ $prefill = $prefill -replace "`n","`r`n" }
+
     Add-Type -AssemblyName System.Windows.Forms
     [System.Windows.Forms.Application]::EnableVisualStyles()
 
     $textEntry = New-Object System.Windows.Forms.Form
-    $textEntry.Text = "$title"
+    $textEntry.Text = "$title (Use CTRL+ENTER to add a newline)"
     $textEntry.Font = [System.Drawing.Font]::New("Tahoma",9)
     $textEntry.Forecolor = 'WHITE'
     $textEntry.size = New-Object System.Drawing.Size(1000,550)
@@ -1776,7 +1973,7 @@ function getBlox(){ #mp
     $entryBlock.Location = New-Object System.Drawing.Point(10,105)
     $entryBlock.Size = New-Object System.Drawing.Size(980,300)
     $entryBlock.Font = [System.Drawing.Font]::New("Tahoma",10)
-    $entryBlock.Text = $null
+    $entryBlock.Text = $prefill
     $entryBlock.MultiLine = $true
     $entryBlock.Scrollbars = 'Vertical'
     $textEntry.Controls.Add($entryBlock)
@@ -1849,7 +2046,7 @@ function chr(){   #mp
 
 
 
-function houseKeeping($reports,$diamond){   #mp
+function houseKeeping($reports,$tool){   #mp
     <#
     ||shorthelp||
 
@@ -1863,8 +2060,8 @@ function houseKeeping($reports,$diamond){   #mp
     generic folders like 'Desktop' or 'Documents', giving users the opportunity
     to accidentally delete all their stuff!
 
-        Param $reports = the filepath determined by the diamondthat calls this function,
-        Param $diamond = your diamond's name
+        Param $reports = the filepath determined by the tool that calls this function,
+        Param $tool = your script's name
 
     ||examples||
 
@@ -1880,9 +2077,7 @@ function houseKeeping($reports,$diamond){   #mp
         $Script:fcount = $fpath.count
         $Script:flist = @()
         $b = 0
-        Write-Host -f YELLOW "       EXISTING $diamond REPORTS
-
-        "
+        Write-Host -f YELLOW "       EXISTING $tool REPORTS`n`n"
         $fpath | ForEach-Object{  ## Create a list of the filenames to display onscreen
             $b++
             $n = $_.Name
@@ -1891,9 +2086,7 @@ function houseKeeping($reports,$diamond){   #mp
             Write-Host "   $b. $n" -NoNewline;  ## display the filename and its last modified time
             Write-Host ":  $m"
         }
-        Write-Host '
-        '
-        Write-Host -f GREEN "  Select a file to delete, 'a' to delete all of them,  "
+        Write-Host -f GREEN "`n   Select a file to delete, 'a' to delete all of them,  "
         Write-Host -f GREEN "  or 's' to skip:  " -NoNewline;
     }
     function rmFiles($del){
@@ -1901,9 +2094,8 @@ function houseKeeping($reports,$diamond){   #mp
         #Write-Host 'deleting ' -NoNewline; write-host "$reportdir\$del"  # uncomment for debugging the occasional derp
         Remove-Item -Force -Path "$reportdir\$del"
         if(Test-Path -Path "$reportdir\$del"){
-            Write-Host -f CYAN '
-            ...Delete action failed!
-            '
+            Write-Host -f CYAN "
+            ...Delete action failed!`n"
         }
         else{
             $Script:fcount = $fcount - 1
@@ -1919,23 +2111,23 @@ function houseKeeping($reports,$diamond){   #mp
             $Z = Read-Host
         }
         ''
-        sleep 1
-        if( $Z -eq 's' ){    ##  Setting to 9999 skips the final task of selecting files to delete
-            $Z = 9999
+        slp 1
+        if( $Z -eq 's' ){    ##  Setting to 99999 skips the final task of selecting files to delete
+            $Z = 99999
         }
         elseif( $Z -eq 'a' ){  ## Delete all files in the provided directory if user selects 'a'
-            $Z = 9999
+            $Z = 99999
             $fpath |
                 Foreach-Object{
                     $dn = $_.Name
                     Write-Host -f CYAN "  Deleting $dn...."
                     rmFiles $dn
-                    sleep 1
+                    slp 1
                 }
         }
 
 
-        if($Z -ne 9999){
+        if($Z -ne 99999){
             $Z = $Z - 1
             $fpath |
                 Foreach-Object{
@@ -1943,7 +2135,7 @@ function houseKeeping($reports,$diamond){   #mp
                         $dn = $_.Name
                         Write-Host -f CYAN "  Deleting $dn...."
                         rmFiles $dn
-                        sleep 1
+                        slp 1
                     }
             }
             if( $fcount -gt 0 ){
@@ -1955,18 +2147,26 @@ function houseKeeping($reports,$diamond){   #mp
                 }
                 else{
                     $Script:fcount = 0
-                    $Z = 9999
+                    $Z = 99999
                 }
             }
         }
     }
 
     ''
-    sleep 1
+    slp 1
 
     try{ Remove-Variable -Force fpath }catch{ $null }
     try{ Remove-Variable -Force flist }catch{ $null }
 }
+
+
+
+
+
+
+
+
 
 
 
