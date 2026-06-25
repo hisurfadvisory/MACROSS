@@ -1777,9 +1777,11 @@ function kawamori(){  #mp
 
     ||longhelp||
     This is MACROSS's key generator for protecting regularly accessed data or
-    resources. To create a new key, provide any string as a key name, and use
-    the -g option. An entry window will open for you to paste whatever value you
-    need protected within MACROSS.
+    resources. If you have a legit key storage solution for API stuff, I 
+    recommend you use that instead, but this will work if you have nothing else.
+    To create a new key, provide any string as a key name, and use the -g option. 
+    An entry window will open for you to paste whatever value you need protected 
+    within MACROSS.
 
     To retrieve your key, supply the ID that MACROSS generated when you created
     the key. Keys are stored in MACROSS's corefuncs\resources folder.
