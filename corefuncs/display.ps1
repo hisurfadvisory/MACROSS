@@ -370,7 +370,7 @@ function screenResults(){   #mp
 
     function saveOrShow_($100,$cy='GREEN',[switch]$nnl,[switch]$endline){
         if($write_to){
-            if($100 -eq $r){$100 = "$fr$c"}
+            #if($100 -eq $r){$100 = $fr}
             if(! (Test-Path $write_to)){ noBOM -t "$100`n" -f $write_to }
             elseif($endline){ noBOM -t "$100`n" -f $write_to -a }
             elseif($nnl){ noBOM -t $100 -f $write_to -a }
@@ -392,7 +392,7 @@ function screenResults(){   #mp
     $r = $c
     gerwalk '4omh'; $hb = $dyrl_PT
     1..$tw | %{$r += $hb}; $r = "$r$c"
-    $fr = $r -replace ".{26}$","$hb"     ## Have to play around with the border length when writing to file
+    $fr = $r -replace ".{26}$","$hb$c"     ## Have to play around with the border length when writing to file
     if($e){
         saveOrShow_ $r -n
         Return
