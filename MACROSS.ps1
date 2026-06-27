@@ -246,6 +246,8 @@
                     decrypted by the configuration that encrypted them. If your macross.conf file
                     gets deleted and you create a new one, you will need to generate new keys
                     to replace the old ones!
+				-minmay: select one of the included MACROSS ascii art images to display in a
+					script
                 -uniStrip: strips out all non-ascii characters from a block of text
                 -gerwalk: encode or decode strings using Base64 or hexadecimal
                 -errLog: record custom information or error messages to a MACROSS logfile
