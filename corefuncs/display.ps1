@@ -183,15 +183,15 @@ function macrossHelp($1,[switch]$full=$false,[switch]$help=$false){
         screenResults -e
 
         w "`n`n
-        -MACROSS uses no-tamper session tokens. If your session crashes or
-        you exit by hitting CTRL+C, you will need to completely close powershell,
-        open a new window and launch MACROSS again to generate a new token, otherwise
-        you will get a 'security group' error.
+        -MACROSS uses session tokens. If your session crashes or you exit by
+        hitting CTRL+C, you will need to completely close powershell, open a new 
+        window and launch MACROSS again to generate a new token, otherwise you
+        will get a 'security group' error.
 
-        -When a script is running, it will pause if you click anywhere in
-        the powershell window. Hitting any key will resume the script, but
-        will also enter that key into the next available prompt. Use the
-        BACKSPACE or back-arrow keys to avoid getting errors.
+        -When a script is running, it will pause if you click anywhere in the
+        powershell window. Hitting any key will resume the script, but will
+        also enter that key into the next available prompt. Use the BACKSPACE
+        or back-arrow keys to avoid getting errors.
 
         -If you are the MACROSS admin controlling configurations, you need to export
         your configurations for your team any time you make changes. Type `"export`"
