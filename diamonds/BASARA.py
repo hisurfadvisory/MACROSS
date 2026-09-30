@@ -25,6 +25,23 @@ from macross import macross
 ## *tkinter is not available; you need to use system python for that library.
 
 
+
+
+
+
+
+## When users enter "help" in the main menu with their script selection, your script should be
+## coded to present a help/description for them when HELP is True.
+if ms.HELP:
+    ms.w("""
+    This is an example script demonstrating how to use MACROSS to allow automations
+    to pass data back and forth for enrichment, including between python and powershell.
+
+    Hit ENTER to return.
+    ""","y")
+    input()
+    exit()
+
 ## Here we check if BASARA is being called by another diamond vs. from the main menu
 if ms.CALLER:
 
