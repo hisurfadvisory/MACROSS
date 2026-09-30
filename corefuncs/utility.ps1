@@ -878,16 +878,16 @@ function pyNet(){   #mp
 
     $s = "$($dyrl_PG[1])\PROTOCULTURE.vf1"
 
-    function em_(){ errMsg -m "$($error[0])" -c r -f 'MACROSS.pyNet' }
+    function em_($m=$($error[0])){ errMsg -m $m -c r -f 'MACROSS.pyNet' }
     function w2f_($w,$file=$s){
         #if($w -isNot [System.String] -and $v -isNot [System.Int32]){
         if($w.getType().Name -eq 'PSCustomObject'){     ## Assuming a dict was sent as the $v value
             try{ noBOM -f $file -t "$($w | ConvertTo-Json -Depth $d)" } ## Change depth if necessary...
-            catch{ em_ }
+            catch{ em_ $_ }
         }
         else{
             try{ noBOM -f $file -t $w -m }
-            catch{ em_ }
+            catch{ em_ $_ }
         }
         if( ! (Test-Path -Path "$file") ){
             errLog ERROR "$USR/$caller_" "Failed to write $file file during macross.collab operation ($dyrl_HN0)"
@@ -895,7 +895,7 @@ function pyNet(){   #mp
     }
 
     if($f){
-        $f = "$($dyrl_PG[1])\$f" + '.vf1'  ## Use custom filename
+        $f = "$($dyrl_PG[1])\$f`.vf1"   ## Use custom filename
         w2f_ $v $f
     }
     elseif((Test-Path $s) -and ($caller_ -eq $CALLER)){
@@ -908,6 +908,7 @@ function pyNet(){   #mp
     }
     else{
         $j.$caller_.target = $v
+        $j.$caller_.result = 'WAITING'
         w2f_ $j
     }
 
