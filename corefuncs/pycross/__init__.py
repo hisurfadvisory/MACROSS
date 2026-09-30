@@ -33,7 +33,7 @@
         Check if user is requesting to view a diamond's help message
 
     GBIO
-        Path to the local garbage_io folder that contains the
+        Path to the local gbio folder that contains the
         PROTOCULTURE.mori file
 
     OUTFILES
@@ -94,7 +94,7 @@
     screenResults():
         format blocks of text into a table of up to 3 columns
 
-    skyWriter():
+    battroid():
         generate ascii-art of large block words
 
     slp():
@@ -112,6 +112,7 @@ from .macross import (
     collab,
     delfile,
     errLog,
+    findDF,
     getFile,
     gerwalk,
     ispath,
@@ -120,7 +121,7 @@ from .macross import (
     psc,
     rgx,
     screenResults,
-    skyWriter,
+    battroid,
     slp,
     w,
     CALLER,
