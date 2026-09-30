@@ -15,7 +15,9 @@
             this is strictly a convenience feature for auto-distribution to varied user's needs from a
             central repo; this is easily bypassed, so not really a "control".
         field 3 (.valtype): what kind of task or data your script works on
-        field 4 (.lang): the script's language powershell or python
+        field 4 (.lang): the script's base language; powershell, python0 or python1. "python0" will use the alt
+            python executable you configure at setup, if any; "python1" will use whatever python version executes
+            using powershell's "py" alias.
         field 5 (.auth): the author
         field 6 (.evalmax): the max number of parameters/arguments the script can evaluate (not counting
             the global $PROTOCULTURE value)
@@ -136,7 +138,7 @@ if($CALLER){
     ## The w function simplifies powershell's text formatting for you; w also lets you format text with
     ## underlines, highlights and "no new line" if you need to use different formatting on the same line.
     "`n`n`n"
-    if($lang -eq 'python'){ w 'You are now in the powershell script MYLENE.ps1.' g }
+    if($lang -Like 'python*'){ w 'You are now in the powershell script MYLENE.ps1.' g }
     w "Powershell can see that $CALLER" g -i
     w "is a $lang script labeled as" g
     w "$val" m -i; w ',' g -n -i
@@ -150,10 +152,10 @@ if($CALLER){
     $t = (Get-ChildItem $PROTOCULTURE).CreationTime | Get-Date -f "yyyy/MM/dd hh:mm:ss"
     $file_info = @($f,$h.toUpper(),$t)
 
-    if($lang -eq 'python'){
+    if($lang -Like 'python*'){
         ## The pyNET function controls the $PROTOCULTURE value being passed back and forth
         ## between powershell and python, by updating or clearing the local file
-        ## 'corefuncs\pynet\garbage_io\PROTOCULTURE.vf1'.
+        ## 'corefuncs\pycross\gbio\PROTOCULTURE.vf1'.
         ## In the python macross library, this is all handled in the macross.collab() function
         ## (python has no macross.pyNET() function to worry about)
         pyNET -c $CALLER -v $file_info
@@ -195,8 +197,8 @@ else{
     $demo_output = "$dyrl_OUTFILES\demo.txt"
 
 
-    ## The skyWriter function will give you a nice ascii art title for your script
-    $title = skyWriter ' MYLENE'
+    ## The battroid function will give you a nice ascii art title for your script
+    $title = battroid ' MYLENE'
 
     ## The w function simplifies powershell's text formatting for you; w also lets you format text with
     ## underlines, highlights and "no new line" if you need to use several different colors on the same line.
@@ -236,7 +238,7 @@ else{
     $block1 = "$(' '*27)MACROSS automation flow"
     $block2 = @(
         "Your automation does whatever it needs to do, but instead of copy-pasting to other scripts, you can search for existing automations within MACROSS written by yourself or your team to enrich or further process your script's data:"
-        'The findDiamond function finds relevant scripts (diamonds), and the collab function forwards and retrieves data between them, with all automations giving priority to data assigned to the global variable $PROTOCULTURE'
+        'The findDF function finds relevant scripts (diamonds), and the collab function forwards and retrieves data between them, with all automations giving priority to data assigned to the global variable $PROTOCULTURE'
         'MACROSS provides several utilities to quickly reformat data onscreen or into txt reports & spreadsheets'
     )
 
@@ -285,14 +287,14 @@ else{
     Read-Host
 
 
-    ## You can search for MACROSS diamonds via the findDiamond utility, which returns a list of any
+    ## You can search for MACROSS diamonds via the findDF utility, which returns a list of any
     ## diamonds matching your filters. This function has an option, -e, that forces exact matches of
     ## the -v values; the default behavior just finds partial matches for comma-separated -v values. This
     ## functionality relies on the information you've put in the first three lines of your MACROSS scripts!
-    [array]$relevant_diamonds = $(findDiamond -v 'encode,example' -l 'python')
+    [array]$relevant_diamonds = $(findDF -v 'encode,example' -l 'python')
 
     ## This example will give back the name of this file (MYLENE), specifying the *exact* .valtype value with "-e"
-    $original = findDiamond -v 'macross code example' -l 'powershell' -e
+    $original = findDF -v 'macross code example' -l 'powershell' -e
 
 
     ## The yorn function lets you get quick responses to select the next branch or task
@@ -320,7 +322,7 @@ else{
     ## The screenResultsAlt function is an alternate way to present script results when you don't expect paragraphs
     ## of text. It takes a (-h)eader for the main object you're parsing, a (-k)ey to name each item, and a (-v)alue
     ## for the actual result of whatever you processed. Use -e to print a final separation line to make it all pretty.
-    screenResultsAlt -h "Found $diamond using the findDiamond function..." -k 'Original Script' -v $original
+    screenResultsAlt -h "Found $diamond using the findDF function..." -k 'Original Script' -v $original
     screenResultsAlt -k 'Collab Script' -v $diamond
     screenResultsAlt -k 'Language' -v $dyrl_LATTS.$diamond.lang
     screenResultsAlt -k 'Access Tier' -v $dyrl_LATTS.$diamond.access
