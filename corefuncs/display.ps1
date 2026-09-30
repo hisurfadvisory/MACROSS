@@ -52,28 +52,23 @@ function splashBanner(){
     @(31361,25731,12521,12502,12495,12540,12488) | %{
         $welcome = "$welcome$(chr $_)"
     }
-    if($env:COMPUTERNAME){
-        $hn = $env:COMPUTERNAME
-        if($env:CLIENTNAME){ $hn = "$hn($env:CLIENTNAME)"}
-    }
-    elseif($env:CLIENTNAME){ $hn = "      $env:CLIENTNAME" }
-    elseif($env:ViewClient_Launch_ID){ $hn = "      $env:ViewClient_Launch_ID" }
+    $mip = setLocal -m
     $vl = "$dyrl_VERSION".length
     if(! $pver){
         $Script:pver = $(($PSVersionTable.PSVersion -Join '.').substring(0,3))
     }
 
-    $b1 = skyWriter '      MACROSS'
+    $b1 = battroid '      MACROSS'
 
     cls
     "`n"
-    $bar = skyWriter -bar
+    $bar = battroid -bar
     $p = "Powershell $pver, $dyrl_PYVERS"
-    $hinfo =  " HOST: $hn $bar  IP: $mac_host_ip"
+    $hinfo =  " HOST: $dyrl_HN0 $bar  IP: $mip"
     while($hinfo.length -lt 72){$hinfo += ' '}
     $sep = 67 - $p.length
     w $b1 c -i -n
-    w "    v$dyrl_VERSION" c
+    w " v$dyrl_VERSION" c
     w '' -i; sep '=' 72 c
     w "               $welcome," y -i
     w $USR
@@ -83,10 +78,10 @@ function splashBanner(){
 }
 
 
-function skyWriter($alpha,[switch]$bar=$false){   #mp
+function battroid($alpha,[switch]$bar=$false){   #mp
     <#
     ||shorthelp||
-    skyWriter [-a TEXT_TO_WRITE] [-b BAR_CHARACTER <exclusive from -a>]
+    battroid [-a TEXT_TO_WRITE] [-b BAR_CHARACTER <exclusive from -a>]
 
     ||longhelp||
     Convert a single word or letter into ascii block art. Only works with alpahumeric
@@ -105,8 +100,8 @@ function skyWriter($alpha,[switch]$bar=$false){   #mp
 
     Get a bar and a block title for your script:
 
-        $bar = skyWriter -b
-        $title = skyWriter '  MYSCRIPT'
+        $bar = battroid -b
+        $title = battroid '  MYSCRIPT'
 
         write-host $title
         write-host $bar
@@ -183,15 +178,15 @@ function macrossHelp($1,[switch]$full=$false,[switch]$help=$false){
         screenResults -e
 
         w "`n`n
-        -MACROSS uses session tokens. If your session crashes or you exit by
-        hitting CTRL+C, you will need to completely close powershell, open a new 
-        window and launch MACROSS again to generate a new token, otherwise you
-        will get a 'security group' error.
+        -MACROSS uses no-tamper session tokens. If your session crashes or
+        you exit by hitting CTRL+C, you will need to completely close powershell,
+        open a new window and launch MACROSS again to generate a new token, otherwise
+        you will get a 'security group' error.
 
-        -When a script is running, it will pause if you click anywhere in the
-        powershell window. Hitting any key will resume the script, but will
-        also enter that key into the next available prompt. Use the BACKSPACE
-        or back-arrow keys to avoid getting errors.
+        -When a script is running, it will pause if you click anywhere in
+        the powershell window. Hitting any key will resume the script, but
+        will also enter that key into the next available prompt. Use the
+        BACKSPACE or back-arrow keys to avoid getting errors.
 
         -If you are the MACROSS admin controlling configurations, you need to export
         your configurations for your team any time you make changes. Type `"export`"
@@ -370,7 +365,7 @@ function screenResults(){   #mp
 
     function saveOrShow_($100,$cy='GREEN',[switch]$nnl,[switch]$endline){
         if($write_to){
-            #if($100 -eq $r){$100 = $fr}
+            if($100 -eq $r){$100 = "$fr$c"}
             if(! (Test-Path $write_to)){ noBOM -t "$100`n" -f $write_to }
             elseif($endline){ noBOM -t "$100`n" -f $write_to -a }
             elseif($nnl){ noBOM -t $100 -f $write_to -a }
@@ -392,7 +387,7 @@ function screenResults(){   #mp
     $r = $c
     gerwalk '4omh'; $hb = $dyrl_PT
     1..$tw | %{$r += $hb}; $r = "$r$c"
-    $fr = $r -replace ".{26}$","$hb$c"     ## Have to play around with the border length when writing to file
+    $fr = $r -replace ".{26}$","$hb"     ## Have to play around with the border length when writing to file
     if($e){
         saveOrShow_ $r -n
         Return
@@ -420,7 +415,7 @@ function screenResults(){   #mp
             }
             else{
                 $o2 += $last.Substring(0,$max)
-                if($max -gt $o3){ $o2 += $last.Substring($($max-$o3),-1) }
+                if($max -gt $o3){ $o2 += $last.Substring($($max-$o3)) }
             }
         }
         else{
@@ -447,8 +442,7 @@ function screenResults(){   #mp
                         #$cut = $max - $bl
                         $cut = [math]::max(0,$max - $bl)
                         $o2 += $block.Substring(0,$max)
-                        try{ $o2 += $block.Substring($cut,-1) }
-                        catch{ Continue }
+                        if($cut -gt 0){ $o2 += $block.Substring($cut) }
                     }
                     else{
                         if($bl -lt $max){
@@ -474,8 +468,7 @@ function screenResults(){   #mp
                             #$cut = $max - $l
                             $cut = [math]::max(0,$max - $l)
                             $o2 += $last.Substring(0,$max)
-                            try{ $o2 += $last.Substring($cut,-1) }
-                            catch{ Continue }
+                            if($cut -gt 0){$o2 += $last.Substring($cut) }
                         }
                         else{
                             if($l -lt $max){
@@ -994,10 +987,9 @@ function startUp([switch]$init=$false,$refresh=$null,$new){
         $m2 = $([int[]](([int]$2 -split '') -ne ''))
         Return @($nn,$m1,$m2,@($m1[0],$m2[0]))
     }
-    function corefuncsPy_(){
-        $pylocal = "$dyrl_MACROSS\corefuncs\pynet"
-        if(-not $env:PYTHONPATH){ $env:PYTHONPATH = $pylocal }
-        elseif($env:PYTHONPATH -notMatch $pylocal){ $env:PYTHONPATH = "$pylocal;$env:PYTHONPATH" }
+    function corefuncsPy_($ep){
+        if(-not $env:PYTHONPATH){ $env:PYTHONPATH = $ep }
+        elseif($env:PYTHONPATH -notMatch $ep){ $env:PYTHONPATH = "$ep;$env:PYTHONPATH" }
     }
     if($new){
         Return $(summer_ $new[0] $new[1])
@@ -1012,35 +1004,31 @@ function startUp([switch]$init=$false,$refresh=$null,$new){
         }
         function e(){ Return $(Get-Random -min 10000000000000 -max 99999999999999) }
 
-        try{ $syspver = "$macver | $(py -V)" }
+        <#try{ $syspver = "$macver | $(py -V)" }
         catch{ $syspver = $false }
+        if($LIFEOFBRIAN){ $syspver = "$(& $hk_PYNET -V)" }
         $Global:dyrl_PYOPT = ''
-        $Global:dyrl_PG = @("$dyrl_MACROSS\corefuncs\pynet","$dyrl_MACROSS\corefuncs\pynet\garbage_io")
+        $Global:dyrl_PG = @("$dyrl_PYLIB","$dyrl_PYLIB\gbio")
 
         ## Launching macross with -portable $path_to_python gives an alternate python environment to use
-        if($dyrl_PYNET){
-            $lib = $dyrl_PYNET -replace 'python.exe'
-            $macver = "$(& $dyrl_PYNET -V)"
+        if($dyrl_PYCROSS -and (Test-Path $dyrl_PYCROSS)){
+            $lib = $dyrl_PYCROSS -replace 'python.exe'
+            corefuncsPy_ "$dyrl_PYLIB;$lib"
+            $macver = "$(& $dyrl_PYCROSS -V)"
             if($syspver -and -not $LIFEOFBRIAN){ $Global:LIFEOFBRIAN = $true }
-            if($LIFEOFBRIAN){ corefuncsPy_ }
             $Global:dyrl_PYVERS = "$macver|$syspver"
             $Global:MONTY = $true
         }
         elseif($syspver){   ## Nothing is ever consistent in Windows
             $Global:dyrl_PYVERS = "$syspver"
-            corefuncsPy_
+            corefuncsPy_ $dyrl_PYLIB
             if(-not $LIFEOFBRIAN){ $Global:LIFEOFBRIAN = $true }
         }
         else{
             $Global:dyrl_PYVERS = "None"
-        }
+        }#>
 
-        lockIn -n dyrl_HK -v $([System.Tuple]::Create($(e),$(e)))
-
-        if(-not (Test-Path $dyrl_CONFIG[0])){
-            if(-not (Test-Path $dyrl_CONFIG[1])){ runStart }
-            else{ Copy-Item -Path $dyrl_CONFIG[1] -Destination $dyrl_CONFIG[0] }
-        }
+        if(-not (Test-Path $dyrl_CONFIG[0])){ runStart }
 
     }
 
@@ -1077,9 +1065,9 @@ function startUp([switch]$init=$false,$refresh=$null,$new){
 function diamondSelect(){
     $extras = @(
         'config',
+        'debug',
         'dec',
         'defs',
-        'export',
         'strings',
         'phone',
         'newkey',
@@ -1088,8 +1076,6 @@ function diamondSelect(){
         'shell',
         'proto',
         'file',
-        'refresh',
-        'refreshall',
         'screens'
     )
 
@@ -1130,12 +1116,12 @@ function diamondSelect(){
 
     if( $ROBOTECH ){
         w '              ****YOU ARE NOT LOGGED IN AS ADMIN**** ' y
-        w "       Some tools are not available without admin privilege.`n" y
+        w "    Some functions are not available without admin privilege.`n" y
     }
 
     if(Test-Path -Path "$($dyrl_PG[1])\PROTOCULTURE.vf1"){
-        w '                     Sarah Connor is alive!            ' -b r -f k
-        w '              Enter "terminate" to clear $PROTOCULTURE.' -b r -f k
+        w '                   $PROTOCULTURE is active!            ' -b r -f k
+        w '              Enter "proto" to clear $PROTOCULTURE.' -b r -f k
     }
 
     if( $dyrl_pagecount -gt 1 ){
@@ -1163,24 +1149,11 @@ function diamondSelect(){
         w 'passw' y -i
         w "to update your admin password" g
     }
-    w '   -Type' g -i
-    w 'export' y -i
-    w 'to export your config for a teammate' g
     w "   -Type" g -i
     w "q" y -i
     w "to quit.`n" g
-    w "                          TROUBLESHOOTING:
-   If the console is misbehaving, you can enter" g -i
-    w "refresh" c -i
-    w "to automatically
-   pull down a fresh copy. Or, if one of the tools is not working as you
-   expect it to, enter the module # with an" g -i
-    w "r" c -i
-    w "to refresh that script
-   (ex. '3r'). Type `"" -i g
-    w 'refreshall' c -i -n
-    w "`" to download fresh copies of all tools.`n" g -n
-    w "                        SELECTION: " g -i
+    w "   SELECT: " g -i
+    
     $Global:dyrl_Z = Read-Host
 
 
@@ -1192,15 +1165,11 @@ function diamondSelect(){
             $Global:dyrl_Z = $dyrl_Z -replace "^help(\s+)?"
             $Global:HELP = $true
         }
-        elseif( $dyrl_Z -Like "*r" ){  ## Update the selected script
-            $Global:dyrl_Z = $dyrl_Z -replace 'r'
-            $ref = $true
-        }
         elseif( $dyrl_Z -Like "*s" ){  ## Enable 'special' option for the selected script
             $Global:dyrl_Z = $dyrl_Z -replace 's'
             $Global:dyrl_OPT1 = $true
         }
-        elseif($dyrl_Z -Like "*w"){  ## Pop selected script in new window
+        elseif($dyrl_Z -Like "*w"){  ## Execute selected script in new window
             $Global:dyrl_Z = $dyrl_Z -replace 'w'
             $Global:dyrl_NEWW = $true
         }
@@ -1213,18 +1182,18 @@ function diamondSelect(){
         else{
             startUp
             $select = "$($dyrl_LATTS.keys | ?{$dyrl_LATTS[$_].pos -eq "$dyrl_Z"})"
-            if($ref){ rv ref; loadDiamond $select -r }
-            else{ loadDiamond $select }
+            if($ref){ rv ref; flightDeck $select -r }
+            else{ flightDeck $select }
         }
 
     }
-    elseif( $dyrl_Z -Match "^debug" ){
+    <#elseif( $dyrl_Z -Match "^debug" ){
         if($dyrl_Z -Match ' '){ $p = $dyrl_Z -replace "^debug " }
         else{ $p = $null }
         splashBanner
         consoleDebug $p -c $(returnDefault -b)[0]
         rv p
-    }
+    }#>
 
     $Global:dyrl_Z = $null
 
