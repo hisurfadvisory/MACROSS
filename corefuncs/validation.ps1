@@ -848,7 +848,7 @@ function launcher(){
     ## Regardless of 'python0' or 'python1' as the diamond's .lang value, if only one
     ## python version is available, we'll attempt to execute it.
     function whichPy_($option){
-        pyATTS
+        pyATTS; macrossMirror -n $N_
         if($option -eq '1' -or -not $MONTY){
             try{ py $command }
             catch{ err_ }
@@ -857,6 +857,7 @@ function launcher(){
             try{ & $dyrl_PYCROSS $command }
             catch{ err_ }
         }
+        macrossMirror -c
     }
 
     if($PSVersionTable.PSVersion.Major -lt 7){ $exe = 'powershell.exe' }
