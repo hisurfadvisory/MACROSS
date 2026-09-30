@@ -1,19 +1,19 @@
-'''
-    MACROSS pdf decoder. Requires at least one of [pdfplumber] or [pypdf] libs.
-    USAGE: Send the filepath as your first arg, and a name for the output file (no 
-    extension) as the second arg. Plaintext is written to your 
+## MACROSS pdf decoder.
+## REQUIRES: 
+##      pdfplumber 
+##      PdfReader
+##
+## USAGE: Send the filepath as your first arg, and a name for the output file (no
+## extension) as the second arg. Plaintext is written to your
 
-                 %LOCALAPPDATA%\Temp\MACROSS
+##              %APPDATA%\Local\Temp\MACROSS
 
-    folder so that your scripts can read from it as necessary using either {TMP} or $vf19_TMP.  
-    MACROSS cleans out this folder at startup and shutdown.
-    Send "1" as a third argument to parse using pdfplumber instead of pypdf. It's
-    usually better at preserving layouts, which aids with more accurate searches, but 
-    makes it harder to just read the text output in a powershell window.
+## folder. MACROSS cleans out this folder regularly.
+## Send "1" as a third argument to parse using pdfplumber instead of pypdf. It's
+## usually better at preserving layouts, which aids with more accurate searches, but
+## makes it harder to just read the text output in a powershell window.
 
-         python.exe 'pdfdecoder.py' 'path\\to\\file' 'filename'
-
-'''
+##      python.exe 'pdfdecoder.py' 'path\\to\\file' 'filename'
 
 
 from sys import argv
