@@ -132,30 +132,16 @@ function uniStrip($dirty_string){ #mp
 
 ## Non-tool selections from the main menu
 function extras($1){
-    function flkup_(){
-        $Global:CALLER = 'MACROSS'
-        . "$dyrl_DIAMONDS\$($dyrl_LATTS[$((availableTypes -v edr -e)[0])].fname)"
-        rv -Force CALLER -Scope Global
+    function hec_(){
+        w  "`n Hit ENTER to continue." g
+        Read-Host
     }
-    function refall_(){
-        w "`n   This will pull fresh copies of ALL the tools in your diamonds folder." g
-        w '  Continue?  ' y -i
-        $Z = Read-Host
-        if($Z -notMatch "^n"){
-            foreach($f in (gci $dyrl_DIAMONDS)){rm -path $f.FullName}
-        }
-    }
-
-    if($1 -eq 'config'){splashBanner; runModify -a $(xEntry) }
-    elseif($1 -eq'dec'){cls;decodeSomething}
-    elseif($1 -eq 'strings'){stringz -w}
+    if($1 -eq 'config'){splashBanner; runModify -a $(xEntry)}
+    elseif($1 -eq 'dec'){cls;decodeSomething}
+    elseif($1 -eq 'strings'){stringz -w; hec_}
     elseif($1 -eq 'phone'){yellowPages}
     elseif($1 -eq 'passw'){updatePass}
     elseif($1 -eq 'shell'){runSomething}
-    elseif($1 -eq 'refresh'){dlNew MACROSS $dyrl_LATESTVER}
-    elseif($1 -eq 'refreshall'){refall_}
-    elseif($1 -eq 'file'){ flkup_ }
-    elseif($1 -eq 'export'){ upWrite -e }
     elseif($1 -eq 'screens'){ 
         0..11 | %{
             cls
@@ -164,24 +150,25 @@ function extras($1){
             sleep 2
         } 
     }
+    elseif($1 -eq 'debug'){ 
+        $def = returnDefault -b
+        splashBanner; consoleDebug -c $def[0]
+    }
     elseif($1 -eq 'proto'){
         if($PROTOCULTURE){ Remove-Variable -Force PROTOCULTURE -Scope Global }
         cleanGBIO -s
     }
     elseif($1 -eq 'newkey'){
-        "`n`n"
-        startUp
+        "`n`n"; startUp
         $n = Read-Host 'Enter a name for your key'
         kawamori $n -g
-        "`n Hit ENTER to continue."
-        Read-Host
+        hec_
     }
     elseif($1 -eq 'pydev'){
+        pyATTS; macrossMirror
         splashBanner
-        pyATTS; pyENV
-        cls
-        & $dyrl_PYNET "$dyrl_MACROSS\corefuncs\pydev.py"
-        pyENV -c
+        launcher -p '1' -c "$dyrl_MACROSS\corefuncs\pydev.py"
+        macrossMirror -c
     }
 }
 
@@ -255,7 +242,7 @@ function spaceFold(){
     $Global:N_=@($snn[0],$([int[]](($snn[0] -split '') -ne '')),$([int[]](($snn[1] -split '') -ne '')));
     $Global:USR=$ss[5]; $Global:dyrl_TMP=$ss[6]
     $Global:dyrl_DIAMONDS="$dyrl_MACROSS\diamonds"
-    $Global:dyrl_PG=@("$dyrl_MACROSS\corefuncs\pynet","$dyrl_MACROSS\corefuncs\pynet\garbage_io")
+    $Global:dyrl_PG=@("$dyrl_PYLIB","$dyrl_PYLIB\gbio")
     $Global:dyrl_LATTS=(gc "$($dyrl_PG[1])\LATTS.vf1" | ConvertFrom-Json)
     $Global:PROTOCULTURE=(gc "$($dyrl_PG[1])\PROTOCULTURE.vf1" | ConvertFrom-Json).$CALLER.target
 }
@@ -285,7 +272,6 @@ function consoleDebug($x=$null,$ch=$null){
         else{
             $z = $x; while($z -ne ''){
                 if($z -eq 'd'){rv cmd,x,z; consoleDebug}
-                $z = $z -replace "^debug ";
                 if($dyrl_LOG -ne 'none'){errLog INFO 'MACROSS.debug' "$USR/$dyrl_HN0`: $z"}
                 $cmd = [scriptblock]::Create("$z")
                 . $cmd
@@ -332,8 +318,8 @@ function consoleDebug($x=$null,$ch=$null){
                 Return
             }
             elseif($z -eq 'python'){
-                startUp;pyATTS;pyENV;if($dyrl_LOG -ne 'none'){errLog INFO 'MACROSS.debug' "pydev success ($dyrl_HN0)"};cls
-                if($dyrl_PYNET){ . $dyrl_PYNET }
+                startUp;pyATTS;macrossMirror;if($dyrl_LOG -ne 'none'){errLog INFO 'MACROSS.debug' "pydev success ($dyrl_HN0)"};cls
+                if($dyrl_PYCROSS){ . $dyrl_PYCROSS }
                 else{ py }
             }
             elseif($z -notIn 1..3){
@@ -371,11 +357,11 @@ function consoleDebug($x=$null,$ch=$null){
                 ''
                 screenResults "c~             SELECT A FILE ABOVE (1-$($ln-1) or `"q`" to quit):"
                 screenResults -e
-                w ' Log file >  ' g -i
+                w "`n  Log file >  " g -i
                 $z = Read-Host
 
                 if([int]$z -and $la[$z-1]){
-                    $lf = $la[$z-1]; $logmsgs = New-Object System.collections.ArrayList
+                    $lf = $la[$z-1]; $logmsgs = New-Object System.Collections.ArrayList
                     foreach($mm in Get-Content "$dyrl_LOG\$lf"){
                         gerwalk $mm
                         $logmsgs.Add($dyrl_PT) > $null
@@ -539,19 +525,21 @@ function stringz($f=$(getFile),[switch]$w=$false){   #mp
     For those deployments when "strings" isn't a default Windows utility.
 
     Extract ASCII strings/chars from files. Call this function without parameters
-    to open a nav window and select a file. You can use -f to send a filepath.
-    If you do not want to keep the output text file, use the -w option.
+    to open a nav window and select a file. Alternately, you can use the -f to send 
+    a filepath.
+
+    The -w option will save outputs to your local MACROSS\outputs folder.
 
     Send a filepath, or let the function open a dialog for you.
 
     ||examples||
     Dump strings from an executable to your screen:
 
-        stringz <filepath>
+        stringz -f <filepath>
 
-    Use -w to write outputs to a file on your desktop:
+    Use -w to write outputs to file:
 
-        strings <filepath> -w
+        strings -w
 
     #>
 
@@ -570,30 +558,15 @@ function stringz($f=$(getFile),[switch]$w=$false){   #mp
         if($w){ noBOM -t $stringlist -f $of }
     }
     elseif($f -and $f -ne ''){
-        $stringlist = mkList
-        $n = 0
-        Get-Content $f | %{
-            if( !($_ -cMatch $dyrl_ASCII)){
-                if($w){
-                    $n++
-                    w "  Extracting line $n to stringz.txt..."
-                    noBOM -t "$_" -f $of -a
-                }
-                else{
-                    [void]$stringlist.Add("$_")
-                }
+        $binstr = Get-Content $f -raw | %{
+            $_ -replace '[^\p{L}\p{N}\s:./_-]+'} | ?{ 
+                $_ -Match '^[ -~]+$' 
             }
-        }
+        if($w){ noBOM -t "$binstr" -f $of }
+        Return $binstr
     }
     if($stringlist.length -gt 0){
         Return $stringlist
-    }
-    if(Test-Path $of){
-        Get-Content $of
-        w "
-        Do you want to delete $of? " g -i
-        $z = Read-Host
-        if($z -eq 'y'){ Remove-Item -Path "$of" }
     }
 }
 
@@ -748,45 +721,52 @@ function noBOM(){   #mp
     #>
     param(
         [Parameter(Mandatory=$true)]    ## Content to write
-        $to_write,
+        [string]$to_write,
         [Parameter(Mandatory=$true)]    ## Output filepath
         [string]$file,
         [switch]$multiline,             ## Preserve your newline/carriage return
         [switch]$next,                  ## Write to existing file's next empty line
         [switch]$append                 ## Append to the end of an existing file (won't add new line)
     )
-    if($multiline){
-        if($next){
-            [IO.File]::AppendAllLines("$file",@(""))
-            [IO.File]::AppendAllLines("$file","$to_write")
-        }
-        elseif($append){ [IO.File]::AppendAllLines("$file","$to_write")}
-        else{ [IO.File]::WriteAllLines("$file","$to_write") }
+    if(-not (Test-Path $file)){
+        New-item $file | Out-Null
     }
-    elseif($next){ [IO.File]::AppendAllText("$file","`n$to_write") }
-    elseif($append){ [IO.File]::AppendAllText("$file","$to_write") }
-    else{ [IO.File]::WriteAllText("$file","$to_write") }
+    try{
+        if($multiline){
+            if($next){
+                [IO.File]::AppendAllLines("$file",@(""))
+                [IO.File]::AppendAllLines("$file","$to_write")
+            }
+            elseif($append){ [IO.File]::AppendAllLines("$file","$to_write")}
+            else{ [IO.File]::WriteAllLines("$file","$to_write") }
+        }
+        elseif($next){ [IO.File]::AppendAllText("$file","`n$to_write") }
+        elseif($append){ [IO.File]::AppendAllText("$file","$to_write") }
+        else{ [IO.File]::WriteAllText("$file","$to_write") }
+    }
+    catch{
+        errLog ERROR "$_"
+    }
 }
 
 ## Take a single large block of text and break it into multiple lines. Supply a $filename,
 ## the $block to be split, and the max line length ($maxlen). The output is a multi-line file
-## written to the $dyrl_OUTFILES folder. Requires the blockwriter.py plugin.
-function blockwriter(){
+## written to the $dyrl_OUTFILES folder.
+function blockWriter(){
     param(
-        [Parameter(Mandatory=$true)]
-        [string]$filename,
         [Parameter(Mandatory=$true)]
         [string]$block,
         [Parameter(Mandatory=$true)]
         [int]$maxlen,
-        [string]$plugin = 'blockwriter.py',
-        [string]$initial = $null
+        [string]$filename,
+        [string]$initial = $null,
+        [switch]$nowrite
     )
     function p_([switch]$c){
-        if($c -and ! $initial){pyENV -c}
-        elseif(! $initial){pyENV}
+        if($c -and ! $initial){macrossMirror -c}
+        elseif(! $initial){macrossMirror}
     }
-    $plugin = "$dyrl_PLUGINS\$plugin"
+    
     $c='';$i=0
     $block -Split '' | %{
         $c = "$c$_"
@@ -796,12 +776,9 @@ function blockwriter(){
             $c = "$c`n"
         }
     }
-    noBOM -f "$dyrl_OUTFILES\$filename" -t $($c -Join '') -m
-    <#if($MONTY -and (Test-Path -Path $plugin)){
-        p_
-        . $dyrl_PYNET "$plugin" "$filename" "$block" $maxlen $initial
-        p_ -c
-    }#>
+    $c = $($c -Join '')
+    if($nowrite){ Return $c }
+    noBOM -f "$dyrl_OUTFILES\$filename" -t $c -m
 }
 
 ## Make sure the GBIO folder is cleaned out:
@@ -832,7 +809,7 @@ function pyNet(){   #mp
     <#
     ||shorthelp||
     Write your powershell script's results to a json file (PROTOCULTURE.vf1) that can later
-    be read by MACROSS python scripts. This file is written to a folder, 'core\pynet\garbage_io',
+    be read by MACROSS python scripts. This file is written to a folder, 'corefuncs\pycross\gbio',
     that MACROSS regularly empties. You only need to send the name of your script as param1 and
     your values as param2. If you need to write something other than the default json, send an
     alternate filename in param3, and your data will be written as-is to another .vf1 file.
@@ -841,7 +818,7 @@ function pyNet(){   #mp
 
     ||longhelp||
     This function lets scripts write results to a file in the directory
-    "corefuncs\pynet\garbage_io"
+    "corefuncs\pycross\gbio"
     so that python & powershell scripts can easily share the same investigation data during a
     MACROSS session. Eventually MACROSS will improve the way it handles this.
 
@@ -1503,8 +1480,8 @@ function decodePdf($filepath,[switch]$preserve,[switch]$split){   #mp
     $emsg = "Failed to extract text from $filepath"
     $filename = $filepath -replace "^.+\\" -replace "\.\w+$"
     $readfrom = "$dyrl_TMP\decoded-pdf-$filename.vf1"
-    if($preserve){ . $dyrl_PYNET "$dyrl_PLUGINS\pdfdecoder.py" $filepath $filename 1 }
-    else{ . $dyrl_PYNET "$dyrl_PLUGINS\pdfdecoder.py" $filepath $filename }
+    if($preserve){ . $dyrl_PYCROSS "$dyrl_PLUGINS\pdfdecoder.py" $filepath $filename 1 }
+    else{ . $dyrl_PYCROSS "$dyrl_PLUGINS\pdfdecoder.py" $filepath $filename }
     if($split){ $text = uniStrip $(Get-Content $readfrom | ?{$_.Trim() -ne ""}) }
     else{ $text = $(uniStrip $(Get-Content -Raw $readfrom)) }
     if($text){
@@ -1773,15 +1750,18 @@ function kawamori(){  #mp
     <#
     ||shorthelp||
     kawamori [-c 'ID or name for your key' <REQUIRED>] [-g <GENERATE A NEW KEY>]
-        [-l <LOCAL KEYS ONLY>] [-m <SHOW CREATED MSG>]
+        [-l <LOCAL KEYS ONLY>] [-m <SHOW CREATED MSG>] [-n <USE LITERAL NAME>]
 
     ||longhelp||
     This is MACROSS's key generator for protecting regularly accessed data or
-    resources. If you have a legit key storage solution for API stuff, I 
-    recommend you use that instead, but this will work if you have nothing else.
-    To create a new key, provide any string as a key name, and use the -g option. 
-    An entry window will open for you to paste whatever value you need protected 
-    within MACROSS.
+    resources. To create a new key, provide any string as a key name, and use
+    the -g option. An entry window will open for you to paste whatever value you
+    need protected within MACROSS.
+
+    The -n option will disable creating a unique ID for your key, and instead
+    name it whatever you passed in the -c parameter, i.e. 'kawamori -c test -g'
+    will create a <UID> based on the string 'test', but 'kawamori -c test -g -n'
+    will create a key simply named 'test.mori'.
 
     To retrieve your key, supply the ID that MACROSS generated when you created
     the key. Keys are stored in MACROSS's corefuncs\resources folder.
@@ -1804,18 +1784,18 @@ function kawamori(){  #mp
         [string]$cid,
         [switch]$gen,
         [switch]$local,
-        [switch]$msg
+        [switch]$msg,
+        [switch]$no_uid
     )
 
-    if(-not (Test-Path "$dyrl_RESOURCES\kawa")){
-        New-Item -ItemType directory -Name kawa -Path $dyrl_RESOURCES
-    }
-    
     ## In a multi-user setup, you can store keys in a central location
     ## ($dyrl_CONTENT) where all validated users' scripts can read them.
     ## Note that if there are local and central keys with the same ID,
     ## the central key takes priority unless you call this function with
-    ## the -l option.
+    ## the -local option.
+    if(-not (Test-Path "$dyrl_RESOURCES\kawa")){
+        New-Item -ItemType directory -Name kawa -Path $dyrl_RESOURCES
+    }
     $checkrep = "$dyrl_CONTENT\kawa\$cid.mori"
     $assembled = "$dyrl_RESOURCES\kawa\$cid.mori"
     if((Test-Path -Path $checkrep) -and -not $local){
@@ -1829,11 +1809,14 @@ function kawamori(){  #mp
     $il1 = $N_[1].count -1; $il2 = $N_[2].count -1
     if($gen){
         $alpha = (alphanum)[0]
-        $tag = $($cid.substring(0,1))
-        if($tag -notMatch "\w"){ $tag = 's'}
-        $bid = gerwalk -e $cid
-        $hid = gerwalk -e -h $cid
-        $eid = "$tag$bid$hid" -replace "[+=/\.]"; $el = $eid.length
+        if($no_uid){ $eid = $cid }
+        else{
+            $tag = $($cid.substring(0,1))
+            if($tag -notMatch "\w"){ $tag = 's'}
+            $bid = gerwalk -e $cid
+            $hid = gerwalk -e -h $cid
+            $eid = "$tag$bid$hid" -replace "[+=/\.]"; $el = $eid.length
+        }
         while($el -lt 35){
             $al = Get-Random -min 0 -max 62
             $eid = "$($eid)$($alpha[$al])"; $el = $eid.length
