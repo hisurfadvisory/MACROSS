@@ -1,6 +1,41 @@
 ## Functions for MACROSS task validations
 
-## Don't leave crap laying around when scripts quit
+
+function diamondCount(){
+    $valid = @('#_sdf1','#_ver','#_class')
+    Remove-Variable -Force dyrl_LATTS -Scope Global   ## Clear old lists from memory
+    $Global:dyrl_LATTS = [ordered]@{}           ## Collect MACROSS class info for diamond scripts
+    $Global:dyrl_FILECT = 0                     ## Track how many diamonds are installed
+    $menunum = 0                                ## Create selector for the main menu
+    if($MONTY -or $LIFEOFBRIAN){ 
+        $ext = "*.p*"; $pa = ''     ## Count python scripts
+    }     
+    else{ $ext = "*.ps*" }          ## Ignore python scripts if python not installed
+
+    ## Record the diamonds list
+    foreach( $lc in (Get-ChildItem -File "$dyrl_DMDS\$ext" | Sort -Property Name)){
+        $check = gc $lc -First 3
+        $lclassed = $true
+        0..2 | %{
+            if(-not ($check[$_] | sls $valid[$_])){ $lclassed = $false }
+        }
+        if($lclassed){
+            $menunum++
+            $ldesc = $check[0] -replace "^\S+ " -replace ','
+            $lver = $check[1] -replace "^\S+ "
+            $lclass = $check[2] -replace "^\S+ "
+            $lname = $lc.Name -replace "\..+$"              ## Strip the file extension
+            $Global:dyrl_FILECT++                           ## Increment total diamond count
+            [macross]$lsc = $lname + ",$lclass" + ",$lver" + ",$($lc.Name)" + ",$ldesc,$menunum"   ## Create custom [macross] object
+            $Global:dyrl_LATTS.Add($lname,$lsc)             ## Only collect macross attributes for the user's scripts
+        }
+    }
+    $menunum = 0
+    if($MONTY -or $LIFEOFBRIAN){ pyATTS }
+}
+
+
+## Don't leave crap laying around when diamonds quit
 ## Using -c will perform exit cleanup; using -s will
 ## sanitize the powershell logs, and skips clearing variables
 function varCleanup([switch]$c,[switch]$s){
@@ -17,29 +52,32 @@ function varCleanup([switch]$c,[switch]$s){
         }
     }
 
+    ## Clear PROTOCULTURE values (comment these if you want them to persist even after all
+    ## diamonds finish their tasks)
+    if($env:PROTOCULTURE){ Remove-Item env:PROTOCULTURE }
+    Remove-Variable -Force PROTOCULTURE -Scope Global
+
+    ##
     Remove-Variable -Force vf_*,RESULTFILE,HOWMANY -Scope Script
     Remove-Variable -Force vf_*,dyrl_FILECT,dyrl_REPOCT,dyrl_OPT1,HELP,CALLHOLD,dyrl_CONF,`
-    dyrl_dig1,dyrl_dig2,N_,dyrl_PYPOD,RESULTFILE,HOWMANY,CALLER,PROTOCULTURE -Scope Global
+    N_,RESULTFILE,HOWMANY,CALLER -Scope Global
 
-    Foreach($file in gci $dyrl_TMP){ Remove-Item -Force -Recurse -Path $file.fullname }
+    foreach($file in gci $dyrl_TMP){ Remove-Item -Force -Recurse -Path $file.fullname }
 
-    if($env:MACONF){ Remove-Item env:MACONF }
-    if($env:PROTOCULTURE){ Remove-Item env:PROTOCULTURE }
+    if($env:MACCONF){ Remove-Item env:MACCONF }
     if($env:CALLER){ Remove-Item env:CALLER }
     if($env:HELP){ Remove-Item env:HELP }
-    if($env:dyrl_DL){ Remove-Item env:dyrl_DL }
 
     cleanGBIO -s
 
     if($c){
         customVars_
-        $lib = $dyrl_PYNET -replace 'python.exe','Lib\site-packages'
         if($MONTY){ Remove-Item env:dyrl_*,env:MACROSS,env:USR,env:MACROSSVENV }
         cleanGBIO
-        if($env:PYTHONPATH -Match $lib){
-            $env:PYTHONPATH = $env:PYTHONPATH -replace $lib -replace "^;"
+        if($env:PYTHONPATH -Like "*$dyrl_PYLIB*"){
+            $env:PYTHONPATH = $env:PYTHONPATH -replace "$dyrl_PYLIB;*"
         }
-        Remove-Variable -Force dyrl_*,MONTY,USR -Scope Global
+        Remove-Variable -Force dyrl_*,MONTY,ROBOTECH,USR -Scope Global
     }
     else{ $Global:dyrl_MPAGE = 0 }    ## Reset the main menu
 }
@@ -48,7 +86,7 @@ function varCleanup([switch]$c,[switch]$s){
 function yorn(){   #mp
     <#
     ||shorthelp||
-    Open a "yes/no" dialog to get response from analysts so your script can perform
+    Open a "yes/no" dialog to get response from analysts so your diamond can perform
     an action they choose. Buttons and icons can be changed using -b and -i, and -q
     allows you to customize the message seen by the user.
     Usage:
@@ -89,7 +127,7 @@ function yorn(){   #mp
 
     ||examples||
 
-    ## Pause your script WITHOUT a dialog box until the user acknowledges a message
+    ## Pause your diamond WITHOUT a dialog box until the user acknowledges a message
     ## by entering "ack":
         yorn -l 'ack' -n
 
@@ -171,7 +209,7 @@ function errMsg($m=0,$c='c',$f='MACROSS.errMsg',[switch]$s){   #mp
 
     ||longhelp||
     Use -m to select from a list of canned error messages to display onscreen, or send an error
-    message specific to your script that will both write to screen and write to a
+    message specific to your diamond that will both write to screen and write to a
     MACROSS log file. There are 6 canned messages:
 
         1 - 'You are not in the correct security group.'
@@ -190,7 +228,7 @@ function errMsg($m=0,$c='c',$f='MACROSS.errMsg',[switch]$s){   #mp
 
     The -c option colorizes your message on the screen.
 
-    The -f option lets you specify which function or script generated the message.
+    The -f option lets you specify which function or diamond generated the message.
 
 
     ||examples||
@@ -225,19 +263,19 @@ function errMsg($m=0,$c='c',$f='MACROSS.errMsg',[switch]$s){   #mp
             errLog ERROR $f "$($msg + '  ' + $dyrl_mErr)"
             w $c "
             $m Exiting...`n" $c
-            slp 2
+            sleep 2
             Remove-Variable -Force vf_* -Scope Global
         }
         elseif( $m -in 2..6 ){  ## Error for access check
             w "   $msg `n`n" $c
             errLog ERROR $f $msg
-            slp 2
+            sleep 2
         }
-        else{    ## Default error message for tool checks (don't send any params)
+        else{    ## Default error message for diamondchecks (don't send any params)
             cls
             w "`n`n`t $msg `n" $c
             $Global:dyrl_Z = ''  ## Prevent loops in the main menu
-            slp 1
+            sleep 1
         }
     }
     if($s){ varCleanup -c; Exit }
@@ -246,31 +284,30 @@ function errMsg($m=0,$c='c',$f='MACROSS.errMsg',[switch]$s){   #mp
 
 ## Give python what it needs to convert the [macross] class
 function pyATTS(){
-    noBOM -t $($dyrl_LATTS | ConvertTo-Json -Depth 10) -f "$($dyrl_PG[1])\LATTS.vf1"
-    #[IO.File]::WriteAllLines("$($dyrl_PG[1])\LATTS.vf1", $($dyrl_LATTS | ConvertTo-Json -Depth 10))
+    $h2j = "$($dyrl_LATTS | ConvertTo-Json -Depth 10)"
+    noBOM -t $h2j -f "$($dyrl_PG[1])\LATTS.vf1" -m
 }
-function pyENV([switch]$c,$nval="11,153,731"){
+function macrossMirror([switch]$c,$nval="11,153,731"){
     if($c){
-        foreach($e in @('PROTOCULTURE','MACONF','MACROSS','CALLER','TEMPENV','HELP')){
+        foreach($e in @('PROTOCULTURE','MACCONF','MACROSS','CALLER','TEMPENV')){
             gci env: | %{if($_.name -eq $e){ Remove-Item "env:$e" }}
         }
+        if($env:HELP){ Remove-Item env:HELP }
     }
     else{
-        $np = 'F'; $opt = 'F'
-        $psv = $PSVersionTable.PSVersion.Major
-        startUp; $l = mkList
-        if($N_){ $n1_ = "$($N_[1] -join '')"; $n2_ = "$($N_[2] -join '')"; $nval = "$($N_[0]),$n1_,$n2_" }
-        $dyrl_CONF.keys | Sort -Descending | ?{$_ -notIn @('di1','di2','mac')} | %{
+        $np,$opt = 'F','F'
+        $l = mkList
+        startUp; $dyrl_CONF.keys | Sort -Descending | ?{$_ -notIn @('di1','di2','sky')} | %{
             [void]$l.add($_ + '::' + "$($dyrl_CONF[$_])")
         }
-        $env:MACONF = "$($l -join ';')"
+        $psv = $PSVersionTable.PSVersion.Major
+        $env:MACCONF = "$($l -join ';')"
         if($ROBOTECH){ $np = 'T' }
-        if($dyrl_OPT1){ $opt = $dyrl_OPT1 }
+        if($dyrl_OPT1){ $opt = 'T' }
         $logfile = "$dyrl_LOG\$(Get-Date -format 'yyyy-MM-dd')`.log"
-        $env:MACROSS = "$dyrl_MACROSS;$dyrl_OUTFILES;$dyrl_CONTENT;$dyrl_LOG;$nval;$USR;$dyrl_TMP;$np;$opt;$dyrl_PYNET;$psv"
+        $env:MACROSS = "$dyrl_MACROSS;$dyrl_OUTFILES;$dyrl_CONTENT;$dyrl_LOG;$nval;$USR;$dyrl_TMP;$np;$opt;$psv"
         if($PROTOCULTURE){ $env:PROTOCULTURE = $PROTOCULTURE }
         if($CALLER){ $env:CALLER = $CALLER }
-        if($HELP){ $env:HELP = 'T' }
     }
 }
 
@@ -284,7 +321,7 @@ function xEntry($x='456E746572207468652061646D696E2070617373776F7264'){
 function setLocal([switch]$init,[switch]$mine){   #mp
     <#
     ||shorthelp||
-        setLocal [-m GET_MY_CURRENT_IP]
+        $nets = setLocal
 
     ||longhelp||
     Dynamically generates the domain & first two octets for your IPv4 and IPv6 networks so
@@ -294,36 +331,41 @@ function setLocal([switch]$init,[switch]$mine){   #mp
 
     $ip = setLocal
 
-    $v4         = [string]$ip[0]
-    $v6         = [string]$ip[1]
-    $domain     = [string]$ip[2]
+    $enclave    = [string]$ip[0]
+    $v4         = [string]$ip[1]
+    $v6         = [string]$ip[2]
+    $domain     = [string]$ip[3]
 
 
     #>
     if($init){
-        gerwalk 'MmUyYTI4Mjg2Nzc2N2M2NzY1NzQyZDc2NjE3MjY5NjE2MjZjNjUyOTI4MjA3Yz
-        VjNWM3MzI5MmIyODY4MjgyODZiMjkzZjJlMmEyOTNmMjkzZjVjMmE3YzY4NmI1ZjQzNGY0Z
-        TQ2NWI1YzJlNWM1YjVkN2M2ZDY5NmQ2NTc0Njk2MzQxNmM2YzZmNzk3YzcwNzk0NTRlNTY3
-        YzY4NmI1ZjY0Njk1YjMxMzI1ZDdjNWMyNDRlNWY3YzczNzQ2MTcyNzQ3NTcwN2M2YzZmNjM
-        2MTZjMjg3MjY1NjE2NDdjNzc3MjY5NzQ2NTI5NzA3YzI4NzU3MDdjNzM2OTY0NjU3YzY0Nm
-        Y3NzZlMjk3NzcyNjk3NDY1MjkyZTJh'
+        gerwalk 'MmUyYTI4Mjg2Nzc2N2M2NzY1NzQyZDc2NjE3MjY5NjE2MjZjNjUyOTI4MjA3YzVjN
+        WM3MzI5MmIyODY0MjgyODc5NzI2YzI5M2YyZTJhMjkzZjI5M2Y1YzJhN2M3Mzc0NjE3Mjc0NzU3
+        MDdjNDM0ZjRlNDYyZTdiMzEyYzMyN2QyODczNmI3OTdjNjI2YzMwN2M2NDY5Mjk3YzY3NjU3Mjc
+        3NjE2YzZiN2M1YzI0NGU1ZjdjNjQ3OTcyNmM1ZjQzNGY0ZTQ2NDk0NzdjNmM2ZjYzNjE2YzI4Nz
+        I2NTYxNjQ3Yzc3NzI2OTc0NjUyOTcwN2MyODc1NzA3YzczNjk2NDY1N2M2NDZmNzc2ZTI5Nzc3M
+        jY5NzQ2NTI5MmUyYQ=='
         gerwalk -h $dyrl_PT
         Return "$dyrl_PT"
     }
+
     $local = [System.Net.Dns]::GetHostEntry($dyrl_HN0)
-    $local.AddressList | %{
-        if($_ -Like '*:*'){ $a = ($_ -Split ':')[0..3] -Join ':' }
-        else{ $a = ($_ -Split '\.')[0..1] -Join '.' }
+    foreach($m in $local.AddressList){
+        if($m -Like '*:*'){ $a = ($m -Split ':')[0..3] -Join ':' }
+        else{ $a = ($m -Split '\.')[0..1] -Join '.' }
         if($a -Like 'fe80*'){ $l6 = $a }
         elseif($a -Like '169*'){ $l4 = $a }
         elseif($a -Like "*:*"){ $i6 = $a }
-        else{ $i4 = $a }
+        else{
+            if($mine -and [int]$dyrl_PSVER -ge 6 ){ Return $m.IPAddressToString }
+            if($mine -and [int]$dyrl_PSVER -lt 6 ){ Return $m }
+            else{ $i4 = $a }
+        }
     }
-    if($mine){Return "$($local.AddressList | ?{$_ -Like "$i4*"})" }
     if($l6 -and -not $i6){ $i6 = $l6 }
-    elseif(! $i6){ $i6 = $null }
+    elseif(-not $i6){ $i6 = $null }
     if($l4 -and -not $i4){ $i4 = $l4 }
-    elseif(! $i4){ $i4 = $null }
+    elseif(-not $i4){ $i4 = $null }
     try{ $dom = ".$($env:USERDNSDOMAIN.toLower())" }
     catch{ $dom = $null }
 
@@ -332,13 +374,15 @@ function setLocal([switch]$init,[switch]$mine){   #mp
 }
 
 function setUser($ac,[switch]$c,[switch]$i){
+    function rs_(){gerwalk $dyrl_CONF.uac; Return [int]$dyrl_PT}
     if($c){
         $Global:USR = $dyrl_USRCHK
         Return
     }
+    $rs = rs_
     if($ac){
         $acn = $ac[4]
-        if($dyrl_UAC){
+        if($rs){
             $fm = "Mismatch for tier $acn"; $fc = $($dyrl_modn[1] / ($dyrl_ACCESSTIER.Item1) -eq $dyrl_modn[0])
             if(! $dyrl_USERAUTH){ Return $dyrl_ACCESSTIER.Item2 }
             elseif($ac -eq 'common'){ Return $fc }
@@ -363,21 +407,17 @@ function setUser($ac,[switch]$c,[switch]$i){
         if( ! $u ){ $u = $env:USERNAME }
 
         ## $USR is a common variable, so don't set read-only but use this to reclaim it if
-        ## another script has overwritten the value. Or, you can just use the read-only
+        ## another diamond has overwritten the value. Or, you can just use the read-only
         ## $dyrl_USRCHK instead. But it is more chars to write and I'm lazy. :p
         $Global:USR = $u -replace "^(.+\\)?"
         lockIn -n dyrl_USRCHK -v $USR
-        $echeck = $false
         $tiers = @()
 
         foreach($w in @('r','a')){
             1..3 | %{
                 $k = "t$w$_"
                 gerwalk $dyrl_CONF.$k
-                if($dyrl_PT -ne 'none'){
-                    $echeck = $true
-                    $dyrl_PT -Split ',' | %{if($_ -eq $USR){ $tiers += $k}}
-                }
+                $dyrl_PT -Split ',' | %{if($_ -eq $USR){ $tiers += $k }}
             }
         }
 
@@ -390,15 +430,16 @@ function setUser($ac,[switch]$c,[switch]$i){
             lockIn -n dyrl_USERAUTH -v $g
         }
 
-        if($echeck -and $tiers.count -eq 0){ errMsg $em1; Exit }
-        if(-not $echeck){
-            lockIn -n dyrl_UAC -v $false
+        if($rs -and $tiers.count -eq 0){
+            errMsg $em1
+            varCleanup -c
+            Exit 
+        }
+        if(! $rs){
             lockIn -n dyrl_modn -v @(111,555)
             tup_ 1000 $true $true $true
-            if($MONTY -or $LIFEOFBRIAN){ pyATTS }
         }
         elseif($tiers.count -gt 0){
-            lockIn -n dyrl_UAC -v $true
             $tx1,$tx2,$tx3 = $false,$false,$false
             $id = Get-Random -min 10000000 -max 9999999999
             $idm = Get-Random -min 500 -max 50000
@@ -426,29 +467,34 @@ function setUser($ac,[switch]$c,[switch]$i){
 
             tup_ $id $tx1 $tx2 $tx3 -g $true
 
-            ## Figuring out which desktop path is being used requires voodo magic in this network
             if($dyrl_USERAUTH){
-                if($MONTY -or $LIFEOFBRIAN){ pyATTS }
-                errLog AUTH 'MACROSS.setUser' "$USR successfully launched MACROSS ($env:COMPUTERNAME)"
+                errLog AUTH 'MACROSS.setUser' "$USR successfully launched MACROSS ($dyrl_HN0)"
             }
 
-            rv id,idm,idc,tx*
+            rv id,idm,idc,priv,tx*
         }
-        else{
-            errMsg $em2; Exit
+        elseif($rs){
+            errMsg $em2
+            varCleanup -c
+            Exit
         }
-
+        
     }
+    elseif(-not $rs){ errLog AUTH 'MACROSS.setUser' "$USR successfully launched MACROSS ($dyrl_HN0)" }
 }
 
 
 ## Clean up the logging
 function skSanitize([switch]$c=$false){
-    $mixed = 'M2M1MjQ1NDQ0MTQzNTQ0NTQ0M2UyYzIwNTQ2ODYxNzQyNzczMjA2MTIwNzA3MjY5NzY2OTZjN
-    jU2NzY1NjQyMDYzNmY2ZDZkNjE2ZTY0MmUyYzIwNDM1NTUyNTI0NTRlNTQyMDQzNGY0ZTQ2NDk0NzU1NTI0
-    MTU0NDk0ZjRlMjA0YjQ1NTk1MzJjNTc2NTZjNjM2ZjZkNjUyMDc0NmYyMDRhNzU2NDY3NjU2ZDY1NmU3NDI
-    wNDQ2MTc5MmM0NDZmMjA3OTZmNzUyMDZlNjU2NTY0MjA3NDZmMjA2MTY0NjQyMDZmNzIyMDYzNjg2MTZlNj
-    c2NTIwNjE2ZTc5MjA2NDY1NjY2MTc1NmM3NDIwNjM2ZjZlNjY2OTY3NzMzZjIwMjg3OTJmNmUyOQ=='
+    $mixed = 'M2MgNTIgNDUgNDQgNDEgNDMgNTQgNDUgNDQgM2UgMmMgMjAgNTQgNjgg
+    NjEgNzQgMjcgNzMgMjAgNjEgMjAgNzAgNzIgNjkgNzYgNjkgNmMgNjUgNjcgNjUgNj
+    QgMjAgNjMgNmYgNmQgNmQgNjEgNmUgNjQgMmUgMmMgMjAgNDMgNTUgNTIgNTIgNDUg
+    NGUgNTQgMjAgNDMgNGYgNGUgNDYgNDkgNDcgNTUgNTIgNDEgNTQgNDkgNGYgNGUgMj
+    AgNGIgNDUgNTkgNTMgMmMgNGYgNzIgNjUgMjAgNmUgNmYgMjAgNzUgNzQgNjEgMjAg
+    NmYgMjAgNmIgNjkgNmIgNjUgMjEgMmMgNDQgNmYgMjAgNzkgNmYgNzUgMjAgNmUgNj
+    UgNjUgNjQgMjAgNzQgNmYgMjAgNjEgNjQgNjQgMjAgNmYgNzIgMjAgNjMgNjggNjEg
+    NmUgNjcgNjUgMjAgNjEgNmUgNzkgMjAgNjQgNjUgNjYgNjEgNzUgNmMgNzQgMjAgNj
+    MgNmYgNmUgNjYgNjkgNjcgNzMgM2YgMjAgMjggNzkgMmYgNmUgMjk='
     if(! $dyrl_CONF){ startUp }
     function transcripts_($dir,$message=''){
         try{
@@ -514,21 +560,6 @@ function skSanitize([switch]$c=$false){
 		'there are no powershell transcripts to sanitize.',
 		'possible permission lock.'
 	)
-    $ptr1 = "C:\Users\$USR\Documents"
-    $ptr2 = "$($env:HOMESHARE -replace "\.ent\..+mil" -cReplace '\HOME\','\FRD\' -replace "ENT$")\Documents"
-    if(! (Test-Path $ptr1)){ $ptr1 = $null }
-    if(! (Test-Path $ptr2)){ $ptr2 = $null }
-    gerwalk $mixed; gerwalk $dyrl_PT -h; $mix = $dyrl_PT -Split ','
-
-    ## Sanitize transcripts
-    $scrub = "MACROSS - $($mix[0])"
-    @($ptr1,$ptr2) | %{
-        if($_){
-            w "`n Final cleanups...`n" c
-            transcripts_ $_
-            w "...done!`n" c
-        }
-    }
 
     ## Sanitize logs
     $psr = "$env:AppData\Microsoft\Windows\Powershell\PSReadline"
@@ -555,86 +586,86 @@ function skSanitize([switch]$c=$false){
 }
 
 
-function collab(){   #mp
+function valkyrie(){   #mp
     <#
     ||shorthelp||
-    Enrich or collect data from other MACROSS scripts. An optional value can be
-    sent as parameter three if the called script's .evalmax value is 2.
+    Enrich or collect data from other MACROSS diamonds. An optional value can be
+    sent as parameter three if the called diamond's .evalmax value is 2.
     Usage:
-        collab [-m SCRIPTNAME] [-c YOUR_SCRIPTNAME] [-o OPTIONAL_VALUE]
+        valkyrie [-m SCRIPTNAME] [-c YOUR_SCRIPTNAME] [-s ADDITIONAL_PARAM_TO_SEND]
             [-n OPEN IN NEW WINDOW]
 
     ||longhelp||
-    Call this function from one script to load your current investigation values into
+    Call this function from one diamond to load your current investigation values into
     another. You can send up to 3 parameters.
 
-    The 1st param is the script filename you're calling, and is *required*. The script
-    also needs to be located in the diamonds folder and recognized by MACROSS, i.e. it
+    The 1st param is the diamond ID you're calling, and is *required*. The diamond
+    also needs to be located in the modules folder and recognized by MACROSS, i.e. it
     has the magic terms in the first three lines --
 
-        #_SDF1
+        #_sdf1
         #_ver
         #_class
 
-    The 2nd param is the name of the script calling this function ($CALLER) and is
+    The 2nd param is the name of the diamond calling this function ($CALLER) and is
     required. (I set this to be required so that you always have the option to have
-    your scripts lookup attributes from  the $dyrl_LATTS array and determine its
+    your diamonds lookup attributes from  the $dyrl_LATTS array and determine its
     .valtype, .lang, etc.)
 
-    The 3rd param -n will launch the called script in a new window. You should only
-    do this with scripts that do NOT rely on MACROSS resources and functions. The
+    The 3rd param -n will launch the diamond in a new window. You should only
+    do this with diamonds that do NOT rely on MACROSS resources and functions. The
     new window is an entirely separate session from your running MACROSS instance.
 
-    The 4th param -o is an ***optional*** item you're passing if you want something
-    other than $PROTOCULTURE to be eval'd, or if the script being called requires 2 eval
-    parameters. (Note -- that script must be coded to accept this optional param as
-    "$deculture", otherwise it will fail).
+    The 4th param -s is an ***optional*** item you're passing if you want something
+    other than $PROTOCULTURE to be eval'd, or if the diamond being called requires 2 eval
+    parameters. (Note -- that diamond must be coded to accept this optional param as
+    "$spiritia", otherwise it will fail).
 
-    If you need the called script to launch in a new window, use the -n option. Be aware
-    that the called script will NOT have access to MACROSS resources if launched in a new
-    window, as it will be its own entirely different session! -n should only be used for
-    scripts that can work outside of MACROSS.
+    The $PROTOCULTURE variable should **NEVER** be passed as a parameter. It should only
+    ever be a global variable all diamonds can read. If you pass another value to valkyrie,
+    make sure the diamond you are calling has an .evalmax value greater than 0.
 
-    The $PROTOCULTURE variable should already be globally set by ***your*** script. If you
-    pass another value in, make sure the script you are calling has an .evalmax value of 2.
-
-    For instance, it could be that $PROTOCULTURE is globally set, but you're calling a script
-    that can accept more than one item to evaluate. In this case, you can send a new value to
-    this function to be passed along in addition to $PROTOCULTURE, if the called script is
-    designed to recognize when it is receiving a parameter while $PROTOCULTURE also contains a
-    value.
-
-    (After the called script exits, $CALLER will be erased, but $PROTOCULTURE will remain
+    (After the called diamond exits, $CALLER will be erased, but $PROTOCULTURE will remain
     globally available unless you explicitly remove it; you can force $PROTOCULTURE to always
     clear when the MACROSS menu loads by modifying the varCleanup function at the top of this
     script)
 
     Also remember that MACROSS intends for the following variables to be global as well, *but*
-    they get cleared every time you exit a script back to the MACROSS menu:
+    they get cleared every time you exit a diamond back to the MACROSS menu:
 
-    1. $RESULTFILE -- any files generated by your scripts that can be used for
-        further eval or formatting in other scripts
-    2. $HOWMANY -- the number of successful tasks tracked between scripts
+    1. $RESULTFILE -- any files generated by your diamonds that can be used for
+        further eval or formatting in other diamonds
+    2. $HOWMANY -- the number of successful tasks tracked between diamonds
 
     ||examples||
-    Example on how you might use the findDiamond function to search each tool's MACROSS class
-    for tools that look up data on hostnames, and then filtering that list of tools based on
-    their .evalmax and .rtype values to automatically call them via the collab function to collect
-    data on the hostnames you're investigating:
+    Example on how you might use the findDF function to search for diamonds that look up data on
+    hostnames, and then filtering that list of diamonds based on their .evalmax and .rtype values
+    to automatically call them via the valkyrie function to collect data on the hostnames you're
+    investigating:
 
         $results = @()
-        $list = findDiamond 'hostname'
+        $list = findDF 'hostname'
         $hostnames | foreach-object{
             $PROTOCULTURE = $_
-            foreach( $tool in $list ){
-                if($tool.evalmax -gt 0 ` -and $tool.rtype -ne 'onscreen'){
-                    $results += $(collab $tool.fname 'MyScriptName')
+            foreach( $diamond in $list ){
+                if($diamond.evalmax -gt 0 ` -and $diamond.rtype -ne 'none'){
+                    $results += $(valkyrie $diamond.fname 'MyScriptName')
                 }
             }
         }
 
-    ** The .rtype attribute "onscreen" means a script doesn't return data, it only outputs
-    its results to the screen.
+    ** Make sure to be consistent when assigning an .rtype attribute to your diamonds, so that
+    the findDF function gives you the correct diamonds every time! For example, if there are diamonds
+    that return straight json vs. writing json to a file, you might use separate .rtypes, like 'json'
+    vs. 'json file'
+
+    **otaku notes: "valkyrie" is the name of the original fighters developed to combat the giant
+     alien Zentradi. The valkyrie had 3 modes: a traditional fighter jet, a "battroid" mecha
+     (giant robot) and "gerwalk", a hybrid form as a fighter jet with arms and legs.
+
+     "spiritia" is the term used by the alien Protodevlin to describethe energy & morale generated
+     by human music. Specifically, the band "Firebomber's" rock anthems.
+
 
 
     #>
@@ -644,15 +675,15 @@ function collab(){   #mp
         [Parameter(Mandatory=$true)]
         [string]$c,
         [switch]$n=$false,
-        $o=$null
+        $sp=$null
     )
 
     function pyTool_(){
         if($dyrl_NEWW){
-            if($o){ launcher $mod -n -p -alt $o -v $vtype }
+            if($sp){ launcher $mod -n -p -alt $sp -v $vtype }
             else{ launcher $mod -n -p -v $vtype }
         }
-        elseif($o){ launcher $mod -p -alt $o -v $vtype -x $sorted }
+        elseif($sp){ launcher $mod -p -alt $sp -v $vtype -x $sorted }
         else{ launcher $mod -p -v $vtype -x $sorted }
     }
 
@@ -661,9 +692,9 @@ function collab(){   #mp
 
     if($n){ $Global:dyrl_NEWW = $true }
 
-    $module = $dyrl_LATTS.$m.fname
+    $diamond = $dyrl_LATTS.$m.fname
     $vtype = $dyrl_LATTS.$c.valtype
-    $mod = "$dyrl_DIAMONDS\$module" -replace "\\\\",'\'
+    $mod = "$dyrl_DMDS\$diamond" -replace "\\\\",'\'
     $valid = setUser "$($dyrl_LATTS.$m.access)"
 
     if( $valid -and (Test-Path -Path $mod) ){
@@ -674,23 +705,23 @@ function collab(){   #mp
             pyTool_
             if(Test-Path $result){
                 $result = Get-Content -Raw $result | ConvertFrom-Json
-                $tool = $result.PSObject.Properties.Name
-                if($result.$tool.result -eq 'WAITING'){
-                    Return $result.$tool.target
+                #$tool = $result.PSObject.Properties.Name
+                if($result.result -eq 'WAITING'){
+                    Return $result.protoculture
                 }
                 else{
-                    Return $result.$tool.result
+                    Return $result.result
                 }
             }
         }
         else{
             if( $dyrl_NEWW ){
-                ## Launches script in new window if user desires; WILL NOT SHARE CORE MACROSS VALUES OR FUNCTIONS!
-                if($o -and $o -ne $PROTOCULTURE){launcher -n "$mod -deculture $o" -v $vtype}
+                ## Launches diamond in new window if user desires; WILL NOT SHARE CORE MACROSS VALUES OR FUNCTIONS!
+                if($sp -and $sp -ne $PROTOCULTURE){launcher -n "$mod -spiritia $sp" -v $vtype}
                 else{launcher $mod -v $vtype}
             }
             else{
-                if($o -and $o -ne $PROTOCULTURE){ . $mod -deculture $o }
+                if($sp -and $sp -ne $PROTOCULTURE){ . $mod -spiritia $sp }
                 else{ launcher $mod -v $vtype }
             }
             Remove-Variable -Force CALLER -Scope Global
@@ -708,40 +739,42 @@ function collab(){   #mp
 
 
 
-function findDiamond($v,$l,[switch]$e,$m=$null){   #mp
+function findDF($v,$l,[switch]$e,$m=$null){   #mp
     <#
     ||shorthelp||
-    Search MACROSS tools by their .valtype attributes. Use -l to specify
+    Search MACROSS diamonds by their .valtype attributes. Use -l to specify
     language, and -e to match exact .valtypes
     Usage:
-        findDiamond [-v VALTYPE1,VALTYPE2...] [-l LANGUAGE] [-e FORCE_EXACT_MATCH]
+        findDF [-v VALTYPE1,VALTYPE2...] [-l LANGUAGE] [-e FORCE_EXACT_MATCH]
     [-m number of parameters]
 
     ||longhelp||
-    When you need to use the "collab" function to pass values into other scripts, you can find
-    relevant tools by calling this function with the .valtypes you want as parameter -v (comma-
+    When you need to use the "valkyrie" function to pass values into other scripts, you can find
+    relevant diamonds by calling this function with the .valtypes you want as parameter -v (comma-
     separated), and if necessary, you can pass the language (powershell or python) as the optional
     parameter -l.
 
     Use -e if you want the .valtype to be an EXACT match.
 
     The -m option lets you specify scripts that accept n number of parameters (default is 1: if
-    a MACROSS tool only looks for a $PROTOCULTURE value, its .evalmax value should be 1; if a script can
+    a MACROSS diamondonly looks for a $PROTOCULTURE value, its .evalmax value should be 1; if a diamond can
     accept a separate parameter, the .evalmax will be 2; if niether of those is true, the .evalmax
     will be 0).
 
-    Any tools matching your request get added to the response list, that returns to your script.
-    You can use that list to automatically query other tools via the "collab" function.
+    Any diamonds matching your request get added to the response list, that returns to your script.
+    You can use that list to automatically query other diamonds via the "valkyrie" function.
 
     ||examples||
     Ask for any scripts that process usernames, including EDR APIs:
 
-        findDiamond 'user, edr'
+        findDF 'user, edr'
 
     Ask only for python scripts with .valtype that equals "firewall api" or "url lookup":
 
-        findDiamond -l python -v 'firewall api,url lookup' -e
+        findDF -l python -v 'firewall api,url lookup' -e
 
+    **otaku note: "Diamond Force" is the name of the top fighter squadron assigned to Battle 7,
+    the Macross 7 Expedition fleet's battle carrier.
 
     #>
     function ce_($1,$2){
@@ -760,76 +793,80 @@ function findDiamond($v,$l,[switch]$e,$m=$null){   #mp
             if($max){
                 if($e -and $l){
                     if($lnm.valtype -eq "$vv" -and $lnm.lang -eq "$l"){
-                        [void]$t.Add($nm)
+                        $t.Add($nm) | Out-Null
                         $c++
                     }
                 }
                 elseif($e){
                     if($lnm.valtype -eq "$vv"){
-                        [void]$t.Add($nm)
+                        $t.Add($nm) | Out-Null
                         $c++
                     }
                 }
                 elseif($l){
                     if($lnm.lang -eq "$l" -and $lnm.valtype -Like "*$vv*"){
-                        [void]$t.Add($nm)
+                        $t.Add($nm) | Out-Null
                         $c++
                     }
                 }
                 elseif($lnm.valtype -Like "*$vv*"){
-                    [void]$t.Add($nm)
+                    $t.Add($nm) | Out-Null
                     $c++
                 }
             }
         }
     }
-
-    Return $($t | Sort -U)
+    Return $($t.toArray() | Sort -U)
 }
 
 
 ## Execute the selected automation tool, with any alt options. Display errors for failed launch.
 ## $alt options are dependent on the tool itself; sending an $alt to the wrong tool as the
-## -deculture parameter can cause problems!
+## -kreese parameter can cause problems!
 function launcher(){
     param(
-        [switch]$new=$false,
-        [switch]$py=$false,
+        [switch]$new=$false,            ## Open new window
         [Parameter(Mandatory=$true)]
-        [string]$command,
-        $alt,
-        [string]$vt,
-        [string]$sys='python',
-        [string]$xm=$null
+        [string]$command,               ## diamond script
+        [string]$py='2',                ## execute system python (1) or alt python (0)
+        $alt=$null,                     ## -spiritia param/arg
+        [string]$vt,                    ## diamond valtype
+        [string]$xm=$null               ## option
     )
     function err_(){
         errLog ERROR 'MACROSS.launcher' "Failed to launch $command"
         macrossHelp -h
     }
+    
+
+    ## Regardless of 'python0' or 'python1' as the diamond's .lang value, if only one
+    ## python version is available, we'll attempt to execute it.
+    function whichPy_($option){
+        pyATTS
+        if($option -eq '1' -or -not $MONTY){
+            try{ py $command }
+            catch{ err_ }
+        }
+        elseif($option -eq '0' -or -not $LIFEOFBRIAN){
+            try{ & $dyrl_PYCROSS $command }
+            catch{ err_ }
+        }
+    }
 
     if($PSVersionTable.PSVersion.Major -lt 7){ $exe = 'powershell.exe' }
     else{ $exe = 'pwsh.exe' }
 
-    if($py){
-        pyATTS; pyENV -n $xm
-        if($alt){ $command = "$command $alt"}
-        if($sys -eq 'python'){
-            if($dyrl_PYNET){
-                . $dyrl_PYNET $command
-            }
-            else{
-                py $command
-            }
-        }
-        pyENV -c
+    if($py -ne '2'){
+        if($alt){ $command = "$command $alt" }
+        whichPy_ "$py"
     }
     elseif($alt){
         if($new){
-            try{ Start-Process $exe $command -deculture $alt }
+            try{ Start-Process $exe $command -kreese $alt }
             catch{ err_ }
         }
         else{
-            try{ . $command -deculture $alt }
+            try{ . $command -kreese $alt }
             catch{ err_ }
         }
     }
@@ -845,55 +882,50 @@ function launcher(){
     }
 }
 
-
 ################################
-## Verify tool locations, permissions, and options; $r will force an update/download of the
-## latest version of the selected tool if a repo is configured
+## Verify a diamond's location, permissions, and options, get it ready for launch; $r will force
+## an update/download of the latest version of the selected diamond if a repo is configured
 ################################
-function loadDiamond($diamond,[switch]$r=$false){
+function flightDeck($dmd,[switch]$r){
 
-    if($diamond -in $dyrl_LATTS.keys){
+    if($dmd -in $dyrl_LATTS.keys){
 
-        $tf = $($dyrl_LATTS.$diamond.fname)
-        $MODULE = "$dyrl_DIAMONDS\$tf"
+        $tf = $($dyrl_LATTS.$dmd.fname)
+        $DIAMOND = "$dyrl_DMDS\$tf"
 
-        # Make sure the script still exists before trying to run
-        $check = Test-Path $MODULE -PathType Leaf
-        $valid = setUser -a "$($dyrl_LATTS.$diamond.access)"
-        $valtype = $dyrl_LATTS.$diamond.valtype
-        $hlang = $dyrl_LATTS.$diamond.lang
+        # Make sure the diamond still exists before trying to run
+        $check = Test-Path $DIAMOND -PathType Leaf
+        $valid = setUser -a "$($dyrl_LATTS.$dmd.access)"
+        $valtype = $dyrl_LATTS.$dmd.valtype
+        $dlang = $dyrl_LATTS.$dmd.lang
 
         if( $check -and $valid ){
             startUp
             $sorted = "$($N_[0]),$($N_[1] -join ''),$($N_[2] -join '')"
-            ## Check tool versions
-            if( $r ){ verChk $diamond 'refresh' }
-            else{ verChk $diamond }
 
-            # Run the script selected by the user
-            if( $hlang -eq 'python' ){
+            # Run the diamond selected by the user
+            if( $dlang -Like 'python*' ){
                 cls
                 if($dyrl_NEWW){
-                    $MODULE = $($MODULE -replace "\\\\",'\') ## I don't know why extra slashes get added "sometimes but not always" :/
-                    launcher $MODULE -p -n -v $valtype -s $hlang
+                    $DIAMOND = $($DIAMOND -replace "\\\\",'\') ## I don't know why extra slashes get added "sometimes but not always" :/
+                    launcher $DIAMOND -p $dlang[-1] -n -v $valtype
                 }
                 else{
-                    #py $MODULE
-                    launcher $MODULE -p -v $valtype -x $sorted -s $hlang
+                    launcher $DIAMOND -p $dlang[-1] -v $valtype -x $sorted
                 }
             }
             else{
-                $diamond = ''
-                ## Launch script in new window if user desires; WILL NOT SHARE CORE MACROSS FUNCTIONS!
-                if( $dyrl_NEWW ){ launcher -n $MODULE -v $valtype }
-                else{ launcher $MODULE -v $valtype }
+                $dmd = ''
+                ## Launch diamond in new window if user desires; WILL NOT SHARE CORE MACROSS FUNCTIONS!
+                if( $dyrl_NEWW ){ launcher -n $DIAMOND -v $valtype }
+                else{ launcher $DIAMOND -v $valtype }
             }
             $Global:dyrl_NEWW = $false  ## Always make sure this is reset
 
         }
         elseif($check){
             w '  Wrong tier group   ' -b r -f k     ## Incorrect tier group
-            slp 2
+            sleep 2
         }
         else{
             errMsg
@@ -904,8 +936,48 @@ function loadDiamond($diamond,[switch]$r=$false){
         macrossHelp -h
     }
 }
+## Set default values for python execution
+function setPY(){
+    $npi = "No python installed"
 
+    ## This is the *usual* path with the "py" alias that will be used if $LIFEOFBRIAN 
+    ## is $true:
+    ##      "$env:LOCALAPPDATA\Programs\Python\Python3*\python.exe"
+    ## If you specified an alternate python install during setup, set your diamond
+    ## script's .lang value to "python0" to use it.
+    ## MACROSS' macross library was only tested with python 3.13, so your mileage 
+    ## may vary.
 
+    $versions = mkList
+    try{ $version = "$(py -V)" }
+    catch{ $version = $null }
+    if($version){ 
+        if(-not $LIFEOFBRIAN){ lockIn -n LIFEOFBRIAN -v $true }
+        $versions += $version
+    }
+    if($dyrl_PYCROSS -and (Test-Path $dyrl_PYCROSS)){
+        $altver = "$(& $dyrl_PYCROSS -V)"
+        if($altver){
+            $versions += $altver
+            lockIn -n MONTY -v $true
+        }
+    }
+    if($versions.count -eq 0){ $versions += $npi }
 
+    $Global:dyrl_PYVERS = $versions -Join ' | '
 
-
+    ## Make sure powershell can find the macross python library
+    if($dyrl_PYVERS -ne $npi){
+        if($LIFEOFBRIAN -and (Test-Path "$($dyrl_PG[0])\__init__.py")){
+            if(-not $env:PYTHONPATH){ $env:PYTHONPATH = $dyrl_PG[0] }
+            elseif($env:PYTHONPATH -notMatch $dyrl_PG[0]){ $env:PYTHONPATH = "$($dyrl_PG[0]);$env:PYTHONPATH" }
+        }
+        lockIn -n dyrl_PG -v @("$dyrl_PYLIB","$dyrl_PYLIB\gbio")
+        if(-not $env:PYTHONPATH){
+            $env:PYTHONPATH = $dyrl_PYLIB
+        }
+        elseif($env:PYTHONPATH -notLike "*$dyrl_PYLIB*"){
+            $env:PYTHONPATH += ";$dyrl_PYLIB"
+        }
+    }
+}
