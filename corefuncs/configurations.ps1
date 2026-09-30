@@ -19,11 +19,11 @@ function findUsers($gpnm){
     $ll = $ll | Sort -u
     Return $ll
 }
-function updateMAC($new,$old){
+function updateSKY($new,$old){
     $current_conf = mkList
-    $current_conf.add("mac$(gerwalk -e $new)") | Out-Null
+    $current_conf.add("sky$(gerwalk -e $new)") | Out-Null
     $old.keys | %{
-        if($_ -ne 'mac'){$current_conf.add("$_$($old.$_)") | Out-Null}
+        if($_ -ne 'sky'){$current_conf.add("$_$($old.$_)") | Out-Null}
     }
     return $current_conf
 }
@@ -98,6 +98,26 @@ function confirmUsers($ulist,[string]$utype,[int]$tier){
     $label.Text = 'If you did not enter users for this tier, leave "none" checked.'
     $form.Controls.Add($label)
 
+    $textbox = New-Object System.Windows.Forms.TextBox:790
+    $textbox.Location = New-Object System.Drawing.Point(10,400)
+    $textbox.Size = New-Object System.Drawing.Size(200,12)
+    $textbox.Visible = $true
+    $form.Controls.Add($textbox)
+
+    $addButton = New-Object System.Windows.Forms.Button
+    $addButton.Location = New-Object System.Drawing.Point(225,400)
+    $addButton.Size = New-Object System.Drawing.Size(175,23)
+    $addButton.Text = '<- Add an unlisted user ("none" to clear)'
+    $form.Controls.Add($addButton)
+
+    $addButton.Add_Click({
+        $newUser = $textbox.Text
+        if( $ulist -notContains $newUser ){
+            [void]$checkedlist.Items.Add($newUser)
+            [void]$chechedlist.Items[$checkedlist.Items.Count - 1].SubItems.Add($newUser)
+        }
+    })
+
 
     [void]$form.Controls.Add($checkedlist)
     $form.Topmost = $true
@@ -108,7 +128,9 @@ function confirmUsers($ulist,[string]$utype,[int]$tier){
         $confirmed = mkList
         for($i = 0; $i -lt $checkedlist.Items.Count; $i++){
             if ($checkedlist.Items[$i].Checked -eq $true) {
-                [void]$confirmed.Add([string]$checkedlist.Items[$i].SubItems[0].Text)
+                $add_user = [string]$checkedlist.Items[$i].SubItems[0].Text
+                if($add_user -eq 'none'){ Return $false }
+                else{ [void]$confirmed.Add($add_user) }
             }
         }
         Return $confirmed
@@ -122,11 +144,11 @@ function wizard([switch]$tiers){
     $list = @{}
     if(-not $tiers){
         $required = @{
-            'a'=@('MACROSS master path','ICAgQ0VOVFJBTCBNQVNURVI6IElmIHlvdSB3YW50IHRvIHVzZSBhIGNlbnRyYWwgbG9jYXRpb24gdG8ga2VlcAogICBhIG1hc3RlciBjb3B5IG9mIFNLWU5FVCB0aGF0IGNhbiBhdXRvLWRpc3RyaWJ1dGUgdXBkYXRlcywgZW50ZXIKICAgdGhlIHBhdGggaGVyZS4gRW50ZXIgIm5vbmUiIHRvIGRpc2FibGUgdXBkYXRlcy4=');
-            'b'=@('Diamond master path','ICAgTUFTVEVSIFNDUklQVFM6IElmIHlvdSBzZXQgYSBtYXN0ZXIgbG9jYXRpb24gZm9yIFNLWU5FVCwgeW91CiAgIGNhbiBzZXQgYW4gYWx0ZXJuYXRlIHBhdGggd2hlcmUgeW91ciBodW50ZXIgc2NyaXB0cyBjYW4gYmUKICAgZGlzdHJpYnV0ZWQgZnJvbS4gRW50ZXIgIm5vbmUiIGlmIHlvdSBhcmUgdXNpbmcgdGhlIHNhbWUKICAgbG9jYXRpb24gYXMgdGhlIFNLWU5FVCBtYXN0ZXIsIG9yIHRvIGRpc2FibGUgdGhpcy4=')
-            'c'=@('Debugging blacklist','ICAgUkVTVFJJQ1QgQ09NTUFORFM6IEFsbCB1c2VycyBoYXZlIGFjY2VzcyB0byB0aGUgZGVidWdnZXIgKHNvIAogICB0aGF0IGFueW9uZSBjYW4gd3JpdGUgYXV0b21hdGlvbnMgdGhhdCB0aGV5IGNhbiB0ZXN0IGFuZCBhZGQgdG8gCiAgIFNLWU5FVCkuIFRoZSBkZWZhdWx0IHdpbGwgcmVxdWlyZSB0aGUgYWRtaW4gcGFzc3dvcmQgdG8gdXNlCiAgIGNlcnRhaW4gY29tbWFuZHMgJiBmdW5jdGlvbi4gVW5jaGVjayB0byBkaXNhYmxlIHJlc3RyaWN0aW9uLg==');
-            'd'=@('Content folder','ICAgQ09OVEVOVCBQQVRIOiBZb3UgY2FuIHNwZWNpZnkgYSBsb2NhdGlvbiB3aGVyZSBjb250ZW50IG9yIAogICBlbnJpY2htZW50IGZpbGVzIChqc29uLCB4bWwsIGNzdiwgZXRjLikgY2FuIGJlIHJlZ3VsYXJseSAKICAgYWNjZXNzZWQgYnkgU0tZTkVUIGh1bnRlciBzY3JpcHRzLiBUaGUgZGVmYXVsdCBpcyBTS1lORVQncwogICBsb2NhbCByZXNvdXJjZXMgZm9sZGVyLg==');
-            'e'=@('Logs folder','ICAgU0tZTkVUIExPR1M6IEVudGVyIGEgbG9jYXRpb24gZm9yIFNLWU5FVCB0byB3cml0ZSBsb2dzIHRvLiAKICAgVGhlIGRlZmF1bHQgbG9jYXRpb24gaXMgaW4gU0tZTkVUJ3MgbG9jYWwgcmVzb3VyY2VzIGZvbGRlci4KICAgRW50ZXIgIm5vbmUiIHRvIGRpc2FibGUgbG9nZ2luZy4=')
+            'a'=@('Default Python','ICAgU2V0IGEgY3VzdG9tIGRlZmF1bHQgcGF0aCB0byB0aGUgcHl0aG9uIGV4ZWN1dGFibGUKICAgeW91IHdpc2ggdG8gdXNlLiBNQUNST1NTIHdpbGwgaW5jbHVkZSBpdCBhbG9uZyB3aXRoCiAgIGFueSBzeXN0ZW0gcHl0aG9uIHRoYXQgaXMgaW5zdGFsbGVkIG9uIHRoZSBzeXN0ZW0gc28KICAgdGhhdCB5b3VyIGF1dG9tYXRpb25zIGNhbiBzZWxlY3QgdGhlIGFwcHJvcHJpYXRlIG9uZS4=');
+            'b'=@('AI URL','ICAgVGhlIGJhc2UgVVJMIGZvciB5b3VyIEFJIHNlcnZpY2UvQVBJ')
+            'c'=@('Debugging restricted','ICAgUkVTVFJJQ1QgQ09NTUFORFM6IEFsbCB1c2VycyBoYXZlIGFjY2VzcyB0byB0aGUgZGVidWdnZXIgKHNvIAogICB0aGF0IGFueW9uZSBjYW4gd3JpdGUgYXV0b21hdGlvbnMgdGhhdCB0aGV5IGNhbiB0ZXN0IGFuZCBhZGQgdG8gCiAgIFNLWU5FVCkuIFRoZSBkZWZhdWx0IHdpbGwgcmVxdWlyZSB0aGUgYWRtaW4gcGFzc3dvcmQgdG8gdXNlCiAgIGNlcnRhaW4gY29tbWFuZHMgJiBmdW5jdGlvbi4gVW5jaGVjayB0byBkaXNhYmxlIHJlc3RyaWN0aW9uLg==');
+            'd'=@('Content path','ICAgQ09OVEVOVCBQQVRIOiBZb3UgY2FuIHNwZWNpZnkgYSBzaGFyZS9zZXJ2ZXIgd2hlcmUgY29udGVudCANCiAgIG9yIGVucmljaG1lbnQgZmlsZXMgKGpzb24sIHhtbCwgY3N2LCBldGMuKSBjYW4gYmUgcmVndWxhcmx5IA0KICAgYWNjZXNzZWQgYnkgU0tZTkVUIGh1bnRlciBzY3JpcHRzLiBUaGUgZGVmYXVsdCBpcyBTS1lORVQncw0KICAgbG9jYWwgcmVzb3VyY2VzIGZvbGRlci4=');
+            'e'=@('Logs folder','ICAgU0tZTkVUIExPR1M6IEVudGVyIGEgbG9jYXRpb24gZm9yIFNLWU5FVCB0byB3cml0ZSBsb2dzIHRvLiAKICAgVGhlIGRlZmF1bHQgbG9jYXRpb24gaXMgaW4gU0tZTkVUJ3MgbG9jYWwgcmVzb3VyY2VzIGZvbGRlci4KICAgRW50ZXIgIm5vbmUiIHRvIGRpc2FibGUgbG9nZ2luZy4=');
         }
         $required.keys | Sort | %{
             gerwalk $required.$_[1]
@@ -151,7 +173,7 @@ function wizard([switch]$tiers){
     $cfgwiz.Font = [System.Drawing.Font]::new("Tahoma",10.5)
     $cfgwiz.ForeColor = 'WHITE'
     $cfgwiz.BackColor = 'BLACK'
-    $cfgwiz.BackgroundImage = $bg
+    $cfgwiz.BackgroundImag = $bg
     $cfgwiz.BackgroundImageLayout = "Stretch"
     $cfgwiz.Size = New-Object System.Drawing.Size(810,400)
     $cfgwiz.StartPosition = "CenterScreen"
@@ -167,7 +189,7 @@ function wizard([switch]$tiers){
     if($tiers){
         $loc = 118
         $sz = @(775,34)
-        $itxt = $tiermsg[2..3] -Join ' '
+        $itxt = 'Enter comma-separated usernames, OR a single GPO name per field.'
         $mtxt = $tiermsg[0] -Join ' '
     }
     else{
@@ -323,12 +345,14 @@ function wizard([switch]$tiers){
             else{ $blist = returnDefault -b }
             $bl0 = $blist[0]
             $dbg = [string]$blist[1]
-            if($logs[1].Text -eq 'keep'){ $log = returnDefault log }
-            else{ $log = $logs[1].Text }
-            if($content[1].Text -eq 'keep'){ $con = returnDefault con }
-            else{ $con = $content[1].Text }
+            #if($logs[1].Text -eq 'keep'){ $log = returnDefault log }
+            #else{ $log = $logs[1].Text }
+            $log = $logs[1].Text
+            #if($content[1].Text -eq 'keep'){ $con = returnDefault con }
+            #else{ $con = $content[1].Text }
+            $con = $content[1].Text
             $list.Add('cre',$repo1[1].Text)
-            $list.Add('hre',$repo2[1].Text)
+            $list.Add('hrn',$repo2[1].Text)
             $list.Add('log',$log)
             $list.Add('con',$con)
             $list.Add('bl0',$bl0)
@@ -342,24 +366,6 @@ function wizard([switch]$tiers){
     if(-not $clicked){Exit}
     else{ rv clicked -Scope Script; Return $list }
 }
-function addDefaults($current=$null){
-    $add = mkList; $z=$null
-    $t = 'CUSTOM CONFIGURATIONS (use CTRL+ENTER to add a new line)'
-    $i = @('Once per line, enter a 3-character index and the value it references, separated with ":::"',
-        'Example -- abc:::https://www.google.com') -Join "`n"
-    while($z -ne 'n'){
-        w 'Do you want to enter additional default configurations? ("n" to finish) ' g -i
-        $z = Read-Host
-        if($z -ne 'n'){
-            $gb = getBlox -t $t -i $i -p $current
-            $gb -Split "`n" | %{
-                if($_ | sls ":::"){ [void]$add.add($_) }
-            }
-        }
-    }
-    if($add.count -eq 0){ $add = $false }
-    Return $add
-}
 function returnDefault($ix,[switch]$bdis){
     if($bdis){
         $r = @("bm9fbmVlZDRibGFja2xpc3Qu",'0')
@@ -368,9 +374,9 @@ function returnDefault($ix,[switch]$bdis){
         $conf = @{
             'dbg'=@("$(setLocal -i)",'1');
             'cre'='none';
-            'hre'='none';
+            'hrn'='none';
             'con'="$dyrl_RESOURCES";
-            'log'="$dyrl_PLUGINS\logs"
+            'log'="$dyrl_RESOURCES\logs"
         }
         $r = $conf[$ix]
     }
@@ -385,7 +391,7 @@ function configAccess($t){
     }
     while($z -notMatch "^[gun]"){
         w "Tier $($t[2])`: Do you want to enter a (u)ser list or use a (g)roup-policy name?" g
-        w '(Enter "none" to skip this tier) ' g -i
+        w  '(Enter "none" to skip this tier) ' g -i
         $z = Read-Host
     }
     if($z -eq 'g'){
@@ -415,6 +421,12 @@ function localWriteP($xtext){
     $et = [System.Convert]::ToBase64String($scp)
     Return $et
 }
+function stringHash($string){
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($string)
+    $shaBytes = $sha256.ComputeHash($bytes)
+    Return $([System.BitConverter]::ToString($shaBytes) -replace '-')
+}
 function localReadP($ytext){
     Add-Type -AssemblyName System.Security
     $scfb = [System.Convert]::FromBase64String($ytext)
@@ -427,11 +439,11 @@ function localReadP($ytext){
     Return $dt
 }
 function sideWrite($bside,$eside=16,[switch]$on){
-    if($on){ Return (gerwalk ($(gerwalk "$bside$dyrl_SCF" -h -e) * 2) -e).Substring(0,$eside) }
+    if($on){ Return (gerwalk ($(gerwalk "$bside`macross.conf" -h -e) * 2) -e).Substring(0,$eside) }
     gerwalk $bside.Substring($eside)
     Return $(($dyrl_PT -split '\D\D' | ?{$_ -Match '\d'} | %{chr $_} ) -join '' -replace '[^\w=/\.]')
 }
-function upWrite($n,$conf,$o_file=$dyrl_SCF,[switch]$ex,[switch]$xe,[switch]$fin){
+function upWrite($n,$conf,$o_file='macross.conf',[switch]$xe,[switch]$fin){
     function wut_($1){
         errMsg -f 'MACROSS.upWrite' "upWrite: $1"
         $error[0]
@@ -442,26 +454,42 @@ function upWrite($n,$conf,$o_file=$dyrl_SCF,[switch]$ex,[switch]$xe,[switch]$fin
         if(Test-Path $ofile){
             $rename = $(Get-Date -f "%y%M%d-%h%m%s")
             $b_file = $ofile -replace $o_file,"$rename`_$o_file`.backup"
-            Move-Item -Path $ofile -Destination $b_file
+            Copy-Item -Path $ofile -Destination $b_file
         }
     }
     function add_($10){
         Return $add[$(Get-Random -Min 0 -Max $10)]
     }
+
+    $selected_choice = $false
     $ofile = "$dyrl_MACROSS\corefuncs\$o_file"
     $sfile = "$dyrl_OUTFILES\$o_file"
-    if(-not $conf -and ($ex -or $xe)){
-        $master = ((gc $ofile | Select -Skip 1) -Join '').Trim()
-        if($ex){ $master = localReadP $master }
-    }
+    $sdc = "$('#'*8) MACROSS DATA CONFIGURATION $('#'*9)"
+    $dbt = "$('#'*10)   DEFAULT BASE TEMPLATE   $('#'*13)"
+    $dfc = $dyrl_CONFIG[1]
+    $template_m = @(
+        $dbt,
+        "Initialized: $(Get-Date -f 'yyyy.MM.dd hh:mm:ss')",
+        "MACROSS Version: $dyrl_VERSION",
+        "Python: $dyrl_PYVERS"
+    )
 
-    if($ex){ w 'Exporting config...' g}
-    elseif($xe){ w 'Importing config...' g }
+    if($xe){
+        w 'Reading template...' g
+        try{
+            $versioned = $(Get-Content -Stream $dfc -Path $ofile | Select -First 5)
+            $selected_choice = ((Get-Content -Stream $dfc -Path $ofile | Select -Skip 5) -Join '').Trim()
+        }
+        catch{
+            w 'There are no templates to load. Starting setup wizard...' y
+            if(Test-Path $ofile){ Remove-Item $ofile -Force }
+            wizard
+        }
+    }
     else{ bkup_ }
-    if(! $master){
+    if(! $selected_choice){
         $add = (alphanum)[0]
-        $c = ''
-        $d = ''
+        $c,$d = '',''
         $transformer = sideWrite $n -o
         $k = byter $transformer -b
         0..15 | %{
@@ -472,57 +500,28 @@ function upWrite($n,$conf,$o_file=$dyrl_SCF,[switch]$ex,[switch]$xe,[switch]$fin
             $d += "$cc$a$b"
         }
         $d = "$(gerwalk -e $d)"
-        $master = $conf | ConvertTo-SecureString -AsPlainText -Force
-        $master = "$($master | ConvertFrom-SecureString -Key $k)"
-        $master = "$c$d=00$master"
+        $default = $conf | ConvertTo-SecureString -AsPlainText -Force
+        $default = "$($default | ConvertFrom-SecureString -Key $k)"
+        $selected_choice = "$c$d=00$default"
+        $default = blockWriter -b "$selected_choice" -m 50 -n
+        $id = stringHash $default
+        $template_m += "Signature: $id"
+        $versioned = $template_m
+        $template_m += $default; $template_m = $template_m -Join "`n"
+        $versioned[0] = $sdc
     }
 
-    $title = ' MACROSS DATA CONFIGURATION '
-    $top1 = "$('#'*8)$title$('#'*9)"
-    $top2 = "$('#'*10)$title$('#'*12)"
-
-    if($ex){
-        blockWriter -f $o_file -b "$top2$master" -m 50
-        $ofile = $sfile
-    }
-    else{
-        $master = localWriteP "$master"
-        blockWriter -f $o_file -b "$top1$master" -m 45
-        $import = getHash $sfile md5
-        Move-Item -Path $sfile -Destination $ofile -Force
-        $replace = getHash $ofile md5
-        if($import -ne $replace){
-            if($import){
-                w 'Something went wrong, the file did not import correctly.' y
-                w 'You can manually move the file, it is located in' y
-                w $sfile
-                w 'Use it to replace' y
-                w $ofile
-            }
-            else{
-                errMsg "$($error[0])" -f 'MACROSS.upWrite'
-            }
-            exit
-        }
-    }
+    $selected_choice = localWriteP "$selected_choice"
+    $sc = blockWriter -b "$selected_choice" -m 45 -n
+    $versioned += $sc
+    Set-Content -Path $ofile -Value $($versioned -Join "`n")
 
     if(! (Test-Path -Path $ofile)){
         wut_ "Unknown error: failed to create new $o_file file"
-        w 'Hit ENTER exit.' g
-        Read-Host
-    }
-    elseif($ex){
-        w 'Your export file is located in' g
-        w "`n $ofile`n"
-        w 'Have your user copy it to their corefuncs folder.' g
-        w 'Hit ENTER continue.' g; Read-Host; Return
     }
     if($xe){ Return }
-    else{
-        Remove-Item $tfile
-        w "`n`n Setup is complete. Run the Launch.ps1 script to start MACROSS.`n" g
-
-    }
+    Set-Content -Path $ofile -Stream $dfc -Value $template_m
+    w "`n`n Setup is complete. Run the Launch.ps1 script to start MACROSS.`n" g
     Remove-Variable dyrl_* -Force -Scope Global
     Exit
 }
@@ -534,8 +533,8 @@ function downWrite($a,$b,$c=0,$k='',[switch]$l){
     $ptr = byter $config
     Return $ptr
 }
-function addWrites($m,$maccf='MACROSS CONFIGURATION'){
-    $k = 'k'; $z = $null
+function addWrites($m,$skycf='MACROSS CONFIGURATION'){
+    $k = 'k'; $v,$z = $null,$null
     $modified = $false
     $gpc = @('tr1','tr2','tr3','ta1','ta2','ta3')
     $extra = @($null,$null)
@@ -554,27 +553,27 @@ function addWrites($m,$maccf='MACROSS CONFIGURATION'){
         }
         elseif($k -in $m){
             $k = yorn -q 'That is a reserved index, you cannot change it.' `
-                -b 0 -i 16 -l $maccf
+                -b 0 -i 16 -l $skycf
         }
         elseif($k -in $gpc){
             $k = yorn -q 'This index can only be changed when updating GPO or userlists.' `
-                -b 0 -i 48 -l $maccf
+                -b 0 -i 48 -l $skycf
         }
         elseif($dyrl_CONF[$k]){
             gerwalk $dyrl_CONF.$k
-            $z = yorn -q "Do you want to replace `"$dyrl_PT`"?" -b 4 -i 32 -l $maccf
+            $z = yorn -q "Do you want to replace `"$dyrl_PT`"?" -b 4 -i 32 -l $skycf
             if($z -eq 'No'){ $k = $null }
             else{ $modified = $true }
         }
 
     }
-    if(! $v){
+    if($modified -and -not $v){
         w "`n Enter the value you want to set for this index:`n > " g -i
         $z = Read-Host
         if($z -eq 'keep'){ $v = returnDefault $k }
         else{ $v = "$z" }
     }
-    errLog INFO 'MACROSS.addWrites' "$k was updated to $v"
+    errLog INFO 'MACROSS.addWrites' "Config $k was updated"
     Return @($k,$v,$modified,$extra[0],$extra[1])
 }
 function runStart($update=0,$micro=@('c2t5','Ymww','ZGkx','ZGky','dWFj'),$static){
@@ -601,7 +600,7 @@ function runStart($update=0,$micro=@('c2t5','Ymww','ZGkx','ZGky','dWFj'),$static
         }
         Return $gnh
     }
-    $valid = mkList; $bar = skyWriter -b; $mod = $false
+    $valid = mkList; $bar = battroid -b; $mod = $false
     $Global:dyrl_LOG = 'none'; $env:MACROSS = "$dyrl_MACROSS"
     $bar = " your value >$(' '*5)$bar "
 
@@ -626,13 +625,13 @@ function runStart($update=0,$micro=@('c2t5','Ymww','ZGkx','ZGky','dWFj'),$static
         $reform = $dyrl_CONF
         gerwalk $micro[0]
     }
-    if($update -eq 1){ $valid = updateMAC $nap $reform }
+    if($update -eq 1){ $valid = updateSKY $nap $reform }
     elseif($update -eq 2){
         $ixlabels = @{
-            'cre'='Path to master MACROSS launcher (enter a custom path or "none" to disable)';
-            'hre'='Path to master scripts (enter a custom path or "none" to use "cre" path)';
-            'con'='Content files path (enter a custom path or "keep" to set the default)';
-            'dbg'='Debugging is restricted (enter "keep" to enable or "none" to disable)';
+            'cre'='URL for your code repository';
+            'hrn'='URL for your AI services/API';
+            'con'='Content files (enter a custom location or "keep" to set the default)';
+            'dbg'='Debugging is restricted ("keep" to restrict or "none" to disable)';
             'log'='Path to logs (enter custom path, "keep" for default or "none" to disable)'
         }
         $ulabels = @{
@@ -642,7 +641,7 @@ function runStart($update=0,$micro=@('c2t5','Ymww','ZGkx','ZGky','dWFj'),$static
         $hkm = mkList
         $micro | %{
             gerwalk $_
-            $hkm.add($dyrl_PT) | Out-Null
+            [void]$hkm.add($dyrl_PT)
         }
 
         $conf = @{}; $ci = 0
@@ -674,12 +673,11 @@ function runStart($update=0,$micro=@('c2t5','Ymww','ZGkx','ZGky','dWFj'),$static
                 if($ch -eq 0){ $ch++ }
                 $z = $null
                 $new = addWrites -m @('uac',$micro)
-            }
-            if($z -ne 'n' -and $new[2]){
-                $mod = $new[2]
-                $conf.add($new[0],$new[1])
-                if($new[3] -and $new[4]){
-                    $conf.add($new[3],$new[4])
+                if($new[2]){
+                    $mod = $new[2]
+                    $conf.add($new[0],$new[1])
+                    if($new[3] -and $new[4]){ $conf.add($new[3],$new[4]) }
+                    w "$($new[0]) update pending..." c
                 }
             }
         }
@@ -709,10 +707,18 @@ function runStart($update=0,$micro=@('c2t5','Ymww','ZGkx','ZGky','dWFj'),$static
             }
             if($z -Like 'a*'){
                 $newconfs = @{}
+                ## Update exsiting config values
                 foreach($ck in $reform.keys){
                     try{ $newval = gerwalk -e $conf.$ck }
                     catch{ $newval = $reform.$ck }
                     $newconfs.add($ck,$newval)
+                }
+                ## Add new config keys
+                foreach($ck in $conf.keys){
+                    if($ck -notIn $newconfs.keys){
+                        $newval = gerwalk -e $conf.$ck
+                        $newconfs.add($ck,$newval)
+                    }
                 }
                 $newconfs.keys | %{ $valid.add("$_$($newconfs.$_)") | Out-Null }
                 $test = $newconfs.dbg
@@ -728,21 +734,10 @@ function runStart($update=0,$micro=@('c2t5','Ymww','ZGkx','ZGky','dWFj'),$static
         "`n"
         $wiz = wizard
         "`n"
-        $custom = addDefaults
-        "`n"
         $tr = runUserTier -i
 
-        if($custom){
-            foreach($ckv in $custom){
-                $ckv = $ckv -Split ':::'
-                $customk = $ckv[0]
-                $customv = gerwalk -e $ckv[1]
-                [void]$valid.add("$customk$customv")
-            }
-        }
-
         $required = @{
-            'mac' = gerwalk -e "$(in_ $nap)";
+            'sky' = gerwalk -e "$(in_ $nap)";
             'di1' = gerwalk -e $di1;
             'di2' = gerwalk -e $di2;
             'tr1' = gerwalk -e $tr.tr1;
@@ -754,7 +749,7 @@ function runStart($update=0,$micro=@('c2t5','Ymww','ZGkx','ZGky','dWFj'),$static
         }
         @(
             'cre',
-            'hre',
+            'hrn',
             'bl0',
             'con',
             'dbg',
@@ -770,7 +765,6 @@ function runStart($update=0,$micro=@('c2t5','Ymww','ZGkx','ZGky','dWFj'),$static
     }
 }
 function runContinue($continue=$null,[switch]$update){
-    gerwalk PTAw
     function e_(){
         $e = @('ERROR','Config unreadable')
         errLog $e[0] $e[1]
@@ -778,17 +772,17 @@ function runContinue($continue=$null,[switch]$update){
         Return $null
     }
     function u_($fn='corrupted.deleteme'){
-        Move-Item -Path $dyrl_CONFIG[0] -Destination "$($dyrl_CONFIG[0])`.$fn" -Force
-        Copy-Item -Path $dyrl_CONFIG[1] -Destination $dyrl_CONFIG[0] -Force
+        Copy-Item -Path $dyrl_CONFIG[0] -Destination "$($dyrl_CONFIG[0])`.$fn" -Force
         if(-not $update){
-            w "NOTICE: MACROSS config reverted to default. Please wait while I rebuild the config... `n" -b y -f k
+            w "NOTICE: MACROSS config is corrupted. Please wait while I attempt to rebuild it... `n" -b y -f k
+            upWrite -x
             slp 3
             runContinue $continue
         }
     }
     if($update){ u_ "old.$(Get-Date -f 'mm-ss')"; Return }
-    if((Get-Content $dyrl_CONFIG[0])[0].length -gt 48){ upWrite -x }
-    $raw = ((Get-Content -Path $dyrl_CONFIG[0] | Select -Skip 1) -Join '').Trim()
+    gerwalk PTAw
+    $raw = ((Get-Content -Path $dyrl_CONFIG[0] | Select -Skip 5) -Join '').Trim()
     $raw = localReadP $raw
     if($raw | sls $dyrl_PT){$divraw = $raw -Split $dyrl_PT}
     else{ u_ }
@@ -817,7 +811,7 @@ function runUserTier([switch]$init,$update=0){
         $uacc = $a[1]
         if($uacc){
             $a[0] | %{ w "   $_" }
-            w 'Does this look correct? (y/n) ' g -i
+            w  'Does this look correct? (y/n) ' g
             $affirm = Read-Host
             if($affirm -Like "y*"){
                 $uactr = $a[0] -Join ','
@@ -869,16 +863,22 @@ function runUserTier([switch]$init,$update=0){
             $array.add("ta$_",'none')
         }
     }
-    elseif($update){
-        $tu = cfa_ $update
-        return $tu
+    elseif($update -and $update -in $dyrl_CONF.keys){
+        if($update -Like "ta*"){ $cu = 'admin' }
+        else{ $cu = 'user' }
+        [int]$ti = $($update -replace "\D")
+        gerwalk $dyrl_CONF.$update
+        $compare1 = $dyrl_PT
+        $current = $compare1 -Split ','
+        $compare2 = confirmUsers $current $cu $ti
+        if($compare2){ $array = $($compare2 -Join ',') }
+        else{ $array = $null }
     }
     else{
-        $valid = $false
-        while(-not $valid){
+        while($true){
             $tierlists = wizard -t
             $array = rt_ $tierlists
-            if($array){ $valid = $true }
+            if($array){ Break }
         }
     }
     "`n"
@@ -915,46 +915,24 @@ function runModify([switch]$resistance,$micro=@('c2t5','Ymww','ZGkx','ZGky'),$ac
             screenResults -e
             "`n"
             $chg = 0
-            while($z -ne 'q'){
-                w 'Enter the index to update (ex. "ta2" for tier 2 admins), or "q" to quit: ' g -i
+            while($z -ne 'f'){
+                w 'Enter the index to update (ex. "ta2" for tier 2 admins), or "f" to finish: ' g -i
                 $z = Read-Host
                 if($z -Match "t[ar]\d"){
                     $tu = runUserTier -u $z
                     if($tu[1]){
                         $upconf[$z] = $(gerwalk -e $tu[1]); $chg++; $upconf['uac'] = $(gerwalk -e "1")
+                        w "Updated $z`." g
                     }
                 }
             }
             if($chg -eq 0){ Return }
             $newcon = mkList
-            $upconf.keys | %{$newcon.add("$_$($upconf[$_])") | Out-Null }
+            $upconf.keys | %{[void]$newcon.add("$_$($upconf[$_])")}
             gerwalk QEBA
             upWrite -n $actual -c "$($newcon -join $dyrl_PT)" -f
-            w 'If you are controlling the configuration for multiple users, you need to export' y
-            w 'your configuration (type "export" in the main menu). Users need to place your' y
-            w "exported file in their corefuncs folder.`n`n`n" y
         }
     }
     else{ runStart -u $select -s $actual }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
