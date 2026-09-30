@@ -165,7 +165,7 @@ function extras($1){
         hec_
     }
     elseif($1 -eq 'pydev'){
-        pyATTS; macrossMirror -n $N_[0]
+        pyATTS; macrossMirror -n $N_
         splashBanner
         launcher -p '1' -c "$dyrl_MACROSS\corefuncs\pydev.py"
         macrossMirror -c
@@ -318,7 +318,7 @@ function consoleDebug($x=$null,$ch=$null){
                 Return
             }
             elseif($z -eq 'python'){
-                startUp;pyATTS;macrossMirror -n $N_[0];if($dyrl_LOG -ne 'none'){errLog INFO 'MACROSS.debug' "pydev success ($dyrl_HN0)"};cls
+                startUp;pyATTS;macrossMirror -n $N_;if($dyrl_LOG -ne 'none'){errLog INFO 'MACROSS.debug' "pydev success ($dyrl_HN0)"};cls
                 if($dyrl_PYCROSS){ . $dyrl_PYCROSS }
                 else{ py }
             }
@@ -764,7 +764,7 @@ function blockWriter(){
     )
     function p_([switch]$c){
         if($c -and -not $initial){macrossMirror -c}
-        elseif(-not $initial){macrossMirror -n $N_[0]}
+        elseif(-not $initial){macrossMirror -n $N_}
     }
     
     $c='';$i=0
