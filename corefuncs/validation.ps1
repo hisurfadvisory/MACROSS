@@ -304,6 +304,12 @@ function macrossMirror([switch]$c,$nval="11,153,731"){
         $env:MACCONF = "$($l -join ';')"
         if($ROBOTECH){ $np = 'T' }
         if($dyrl_OPT1){ $opt = 'T' }
+        if($HELP){ $env:HELP = 'T' }
+        if($nval.count -gt 1){
+            $lavn = @()
+            $nval | %{$nnl = $_ -Join '';$lavn += $nnl}
+            $nval = $lavn -Join ','
+        }
         $logfile = "$dyrl_LOG\$(Get-Date -format 'yyyy-MM-dd')`.log"
         $env:MACROSS = "$dyrl_MACROSS;$dyrl_OUTFILES;$dyrl_CONTENT;$dyrl_LOG;$nval;$USR;$dyrl_TMP;$np;$opt;$psv"
         if($PROTOCULTURE){ $env:PROTOCULTURE = $PROTOCULTURE }
