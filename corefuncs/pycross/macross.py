@@ -1,4 +1,4 @@
-""" MACROSS ce v1.0 python conversion of MACROSS powershell utilities
+""" MACROSS v1.0 python conversion of MACROSS powershell utilities
 
     IMPORTANT:
     To facilitate your powershell scripts being able to respond to python queries, you
@@ -18,7 +18,7 @@
     so that the powershell script will have all the resources it might require.
 
     Additionally, to aid in sharing query results back and forth between powershell and
-    python, the pynet folder contains a subfolder called 'garbage_io'. MACROSS powershell
+    python, the pynet folder contains a subfolder called 'gbio'. MACROSS powershell
     scripts can write their outputs into this directory, using *.vf1 files, whenever they
     get called from python (there is a built-in powershell utility called "pyCross" specifically
     to do this). These are plaintext json files that facilitate sharing data between python
@@ -69,7 +69,7 @@
         Check if user is requesting to view a diamond's help message
 
     GBIO
-        Path to the local garbage_io folder that contains the
+        Path to the local gbio folder that contains the
         PROTOCULTURE.mori file
 
     OUTFILES
@@ -104,7 +104,7 @@
     errLog():
         write to a MACROSS error log
 
-    findDiamond():
+    findDF():
         find relevant MACROSS diamonds to process your data
 
     getFile():
@@ -131,7 +131,7 @@
     screenResults():
         format blocks of text into a table of up to 3 columns
 
-    skyWriter():
+    battroid():
         generate ascii-art of large block words
 
     slp():
@@ -262,13 +262,13 @@ if getenv("MACROSS"):
         n3: list[int] = [int(d) for d in str(snet[4].split(",")[2])]
         N_: list = [n1,n2,n3]
         USR: str = snet[5]
-        if snet[7] == "T":
+        if snet[6] == "T":
             ROBOTECH: bool = True
-        if snet[8] == "T":
+        if snet[7] == "T":
             OPT1: bool = True
-        GBIO: str = f"{MACROOT}\\\\corefuncs\\\\pynet\\\\garbage_io"
-        MACPY: str = snet[9]
-        PSVER: int = int(snet[10])
+        GBIO: str = f"{MACROOT}\\\\corefuncs\\\\pycross\\\\gbio"
+        MACPY: str = snet[8]
+        PSVER: int = int(snet[9])
         del n1,n2,n3
     del snet
 
@@ -444,7 +444,7 @@ def minmay(i=0):
         title = arts["titles"][i]
         print(f"{art}\n\n{title}")
 
-def skyWriter(text=None,b=False):
+def battroid(text=None,b=False):
     """ Rewrite your console text in blocky ascii art style. Single words only,
  and whitespace is stripped out except when used at the beginning of your string.
 
@@ -455,8 +455,8 @@ def skyWriter(text=None,b=False):
 
  USAGE:
 
-    title = skyWriter('hello')
-    bar = skyWriter(b=True)
+    title = battroid('hello')
+    bar = battroid(b=True)
 
     """
     if b:
@@ -675,7 +675,7 @@ def psc(cc=None,cr=None) -> any:
         return TASK.read()
 
 
-def findDiamond(val:any,lang:str=".*",emax:int=None,rtype:str=".*",exact:bool=False) -> list:
+def findDF(val:any,lang:str=".*",emax:int=None,rtype:str=".*",exact:bool=False) -> list:
     """ Use this function to search for diamonds with matching MACROSS attributes. Matching
  diamonds are returned in a list that you can forward to the
  collab() function.
@@ -695,14 +695,14 @@ def findDiamond(val:any,lang:str=".*",emax:int=None,rtype:str=".*",exact:bool=Fa
  EXAMPLES:
 
     # Retrive a list of powershell diamonds that perform Active-Directory lookups
-    ad_diamonds = findDiamond(val='active directory',lang='powershell')
+    ad_diamonds = findDF(val='active directory',lang='powershell')
 
     # Retrive a list of diamonds with the exact .valtype "active directory computer lookups"
-    pc_lookups = findDiamond(val='active directory computer lookups',lang='powershell',exact=True)
+    pc_lookups = findDF(val='active directory computer lookups',lang='powershell',exact=True)
 
     # Retrieve a list of diamonds that can parse IOCs from threat-intel, and can accept 2 args, and
     # returns findings as a csv file, and can be written either in python or powershell
-    ioc_diamonds = findDiamond(val='ioc,indicators',emax=2,rtype='csv')
+    ioc_diamonds = findDF(val='ioc,indicators',emax=2,rtype='csv')
 
     """
 
@@ -798,10 +798,10 @@ def collab(Diamond:str=None,Caller:str=None,Protoculture:any=None,deculture:any=
  your python script, and Protoculture is the value you need powershell to evaluate. You can
  also send an additional parameter (deculture=) if the powershell script accepts one.
 
- The macross function "findDiamond()" can help you find scripts for forwarding any
+ The macross function "findDF()" can help you find scripts for forwarding any
  PROTOCULTURE values to.
 
- "corefuncs\\pynet\\garbage_io\\PROTOCULTURE.vf1" is a json file that contains the key-values
+ "corefuncs\\pycross\\gbio\\PROTOCULTURE.vf1" is a json file that contains the key-values
  "Caller.target" (the PROTOCULTURE value) and "Caller.result". If the powershell script has a
  response for your python script, it will be written to the "Caller.result" field of
  PROTOCULTURE.vf1, where this function will retrieve it and forward it to your script.
