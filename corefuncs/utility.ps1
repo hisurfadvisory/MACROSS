@@ -242,12 +242,15 @@ function consoleDebug($x=$null,$ch=$null){
     w "`n                         MACROSS DEBUG MODE`n" y
     macrossHelp show
     ''
-    if($x){
-        startUp;gerwalk VGhhdCdzIGEgcHJpdmlsZWdlZCBjb21tYW5kLg==;$ha=$dyrl_PT
-        gerwalk $dyrl_CONF.bl0;$hb=$dyrl_PT;errLog INFO;slp -m 450
-        if($ch -eq $hb){$if="$USR debug ($x)"}elseif($dyrl_BLD){varCleanup;$if="$USR debug ($x)"}
+    function startup_(){
         while(-not $dyrl_CONF.tr1 -and $x -Match $hb){w "$ha`n`n" -b r -f k;startUp -r "$(xEntry)"
         if(-not $dyrl_CONF.tr1){Return}}
+    }
+    if($x){
+        varCleanup;startUp;gerwalk VGhhdCdzIGEgcHJpdmlsZWdlZCBjb21tYW5kLg==;$ha=$dyrl_PT
+        gerwalk $dyrl_CONF.bl0;$hb=$dyrl_PT;errLog INFO;slp -m 450
+        if($ch -eq $hb){$if="$USR debug ($x)"}elseif($dyrl_BLD){varCleanup;$if="$USR debug ($x)"}
+        startup_
         if($x -eq 'help'){
             macrossHelp dev
             splashPage
@@ -261,11 +264,11 @@ function consoleDebug($x=$null,$ch=$null){
         }
         else{
             $z = $x; while($z -ne ''){
+                startup_
                 if($z -eq 'd'){rv cmd,x,z; consoleDebug}
                 if($dyrl_LOG -ne 'none'){errLog INFO 'MACROSS.debug' "$USR/$dyrl_HN0`: $z"}
                 $cmd = [scriptblock]::Create("$z")
-                . $cmd
-                w $msgloop g; $z = Read-Host
+                . $cmd;varCleanup;w $msgloop g; $z = Read-Host
             }
             Return
         }
@@ -1818,7 +1821,7 @@ function kawamori(){  #mp
         $vn = @('kh','kt','sg')
         $vv = @('20232323205354415254204B455920232323',
             '202323232320454E44204B45592023232323',
-            '534B594E4554204B455947454E')
+            '4D4143524F5353')
         0..2 | %{
             gerwalk -h $vv[$_]
             Set-Variable -Name $vn[$_] -Value $dyrl_PT
