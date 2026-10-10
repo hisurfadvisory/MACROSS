@@ -1004,30 +1004,6 @@ function startUp([switch]$init=$false,$refresh=$null,$new){
         }
         function e(){ Return $(Get-Random -min 10000000000000 -max 99999999999999) }
 
-        <#try{ $syspver = "$macver | $(py -V)" }
-        catch{ $syspver = $false }
-        if($LIFEOFBRIAN){ $syspver = "$(& $hk_PYNET -V)" }
-        $Global:dyrl_PYOPT = ''
-        $Global:dyrl_PG = @("$dyrl_PYLIB","$dyrl_PYLIB\gbio")
-
-        ## Launching macross with -portable $path_to_python gives an alternate python environment to use
-        if($dyrl_PYCROSS -and (Test-Path $dyrl_PYCROSS)){
-            $lib = $dyrl_PYCROSS -replace 'python.exe'
-            corefuncsPy_ "$dyrl_PYLIB;$lib"
-            $macver = "$(& $dyrl_PYCROSS -V)"
-            if($syspver -and -not $LIFEOFBRIAN){ $Global:LIFEOFBRIAN = $true }
-            $Global:dyrl_PYVERS = "$macver|$syspver"
-            $Global:MONTY = $true
-        }
-        elseif($syspver){   ## Nothing is ever consistent in Windows
-            $Global:dyrl_PYVERS = "$syspver"
-            corefuncsPy_ $dyrl_PYLIB
-            if(-not $LIFEOFBRIAN){ $Global:LIFEOFBRIAN = $true }
-        }
-        else{
-            $Global:dyrl_PYVERS = "None"
-        }#>
-
         if(-not (Test-Path $dyrl_CONFIG[0])){ runStart }
 
     }
@@ -1067,7 +1043,6 @@ function diamondSelect(){
         'config',
         'debug',
         'dec',
-        'defs',
         'strings',
         'phone',
         'newkey',
@@ -1075,7 +1050,6 @@ function diamondSelect(){
         'pydev',
         'shell',
         'proto',
-        'file',
         'screens'
     )
 
@@ -1125,16 +1099,16 @@ function diamondSelect(){
     }
 
     if( $dyrl_pagecount -gt 1 ){
-        w "   -There are $($dyrl_LATTS.count) tools available. Enter" g -i
+        w "   -There are $($dyrl_LATTS.count) diamonds available. Enter" g -i
         w "p" y -i
         w "for the next Page." g
     }
-    w "   -Select the module for the tool you want (" g -i
+    w "   -Select the module for the diamond you want (" g -i
     w "1-$($dyrl_LATTS.count)" y -i
     w ")." g
     w '   -Type' g -i
     w 'help' y -i
-    w "to view the help menu, or 'help' and a tool #." g
+    w "to view the help menu, or 'help' and a diamond #." g
     w "   -Type" g -i
     w "shell" y -i
     w "to pause and run your own commands." g
@@ -1165,7 +1139,7 @@ function diamondSelect(){
             $Global:dyrl_Z = $dyrl_Z -replace "^help(\s+)?"
             $Global:HELP = $true
         }
-        elseif( $dyrl_Z -Like "*s" ){  ## Enable 'special' option for the selected script
+        elseif( $dyrl_Z -Like "*s" ){  ## Enable 'switched' option for the selected script
             $Global:dyrl_Z = $dyrl_Z -replace 's'
             $Global:dyrl_OPT1 = $true
         }
@@ -1187,13 +1161,6 @@ function diamondSelect(){
         }
 
     }
-    <#elseif( $dyrl_Z -Match "^debug" ){
-        if($dyrl_Z -Match ' '){ $p = $dyrl_Z -replace "^debug " }
-        else{ $p = $null }
-        splashBanner
-        consoleDebug $p -c $(returnDefault -b)[0]
-        rv p
-    }#>
 
     $Global:dyrl_Z = $null
 
