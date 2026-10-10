@@ -26,7 +26,7 @@ function diamondCount(){
             $lclass = $check[2] -replace "^\S+ "
             $lname = $lc.Name -replace "\..+$"              ## Strip the file extension
             $Global:dyrl_FILECT++                           ## Increment total diamond count
-            [macross]$lsc = $lname + ",$lclass" + ",$lver" + ",$($lc.Name)" + ",$ldesc,$menunum"   ## Create custom [macross] object
+            [macross]$lsc = $lname + ",$lclass" + ",$lver" + ",$($lc.Fullname)" + ",$ldesc,$menunum"   ## Create custom [macross] object
             $Global:dyrl_LATTS.Add($lname,$lsc)             ## Only collect macross attributes for the user's scripts
         }
     }
@@ -345,12 +345,13 @@ function setLocal([switch]$init,[switch]$mine){   #mp
 
     #>
     if($init){
-        gerwalk 'MmUyYTI4Mjg2Nzc2N2M2NzY1NzQyZDc2NjE3MjY5NjE2MjZjNjUyOTI4MjA3YzVjN
-        WM3MzI5MmIyODY0MjgyODc5NzI2YzI5M2YyZTJhMjkzZjI5M2Y1YzJhN2M3Mzc0NjE3Mjc0NzU3
-        MDdjNDM0ZjRlNDYyZTdiMzEyYzMyN2QyODczNmI3OTdjNjI2YzMwN2M2NDY5Mjk3YzY3NjU3Mjc
-        3NjE2YzZiN2M1YzI0NGU1ZjdjNjQ3OTcyNmM1ZjQzNGY0ZTQ2NDk0NzdjNmM2ZjYzNjE2YzI4Nz
-        I2NTYxNjQ3Yzc3NzI2OTc0NjUyOTcwN2MyODc1NzA3YzczNjk2NDY1N2M2NDZmNzc2ZTI5Nzc3M
-        jY5NzQ2NTI5MmUyYQ=='
+        gerwalk '4C696F6F4B4764326647646C6443313259584A7059574A735A536
+        B6F4948786358484D704B79686B4B436835636D7770507934714B543870503
+        1777166484E3059584A30645842385130394F526935374D5377796653687A6
+        1336C38596D7777664752704B5878725958646862573979615878634A45356
+        666475235636D78665130394F526B6C4866477876593246734B484A6C59575
+        23864334A70644755706348776F6458423863326C6B5A58786B623364754B5
+        864796158526C4B533471'
         gerwalk -h $dyrl_PT
         Return "$dyrl_PT"
     }
@@ -686,11 +687,11 @@ function valkyrie(){   #mp
 
     function pyTool_(){
         if($dyrl_NEWW){
-            if($sp){ launcher $mod -n -p -alt $sp -v $vtype }
-            else{ launcher $mod -n -p -v $vtype }
+            if($sp){ launcher $diamond -n -p $lang[-1] -alt $sp -v $vtype }
+            else{ launcher $diamond -n -p $lang[-1] -v $vtype }
         }
-        elseif($sp){ launcher $mod -p -alt $sp -v $vtype -x $sorted }
-        else{ launcher $mod -p -v $vtype -x $sorted }
+        elseif($sp){ launcher $diamond -p $lang[-1] -alt $sp -v $vtype -x $sorted }
+        else{ launcher $diamond -p $lang[-1] -v $vtype -x $sorted }
     }
 
 
@@ -698,14 +699,14 @@ function valkyrie(){   #mp
 
     if($n){ $Global:dyrl_NEWW = $true }
 
-    $diamond = $dyrl_LATTS.$m.fname
     $vtype = $dyrl_LATTS.$c.valtype
-    $mod = "$dyrl_DMDS\$diamond" -replace "\\\\",'\'
+    $diamond = $dyrl_LATTS.$m.fname -replace "\\\\",'\'
     $valid = setUser "$($dyrl_LATTS.$m.access)"
+    $lang = $dyrl_LATTS.$m.lang
 
-    if( $valid -and (Test-Path -Path $mod) ){
+    if( $valid -and (Test-Path -Path $diamond) ){
         startUp
-        if($dyrl_LATTS.$m.lang -eq 'python'){
+        if($lang -Like 'python*'){
             $result = "$($dyrl_PG[1])\PROTOCULTURE.vf1"
             $sorted = "$($N_[0]),$($N_[1] -join ''),$($N_[2] -join '')"
             pyTool_
@@ -723,12 +724,12 @@ function valkyrie(){   #mp
         else{
             if( $dyrl_NEWW ){
                 ## Launches diamond in new window if user desires; WILL NOT SHARE CORE MACROSS VALUES OR FUNCTIONS!
-                if($sp -and $sp -ne $PROTOCULTURE){launcher -n "$mod -spiritia $sp" -v $vtype}
-                else{launcher $mod -v $vtype}
+                if($sp -and $sp -ne $PROTOCULTURE){launcher -n "$diamond -spiritia $sp" -v $vtype}
+                else{launcher $diamond -v $vtype}
             }
             else{
-                if($sp -and $sp -ne $PROTOCULTURE){ . $mod -spiritia $sp }
-                else{ launcher $mod -v $vtype }
+                if($sp -and $sp -ne $PROTOCULTURE){ . $diamond -spiritia $sp }
+                else{ launcher $diamond -v $vtype }
             }
             Remove-Variable -Force CALLER -Scope Global
         }
@@ -850,11 +851,11 @@ function launcher(){
     function whichPy_($option){
         pyATTS; macrossMirror -n $N_
         if($option -eq '1' -or -not $MONTY){
-            try{ py $command }
+            try{ py "$command" }
             catch{ err_ }
         }
         elseif($option -eq '0' -or -not $LIFEOFBRIAN){
-            try{ & $dyrl_PYCROSS $command }
+            try{ & $dyrl_PYCROSS "$command" }
             catch{ err_ }
         }
         macrossMirror -c
@@ -897,8 +898,7 @@ function flightDeck($dmd,[switch]$r){
 
     if($dmd -in $dyrl_LATTS.keys){
 
-        $tf = $($dyrl_LATTS.$dmd.fname)
-        $DIAMOND = "$dyrl_DMDS\$tf"
+        $DIAMOND = $dyrl_LATTS.$dmd.fname
 
         # Make sure the diamond still exists before trying to run
         $check = Test-Path $DIAMOND -PathType Leaf
@@ -933,9 +933,6 @@ function flightDeck($dmd,[switch]$r){
         elseif($check){
             w '  Wrong tier group   ' -b r -f k     ## Incorrect tier group
             sleep 2
-        }
-        else{
-            errMsg
         }
     }
 
