@@ -24,9 +24,9 @@
     to do this). These are plaintext json files that facilitate sharing data between python
     and powershell.
 
-    When using the macross.collab() function, your investigation value gets written to the
-    file PROTOCULTURE.vf1; the diamond you call with collab will read the PROTOCULTURE value from
-    the t800 file, then writes its response to that file. Finally, the collab function will read
+    When using the macross.valkyrie() function, your investigation value gets written to the
+    file PROTOCULTURE.vf1; the diamond you call with valkyrie will read the PROTOCULTURE value from
+    the t800 file, then writes its response to that file. Finally, the valkyrie function will read
     and return the response to your python script.
 
     All t800 files are automatically deleted when MACROSS exits cleanly, or when MACROSS
@@ -92,7 +92,7 @@
 
  FUNCTIONS
 
-    collab():
+    valkyrie():
         sends your data to a MACROSS diamond
 
     cdate():
@@ -247,6 +247,7 @@ if getenv("LOCALAPPDATA"):
 
 if getenv("MACROSS"):
     environ["TEMPENV"] = getenv("MACROSS")
+    environ["PYTHONPATH"] = getenv("PYTHONPATH")
     TEMPENV = [getenv("MACROSS")]
     snet = getenv("MACROSS").split(";")
     MACROOT: str = snet[0]
@@ -679,7 +680,7 @@ def psc(cc=None,cr=None) -> any:
 def findDF(val:any,lang:str=".*",emax:int=None,rtype:str=".*",exact:bool=False) -> list:
     """ Use this function to search for diamonds with matching MACROSS attributes. Matching
  diamonds are returned in a list that you can forward to the
- collab() function.
+ valkyrie() function.
 
  You can view attributes by looking at the third line of any MACROSS script.
 
@@ -733,7 +734,7 @@ def findDF(val:any,lang:str=".*",emax:int=None,rtype:str=".*",exact:bool=False) 
     return res
 
 
-def collab(Diamond:str=None,Caller:str=None,Protoculture:any=None,deculture:any=None,response:bool=False) -> any:
+def valkyrie(Diamond:str=None,Caller:str=None,Protoculture:any=None,deculture:any=None,response:bool=False) -> any:
     """
 ######################################################################################
 ####   PYTHON COLLAB ~~~~~~~~~~~IMPORTANT!!!!!!~~~~~~~~~~~~~~~  ######################
@@ -776,24 +777,24 @@ def collab(Diamond:str=None,Caller:str=None,Protoculture:any=None,deculture:any=
  to be python's PROTOCULTURE value. You can retrieve a dict of the file's contents by
  calling the function without any arguments:
 
-        c = collab()
+        c = valkyrie()
         c['caller']
         c['target']
         c['result']  ## If 'result' == "WAITING", the 'target' field should be your
                      ## PROTOCULTURE value.
-                     ## If 'result' == "PS_", collab will swap 'target' & 'result' for you, as
+                     ## If 'result' == "PS_", valkyrie will swap 'target' & 'result' for you, as
                      ## powershell added its PROTOCULTURE response to the initial target field
 
  After processing the PROTOCULTURE value, write your results for powershell to retrieve:
 
-        collab(Protoculture=<script results>,response=True)
+        valkyrie(Protoculture=<script results>,response=True)
 
  To pass values for powershell to process and send back to your python script:
 
         diamond = <the name of the powershell script>
         caller = "MyScript"
         protoculture = "some ioc value"
-        collab(Diamond=diamond, Caller=caller, Protoculture=protoculture, deculture="optional param")
+        valkyrie(Diamond=diamond, Caller=caller, Protoculture=protoculture, deculture="optional param")
 
  where Diamond is the powershell script you're calling (no extension), Caller is the name of
  your python script, and Protoculture is the value you need powershell to evaluate. You can
@@ -830,32 +831,30 @@ def collab(Diamond:str=None,Caller:str=None,Protoculture:any=None,deculture:any=
         with open(pf) as d:
             read_proto = load(d)
 
-        '''for rp in read_proto:
-            res = [rp]["result"]
-            tar = [rp]["target"]
-            target_pairs["caller"] = rp'''
         if read_proto:
-            res = read_proto["result"]
-            tar = read_proto["target"]
-            cal = read_proto["caller"]
+            res = read_proto["result"]  ; print(res)
+            tar = read_proto["target"]  ; print(tar)
+            cal = read_proto["caller"]  ; print(cal);input()
 
             target_pairs["caller"] = cal
-            if isinstance(res,str) and res == "WAITING":
-                target_pairs["result"] = tar
-                target_pairs["target"] = res
-            else:
+            if isinstance(res,str) and res == "WAITING":    ## Confirm target data
                 target_pairs["target"] = tar
                 target_pairs["result"] = res
+            else:
+                target_pairs["target"] = res
+                target_pairs["result"] = tar
         
         return target_pairs
 
     ## Make sure we can define the .vf1 file's primary index
+    vemsg = "Missing required Caller value!"
     if Caller:
         use_caller = Caller
     elif CALLER:
         use_caller = CALLER
     elif Protoculture:
-        raise ValueError("Missing required Caller value!")
+        errLog("ERROR","skynet.valkyrie",vemsg)
+        raise ValueError(vemsg)
         return
 
 
@@ -866,13 +865,11 @@ def collab(Diamond:str=None,Caller:str=None,Protoculture:any=None,deculture:any=
             return False
 
     elif Protoculture and ispath(sc_file,p='file'):
-        protoculture = {}
-        readin = readProto_(sc_file)
-        c = readin["caller"]
+        protoculture = readProto_(sc_file)
+        c = protoculture["caller"]
         ## Give priority to existing Caller value if different from the ID in the .vf1 file
         if c != use_caller:
             c = use_caller
-        #protoculture[c] = readin
         protoculture["result"] = Protoculture
         writeProto_(sc=protoculture)
         return
@@ -882,13 +879,8 @@ def collab(Diamond:str=None,Caller:str=None,Protoculture:any=None,deculture:any=
             Diamond = use_caller
         L = LATTS[Diamond].lang
         R = LATTS[Diamond].rtype
-        Diamond = LATTS[Diamond].fname        # The MACROSS script to collaborate with
+        fullpath = LATTS[Diamond].fname     # The MACROSS script to collaborate with
         chdir(MACROOT)
-        if L == 'python':
-            div = "\\\\"
-        else:
-            div = "\\"
-        fullpath = f"{DIAMONDS}{div}{Diamond}"
         empty = "WAITING"   # This lets python know whether or not powershell writes results to PROTOCULTURE.vf1
         pr: list = []       # Create the contents to write into PROTOCULTURE.vf1 file
 
@@ -903,14 +895,20 @@ def collab(Diamond:str=None,Caller:str=None,Protoculture:any=None,deculture:any=
             del pr
             pr = str(Protoculture)
 
-        protoculture = {"caller":use_caller,"target":pr,"result":empty}
+        if response:
+            target = empty
+            result = pr
+        else:
+            target = pr
+            result = empty
+        protoculture = {"caller":use_caller,"target":target,"result":result}
         writeProto_(sc=protoculture)
 
-        # When only writing a response to other scripts' collab calls, quit here
+        # When only writing a response to other scripts' valkyrie calls, quit here
         if response:
             return
 
-        # Jumping back to powershell *may* require temporarily creating a temp env
+        # Make sure any env updates carry over
         if getenv("MACONF"):
             environ["MACONF"] = getenv("MACONF")
         if getenv("MACROSS"):
