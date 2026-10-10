@@ -132,7 +132,6 @@ from .macross import (
     DIAMONDS,
     LATTS,
     LOGS,
-    N_,
     ROBOTECH,
     OUTFILES,
     PLUGINS,
