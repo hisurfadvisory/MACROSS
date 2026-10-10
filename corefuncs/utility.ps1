@@ -217,34 +217,24 @@ function yellowPages(){
     }
 }
 
-## Python needs to send a terminator back in time to restore defaults in powershell
+## Python needs to warp spacetime to restore defaults in powershell
 function spaceFold(){
     $Global:ErrorActionPreference = 'SilentlyContinue'
-    $Global:dyrl_CONF = @{}; $Global:dyrl_LATTS = @{}
-    $dd = $env:DL -Split ';'
+    $Global:dyrl_CONF = @{};
+    $dd = $env:MACONF -Split ';'
     $ss = $env:TEMPENV -Split ';'; $snn = ($ss -Split ',')[4]
     foreach($d in $dd){
-        $Global:dyrl_CONF.Add($(($d -Split ':')[0]),$(($d -Split ':')[1]))
-    }
-    foreach($tool in ($env:LATTS -Split ';')){
-        $ll = @{}
-        $K = $tool -replace "~.+"
-        $V = ($tool -replace "^.+~") -Split ','
-        foreach($i in $V){
-            $kk = ($i -Split '::')[0]
-            $vv = ($i -Split '::')[1]
-            $ll.Add($kk,$vv)
-        }
-        $Global:dyrl_LATTS.Add($K,$ll)
+        $Global:dyrl_CONF.Add($(($d -Split '::')[0]),$(($d -Split '::')[1]))
     }
     $Global:dyrl_MACROSS=$ss[0]; $Global:dyrl_OUTFILES=$ss[1]
+    $Global:dyrl_PYLIB = "$dyrl_MACROSS\corefuncs\pycross"
     $Global:dyrl_CONTENT=$ss[2]; $Global:dyrl_LOGS=$ss[3];
     $Global:N_=@($snn[0],$([int[]](($snn[0] -split '') -ne '')),$([int[]](($snn[1] -split '') -ne '')));
     $Global:USR=$ss[5]; $Global:dyrl_TMP=$ss[6]
     $Global:dyrl_DIAMONDS="$dyrl_MACROSS\diamonds"
     $Global:dyrl_PG=@("$dyrl_PYLIB","$dyrl_PYLIB\gbio")
     $Global:dyrl_LATTS=(gc "$($dyrl_PG[1])\LATTS.vf1" | ConvertFrom-Json)
-    $Global:PROTOCULTURE=(gc "$($dyrl_PG[1])\PROTOCULTURE.vf1" | ConvertFrom-Json).$CALLER.target
+    $Global:PROTOCULTURE=(gc "$($dyrl_PG[1])\PROTOCULTURE.vf1" | ConvertFrom-Json).target
 }
 
 function consoleDebug($x=$null,$ch=$null){
@@ -880,6 +870,7 @@ function pyNet(){   #mp
 
     function em_($m=$($error[0])){ errMsg -m $m -c r -f 'MACROSS.pyNet' }
     function w2f_($w,$file=$s){
+        $global:dbg = $j
         #if($w -isNot [System.String] -and $v -isNot [System.Int32]){
         if($w.getType().Name -eq 'PSCustomObject'){     ## Assuming a dict was sent as the $v value
             try{ noBOM -f $file -t "$($w | ConvertTo-Json -Depth $d)" } ## Change depth if necessary...
@@ -900,15 +891,15 @@ function pyNet(){   #mp
     }
     elseif((Test-Path $s) -and ($caller_ -eq $CALLER)){
         $j = Get-Content -raw $s | ConvertFrom-Json
-        if($j.$caller_.result -ne 'WAITING'){ $Global:PROTOCULTURE = $jr }
+        if($j.result -ne 'WAITING'){ $Global:PROTOCULTURE = $jr }
         else{
-            $j.$caller_.result = $v
+            $j.result = $v
             w2f_ $j
         }
     }
     else{
-        $j.$caller_.target = $v
-        $j.$caller_.result = 'WAITING'
+        $j.target = $v
+        $j.result = 'WAITING'
         w2f_ $j
     }
 
