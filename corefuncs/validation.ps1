@@ -64,7 +64,7 @@ function varCleanup([switch]$c,[switch]$s){
 
     foreach($file in gci $dyrl_TMP){ Remove-Item -Force -Recurse -Path $file.fullname }
 
-    if($env:MACCONF){ Remove-Item env:MACCONF }
+    if($env:MACONF){ Remove-Item env:MACONF }
     if($env:CALLER){ Remove-Item env:CALLER }
     if($env:HELP){ Remove-Item env:HELP }
 
@@ -289,7 +289,7 @@ function pyATTS(){
 }
 function macrossMirror([switch]$c,$nval="11,153,731"){
     if($c){
-        foreach($e in @('PROTOCULTURE','MACCONF','MACROSS','CALLER','TEMPENV')){
+        foreach($e in @('PROTOCULTURE','MACONF','MACROSS','CALLER','TEMPENV')){
             gci env: | %{if($_.name -eq $e){ Remove-Item "env:$e" }}
         }
         if($env:HELP){ Remove-Item env:HELP }
@@ -301,7 +301,7 @@ function macrossMirror([switch]$c,$nval="11,153,731"){
             [void]$l.add($_ + '::' + "$($dyrl_CONF[$_])")
         }
         $psv = $PSVersionTable.PSVersion.Major
-        $env:MACCONF = "$($l -join ';')"
+        $env:MACONF = "$($l -join ';')"
         if($ROBOTECH){ $np = 'T' }
         if($dyrl_OPT1){ $opt = 'T' }
         if($HELP){ $env:HELP = 'T' }
