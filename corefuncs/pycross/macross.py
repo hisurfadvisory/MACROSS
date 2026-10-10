@@ -155,11 +155,12 @@ from time import sleep as ts
 from math import ceil
 from random import randint
 import base64 as b64
+import textwrap
 import socket
 import ctypes
 from ctypes import *
 from ctypes import wintypes
-from re import match,search,sub
+from re import match,search,sub,IGNORECASE
 
 ## tkinter library makes the getFile function a lot smoother
 nokinter = False
@@ -1195,9 +1196,9 @@ def screenResults(A='endr',B=None,C=None,display=False) -> None:
  write the closing row boundary.
 
  OPTIONS
-    A = The string you want printed to the first column
-    B = The string you want printed to the second column
-    C = The string you want printed to the third column
+    A = Creates a single column of wrapped text
+    B = Creates two columns of wrapped text, if used with A
+    C = Creates three columns of wrapped text, if used with A and B
 
 
 
@@ -1209,272 +1210,81 @@ def screenResults(A='endr',B=None,C=None,display=False) -> None:
 
 """
     if display:
-        return gerwalk('7465726D696E61746F72','h')
-    atc = btc = ctc = None      ## Default text color
-    c = chr(8214)
-    RC = chr(8801)
-    r = c + RC
-    for rr in range(1,90):      ## 98 char length
-        r = r + RC
-    r = r + c
-    del(rr)
+        return reString('7465726D696E61746F72','h')
 
+    SEP = chr(9553)
+    HB = chr(8801)
+    TOTAL = 92                              ## Full row width, borders included
+    BORDER = SEP + (HB * (TOTAL - 2)) + SEP
 
     if A == 'endr':
-        w(r,'g')
+        w(BORDER,'g')
+        return
 
-    else:
+    ## Text widths per layout
+    WIDTHS = {1: [88],2: [23,62],3: [23,31,28]}
 
-        ## Write text to a block without newlines
-        def csep_(text,tc=None):
-            if tc != None and tc in fcolor:
-                print(fcolor[tc] + text + fcolor['rs'], end = ' ')
-            else:
-                print(text, end = ' ')
+    ## Strip a leading color tag like "g~" or "ul~"; returns (text, tag)
+    def splitColor_(text):
+        m = match(r'([a-z]{1,2})~',text,IGNORECASE)
+        if m:
+            return text[m.end():],m.group(1).lower()
+        return text,None
 
-        ## Take the input and wrap it to fit within the specified column width, OR
-        ## if the input is smaller, add whitespace to increase its length.
-        def genBlocks_(outputs,min,max):
-            o1 = []
-            o2 = []
-            o3 = len(outputs)
-            MAX = max + 1
-            if o3 > MAX:
-                SPACE = outputs.count(' ')
-                if SPACE > 0:
-                    outputs = rgx('(\\s\\s+|\\t|`n)',outputs,' ')  ## Remove tabs/newlines from string
-                    #outputs = rgx('\\',outputs,'\\\\')          ## Escape backslash chars
-                    P = outputs.split(' ')                      ## Create an array with each word as a value
-                    WIDE = 0
-                else:
-                    P = None
-                    CUT = MAX + 1
-                    o2.append(outputs[0:MAX])
-                    o2.append(outputs[MAX:])
+    def genBlocks_(text,width):
+        text = ' '.join(str(text).split())
+        lines = textwrap.wrap(text,width,
+                              break_long_words=True,
+                              break_on_hyphens=False)
+        return lines or ['']
 
-            elif o3 < min:
-                P = None
-                while o3 != min:
-                    outputs = outputs + ' '
-                    o3 += 1
-                o2.append(outputs)
-            else:
-                P = None
-
-            if P != None:
-                for WORD in P:
-                    ## Track the number of char spaces we can fit in a column
-                    L = len(WORD)
-                    WIDE = WIDE + (L + 1)
-
-                    if WIDE < min:
-                        Word = WORD + ' '
-                        o1.append(Word)
-                    else:
-                        BLOCK = ' '.join(o1)
-                        BLOCK = rgx('\\s{2,}',BLOCK,' ')  ## Remove multi-spaced chars
-                        BL = len(BLOCK)
-                        if BL > MAX:                     ## Cut extra long strings without whitespace
-                            CUT = MAX + 1
-                            o2.append(WORD[0:MAX])
-                            o2.append(WORD[CUT:])
-                        else:
-                            if BL < MAX:
-                                while BL != MAX:
-                                    BLOCK = BLOCK + ' ' ## Add space if the line is < MAX
-                                    BL += 1
-
-                            o2.append(BLOCK)
-
-                        o1 = []               ## Reset the list
-                        Word = WORD + ' '
-                        o1.append(Word)       ## Add the current word to the list
-                        WIDE = L + 1          ## Reset the line length
-
-                    ## If the current o1 item is the last one from outputs, add it to
-                    ## the o2 collection
-                    if WORD == P[-1]:
-                        LAST = ' '.join(o1)
-                        L = len(LAST)
-                        if L > MAX:
-                            CUT = MAX + 1
-                            o2.append(LAST[0:MAX])
-                            o2.append(LAST[CUT:])
-                        else:
-                            if L < MAX:
-                                while L != MAX:
-                                    LAST = LAST + ' '
-                                    L += 1
-
-                            o2.append(LAST)
-
-
-            return o2
-        ## End genBlocks_ nested function
-
-        ## Check for highlight tags
-        atc,btc,ctc = [None] * 3
-        if rgx("^[a-z]{1,2}~",A):
-            atc = rgx("~.+",A,'')
-            A = rgx("^[a-z]{1,2}~",A,'')
-        if B != None and rgx("^[a-z]{1,2}~",B):
-            btc = rgx("~.+",B,'')
-            B = rgx("^[a-z]{1,2}~",B,'')
-        if C != None and rgx("^[a-z]{1,2}~",C):
-            ctc = rgx("~.+",C,'')
-            C = rgx("^[a-z]{1,2}~",C,'')
-
-        WIDE1 = len(A)
-
-        if B != None:
-            WIDE2 = len(B)
-            BLOCK1 = genBlocks_(A,23,22)
-            if C != None:
-                WIDE3 = len(C)
-                BLOCK2 = genBlocks_(B,32,30) #genBlocks_(B,34,32)
-                BLOCK3 = genBlocks_(C,28,26) #genBlocks_(C,28,25)
-                CT3 = len(BLOCK3)
-            else:
-                CT3 = None
-                BLOCK2 = genBlocks_(B,62,61) #genBlocks_(B,64,62)
-
-            CT2 = len(BLOCK2)
-
+    ## Write text without a newline, optionally colorized
+    def out_(text,tc=None):
+        if tc is not None and tc in fcolor:
+            print(fcolor[tc] + text + fcolor['rs'],end='')
         else:
-            CT3 = None
-            CT2 = None
-            BLOCK1 = genBlocks_(A,88,87) #genBlocks_(A,96,95)
+            print(text,end='')
 
-        CT1 = len(BLOCK1)
+    if B is None:
+        C = None
+    columns = [splitColor_(t) for t in (A,B,C) if t is not None]
+    n = len(columns)
+    widths = WIDTHS[n]
+    blocks = [genBlocks_(text,wd) for (text,_),wd in zip(columns,widths)]
 
-        ## Generate empty lines based on how many columns are needed
-        def makeEmpty(ii):
-            ee = ' '
-            for i in range(1,ii):
-                ee = ee + ' '
-            return ee
-
-        EMPTY1 = makeEmpty(25)              ## 25 empty char length 1st column
-        if CT3 != None:
-            EMPTY2 = makeEmpty(31)          ## 36 empty char length 2nd column *with* 3rd column
-            EMPTY3 = makeEmpty(27)          ## 29 empty char length 3rd column
-        elif CT2 != None:
-            EMPTY2 = makeEmpty(61)          ## 65 empty char length 2nd column *without* 3rd column
-
-
-        ## Iterate through each column block for strings
-        INDEX1 = 0
-        INDEX2 = 0
-        INDEX3 = 0
-        LINENUM = 0
-
-        w(r,'g')
-
-        """
-        Outputs will get formatted to screen based on:
-            -how many values got passed in (1, 2, or 3)
-            -how many words are in each output
-            -which outputs have the most words in them
-            -I hate math
-        """
-        if CT3 != None:
-            COUNTDOWN = CT1 + CT2 + CT3
-            while COUNTDOWN != 0:
-                csep_(c,'g')
-                if CT1 != 0:
-                    csep_(BLOCK1[INDEX1],atc)
-                    CT1 = CT1 - 1
-                    INDEX1 += 1
-                    COUNTDOWN = COUNTDOWN - 1
-                else:
-                    csep_(EMPTY1)
-
-                csep_(c,'g')
-                if CT2 != 0:
-                    csep_(BLOCK2[INDEX2],btc)
-                    CT2 = CT2 - 1
-                    INDEX2 += 1
-                    COUNTDOWN = COUNTDOWN - 1
-                else:
-                    csep_(EMPTY2)
-
-                csep_(c,'g')
-                if CT3 != 0:
-                    csep_(BLOCK3[INDEX3],ctc)
-                    CT3 = CT3 - 1
-                    INDEX3 += 1
-                    COUNTDOWN = COUNTDOWN - 1
-                else:
-                    csep_(EMPTY3)
-
-                w(c,'g')
-
-        elif CT2 != None:
-            if CT1 > CT2 and CT2 != 0:
-                if CT2 == 1:
-                    MIDDLE = ceil((CT1/2) - 1)
-                else:
-                    MIDDLE = ceil((CT1/CT2) - 1)
-
-                for Block in BLOCK1:
-                    if LINENUM < MIDDLE:
-                        csep_(c,'g')
-                        csep_(Block,atc)
-                        csep_(c,'g')
-                        csep_(EMPTY2)
-                        w(c,'g')
-                        LINENUM += 1
-                    else:
-                        csep_(c,'g')
-                        csep_(Block,atc)
-                        csep_(c,'g')
-                        if CT2 != 0:
-                            csep_(BLOCK2[INDEX2],btc)
-                            w(c,'g')
-                            INDEX2 += 1
-                            CT2 = CT2 - 1
-                        else:
-                            LINENUM = -1
-                            csep_(EMPTY2)
-                            w(c,'g')
-            elif CT2 > CT1 and CT1 != 0:
-                if CT1 == 1:
-                    MIDDLE = ceil((CT2/2) - 1)
-                else:
-                    MIDDLE = ceil((CT2/CT1) - 1)
-
-                for Block in BLOCK2:
-                    csep_(c,'g')
-                    if LINENUM < MIDDLE:
-                        csep_(EMPTY1)
-                        LINENUM += 1
-                    else:
-                        if CT1 != 0 and INDEX1 < CT1:
-                            csep_(BLOCK1[INDEX1],atc)
-                            csep_(c,'g')
-                            INDEX1 += 1
-                        else:
-                            LINENUM = -1
-                            csep_(EMPTY1)
-                    csep_(c,'g')
-                    if CT2 != 0:
-                        csep_(Block,btc)
-                    w(c,'g')
+    offsets = [0] * n
+    if n == 2:
+        ct1,ct2 = len(blocks[0]),len(blocks[1])
+        if ct1 != ct2:
+            longer,shorter = max(ct1,ct2),min(ct1,ct2)
+            if shorter == 1:
+                middle = ceil(longer / 2) - 1
             else:
-                for Block in BLOCK2:
-                    csep_(c,'g')
-                    if INDEX1 < CT1:
-                        csep_(BLOCK1[INDEX1],atc)
-                        INDEX1 += 1
-                        csep_(c,'g')
-                    if CT2 != 0:
-                        csep_(Block,btc)
-                    w(c,'g')
-        else:
-            for Block in BLOCK1:
-                csep_(c,'g')
-                csep_(Block,atc)
-                w(c,'g')
+                middle = ceil(longer / shorter) - 1
+            offsets[0 if ct1 < ct2 else 1] = middle
+
+    rows = max(len(bl) + off for bl,off in zip(blocks,offsets))
+
+    """
+    Outputs will get formatted to screen based on:
+        -how many values got passed in (1, 2, or 3)
+        -how many words are in each output
+        -which outputs have the most words in them
+        -I hate math
+    """
+
+    w(BORDER,'g')
+    for i in range(rows):
+        for (bl,off,wd,(_,tc)) in zip(blocks,offsets,widths,columns):
+            j = i - off
+            text = bl[j] if 0 <= j < len(bl) else ''
+            out_(SEP,'g')
+            out_(' ')
+            out_(text,tc)
+            out_(' ' * (wd - len(text) + 1))   ## Pad to exact width + trailing space
+        w(SEP,'g')
+
+
 
 
 def gerwalk(v,action='b',encd='utf8') -> str:
