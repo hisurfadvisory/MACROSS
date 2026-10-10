@@ -830,17 +830,23 @@ def collab(Diamond:str=None,Caller:str=None,Protoculture:any=None,deculture:any=
         with open(pf) as d:
             read_proto = load(d)
 
-        for rp in read_proto:
-            res = read_proto[rp]["result"]
-            tar = read_proto[rp]["target"]
-            target_pairs["caller"] = rp
-            if isinstance(res,str) and res == "PS_":
+        '''for rp in read_proto:
+            res = [rp]["result"]
+            tar = [rp]["target"]
+            target_pairs["caller"] = rp'''
+        if read_proto:
+            res = read_proto["result"]
+            tar = read_proto["target"]
+            cal = read_proto["caller"]
+
+            target_pairs["caller"] = cal
+            if isinstance(res,str) and res == "WAITING":
                 target_pairs["result"] = tar
                 target_pairs["target"] = res
             else:
                 target_pairs["target"] = tar
                 target_pairs["result"] = res
-
+        
         return target_pairs
 
     ## Make sure we can define the .vf1 file's primary index
@@ -866,8 +872,8 @@ def collab(Diamond:str=None,Caller:str=None,Protoculture:any=None,deculture:any=
         ## Give priority to existing Caller value if different from the ID in the .vf1 file
         if c != use_caller:
             c = use_caller
-        protoculture[c] = readin
-        protoculture[c]["result"] = Protoculture
+        #protoculture[c] = readin
+        protoculture["result"] = Protoculture
         writeProto_(sc=protoculture)
         return
 
@@ -897,7 +903,7 @@ def collab(Diamond:str=None,Caller:str=None,Protoculture:any=None,deculture:any=
             del pr
             pr = str(Protoculture)
 
-        protoculture = {use_caller:{"target":pr,"result":empty}}
+        protoculture = {"caller":use_caller,"target":pr,"result":empty}
         writeProto_(sc=protoculture)
 
         # When only writing a response to other scripts' collab calls, quit here
@@ -924,7 +930,7 @@ def collab(Diamond:str=None,Caller:str=None,Protoculture:any=None,deculture:any=
                 call = f"{call} -deculture {deculture}"
         else:
             call = f"{MACPY} {fullpath} {deculture}"
-            environ["PROTOCULTURE"] = protoculture[use_caller]["target"]
+            environ["PROTOCULTURE"] = protoculture["target"]
             environ["CALLER"] = use_caller
         if call:
             psc(cc=call)
