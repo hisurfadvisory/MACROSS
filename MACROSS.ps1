@@ -21,15 +21,20 @@
     Type "debug" in the main menu for a list of quality-of-life utilities; type
     "config" in the main menu to view/change configurations after initial setup.
 
-    There are two example scripts included, BASARA and HIKARU. They each contain
+    There are two example scripts included, BASARA and MYLENE. They each contain
     comments explaining how MACROSS's functions can you automate your automations.
+
+    NOTE: I strongly recommend AGAINST using MACROSS to access APIs (or at least,
+    avoid using the kawamori function to access them) unless your environment *stricly*
+    enforces code-signing. It uses lots of methods to restrict access, but if anybody 
+    can edit the code, they can find a way around it.
 
 
     HOW IT WORKS:
     =====================================================================
-    Scripts (diamonds in MACROSS) should be coded to both assign your investigation/processing
-    values to a global variable, $PROTOCULTURE, and also to automatically act on that variable
-    if it already contains a value when the diamond executes.
+    Scripts (diamonds in MACROSS) should be coded to:
+        1. assign your investigation/processing values to a global variable, $PROTOCULTURE, AND 
+        2. automatically act on that variable if it already contains a value when the diamond executes.
 
     At first run, you are prompted to create a password, and enter values that will be used
     in MACROSS' default configuration, notably:
@@ -38,7 +43,7 @@
             single user, so a repo is unnecessary.
         -the location of a content folder, if you want to use one external to MACROSS for
             storing non-executable files that may be needed for your diamonds (default is the local
-            macross_core\corefuncs\resources folder, but you can specify a share or web server instead)
+            \corefuncs\resources folder, but you can specify a share or web server instead)
         -lists of usernames or group-policy names, used for basic access-control. MACROSS allows
             using 3 levels of access: tier1, tier2, and tier3, and can specify usernames for both
             user-level and admin-level accounts. This can be used to determine which users will
@@ -48,21 +53,21 @@
             a control if digitally-signed code is policy-enforced.
 
     The key utilities for processing data across multiple diamonds/scripts are "findDF"
-    and "collab". See the macross_core\corefuncs\validation.ps1 file for details on these, or type
+    and "collab". See the \corefuncs\validation.ps1 file for details on these, or type
     "debug" in the main menu, and then "help <function name>".
 
 
     ##################################    PYTHON USAGE   ###########################################
     MACROSS looks for the static path to Python3 to determine whether or not to bother with python
-    diamonds. You can modify this check for your system in the validation.ps1 file, line 900.
+    diamonds. You can modify this check for your system in the validation.ps1 file, function "setPY()".
     Alternatively, at setup you can specify a custom path to a specific python version, for example
     if you're using portable packages.
 
     ############# ADDING NEW SCRIPTS (or modifying existing scripts to work with MACROSS) ############
 
-        -Your powershell & python diamonds go in the macross_core\diamonds folder
+        -Your powershell & python diamonds go in the \diamonds folder
         -Files containing common classes, powershell modules, or extra functionality
-            need to go in the macross_core\corefuncs\plugins folder. You can reference this
+            need to go in the \corefuncs\plugins folder. You can reference this
             folder with the global $dyrl_PLUGINS variable.
 
 		1. For your ps & python scripts to work in MACROSS, reserve the first 3 lines;
@@ -73,12 +78,9 @@
             This description gets written to the main menu.
 
         2. The second line is used for version control. It should begin "#_ver 0.1" or whatever
-            number you want to use. MACROSS compares local version numbers to the master copy
-            that should be kept in the master repo (if you specified one during setup). If the
-            master copy is a higher number, MACROSS will grab the latest version and overwrite
-            the outdated local one.
+            number you want to use.
 
-		3. The third line must contain "#_class" follwed by seven comma-separated values that
+		3. The third line must contain "#_class" followed by seven comma-separated values that
             are used to classify your script using the [macross] class (each field requires a
             non-empty value):
 
@@ -171,15 +173,15 @@
                     strings. The plaintext is written to $dyrl_PT, and either overwritten
                     when gerwalk is called again, or deleted when the main menu loads
                     (whichever comes first)
-                $dyrl_PLUGINS is the macross_core\corefuncs\plugins folder where you can execute
-                    any custom modules you created. (doesn't get cleared until exit)
+                $dyrl_PLUGINS is the \corefuncs\plugins folder where you can execute
+                    any custom modules you created.
                 $dyrl_CONTENT is the location of the content folder you specify during
-                    initial setup (doesn't get cleared until exit)
-                $dyrl_RESOURCES is the local macross_core\corefuncs\resources folder where you store
-                    any extra files needed (images, etc.; doesn't get cleared until exit)
+                    initial setup
+                $dyrl_RESOURCES is the local \corefuncs\resources folder where you store
+                    any extra files needed (images, json, etc.)
                 $dyrl_OUTFILES is the local MACROSS\outputs folder you can use for writing
                     common files into
-                $dyrl_OPT1 gets set when a user appends an 's' to their module selection
+                $dyrl_OPT1 gets set 'True' when a user appends an 's' to their module selection
                     (e.g. 3s). This allows your diamond to switch modes or provide added
                     functionality that normally wouldn't be used/needed.
                 $dyrl_TMP is a folder path for writing temporary files to
@@ -189,7 +191,9 @@
                 $dyrl_REPO is the URL to your github/gitlab/whatever code repository, if you
                     configured one at setup
                 $dyrl_AI is the URL to your AI service's API, if you configured it at setup;
-                    Add your AI harness to MACROSS and use this variable to reference the API
+                    Add your AI harness to MACROSS and use this variable to reference the API.
+                    The kawamori function can help you store any related information that may
+                    be needed but shouldn't be kept in plaintext.
 
                 *$PROTOCULTURE is the data your diamonds should automatically act on if it
                     has a value assigned
@@ -216,6 +220,8 @@
                     can create up to three separate columns within the table.
                 -screenResultsAlt: the same as the previous function, but meant for smaller
                     data sets. Writes outputs in a structured list format instead of a table.
+                -screenResultsForm: yet another output option, intended for displaying outputs
+                    from an AI response that may not show correctly on command line.
                 -sheetz: writes outputs to a formatted Excel document. Allows colorizing
                     cells and text, and writing to multiple sheets within a document
                 -kawamori: a keygen that can store data needed by diamonds in a
@@ -223,8 +229,10 @@
                 -uniStrip: strips out all non-ascii characters from a block of text
                 -gerwalk: encode or decode strings using Base64 or hexadecimal
                 -errLog: record custom information or error messages to a MACROSS logfile
-                    (requires configuring a logging location at setup)
+                    (requires configuring a logging location at setup); can also forward
+                    logs to a log server.
                 -decodePdf: extracts plaintext from a PDF document
+                -decodeDoc: extracts plaintext & macros from MS Office documents
                 -getFile: opens an explorer dialog for users to select a file or folder
                 -getBlox: opens an input box for users to paste large blocks of text for
                     processing
@@ -240,7 +248,7 @@
 
             In python, global variable names do not bother with a "dyrl_" prefix, since the
             entire python session is torn down as soon as the diamond finishes. So,
-            $dyrl_CONTENT is just CONTENT, $ROBOTECH is just NOPE, etc.
+            $dyrl_CONTENT is just CONTENT, $dyrl_LATTS is just LATTS, etc.
 
         10. To modify the macross.conf file, type "config" in the main menu.
 
@@ -261,12 +269,13 @@ Write-Host -f GREEN "`n       Loading core functions:`n"
 ##################################
 ## Import core functions; quit if requirements not met
 ##################################
-$ncores = @{
+$ncores = [ordered]@{
+    'classes.ps1'='custom classes loaded...';
     'display.ps1'='display functions loaded...';
     'utility.ps1'='utilities loaded...';
     'validation.ps1'='validation functions loaded...';
-    'configurations.ps1'='configurations set...';
-    'classes.ps1'='custom classes loaded...'
+    'kawamoring.ps1'='key protection loaded...';
+    'configurations.ps1'='configurations set...'
 }
 Foreach( $cf in $ncores.keys ){
     if( Test-Path "$PSScriptRoot\corefuncs\$cf" ){
@@ -325,20 +334,37 @@ lockIn -n dyrl_OUTFILES -v "$dyrl_MACROSS\outputs"                  ## Local fol
 lockIn -n dyrl_HN0 -v "$([string]$env:COMPUTERNAME)"                ## The local hostname $dyrl_HN0
 lockIn -n dyrl_DMDS -v "$dyrl_MACROSS\diamonds"                     ## Your primary automations go in $dyrl_DMDS
 lockin -n dyrl_PYLIB -v "$dyrl_MACROSS\corefuncs\pycross"           ## The macross python library lives here
+lockIn -n dyrl_PG -v @("$dyrl_PYLIB","$dyrl_PYLIB\gbio")            ## gbio holds the .vf1 files powershell & python share
 lockIn -n dyrl_PLUGINS -v "$dyrl_MACROSS\corefuncs\plugins"         ## Additional custom modules/functions go in $dyrl_PLUGINS
 lockIn -n dyrl_RESOURCES -v "$dyrl_MACROSS\corefuncs\resources"     ## Any common csv/json/whatever files your diamonds might need go in $dyrl_RESOURCES
-lockIn -n dyrl_OUTFILES -v  "$dyrl_MACROSS\outputs"                 ## Use $dyrl_OUTFILES to write outputs to file in the MACROSS directory
 lockIn -n dyrl_CONFIG -v @("$dyrl_MACROSS\corefuncs\macross.conf",  ## Templates & configs
     "macross.template")
+
+## Optional per-deployment settings (central config path, tier groups, admin signing key).
+## Sign this file along with the rest of MACROSS; see corefuncs\site.ps1.example.
+if(Test-Path "$dyrl_MACROSS\corefuncs\site.ps1"){
+    try{
+        . "$dyrl_MACROSS\corefuncs\site.ps1"
+        if($Global:dyrl_SITE){
+            $site_ = $dyrl_SITE.Clone(); Remove-Variable dyrl_SITE -Scope Global -Force
+            lockIn -n dyrl_SITE -v $site_; Remove-Variable site_
+        }
+    }
+    catch{
+        Write-Host -f CYAN "`n       ERROR! corefuncs\site.ps1 failed to load: $($_.Exception.Message)`n       Exiting."
+        Exit
+    }
+}
 cls
 
-$rn = $(Get-Random -Minimum 0 -Maximum 11)
-minmay $rn 3; rv rn
+$rn = $(Get-Random -Minimum 0 -Maximum 12)     ## -Maximum is exclusive; art is numbered 0-11
+minmay $rn; rv rn
 
 
-if(! (Test-Path -Path $dyrl_OUTFILES)){
-    New-Item -ItemType directory -Name outputs -Path "$dyrl_MACROSS" | Out-Null
+foreach($reqdir in @($dyrl_OUTFILES,$dyrl_PG[1])){
+    if(! (Test-Path -Path $reqdir)){ New-Item -ItemType Directory -Path $reqdir | Out-Null }
 }
+rv reqdir
 
 
 startUp -i
@@ -352,8 +378,6 @@ foreach($k in @(@('cre','PYCROSS'),@('hrn','AI'),@('con','CONTENT')) ){
     gerwalk $dyrl_CONF[$get]
     lockIn -n $set -v $dyrl_PT
 }
-gerwalk $dyrl_CONF.con
-lockIn -n dyrl_CONTENT -v $dyrl_PT
 gerwalk $dyrl_CONF.log
 lockIn -n dyrl_LOG -v $dyrl_PT
 setUser -i
@@ -395,11 +419,20 @@ setPY
 
 
 while( $true ){
-    varCleanup                  # Start with a clean slate!
-    setUser -c
-    diamondCount
-    $Global:dyrl_MPAGE = 0
+    try{
+        $Global:dyrl_LDEPTH = 0     ## No diamonds are running at the menu
+        $Global:dyrl_NEWW = $false
+        varCleanup                  # Start with a clean slate!
+        setUser -c
+        diamondCount
+        $Global:dyrl_MPAGE = 0
 
-    splashBanner                ## write the MACROSS banner
-    diamondSelect                ## load the menu with available tools for user to select
+        splashBanner                ## write the MACROSS banner
+        diamondSelect                ## load the menu with available tools for user to select
+    }
+    catch{
+        ## Anything that escapes a diamond or menu option lands here instead of ending the
+        ## session: show it (unless the launcher already did), then reload the menu
+        if("$($_.Exception.Message)" -ne $dyrl_HALT){ diamondFault -r $_ -s 'MACROSS' }
+    }
 }
