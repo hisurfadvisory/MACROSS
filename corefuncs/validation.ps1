@@ -1,6 +1,6 @@
 ## Functions for MACROSS task validations
 
-
+## Validate diamond scripts in the diamonds folder
 function diamondCount(){
     $valid = @('#_sdf1','#_ver','#_class')
     Remove-Variable -Force dyrl_LATTS -Scope Global   ## Clear old lists from memory
@@ -72,10 +72,11 @@ function varCleanup([switch]$c,[switch]$s){
 
     if($c){
         customVars_
-        if($MONTY){ Remove-Item env:dyrl_*,env:MACROSS,env:USR,env:MACROSSVENV }
+        Remove-Item env:dyrl_* -ErrorAction SilentlyContinue
+        if($MONTY){ Remove-Item env:MACROSS,env:USR,env:MACROSSVENV -ErrorAction SilentlyContinue }
         cleanGBIO
         if($env:PYTHONPATH -Like "*$dyrl_PYLIB*"){
-            $env:PYTHONPATH = $env:PYTHONPATH -replace "$dyrl_PYLIB;*"
+            $env:PYTHONPATH = $env:PYTHONPATH -replace "$([regex]::Escape($dyrl_PYLIB));*"
         }
         Remove-Variable -Force dyrl_*,MONTY,ROBOTECH,USR -Scope Global
     }
@@ -261,8 +262,8 @@ function errMsg($m=0,$c='c',$f='MACROSS.errMsg',[switch]$s){   #mp
         $msg = $msgs[$([int]$m)]
         if( $s -or ($m -eq [int]1) ){
             errLog ERROR $f "$($msg + '  ' + $dyrl_mErr)"
-            w $c "
-            $m Exiting...`n" $c
+            w "
+            $msg Exiting...`n" $c
             sleep 2
             Remove-Variable -Force vf_* -Scope Global
         }
@@ -297,7 +298,7 @@ function macrossMirror([switch]$c,$nval="11,153,731"){
     else{
         $np,$opt = 'F','F'
         $l = mkList
-        startUp; $dyrl_CONF.keys | Sort -Descending | ?{$_ -notIn @('di1','di2','sky')} | %{
+        startUp; $dyrl_CONF.keys | Sort -Descending | ?{$_ -notIn @('di1','di2','sky','tsk')} | %{     ## python never needs the sealed team key
             [void]$l.add($_ + '::' + "$($dyrl_CONF[$_])")
         }
         $psv = $PSVersionTable.PSVersion.Major
@@ -345,14 +346,44 @@ function setLocal([switch]$init,[switch]$mine){   #mp
 
     #>
     if($init){
-        gerwalk '4C696F6F4B4764326647646C6443313259584A7059574A735A536
-        B6F4948786358484D704B79686B4B436835636D7770507934714B543870503
-        1777166484E3059584A30645842385130394F526935374D5377796653687A6
-        1336C38596D7777664752704B5878725958646862573979615878634A45356
-        666475235636D78665130394F526B6C4866477876593246734B484A6C59575
-        23864334A70644755706348776F6458423863326C6B5A58786B623364754B5
-        864796158526C4B533471'
-        gerwalk -h $dyrl_PT
+        ## Debug-restriction pattern used by consoleDebug: hex wrapping base64, so the hex is
+        ## decoded first. (The previous version decoded in the opposite order and returned an
+        ## empty or garbled pattern.)
+        gerwalk -h (@(
+            '4B4438365847496F507A706E646E786E5A585174646D4679615746696247563863335A386332',
+            '56304C585A68636D6C68596D786C66484A3266484A6C625739325A53313259584A7059574A73',
+            '5A587875646E78755A586374646D467961574669624756385932783266474E735A5746794C58',
+            '5A68636D6C68596D786C4B567869664678694B443836646D467961574669624756385A6E5675',
+            '59335270623234704F6E7863596E427A646D46796157466962475663596E7863596E4E6C6333',
+            '4E706232357A644746305A5678696646776B5A58686C59335630615739755932397564475634',
+            '644678696646776B4B4438365A327876596D46734F6E787A59334A7063485136664778765932',
+            '46734F696B2F4B4438365A486C796246386F507A706A6232356D58486371664774755A317833',
+            '4B6E78776448786859324E6C63334E30615756796648567A5A584A686458526F664731765A47',
+            '353864584E795932687266474A735A436C38626C387058474A385847496F507A707459574E76',
+            '626D5A38644756746347567564696C63596E7863596D52695A79672F4F6E4A34664764686447',
+            '5570583378635969672F4F6E4E3059584A3064584238636E56755932397564476C7564575638',
+            '636E567563335268636E5238636E56756257396B61575A3566484A31626E567A5A584A306157',
+            '567966486470656D46795A4878685A475233636D6C305A584E38636D563064584A755A47566D',
+            '5958567364487831634752686447567A61336C384B4438366458423863326C6B5A58786B6233',
+            '64754B5864796158526C5848637166477876593246734B443836636D56685A487833636D6C30',
+            '5A536C776648686C626E5279655878696558526C636E787459574E7962334E7A62576C79636D',
+            '397966484E7759574E6C5A6D39735A4878725958646862573979615678334B6E7872626D6463',
+            '64797438593239755A6C78334B313938593239755A6E4E705A323570626D64725A586B705847',
+            '4A3858474A7A5A58527362324E6862467869573134376646307158484D74615878635969672F',
+            '4F6E42796233526C5933526C5A4752686447463859334A3563485277636D39305A574E305A47',
+            '46305958786A636E6C776448567563484A766447566A6447526864474638626D4E7965584230',
+            '584863714B567869664678694B4438366157563466476C75646D39725A53316C654842795A58',
+            '4E7A6157397566476C75646D39725A53316A623231745957356B66476C6A625878685A475174',
+            '64486C775A58787A644746796443317162324A3863335268636E517463484A765932567A6333',
+            '78795A575A735A574E306157397566475A796232316959584E6C4E6A527A64484A70626D6370',
+            '58474A385847496F507A70776233646C636E4E6F5A57787366484233633267704B4438365843',
+            '356C65475570503178696646786263324E7961584230596D7876593274635858787A59334A70',
+            '634852696247396A613178644F6A706A636D56686447563858433570626E5A76613256636379',
+            '70634B48776F507A7065664673376648736F5856787A4B696B6D58484D71577968634A436369',
+            '5858776F507A7065664673376648736F5856787A4B696C634C6C787A4B31736F5843516E496C',
+            '3070'
+        ) -join '')
+        gerwalk $dyrl_PT
         Return "$dyrl_PT"
     }
 
@@ -491,105 +522,216 @@ function setUser($ac,[switch]$c,[switch]$i){
 }
 
 
-## Clean up the logging
-function skSanitize([switch]$c=$false){
-    $mixed = 'M2MgNTIgNDUgNDQgNDEgNDMgNTQgNDUgNDQgM2UgMmMgMjAgNTQgNjgg
-    NjEgNzQgMjcgNzMgMjAgNjEgMjAgNzAgNzIgNjkgNzYgNjkgNmMgNjUgNjcgNjUgNj
-    QgMjAgNjMgNmYgNmQgNmQgNjEgNmUgNjQgMmUgMmMgMjAgNDMgNTUgNTIgNTIgNDUg
-    NGUgNTQgMjAgNDMgNGYgNGUgNDYgNDkgNDcgNTUgNTIgNDEgNTQgNDkgNGYgNGUgMj
-    AgNGIgNDUgNTkgNTMgMmMgNGYgNzIgNjUgMjAgNmUgNmYgMjAgNzUgNzQgNjEgMjAg
-    NmYgMjAgNmIgNjkgNmIgNjUgMjEgMmMgNDQgNmYgMjAgNzkgNmYgNzUgMjAgNmUgNj
-    UgNjUgNjQgMjAgNzQgNmYgMjAgNjEgNjQgNjQgMjAgNmYgNzIgMjAgNjMgNjggNjEg
-    NmUgNjcgNjUgMjAgNjEgNmUgNzkgMjAgNjQgNjUgNjYgNjEgNzUgNmMgNzQgMjAgNj
-    MgNmYgNmUgNjYgNjkgNjcgNzMgM2YgMjAgMjggNzkgMmYgNmUgMjk='
-    if(! $dyrl_CONF){ startUp }
-    function transcripts_($dir,$message=''){
+## Redact authentication material (passwords, tokens, keys, connection strings, etc.)
+## from a block of text
+function skScrub(){   #mp
+    <#
+    ||shorthelp||
+    Redact passwords, tokens, API keys and other authentication strings from text.
+    Usage:
+        $clean = skScrub [-t TEXT]
+
+    ||longhelp||
+    Returns your text with sensitive authentication values replaced by
+    "<MACROSS REDACTED>". The labels (e.g. "-Password", "Authorization: Bearer",
+    "api_key=") are kept so you can still see what was there. This is the same
+    scrubber MACROSS uses to sanitize the powershell history when it exits; you
+    can use it before writing outputs or logs from your diamonds.
+
+    Detection is intentionally aggressive (it prefers redacting a harmless value
+    over missing a real secret). It covers:
+        -key=value / key: value pairs, variable assignments, JSON & hashtables,
+            and connection strings using password/secret/token/key-type names
+        -command parameters like -Password, --token, -ClientSecret, /pass:,
+            and tool-specific forms (net user/use, cmdkey, schtasks, psexec,
+            sshpass, mysql -p, openssl -passin, ssh-keygen -N/-P, curl -u,
+            aws configure set)
+        -Authorization / X-*-Key / X-*-Token headers, Bearer & Basic tokens
+        -credentials embedded in URLs (scheme://user:pass@host) and secret
+            query-string parameters (token=, sig=, key=, code= ...)
+        -ConvertTo-SecureString plaintext and NetworkCredential/PSCredential
+            constructor passwords
+        -PEM private key blocks
+        -well-known token formats: JWTs, AWS access key IDs, GitHub, GitLab,
+            Slack, Google, Stripe, OpenAI/Anthropic-style sk- keys, npm, PyPI,
+            SendGrid, Twilio, and Slack/Teams/Discord webhook URLs
+
+    Values that are references rather than literal secrets ($variables,
+    (subexpressions), Read-Host, Get-Credential...) are left alone. Running it
+    more than once on the same text gives the same result.
+
+    ||examples||
+    Scrub a command before logging it:
+
+        errLog INFO 'MyScript' "$(skScrub $command_line)"
+
+    Scrub an output file:
+
+        $raw = Get-Content -Raw $report
+        skScrub $raw | Set-Content $report
+
+    #>
+    param(
+        [Parameter(Mandatory=$true)]
+        [AllowEmptyString()]
+        [string]$text
+    )
+    if($text -eq ''){ Return $text }
+
+    $R = '<MACROSS REDACTED>'
+
+    ## A secret value: quoted (including JSON-escaped quotes) or a bare token
+    $val = '(?:\\"(?:[^"\\]|\\[^"])*\\"|"[^"\r\n]*"|''[^''\r\n]*''|[^\s''"`,;&|)}\]]+)'
+
+    ## Don't redact references that aren't literal secrets ($vars, subexpressions,
+    ## arrays/hashtables, prompts, or values that were already redacted)
+    $notref = '(?!\$|\(|\[|@[\(\{]|<MACROSS REDACTED|\*(?:\s|$)|(?:Get|Read|ConvertTo|ConvertFrom|New|Import|Invoke)-[A-Za-z]+\b)'
+
+    ## Names that indicate the value is a secret
+    $kw = '(?:passw(?:or)?d|passwd|pwd|passphrase|pass(?:code|key)|secret|token|bearer|' +
+        'api[_-]?key|apikey|(?:access|account|storage|subscription|master|shared|signing|encryption|' +
+        'license|primary|secondary|private|secret|auth|client|host|function|app|service|session)[_-]?key|' +
+        'client[_-]?secret|credential|creds?\b|connection[_-]?string|conn[_-]?str|' +
+        'shared[_-]?access[_-]?(?:key|signature)|cookie|session[_-]?id|sas[_-]?token|' +
+        'auth[_-]?(?:token|code|header)|(?<![a-z])otp(?![a-z])|mfa[_-]?code|pin[_-]?code)'
+
+    $rules = @(
+        ## PEM private key blocks (multi-line)
+        @('(?is)-----BEGIN[ A-Z0-9]*PRIVATE KEY(?: BLOCK)?-----.*?(?:-----END[ A-Z0-9]*PRIVATE KEY(?: BLOCK)?-----|\z)',
+            '<MACROSS REDACTED PRIVATE KEY>'),
+
+        ## Credentials embedded in URLs: scheme://user:password@host
+        @('(?i)(\b[a-z][a-z0-9+.-]*://[^/\s:@''"]+:)[^/\s@''"]+(?=@)', "`$1$R"),
+
+        ## Authorization headers: Authorization: Bearer xyz / Basic xyz / ApiKey xyz ...
+        @('(?i)(\b(?:Proxy-)?Authorization["'']?\s*[:=]\s*["'']?(?:(?:Bearer|Basic|Digest|Negotiate|NTLM|Token|ApiKey|SSWS|Key|SharedAccessSignature)\s+)?)[^\s"'';,}]+',
+            "`$1$R"),
+        @('(?i)(\b(?:Bearer|Basic)\s+)[A-Za-z0-9\-._~+/]{8,}=*', "`$1$R"),
+
+        ## API-style headers: X-API-Key, X-Auth-Token, Ocp-Apim-Subscription-Key, etc.
+        @('(?i)(\b(?:X-[\w-]*|Ocp-Apim-[\w-]*|[\w-]*-)(?:key|token|secret|auth|signature|session)[\w-]*["'']?\s*[:=]\s*["'']?)[^\s"'';,}]+',
+            "`$1$R"),
+
+        ## Command parameters: -Password x, --token=x, -ClientSecret 'x', -AccountPassword x ...
+        @("(?i)((?:^|[\s(])--?[\w-]*$kw[\w-]*(?:\s*[=:]\s*|\s+))$notref$val", "`$1$R"),
+
+        ## Windows-style switches: /pass:x  /password:x  /pwd:x  /p:x
+        @("(?i)((?:^|\s)/(?:pass|password|passwd|pwd|p|rp)\s*:\s*)$notref$val", "`$1$R"),
+
+        ## key=value, key: value, $var = value, JSON "key":"value", hashtable key='value',
+        ## connection strings (Password=...;AccountKey=...;)
+        @("(?i)((?:\$|\b)[\w.-]*$kw[\w.-]*(?:\\?[""''])?\s*(?:=|:(?!:))\s*)$notref$val", "`$1$R"),
+        @('(?i)(\bSharedAccessSignature\s*=\s*)[^;''"\s]+', "`$1$R"),
+
+        ## Secret query-string parameters
+        @('(?i)([?&;](?:access_token|refresh_token|id_token|token|api[_-]?key|apikey|key|secret|client_secret|password|passwd|pwd|sig|signature|code|auth|session|sessionid|sas)=)[^&\s''"#]+',
+            "`$1$R"),
+
+        ## Tool-specific positional passwords
+        @("(?i)(\bnet1?(?:\.exe)?\s+user\s+(?:""[^""]+""|\S+)\s+)(?![/*])$notref$val", "`$1$R"),
+        @("(?i)(\bnet1?(?:\.exe)?\s+use\b[^\r\n]*?\\\\\S+\s+)(?![/*])$notref$val", "`$1$R"),
+        @("(?i)(\bschtasks(?:\.exe)?\b[^\r\n]*?\s/r?p\s+)(?![/*])$notref$val", "`$1$R"),
+        @("(?i)(\b(?:ps|pa)exec(?:64)?(?:\.exe)?\b[^\r\n]*?\s-p\s+)$notref$val", "`$1$R"),
+        @('(?i)(\bsshpass\b[^\r\n]*?\s-p\s*)\S+', "`$1$R"),
+        @('(?i)(\bmysql\w*(?:\.exe)?\b[^\r\n]*?\s-p)(?=[^\s-])\S+', "`$1$R"),
+        @("(?i)(\bssh-keygen(?:\.exe)?\b[^\r\n]*?\s-[NP]\s+)$val", "`$1$R"),
+        @('(?i)(-pass(?:in|out)?\s+(?:pass|env):)\S+', "`$1$R"),
+        @('(?i)((?:^|\s)(?:-u|--user|--proxy-user|-U|--http-user)\s+["'']?[^:\s"'']+:)[^\s"'']+', "`$1$R"),
+        @('(?i)(\baws\s+configure\s+set\s+\S*(?:key|secret|token)\S*\s+)\S+', "`$1$R"),
+
+        ## Second (password) argument of NetworkCredential / PSCredential constructors
+        @("(?i)(NetworkCredential[^\r\n(]*\(\s*(?:""[^""]*""|'[^']*'|[^,()]*?)\s*,\s*)$notref$val", "`$1$R"),
+        @("(?i)(NetworkCredential\b[^\r\n|;]*?-ArgumentList\s+(?:""[^""]*""|'[^']*'|[^,\s]+)\s*,\s*)$notref$val", "`$1$R"),
+
+        ## Well-known token formats, wherever they appear
+        @('\beyJ[A-Za-z0-9_-]{5,}\.eyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}', $R),            ## JWT
+        @('\b(?:AKIA|ASIA|AGPA|AIDA|AROA|ANPA|ANVA|AIPA)[A-Z0-9]{16}\b', $R),             ## AWS key IDs
+        @('\b(?:gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{22,})', $R),            ## GitHub
+        @('\bglpat-[A-Za-z0-9_-]{20,}', $R),                                               ## GitLab
+        @('\bxox[abposr]-[A-Za-z0-9-]{10,}', $R),                                          ## Slack tokens
+        @('\bAIza[0-9A-Za-z_-]{35}', $R),                                                  ## Google API
+        @('\bya29\.[0-9A-Za-z_-]{20,}', $R),                                               ## Google OAuth
+        @('\b(?:sk|rk|pk)_(?:live|test)_[0-9A-Za-z]{16,}', $R),                            ## Stripe
+        @('\bsk-(?:ant-|proj-)?[A-Za-z0-9_-]{20,}', $R),                                   ## OpenAI/Anthropic-style
+        @('\bnpm_[A-Za-z0-9]{36}\b', $R),                                                  ## npm
+        @('\bpypi-[A-Za-z0-9_-]{50,}', $R),                                                ## PyPI
+        @('\bSG\.[\w-]{22}\.[\w-]{43}\b', $R),                                             ## SendGrid
+        @('\bSK[0-9a-fA-F]{32}\b', $R),                                                    ## Twilio
+        @('(?i)(https://(?:hooks\.slack\.com/(?:services|workflows)|[\w.-]*\.webhook\.office\.com|discord(?:app)?\.com/api/webhooks)/)\S+',
+            "`$1$R")                                                                        ## Webhook URLs
+    )
+
+    $out = $text
+    foreach($rule in $rules){
+        $out = $out -replace $rule[0],$rule[1]
+        ## A later rule can re-match an earlier "<MACROSS REDACTED>"; collapse the leftovers
+        $out = $out -replace '<MACROSS REDACTED>(?:\s*REDACTED>)+','<MACROSS REDACTED>'
+    }
+
+    ## Plaintext handed to ConvertTo-SecureString (quoted literals, or a bare first argument)
+    $out = [regex]::Replace($out,'(?i)\bConvertTo-SecureString\b[^|;\r\n]*',
+        [System.Text.RegularExpressions.MatchEvaluator]{
+            param($m)
+            $seg = $m.Value -replace '"[^"]*"|''[^'']*''',"'$R'"
+            $seg -replace '(?i)(ConvertTo-SecureString\s+(?:-String\s+)?)(?![-$(@''<])\S+',"`$1$R"
+        })
+
+    Return $out
+}
+
+
+## Redact authentication strings from the powershell history (and optionally from
+## powershell transcripts). Runs automatically when MACROSS exits and after the
+## "shell" option closes. Use -t to also scrub the transcripts in a folder (this
+## includes subfolders, i.e. the GPO transcription layout <dir>\yyyyMMdd\*.txt).
+## Note that PSReadLine also keeps the current console's history in memory until
+## that powershell window is closed.
+function skSanitize([switch]$c=$false,[string]$t=$null){
+    $redacted = mkList
+    $failed = mkList
+
+    function scrubFile_($file){
         try{
-            $tlist = Get-ChildItem -Recurse "$dir\$(Get-Date -format 'yyyyMMdd')\Powershell_transcript*txt" |
-                ?{$_.LastWriteTime -ge (Get-Date).AddDays(-1)} | Sort -d -Property LastWriteTime
-        }
-        catch{
-            if($c){ errLog INFO "$($msgs[0]) $($msgs[3])" }
-            Return
-        }
-
-        foreach($t in $tlist | ?{$t.Name -ne $tlist[0].Name}){
-            $dirty = $false; $redact = $false
-            if(sls $scrub $t.Fullname){
-                Continue
-            }
-            else{
-                $scan = Get-Content $t.Fullname
-                $modify = ''
-                foreach($line in $scan){
-					if($line -Like "*key=*"){
-						$line = $line -replace "key=[\w-_\.]+[^\w-_\.]",'key=<MACROSS REDACTED>'
-						$redact = $true
-						$dirty = $true
-					}
-                    elseif($line -Like "*passw*"){
-						$line = $line -replace "passw(ord)?[\s\t]?[\S\T]+",'passw <MACROSS REDACTED>'
-						$redact = $true
-						$dirty = $true
-					}
-                    elseif($line -eq "$($mix[1])" -or $line -Like "*$($mix[2])"){
-                        $redact = $true
-                        $dirty = $true
-                    }
-                    elseif($redact){
-                        if($line -Like "*$($mix[3])*"){
-                            $redact = $false
-                        }
-                        elseif($line -Like "*$($mix[4])"){
-                            $redact = $false
-                        }
-                        else{ $line = $scrub }
-                    }
-                    elseif($line -Match $mix[0] -or $line -Match $mix[1]){
-                        $dirty = $true
-                        $line = $scrub
-                    }
-
-                    $modify += "$line`n"
-                }
-                if($dirty){
-                    $modify | Set-Content $t.Fullname
-                    errLog INFO $msgs[1]
-                }
+            $raw = [IO.File]::ReadAllText($file)
+            $clean = skScrub $raw
+            if($clean -cne $raw){
+                [IO.File]::WriteAllText($file,$clean,[Text.UTF8Encoding]::new($false))
+                [void]$redacted.Add($file)
             }
         }
+        catch{ [void]$failed.Add("$file ($($_.Exception.Message))") }
     }
 
-    $msgs = @(
-		'Clean exit;',
-		'Powershell history file was sanitized',
-		'nothing to sanitize in the transcripts',
-		'there are no powershell transcripts to sanitize.',
-		'possible permission lock.'
-	)
-
-    ## Sanitize logs
-    $psr = "$env:AppData\Microsoft\Windows\Powershell\PSReadline"
-    if(Test-Path $psr){
-        $sanitize = mkList
-        $pslog = (Get-ChildItem "$psr\*" | ?{$_.LastWriteTime -gt $(Get-Date).AddHours(-24)}).Fullname
-        if(Select-String -Pattern "(ssh |curl.exe )" $pslog){
-            foreach($line in Get-Content $pslog){
-                if($line -Like "ssh *"){ $line = $line -replace $mix[2],"echo | $($mix[3])" }
-                elseif($line -Like "*curl.exe *"){ $line = $line -replace $mix[1],$mix[3] -replace $mix[0],$mix[3] }
-                $sanitize.Add($line) | Out-Null
-            }
-			try{
-				$sanitize | Set-Content $pslog
-				errLog INFO 'MACROSS.skSanitize' $msgs[1]
-			}
-			catch{
-				errLog WARN 'MACROSS.skSanitize' "Could not scrub $pslog; $($msgs[4])"
-				return
-			}
+    ## PSReadLine keeps a separate history file per host (ConsoleHost, VS Code, ISE...);
+    ## scrub each file on its own so their contents never get mixed together
+    $hfiles = mkList
+    try{
+        $hp = (Get-PSReadLineOption -ErrorAction Stop).HistorySavePath
+        if($hp -and (Test-Path -PathType Leaf $hp)){ [void]$hfiles.Add($hp) }
+    }
+    catch{ $null }
+    if($env:APPDATA){
+        $psr = Join-Path $env:APPDATA 'Microsoft\Windows\PowerShell\PSReadLine'
+        if(Test-Path $psr){
+            Get-ChildItem -File -Path $psr -Filter '*history*.txt' -ErrorAction SilentlyContinue |
+                %{ if($_.FullName -notIn $hfiles){ [void]$hfiles.Add($_.FullName) } }
         }
     }
-    elseif($c){ errLog INFO "$($msgs[0]) $($msgs[2])" }
+    foreach($hf in $hfiles){ scrubFile_ $hf }
+
+    ## Optional: powershell transcripts
+    if($t -and (Test-Path $t)){
+        Get-ChildItem -File -Recurse -Path $t -Filter '*transcript*.txt' -ErrorAction SilentlyContinue |
+            %{ scrubFile_ $_.FullName }
+    }
+
+    if($redacted.count -gt 0){
+        errLog INFO 'MACROSS.skSanitize' "Redacted authentication strings in $($redacted.count) file(s): $($redacted -join ', ')"
+    }
+    elseif($c){ errLog INFO 'MACROSS.skSanitize' 'Clean exit; nothing to sanitize.' }
+    foreach($f in $failed){
+        errLog WARN 'MACROSS.skSanitize' "Could not scrub $f; possible permission lock."
+    }
 }
 
 
@@ -724,11 +866,11 @@ function valkyrie(){   #mp
         else{
             if( $dyrl_NEWW ){
                 ## Launches diamond in new window if user desires; WILL NOT SHARE CORE MACROSS VALUES OR FUNCTIONS!
-                if($sp -and $sp -ne $PROTOCULTURE){launcher -n "$diamond -spiritia $sp" -v $vtype}
-                else{launcher $diamond -v $vtype}
+                if($sp -and $sp -ne $PROTOCULTURE){ launcher -n $diamond -alt $sp -v $vtype }
+                else{ launcher -n $diamond -v $vtype }
             }
             else{
-                if($sp -and $sp -ne $PROTOCULTURE){ . $diamond -spiritia $sp }
+                if($sp -and $sp -ne $PROTOCULTURE){ launcher $diamond -alt $sp -v $vtype }
                 else{ launcher $diamond -v $vtype }
             }
             Remove-Variable -Force CALLER -Scope Global
@@ -827,9 +969,83 @@ function findDF($v,$l,[switch]$e,$m=$null){   #mp
 }
 
 
-## Execute the selected automation tool, with any alt options. Display errors for failed launch.
-## $alt options are dependent on the tool itself; sending an $alt to the wrong tool as the
-## -kreese parameter can cause problems!
+## Marker used to unwind nested diamond calls (valkyrie) back to the main menu after a
+## failure has already been shown to the user.
+$Global:dyrl_HALT = 'MACROSS_DIAMOND_HALTED'
+
+function diamondFault(){   #mp
+    <#
+    ||shorthelp||
+    Show the error that stopped a diamond, log it, and wait for ENTER.
+    Usage:
+        diamondFault [-r ERROR_RECORD] [-s SOURCE_NAME] [-d DETAIL_TEXT] [-l <LAST KNOWN>]
+
+    ||longhelp||
+    MACROSS calls this automatically when a diamond stops because of an error, so you
+    normally don't need to. It displays the error that caused the stoppage (message,
+    script, line and the offending code). If no error record is available, it shows the
+    last error on record instead and labels it as such. The error is written to the
+    MACROSS log, and the user hits ENTER to go back to the main menu.
+
+    -r  an ErrorRecord/exception (e.g. $_ inside a catch block)
+    -s  the name of the diamond or function that failed
+    -d  extra detail, e.g. "exited with code 2" or a python traceback
+    -l  label -r as "the last error on record" instead of the cause
+
+    If your diamond catches its own errors but still needs to stop, you can throw
+    from your catch block; MACROSS will show the error and return to the menu
+    without ending the session.
+
+    ||examples||
+    Inside your diamond:
+
+        try{ Invoke-RestMethod $uri -ErrorAction Stop }
+        catch{ diamondFault $_ -s 'MYSCRIPT'; Return }
+
+    #>
+    param(
+        $r=$null,
+        [string]$s='MACROSS',
+        [string]$d=$null,
+        [switch]$l
+    )
+    if(-not $r -and -not $d){ $r = $Error[0]; $l = $true }
+
+    $msg = $null; $where = $null
+    if($r -is [System.Management.Automation.ErrorRecord]){
+        $msg = $r.Exception.Message
+        if($r.InvocationInfo -and $r.InvocationInfo.ScriptName){
+            $where = "$($r.InvocationInfo.ScriptName) (line $($r.InvocationInfo.ScriptLineNumber))"
+            $code = "$($r.InvocationInfo.Line)".Trim()
+        }
+    }
+    elseif($r -is [System.Exception]){ $msg = $r.Message }
+    elseif($r){ $msg = "$r" }
+
+    Write-Host ''
+    w "  $s STOPPED  " -b r -f k
+    if($d){ w "`n $d" y }
+    if($msg){
+        if($l){ w "`n Last error on record:" c }
+        else{ w "`n Error:" c }
+        w " $msg" y
+        if($where){ w " Location: $where" c }
+        if($code){ w " Code:     $code" c }
+    }
+    elseif(-not $d){ w "`n No error details were recorded." y }
+
+    $logmsg = (@($d,$msg,$where) | ?{$_}) -join ' | '
+    try{ errLog ERROR $s "$(skScrub "$logmsg")" }catch{ $null }
+
+    w "`n Hit ENTER to return to the main menu." g -i
+    Read-Host | Out-Null
+}
+
+
+## Execute the selected automation tool, with any alt options. If the diamond stops because
+## of an error (a terminating error, or a non-zero exit code), the error is shown to the user
+## via diamondFault and MACROSS returns to the main menu without ending the session. $alt is
+## passed to the diamond as -spiritia, so the diamond must accept that parameter.
 function launcher(){
     param(
         [switch]$new=$false,            ## Open new window
@@ -840,54 +1056,74 @@ function launcher(){
         [string]$vt,                    ## diamond valtype
         [string]$xm=$null               ## option
     )
-    function err_(){
-        errLog ERROR 'MACROSS.launcher' "Failed to launch $command"
-        macrossHelp -h
-    }
-    
+    $name = [IO.Path]::GetFileNameWithoutExtension($command)
+    $pyerr = Join-Path "$dyrl_TMP" 'pyerror.vf1'    ## python's macross library writes uncaught tracebacks here
 
     ## Regardless of 'python0' or 'python1' as the diamond's .lang value, if only one
     ## python version is available, we'll attempt to execute it.
     function whichPy_($option){
+        $pyargs = @($command)
+        if($null -ne $alt -and "$alt" -ne ''){ $pyargs += "$alt" }
+        if(Test-Path $pyerr){ Remove-Item -Force $pyerr -ErrorAction SilentlyContinue }
         pyATTS; macrossMirror -n $N_
-        if($option -eq '1' -or -not $MONTY){
-            try{ py "$command" }
-            catch{ err_ }
+        try{
+            $usealt = $MONTY -and ($option -eq '0' -or -not $LIFEOFBRIAN)
+            if($usealt){ & $dyrl_PYCROSS @pyargs }
+            elseif($LIFEOFBRIAN){ py @pyargs }
+            else{ throw "No python interpreter is available to run $command" }
         }
-        elseif($option -eq '0' -or -not $LIFEOFBRIAN){
-            try{ & $dyrl_PYCROSS "$command" }
-            catch{ err_ }
-        }
-        macrossMirror -c
+        finally{ macrossMirror -c }
     }
 
     if($PSVersionTable.PSVersion.Major -lt 7){ $exe = 'powershell.exe' }
     else{ $exe = 'pwsh.exe' }
 
-    if($py -ne '2'){
-        if($alt){ $command = "$command $alt" }
-        whichPy_ "$py"
+    $Global:dyrl_LDEPTH = [int]$dyrl_LDEPTH + 1
+    $Global:LASTEXITCODE = 0
+    $before = $Error[0]                 ## to tell new errors apart from older ones
+    $fault = $null; $detail = $null; $lastknown = $false; $halted = $false
+
+    try{
+        if($py -ne '2'){ whichPy_ "$py" }
+        elseif($new){
+            $al = @('-NoExit','-File',"`"$command`"")
+            if($null -ne $alt){ $al += @('-spiritia',"`"$alt`"") }
+            Start-Process $exe -ArgumentList $al -ErrorAction Stop
+        }
+        elseif($null -ne $alt){ . $command -spiritia $alt }
+        else{ . $command }
+
+        ## No exception, but the diamond (or python) reported failure through its exit code
+        if($LASTEXITCODE -and $LASTEXITCODE -ne 0){
+            $detail = "$name exited with code $LASTEXITCODE."
+            if($py -ne '2' -and (Test-Path $pyerr)){
+                $detail = "$detail`n`n$((Get-Content -Raw $pyerr).TrimEnd())"
+            }
+            elseif($Error[0]){
+                $fault = $Error[0]; $lastknown = $true
+                if([object]::ReferenceEquals($Error[0],$before)){
+                    $detail = "$detail (No new error was recorded while it ran.)"
+                }
+            }
+        }
     }
-    elseif($alt){
-        if($new){
-            try{ Start-Process $exe $command -kreese $alt }
-            catch{ err_ }
-        }
-        else{
-            try{ . $command -kreese $alt }
-            catch{ err_ }
-        }
+    catch{
+        if("$($_.Exception.Message)" -eq $dyrl_HALT){ $halted = $true }   ## already shown by a nested call
+        else{ $fault = $_ }
     }
-    else{
-        if($new){
-            try{ Start-Process $exe $command }
-            catch{ err_ }
-        }
-        else{
-            try{ . $command }
-            catch{ err_ }
-        }
+    finally{
+        $Global:dyrl_LDEPTH = [math]::Max(0,[int]$dyrl_LDEPTH - 1)
+        $Global:LASTEXITCODE = 0
     }
+
+    if($fault -or $detail){
+        diamondFault -r $fault -s $name -d $detail -l:$lastknown
+        $halted = $true
+    }
+
+    ## If this diamond was called by another diamond, stop that one too so the user
+    ## lands back at the main menu instead of in a half-finished caller
+    if($halted -and $dyrl_LDEPTH -gt 0){ throw $dyrl_HALT }
 }
 
 ################################
@@ -935,10 +1171,7 @@ function flightDeck($dmd,[switch]$r){
             sleep 2
         }
     }
-
-    if($LASTEXITCODE -gt 0){
-        macrossHelp -h
-    }
+    ## Diamond failures are reported by the launcher (see diamondFault)
 }
 ## Set default values for python execution
 function setPY(){
@@ -972,11 +1205,7 @@ function setPY(){
 
     ## Make sure powershell can find the macross python library
     if($dyrl_PYVERS -ne $npi){
-        if($LIFEOFBRIAN -and (Test-Path "$($dyrl_PG[0])\__init__.py")){
-            if(-not $env:PYTHONPATH){ $env:PYTHONPATH = $dyrl_PG[0] }
-            elseif($env:PYTHONPATH -notMatch $dyrl_PG[0]){ $env:PYTHONPATH = "$($dyrl_PG[0]);$env:PYTHONPATH" }
-        }
-        lockIn -n dyrl_PG -v @("$dyrl_PYLIB","$dyrl_PYLIB\gbio")
+        ## ($dyrl_PG is set at startup in MACROSS.ps1)
         if(-not $env:PYTHONPATH){
             $env:PYTHONPATH = $dyrl_PYLIB
         }
