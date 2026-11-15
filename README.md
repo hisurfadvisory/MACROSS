@@ -12,7 +12,6 @@ Multi-API-Cross-Search (MACROSS) console interface is a very simple powershell f
 The purpose of MACROSS is to make automation tasks available to everyone on your blue team regardless of their skill with command-line. This can make things alot quicker if you script out your most common Active-Directory and Windows Server queries, or you're able to use APIs instead of web-interfaces to query security tools.
 <br><br>
 When you use MACROSS for the first time, a config wizard walks you through the process of generating a configuration file. To disable or ignore any of these configurations, simply enter 'none' in the appropriate field. It also asks you to create a password, which is used when you want to update the configuration file.<br>
-&emsp;-Master Repository: if you want to distribute master copies to multiple users in your enterprise, enter its location here. MACROSS will check it at each startup. (NOTE: this version of MACROSS broke the previous version's checks for web & file server locations, so it's currently limited to loading files from network shares. I'll fix this in a later update.)<br><br>
 <br><br><br>
 
 Once you've entered all the initial configurations and launched MACROSS, you can start testing and modifying:<br>
