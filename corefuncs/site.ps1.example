@@ -1,0 +1,44 @@
+## MACROSS site settings -- This is an OPTIONAL settings file for use in environments
+## where code-signing is enforced. 
+## Copy this code to a new file named "site.ps1". Fill in what applies, and digitally sign it
+## with the rest of MACROSS' .ps1 files. Every setting is optional; delete or comment out the 
+## ones you don't use.
+## (This .example file is never executed.)
+##
+## If you sign this script after modifying it as needed, and your enterprise enforces
+## digital code-signing for scripts, these values can't be changed without breaking the
+## signature, so MACROSS can't be pointed at a different config or admin key.
+##
+## If you opt not to use this file, MACROSS will write and read its config file
+## in: corefuncs/macross.conf
+
+
+$Global:dyrl_SITE = @{
+
+    ## Central config shared by every MACROSS user. Tier members read it through the
+    ## domain slot (DPAPI-NG to the groups below); each computer keeps a protected cached
+    ## copy for when the share is unreachable. Give the tier groups READ access and only
+    ## MACROSS admins WRITE access to this file's folder.
+    ConfigPath = '\\fileserver\soc$\MACROSS\macross.conf'
+
+    ## AD groups whose members can use your config (added to the domain slot alongside any
+    ## domain accounts in the tier lists created at setup). Include both user-level and 
+    ## admin-level groups.
+    TierGroups = @{
+        tier1  = 'CORP\SOC-Tier1'
+        tier2  = 'CORP\SOC-Tier2'
+        tier3  = 'CORP\SOC-Tier3'
+        admin1 = 'CORP\SOC-Tier1-Admins'
+        admin2 = 'CORP\SOC-Tier2-Admins'
+        admin3 = 'CORP\SOC-Tier3-Admins'
+    }
+
+    ## Admin signing key (public half). When set, MACROSS refuses any config that wasn't
+    ## saved with the admin password, even by someone with write access to the share.
+    ## To create it: upgrade the config, type "debug" in the main menu and run
+    ## confSigningKey, then paste the <RSAKeyValue>...</RSAKeyValue> it prints here.
+    # AdminPubKey = '<RSAKeyValue><Modulus>...</Modulus><Exponent>AQAB</Exponent></RSAKeyValue>'
+}
+
+## Machine-specific settings (like a portable python path) go in corefuncs\macross.local.json
+## on each computer instead, e.g.:  { "cre": "C:\\Tools\\python\\python.exe" }
