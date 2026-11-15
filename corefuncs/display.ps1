@@ -164,13 +164,25 @@ function toolInfo($tool){   #mp
 }
 
 
+## Names of the MACROSS functions that have help pages (marked "#mp" in the core files)
+function macrossFuncList_(){
+    $cores = @('utility.ps1','display.ps1','validation.ps1','kawamoring.ps1','configurations.ps1')
+    $list = foreach($core in $cores){
+        $f = "$dyrl_MACROSS\corefuncs\$core"
+        if(Test-Path $f){
+            Select-String -Pattern "^function \w+\(.+mp$" $f | %{ $_.Line -replace "^function " -replace "\(.+" }
+        }
+    }
+    Return @($list | ?{ $_ })
+}
+
 function macrossHelp($1,[switch]$full=$false,[switch]$help=$false){
     <#
     Display HELP for internal MACROSS functions. Send the tool name as parameter 1
     for its details and usage, or send "dev" to get a full list of descriptions.
     Calling without parameters just lists the Local Attributes table.
     #>
-    $cores = @('utility.ps1','display.ps1','validation.ps1')
+    $cores = @('utility.ps1','display.ps1','validation.ps1','kawamoring.ps1','configurations.ps1')
     if($full){
         $dyrl_LATTS.keys | %{
             screenResults "$($dyrl_LATTS[$_].name) v$($dyrl_LATTS[$_].ver)" "Evaluates $($dyrl_LATTS[$_].valtype)"
@@ -210,8 +222,8 @@ function macrossHelp($1,[switch]$full=$false,[switch]$help=$false){
         $error[0]
         w "`n  Looks like the last task did not complete smoothly. If you are experiencing
   issues with MACROSS, and using the refresh `"r`" option with tools is not
-  resolving them: exit MACROSS, delete the local macross_core folder and
-  execute Launch.ps1 to retrieve a fresh copy." y
+  resolving them: exit MACROSS, replace the local MACROSS folder with a fresh
+  copy, and run MACROSS.ps1 again." y
         w "`n  Hit ENTER to close this message." y
         Read-Host
         Return
@@ -248,19 +260,7 @@ function macrossHelp($1,[switch]$full=$false,[switch]$help=$false){
         Return @($short,$long,$example)
     }
 
-    function listFunctions_(){
-        $funclist = ''
-        foreach($core in $cores){
-            $f = "$dyrl_MACROSS\corefuncs\$core"
-            $funcs = Select-String -Pattern "^function \w+\(.+mp$" $f
-            $funcs | %{
-                $funclist += $(($_.line -replace "^function " -replace "\(.+") + ';')
-            }
-        }
-        Return $funclist -Split ';'
-    }
-
-    $functions = listFunctions_
+    $functions = macrossFuncList_
 
     if($1 -eq 'show'){
         screenResults 'w~MACROSS FUNCTIONS' "y~$(($functions | ?{$_ -ne ''} | Sort) -join(', '))"
@@ -810,6 +810,574 @@ function screenResultsAlt($h,$k,$v,[switch]$e=$false){   #mp
 
 
 
+################################
+## screenResultsForm helpers: turn markdown/plain text into a list of styled "runs"
+## ({t=text; s=style}) that the form renders. Kept separate from the form so it can
+## be tested anywhere. Nothing here interprets HTML or follows links.
+################################
+function srfAdd_($runs,[string]$t,[string]$s='normal'){
+    if($t -ne ''){ [void]$runs.Add([pscustomobject]@{ t=$t; s=$s }) }
+}
+function srfStrip_([string]$t){
+    ## Remove inline markdown markers (used where styling isn't applied, e.g. table cells)
+    $t = $t -replace '\[([^\]]+)\]\(([^)\s]+)\)','$1 ($2)'
+    $t = $t -replace '(\*\*\*|\*\*|__|~~|`)',''
+    $t = $t -replace '(?<![\w*])\*([^*\s][^*]*?)\*(?![\w*])','$1'
+    $t -replace '(?<!\w)_([^_\s][^_]*?)_(?!\w)','$1'
+}
+function srfInline_($runs,[string]$line,[string]$base='normal'){
+    $rx = '(`[^`]+`)|(\*\*\*[^*]+\*\*\*)|(\*\*[^*]+\*\*)|(__[^_]+__)|(~~[^~]+~~)|(\[[^\]]+\]\([^)\s]+\))|((?<![\w*])\*[^*\s][^*]*?\*(?![\w*]))|((?<!\w)_[^_\s][^_]*?_(?!\w))'
+    $pos = 0
+    foreach($m in [regex]::Matches($line,$rx)){
+        if($m.Index -gt $pos){ srfAdd_ $runs $line.Substring($pos,$m.Index - $pos) $base }
+        $v = $m.Value
+        if($v.StartsWith('`')){ srfAdd_ $runs $v.Trim('`') 'code' }
+        elseif($v.StartsWith('***')){ srfAdd_ $runs $v.Substring(3,$v.Length - 6) 'bolditalic' }
+        elseif($v.StartsWith('**') -or $v.StartsWith('__')){ srfAdd_ $runs $v.Substring(2,$v.Length - 4) 'bold' }
+        elseif($v.StartsWith('~~')){ srfAdd_ $runs $v.Substring(2,$v.Length - 4) 'strike' }
+        elseif($v.StartsWith('[')){
+            $lm = [regex]::Match($v,'^\[([^\]]+)\]\(([^)\s]+)\)$')
+            srfAdd_ $runs $lm.Groups[1].Value 'link'
+            srfAdd_ $runs " ($($lm.Groups[2].Value))" 'url'
+        }
+        else{ srfAdd_ $runs $v.Substring(1,$v.Length - 2) 'italic' }
+        $pos = $m.Index + $m.Length
+    }
+    if($pos -lt $line.Length){ srfAdd_ $runs $line.Substring($pos) $base }
+}
+function srfTable_($runs,$rows){
+    ## Pipe table -> aligned monospace columns (separator rows like |---|:--:| are dropped)
+    $cells = @(foreach($r in $rows){
+        if($r -match '^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$'){ Continue }
+        ,@(($r.Trim() -replace '^\|','' -replace '\|$','') -split '\|' | %{ srfStrip_ $_.Trim() })
+    })
+    if(-not $cells.Count){ Return }
+    $cols = ($cells | %{ $_.Count } | Measure-Object -Maximum).Maximum
+    $wid = @(for($c = 0; $c -lt $cols; $c++){ ($cells | %{ if($c -lt $_.Count){ $_[$c].Length }else{ 0 } } | Measure-Object -Maximum).Maximum })
+    for($i = 0; $i -lt $cells.Count; $i++){
+        $line = (@(for($c = 0; $c -lt $cols; $c++){
+            $v = if($c -lt $cells[$i].Count){ $cells[$i][$c] }else{ '' }
+            $v.PadRight($wid[$c])
+        }) -join ' | ')
+        srfAdd_ $runs $line $(if($i -eq 0){ 'tablehead' }else{ 'table' })
+        srfAdd_ $runs "`n"
+        if($i -eq 0 -and $cells.Count -gt 1){
+            srfAdd_ $runs ((@($wid | %{ '-' * $_ }) -join '-+-')) 'table'
+            srfAdd_ $runs "`n"
+        }
+    }
+}
+function srfParse_([string]$text,[string]$format='auto'){
+    $runs = New-Object System.Collections.ArrayList
+    $esc = [string][char]27     ## (PS 5.1 has no `e escape)
+    $text = $text -replace "$esc\[[0-9;?]*[ -/]*[@-~]",'' -replace "`r`n","`n" -replace "`r","`n"   ## strip terminal color codes
+    if($format -eq 'auto'){
+        $mdHint = '(?m)^(#{1,6}\s|\s*[-*+]\s+\S|\s*\d+[.)]\s+\S|>\s?|```|\s*\|.*\|\s*$)|\*\*[^*\n]+\*\*|\[[^\]\n]+\]\([^)\s]+\)'
+        $format = if($text -match $mdHint){ 'markdown' }else{ 'text' }
+    }
+    if($format -eq 'text'){ srfAdd_ $runs $text 'mono'; Return ,$runs }
+
+    $lines = $text -split "`n"
+    $fence = $false; $table = New-Object System.Collections.ArrayList
+    for($i = 0; $i -lt $lines.Count; $i++){
+        $l = $lines[$i]
+        if($l -match '^\s*(```|~~~)'){                       ## code fence open/close
+            $fence = -not $fence; Continue
+        }
+        if($fence){ srfAdd_ $runs " $l " 'codeblock'; srfAdd_ $runs "`n"; Continue }
+
+        if($l -match '^\s*\|.*\|\s*$'){ [void]$table.Add($l); Continue }   ## collect table rows
+        if($table.Count){ srfTable_ $runs $table; $table.Clear() }
+
+        if($l -match '^\s*(#{1,6})\s+(.*?)\s*#*\s*$'){
+            $lvl = [Math]::Min($Matches[1].Length,3)
+            srfAdd_ $runs (srfStrip_ $Matches[2]) "h$lvl"
+        }
+        elseif($l -match '^\s*([-*_])(\s*\1){2,}\s*$'){ srfAdd_ $runs ([string][char]0x2500 * 60) 'hr' }
+        elseif($l -match '^\s*>\s?(.*)$'){ srfAdd_ $runs "$([char]0x2502) " 'quote'; srfInline_ $runs $Matches[1] 'quote' }
+        elseif($l -match '^(\s*)[-*+]\s+(\[[ xX]\]\s+)?(.*)$'){
+            $lead = $Matches[1]; $chk = $Matches[2]; $item = $Matches[3]    ## save before any other -match
+            $ind = '    ' * [Math]::Floor($lead.Length / 2)
+            $box = if($chk){ if($chk.Contains('x') -or $chk.Contains('X')){ "[$([char]0x2713)] " }else{ '[ ] ' } }else{ '' }
+            srfAdd_ $runs "$ind  $([char]0x2022) $box"
+            srfInline_ $runs $item
+        }
+        elseif($l -match '^(\s*)(\d+)([.)])\s+(.*)$'){
+            $ind = '    ' * [Math]::Floor($Matches[1].Length / 2)
+            srfAdd_ $runs "$ind  $($Matches[2])$($Matches[3]) "
+            srfInline_ $runs $Matches[4]
+        }
+        else{ srfInline_ $runs $l }
+        if($i -lt $lines.Count - 1){ srfAdd_ $runs "`n" }
+    }
+    if($table.Count){ srfTable_ $runs $table }
+    Return ,$runs
+}
+
+## Accepts a file path, byte[], base64 string (optionally "data:image/...;base64,"), or an
+## Image object. Returns @{img=; stream=; name=} or throws. Never downloads anything.
+function srfImage_($src,[int]$n){
+    if($src -is [System.Drawing.Image]){ Return @{ img=$src; stream=$null; name="image $n" } }
+    if($src -is [byte[]]){ $bytes = $src; $name = "image $n" }
+    else{
+        $s = "$src".Trim()
+        if($s -match '^[a-z]+://'){ throw "image $n is a URL; download it first (screenResultsForm never fetches remote content)" }
+        if($s.Length -lt 260 -and (Test-Path -PathType Leaf -LiteralPath $s)){
+            $bytes = [IO.File]::ReadAllBytes((Resolve-Path -LiteralPath $s).Path); $name = Split-Path $s -Leaf
+        }
+        else{
+            $b64 = $s -replace '^data:image/[\w.+-]+;base64,','' -replace '\s',''
+            try{ $bytes = [Convert]::FromBase64String($b64) }
+            catch{ throw "image $n is not a file path, base64 image, or image object" }
+            $name = "image $n"
+        }
+    }
+    $ms = New-Object IO.MemoryStream(,$bytes)
+    try{ $img = [System.Drawing.Image]::FromStream($ms) }
+    catch{ $ms.Dispose(); throw "image $n could not be read as an image" }
+    Return @{ img=$img; stream=$ms; name=$name }
+}
+
+## Shared look for the screenResultsForm windows (fonts must be disposed by the caller)
+function srfStyle_(){
+    @{
+        bg     = [Drawing.Color]::Black
+        fg     = [Drawing.Color]::Gainsboro
+        codeBg = [Drawing.Color]::FromArgb(38,38,38)
+        fonts  = @{
+            normal     = New-Object Drawing.Font('Segoe UI',10)
+            bold       = New-Object Drawing.Font('Segoe UI',10,[Drawing.FontStyle]::Bold)
+            italic     = New-Object Drawing.Font('Segoe UI',10,[Drawing.FontStyle]::Italic)
+            bolditalic = New-Object Drawing.Font('Segoe UI',10,([Drawing.FontStyle]::Bold -bor [Drawing.FontStyle]::Italic))
+            strike     = New-Object Drawing.Font('Segoe UI',10,[Drawing.FontStyle]::Strikeout)
+            link       = New-Object Drawing.Font('Segoe UI',10,[Drawing.FontStyle]::Underline)
+            url        = New-Object Drawing.Font('Segoe UI',9)
+            quote      = New-Object Drawing.Font('Segoe UI',10,[Drawing.FontStyle]::Italic)
+            h1         = New-Object Drawing.Font('Segoe UI',16,[Drawing.FontStyle]::Bold)
+            h2         = New-Object Drawing.Font('Segoe UI',13.5,[Drawing.FontStyle]::Bold)
+            h3         = New-Object Drawing.Font('Segoe UI',11.5,[Drawing.FontStyle]::Bold)
+            code       = New-Object Drawing.Font('Consolas',9.5)
+            codeblock  = New-Object Drawing.Font('Consolas',9.5)
+            mono       = New-Object Drawing.Font('Consolas',9.5)
+            table      = New-Object Drawing.Font('Consolas',9.5)
+            tablehead  = New-Object Drawing.Font('Consolas',9.5,[Drawing.FontStyle]::Bold)
+            hr         = New-Object Drawing.Font('Segoe UI',8)
+        }
+        colors = @{
+            h1='Gold'; h2='Gold'; h3='Khaki'; link='DeepSkyBlue'; url='SteelBlue'; quote='Silver'
+            code='LightGreen'; codeblock='LightGreen'; tablehead='Yellow'; hr='DimGray'; strike='Gray'
+        }
+    }
+}
+## A read-only text box that never makes links clickable
+function srfBox_($st){
+    $rtb = New-Object Windows.Forms.RichTextBox
+    $rtb.ReadOnly = $true
+    $rtb.DetectUrls = $false
+    $rtb.BorderStyle = 'None'
+    $rtb.BackColor = $st.bg
+    $rtb.ForeColor = $st.fg
+    $rtb.Dock = 'Fill'
+    $rtb.ScrollBars = 'Both'
+    $rtb.Font = $st.fonts.normal
+    Return $rtb
+}
+## Render (or re-render) text into a box built by srfBox_
+function srfFill_($rtb,[string]$text,[string]$format,$st){
+    $rtb.SuspendLayout()
+    $rtb.Clear()
+    $rtb.WordWrap = ($format -ne 'text')
+    foreach($r in (srfParse_ $text $format)){
+        $rtb.SelectionStart = $rtb.TextLength
+        $rtb.SelectionLength = 0
+        $rtb.SelectionFont = if($st.fonts.ContainsKey($r.s)){ $st.fonts[$r.s] }else{ $st.fonts.normal }
+        $rtb.SelectionColor = if($st.colors.ContainsKey($r.s)){ [Drawing.Color]::FromName($st.colors[$r.s]) }else{ $st.fg }
+        $rtb.SelectionBackColor = if($r.s -in @('code','codeblock')){ $st.codeBg }else{ $st.bg }
+        $rtb.SelectedText = $r.t
+    }
+    $rtb.SelectionStart = 0
+    $rtb.ScrollToCaret()
+    $rtb.ResumeLayout()
+}
+
+
+################################
+## Saved chats (.chat files) for the screenResultsForm -chats viewer
+################################
+## Every .chat file under $root (including subfolders), newest first
+function srfChatList_([string]$root){
+    if(-not $root -or -not (Test-Path -PathType Container $root)){ Return @() }
+    $base = (Resolve-Path $root).Path.TrimEnd('\','/')
+    @(Get-ChildItem -Path $root -Filter '*.chat' -File -Recurse -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime -Descending |
+        %{ [pscustomobject]@{
+            Name     = $_.FullName.Substring($base.Length).TrimStart('\','/')
+            Modified = $_.LastWriteTime
+            Size     = $_.Length
+            Path     = $_.FullName
+        } })
+}
+## Turn a saved chat into displayable markdown. JSON message lists (the shape most AI APIs
+## use: [{role,content}] or {messages:[...]}) become a conversation with a heading per
+## speaker; anything else is shown as-is.
+function srfChatText_([string]$raw){
+    $t = $raw.Trim()
+    if($t.StartsWith('[') -or $t.StartsWith('{')){
+        try{ $j = $t | ConvertFrom-Json -ErrorAction Stop }catch{ $j = $null }
+        if($j){
+            $msgs = if($j.PSObject.Properties.Name -contains 'messages'){ @($j.messages) }else{ @($j) }
+            $msgs = @($msgs | ?{ $_ -and $_.PSObject.Properties.Name -contains 'role' })
+            if($msgs.Count){
+                $out = New-Object System.Collections.ArrayList
+                foreach($m in $msgs){
+                    $who = "$($m.role)"
+                    if($who){ $who = $who.Substring(0,1).ToUpper() + $who.Substring(1) }
+                    if($m.PSObject.Properties.Name -contains 'name' -and $m.name){ $who += " ($($m.name))" }
+                    $body = foreach($part in @($m.content)){
+                        if($part -is [string]){ $part }
+                        elseif($part.PSObject.Properties.Name -contains 'text'){ "$($part.text)" }
+                        elseif($part.PSObject.Properties.Name -contains 'type'){ "*[$($part.type)]*" }
+                    }
+                    [void]$out.Add("### $who`n$((@($body) -join "`n").Trim())")
+                }
+                Return ($out -join "`n`n---`n")
+            }
+        }
+    }
+    Return $raw
+}
+
+## The chat browser window
+function srfChats_([string]$root,[string]$title){
+    $all = srfChatList_ $root
+    if(-not $all.Count){
+        w "No saved chats (.chat files) were found in $root" y
+        Return
+    }
+    $st = srfStyle_
+    $maxRead = 2MB      ## very large chats are shown truncated
+
+    $form = New-Object Windows.Forms.Form
+    $form.Text = "$title ($($all.Count))"
+    $form.Size = New-Object Drawing.Size(1200,760)
+    $form.MinimumSize = New-Object Drawing.Size(700,400)
+    $form.StartPosition = 'CenterScreen'
+    $form.BackColor = $st.bg; $form.ForeColor = $st.fg
+    $form.TopMost = $true; $form.KeyPreview = $true
+    $form.Add_KeyDown({ if($_.KeyCode -eq 'Escape'){ $form.Close() } })
+
+    $split = New-Object Windows.Forms.SplitContainer
+    $split.Dock = 'Fill'; $split.SplitterDistance = 380; $split.BackColor = [Drawing.Color]::DimGray
+    $split.Panel1.BackColor = $st.bg; $split.Panel2.BackColor = $st.bg
+
+    ## Left: filter + list
+    $filter = New-Object Windows.Forms.TextBox
+    $filter.Dock = 'Top'; $filter.BackColor = [Drawing.Color]::FromArgb(30,30,30); $filter.ForeColor = $st.fg
+    $filter.Font = $st.fonts.normal
+    $hint = New-Object Windows.Forms.Label
+    $hint.Dock = 'Top'; $hint.Height = 20; $hint.ForeColor = [Drawing.Color]::Khaki
+    $hint.Text = ' Filter by name or folder:'
+    $list = New-Object Windows.Forms.ListView
+    $list.Dock = 'Fill'; $list.View = 'Details'; $list.FullRowSelect = $true; $list.MultiSelect = $false
+    $list.HideSelection = $false; $list.BackColor = $st.bg; $list.ForeColor = $st.fg; $list.BorderStyle = 'None'
+    [void]$list.Columns.Add('Chat',220)
+    [void]$list.Columns.Add('Modified',130)
+    [void]$list.Columns.Add('Size',60)
+    $split.Panel1.Controls.Add($list); $split.Panel1.Controls.Add($filter); $split.Panel1.Controls.Add($hint)
+
+    ## Right: the rendered chat
+    $rtb = srfBox_ $st
+    $split.Panel2.Controls.Add($rtb)
+
+    $list.ShowItemToolTips = $true
+    $state = @{ text = ''; all = $all }     ## shared with the event handlers below
+    function fillList_(){
+        $list.BeginUpdate(); $list.Items.Clear()
+        $f = $filter.Text.Trim()
+        foreach($c in $state.all){
+            if($f -and $c.Name -notlike "*$f*"){ Continue }
+            $kb = if($c.Size -ge 1KB){ "{0:N0} KB" -f ($c.Size / 1KB) }else{ "$($c.Size) B" }
+            $it = New-Object Windows.Forms.ListViewItem($c.Name)
+            [void]$it.SubItems.Add($c.Modified.ToString('yyyy-MM-dd HH:mm'))
+            [void]$it.SubItems.Add($kb)
+            $it.Tag = $c; $it.ToolTipText = $c.Path
+            [void]$list.Items.Add($it)
+        }
+        $list.EndUpdate()
+        if($list.Items.Count){ $list.Items[0].Selected = $true }
+        else{ $rtb.Clear(); $state.text = '' }
+    }
+    function showChat_($c){
+        try{
+            $fs = [IO.File]::Open($c.Path,'Open','Read','ReadWrite')
+            try{
+                $sr = New-Object IO.StreamReader($fs,[Text.Encoding]::UTF8,$true)
+                $buf = New-Object char[] ([Math]::Min($c.Size,$maxRead) + 1)
+                $n = $sr.ReadBlock($buf,0,$buf.Length)
+                $raw = [string]::new($buf,0,[Math]::Min($n,$maxRead))
+            }
+            finally{ $fs.Dispose() }
+            $txt = srfChatText_ $raw
+            if($c.Size -gt $maxRead){ $txt = "*(Large chat: showing the first $([int]($maxRead / 1MB)) MB.)*`n`n$txt" }
+        }
+        catch{ $txt = "(!) Could not read $($c.Path): $($_.Exception.Message)"; $raw = '' }
+        $state.text = $raw
+        srfFill_ $rtb $txt 'auto' $st
+    }
+    $list.Add_SelectedIndexChanged({ if($list.SelectedItems.Count){ showChat_ $list.SelectedItems[0].Tag } })
+    $filter.Add_TextChanged({ fillList_ })
+
+    ## Buttons
+    $bar = New-Object Windows.Forms.FlowLayoutPanel
+    $bar.Dock = 'Bottom'; $bar.Height = 42; $bar.FlowDirection = 'RightToLeft'; $bar.Padding = New-Object Windows.Forms.Padding(6)
+    function button_($label){
+        $b = New-Object Windows.Forms.Button
+        $b.Text = $label; $b.AutoSize = $true; $b.Height = 28
+        $b.ForeColor = [Drawing.Color]::Yellow; $b.BackColor = [Drawing.Color]::MidnightBlue; $b.FlatStyle = 'Flat'
+        $bar.Controls.Add($b)
+        Return $b
+    }
+    $close = button_ 'Close'
+    $close.Add_Click({ $form.Close() })
+    $copy = button_ 'Copy text'
+    $copy.Add_Click({ if($state.text){ [Windows.Forms.Clipboard]::SetText($state.text) } })
+    $refresh = button_ 'Refresh'
+    $refresh.Add_Click({
+        $state.all = srfChatList_ $root
+        $form.Text = "$title ($($state.all.Count))"
+        fillList_
+    })
+
+    $form.Controls.Add($split)
+    $form.Controls.Add($bar)
+    $form.CancelButton = $close
+    fillList_
+
+    try{ [void]$form.ShowDialog() }
+    finally{
+        $form.Dispose()
+        foreach($f in $st.fonts.Values){ $f.Dispose() }
+    }
+}
+
+
+function screenResultsForm(){   #mp
+    <#
+    ||shorthelp||
+    Show formatted text (markdown) and/or images such as graphs in a window.
+    Usage:
+        screenResultsForm [-t TEXT] [-i IMAGE(S)] [-h WINDOW_TITLE] [-f auto|markdown|text]
+        screenResultsForm -chats [-r FOLDER]       (browse saved .chat files)
+
+    ||longhelp||
+    A companion to screenResults and screenResultsAlt for output that doesn't suit
+    the console: AI/LLM responses written in markdown, heavily formatted tool output,
+    or images like graphs and charts. The window blocks your diamond until the user
+    closes it (Close button or ESC), the same as getBlox.
+
+    -t  the text to show. Markdown is formatted: headings, bold/italic, inline code
+        and code blocks, bullet/numbered/check lists, quotes, horizontal rules, and
+        pipe tables (shown as aligned columns). Links are shown as "text (url)".
+        Terminal color codes are removed.
+    -i  one or more images: file paths, byte arrays, base64 strings (including
+        "data:image/png;base64,..." as returned by many AI APIs), or image objects.
+        Multiple images (or text plus images) are shown in tabs.
+    -h  the window title (default "MACROSS results").
+    -f  auto (default; detects markdown), markdown, or text (show as-is in a
+        monospace font, for already-aligned CLI output).
+
+    Buttons: "Copy text" copies the original text; "Save image" writes the image on
+    the current tab to $dyrl_OUTFILES as a .png.
+
+    SAVED CHATS (-chats): opens a browser of every .chat file under $dyrl_OUTFILES
+    (including subfolders; use -r for another folder), newest first, with a filter
+    box. Selecting one shows it formatted on the right. Users can also type "chats"
+    in the main menu. A .chat file can be:
+      -plain text or markdown (shown as-is), or
+      -a JSON message list, the shape most AI APIs use, e.g.
+          [{"role":"user","content":"..."},{"role":"assistant","content":"..."}]
+       or {"messages":[...]}. These are shown as a conversation with a heading for
+       each speaker (content given as a list of parts uses the "text" parts).
+    To save a chat from your diamond, write it to $dyrl_OUTFILES (or a subfolder)
+    with a .chat extension, e.g.
+        $messages | ConvertTo-Json -Depth 10 | Set-Content "$dyrl_OUTFILES\ai\$(Get-Date -f yyyyMMdd-HHmmss).chat"
+
+    SAFE FOR UNTRUSTED OUTPUT: nothing is rendered as HTML, no scripts can run,
+    links are NOT clickable (copy them if you need them), and images are never
+    downloaded; your diamond must already have them.
+
+    If a window can't be opened (e.g. no desktop session), the text is written to
+    the console instead.
+
+    ||examples||
+    Show an AI response:
+
+        screenResultsForm -t $ai_reply -h 'Triage summary'
+
+    Show a graph your diamond generated, with a caption:
+
+        screenResultsForm -i "$dyrl_OUTFILES\logons_by_hour.png" -t '## Logons by hour'
+
+    Show an image an API returned as base64, next to its explanation:
+
+        screenResultsForm -t $resp.text -i $resp.image_b64 -h 'Analysis'
+
+    Show CLI output exactly as-is:
+
+        screenResultsForm -t ($raw_output -join "`n") -f text
+
+    Review saved chats:
+
+        screenResultsForm -chats
+
+    #>
+    param(
+        [Parameter(Position=0)]
+        [AllowEmptyString()]
+        [string]$text = '',
+        [Parameter(Position=1)]
+        $images = $null,
+        [string]$header = 'MACROSS results',
+        [ValidateSet('auto','markdown','text')]
+        [string]$format = 'auto',
+        [switch]$chats,
+        [string]$root = $dyrl_OUTFILES
+    )
+
+    try{
+        Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop
+        Add-Type -AssemblyName System.Drawing -ErrorAction Stop
+    }
+    catch{
+        if($chats){
+            w "A window could not be opened. Saved chats in ${root}:" y
+            srfChatList_ $root | %{ w "  $($_.Modified.ToString('yyyy-MM-dd HH:mm'))  $($_.Name)" }
+            Return
+        }
+        w "A window could not be opened; showing the text here instead." y
+        if($text){ Write-Host ($text -replace "$([char]27)\[[0-9;?]*[ -/]*[@-~]",'') }
+        Return
+    }
+
+    if($chats){
+        if($header -eq 'MACROSS results'){ $header = 'MACROSS saved chats' }
+        srfChats_ $root $header
+        Return
+    }
+
+    ## Load images first so problems can be reported in the text area
+    $pics = New-Object System.Collections.ArrayList
+    $notes = New-Object System.Collections.ArrayList
+    $n = 0
+    ## A single byte[]/string/image is one image; don't let powershell unroll a byte[] into bytes
+    if($images -is [byte[]] -or $images -is [string] -or $images -is [System.Drawing.Image]){ $srcs = ,$images }
+    else{ $srcs = @($images) }
+    foreach($src in $srcs){
+        if($null -eq $src){ Continue }
+        $n++
+        try{ [void]$pics.Add((srfImage_ $src $n)) }
+        catch{ [void]$notes.Add("(!) $($_.Exception.Message)") }
+    }
+    if($notes.Count){ $text = (@($notes) -join "`n") + $(if($text){ "`n`n$text" }else{ '' }) }
+
+    $st = srfStyle_
+    $bg = $st.bg; $fg = $st.fg; $fonts = $st.fonts
+
+    $form = New-Object Windows.Forms.Form
+    $form.Text = $header
+    $form.Size = New-Object Drawing.Size(1000,720)
+    $form.MinimumSize = New-Object Drawing.Size(500,350)
+    $form.StartPosition = 'CenterScreen'
+    $form.BackColor = $bg
+    $form.ForeColor = $fg
+    $form.TopMost = $true
+    $form.KeyPreview = $true
+    $form.Add_KeyDown({ if($_.KeyCode -eq 'Escape'){ $form.Close() } })
+
+    $rtb = $null
+    if($text){
+        $rtb = srfBox_ $st
+        srfFill_ $rtb $text $format $st
+    }
+
+    function picBox_($p){
+        $pb = New-Object Windows.Forms.PictureBox
+        $pb.Image = $p.img
+        $pb.SizeMode = 'Zoom'
+        $pb.Dock = 'Fill'
+        $pb.BackColor = $bg
+        Return $pb
+    }
+
+    ## Layout: a single item fills the window; text + images or several images use tabs
+    $tabs = $null
+    if(($rtb -and $pics.Count) -or $pics.Count -gt 1){
+        $tabs = New-Object Windows.Forms.TabControl
+        $tabs.Dock = 'Fill'
+        if($rtb){
+            $tp = New-Object Windows.Forms.TabPage('Text'); $tp.BackColor = $bg
+            $tp.Controls.Add($rtb); $tabs.TabPages.Add($tp)
+        }
+        foreach($p in $pics){
+            $tp = New-Object Windows.Forms.TabPage($p.name); $tp.BackColor = $bg; $tp.Tag = $p
+            $tp.Controls.Add((picBox_ $p)); $tabs.TabPages.Add($tp)
+        }
+        $form.Controls.Add($tabs)
+    }
+    elseif($rtb){ $form.Controls.Add($rtb) }
+    elseif($pics.Count){ $form.Controls.Add((picBox_ $pics[0])) }
+    else{
+        $rtb = New-Object Windows.Forms.Label
+        $rtb.Text = '  (nothing to display)'; $rtb.Dock = 'Fill'
+        $form.Controls.Add($rtb)
+    }
+
+    ## Buttons
+    $bar = New-Object Windows.Forms.FlowLayoutPanel
+    $bar.Dock = 'Bottom'; $bar.Height = 42; $bar.FlowDirection = 'RightToLeft'; $bar.Padding = New-Object Windows.Forms.Padding(6)
+    function button_($label){
+        $b = New-Object Windows.Forms.Button
+        $b.Text = $label; $b.AutoSize = $true; $b.Height = 28
+        $b.ForeColor = [Drawing.Color]::Yellow; $b.BackColor = [Drawing.Color]::MidnightBlue; $b.FlatStyle = 'Flat'
+        $bar.Controls.Add($b)
+        Return $b
+    }
+    $close = button_ 'Close'
+    $close.Add_Click({ $form.Close() })
+    if($text){
+        $copy = button_ 'Copy text'
+        $copy.Add_Click({ [Windows.Forms.Clipboard]::SetText($text); $copy.Text = 'Copied' })
+    }
+    if($pics.Count){
+        $save = button_ 'Save image'
+        $save.Add_Click({
+            $p = if($tabs -and $tabs.SelectedTab -and $tabs.SelectedTab.Tag){ $tabs.SelectedTab.Tag }
+                 elseif(-not $tabs){ $pics[0] }else{ $null }
+            if(-not $p){ [void][Windows.Forms.MessageBox]::Show('Select an image tab first.',$header); Return }
+            $dir = if($dyrl_OUTFILES){ $dyrl_OUTFILES }else{ [Environment]::GetFolderPath('MyDocuments') }
+            $base = ("$header-$($p.name)" -replace '[^\w-]+','_').Trim('_')
+            $out = Join-Path $dir "$base-$(Get-Date -Format 'yyyyMMdd-HHmmss').png"
+            try{
+                $p.img.Save($out,[Drawing.Imaging.ImageFormat]::Png)
+                [void][Windows.Forms.MessageBox]::Show("Saved to`n$out",$header)
+            }
+            catch{ [void][Windows.Forms.MessageBox]::Show("Could not save: $($_.Exception.Message)",$header) }
+        })
+    }
+    $form.Controls.Add($bar)
+    $form.AcceptButton = $close
+    $form.CancelButton = $close
+
+    try{ [void]$form.ShowDialog() }
+    finally{
+        $form.Dispose()
+        foreach($p in $pics){ if($p.img){ $p.img.Dispose() }; if($p.stream){ $p.stream.Dispose() } }
+        foreach($f in $fonts.Values){ $f.Dispose() }
+    }
+}
+
+
+
 function sep(){   #mp
     <#
     ||shorthelp||
@@ -989,7 +1557,7 @@ function startUp([switch]$init=$false,$refresh=$null,$new){
     }
     function corefuncsPy_($ep){
         if(-not $env:PYTHONPATH){ $env:PYTHONPATH = $ep }
-        elseif($env:PYTHONPATH -notMatch $ep){ $env:PYTHONPATH = "$ep;$env:PYTHONPATH" }
+        elseif(($env:PYTHONPATH -Split ';') -notContains $ep){ $env:PYTHONPATH = "$ep;$env:PYTHONPATH" }
     }
     if($new){
         Return $(summer_ $new[0] $new[1])
@@ -1004,24 +1572,26 @@ function startUp([switch]$init=$false,$refresh=$null,$new){
         }
         function e(){ Return $(Get-Random -min 10000000000000 -max 99999999999999) }
 
-        if(-not (Test-Path $dyrl_CONFIG[0])){ runStart }
+        if(-not (confExists_)){ runStart }      ## local, central (site.ps1) or cached config
 
     }
 
     if(! $dyrl_CONF){
-        $defs = @{}
-        gerwalk QEBA
-        $9 = "$dyrl_PT"
-        $b = $(runContinue $refresh) -Split $9
-        if(! $b){ Return }
-
-        foreach($c in $b){
-            $d = $c.substring(0,3)
-            $e = $c -replace "^..."
-            $defs.Add($d,$e)
-            if($MONTY){ $p += "$($d+':'+$e);" }
+        ## $refresh = admin password (config menu / debug); without it the config opens through
+        ## its domain or machine slot (see CONFIG PROTECTION v2 in configurations.ps1)
+        $defs = confLoad_ $refresh
+        if(-not $defs -or -not $defs.Count){
+            ## Fail closed: never run without the config (that would also switch off access control).
+            ## A wrong admin password ($refresh) only fails that action, as before.
+            if(-not $refresh -and (confExists_)){
+                w "`n MACROSS can't start without its configuration. Restart MACROSS to try again," r
+                w ' or ask the MACROSS admin to restore access for this computer.' r
+                w ' Hit ENTER to exit.' g; Read-Host | Out-Null
+                varCleanup -c
+                Exit
+            }
+            Return
         }
-
         lockIn -n dyrl_CONF -v $defs
         gerwalk $dyrl_CONF.di1; $s1 = [int]$dyrl_PT
         gerwalk $dyrl_CONF.di2; $s2 = [int]$dyrl_PT
@@ -1029,7 +1599,9 @@ function startUp([switch]$init=$false,$refresh=$null,$new){
         lockIn -n N_ -v $di
         gerwalk $dyrl_CONF.dbg
         if(! $dyrl_BLD ){ lockIn -n dyrl_BLD -v "$([bool][int]$dyrl_PT)" }
-        if($p.length -gt 0){  $env:dyrl_DL = $p -replace ";$" }
+        ## (Older versions exported every setting to $env:dyrl_DL, which child processes inherit;
+        ## nothing used it. Clear any copy left in this window by an earlier run.)
+        if(Test-Path env:dyrl_DL){ Remove-Item env:dyrl_DL -ErrorAction SilentlyContinue }
     }
 
 }
@@ -1046,6 +1618,9 @@ function diamondSelect(){
         'strings',
         'phone',
         'newkey',
+        'newkey2',
+        'enroll',
+        'chats',
         'passw',
         'pydev',
         'shell',
@@ -1055,7 +1630,7 @@ function diamondSelect(){
 
     $row = '  '
 
-    $Global:dyrl_pagecount = [math]::truncate(($($dyrl_LATTS.count)/10) + 1)  ## Add another page for every 10 tools
+    $Global:dyrl_pagecount = [math]::Max(1,[math]::Ceiling($dyrl_LATTS.count / 10))  ## Add another page for every 10 tools
 
     Remove-Variable -Force skip,total
 
@@ -1076,8 +1651,8 @@ function diamondSelect(){
                 $l--
             }
         }
-        elseif($tnv.Length -gt 15){
-            $tooln = $tooln.Substring(0,15)
+        elseif($tn.Length -gt 15){
+            $tooln = "$tc`. $($tn.Substring(0,15))"
         }
         w '' -i
         sep '=' 72 c
