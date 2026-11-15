@@ -9,7 +9,7 @@
     if( $pythonsrc ){
         $Global:CALLER = $pythonsrc
         foreach( $core in (gci "$(($env:SN -Split ';')[0])\\corefuncs\\*.ps1" |
-        ?{$core.name -ne 'configurations.ps1'})){ . $core.fullname }
+        ?{$_.Name -ne 'configurations.ps1'})){ . $core.fullname }
         spaceFold
     }
 
@@ -148,8 +148,11 @@
 ################################################################
 ###################    IMPORT SECTION    #######################
 ################################################################
+import sys
+import traceback
+from subprocess import run
 from datetime import datetime as dt
-from os import chdir,path,getenv,environ,system,popen,remove
+from os import chdir,path,getenv,environ,system,popen,remove,makedirs
 from json import dumps,load,loads
 from time import sleep as ts
 from math import ceil
@@ -247,16 +250,24 @@ if getenv("LOCALAPPDATA"):
 
 if getenv("MACROSS"):
     environ["TEMPENV"] = getenv("MACROSS")
-    environ["PYTHONPATH"] = getenv("PYTHONPATH")
+    if getenv("PYTHONPATH"):
+        environ["PYTHONPATH"] = getenv("PYTHONPATH")
     TEMPENV = [getenv("MACROSS")]
+    ## Field order is set by the powershell macrossMirror function:
+    ##  0 MACROSS root; 1 outputs; 2 content; 3 logs; 4 N_; 5 user; 6 temp folder;
+    ##  7 ROBOTECH (T/F); 8 OPT1 (T/F); 9 powershell major version
     snet = getenv("MACROSS").split(";")
     MACROOT: str = snet[0]
     DIAMONDS: str = f"{MACROOT}\\diamonds"
     PLUGINS: str = f"{MACROOT}\\corefuncs\\plugins"
     RESOURCES: str = f"{MACROOT}\\corefuncs\\resources"
-    OUTFILES: str = f"{MACROOT.replace("\\macross_core","")}\\outputs"
-    if len(snet) > 1:
-        DESKTOP: str = snet[1]
+    OUTFILES: str = f"{MACROOT}\\outputs"
+    GBIO: str = path.join(MACROOT,"corefuncs","pycross","gbio")
+    MACPY: str = sys.executable     ## Python diamonds calling python diamonds reuse this interpreter
+    if getenv("USERPROFILE"):
+        DESKTOP: str = f"{getenv('USERPROFILE')}\\Desktop"
+    if len(snet) >= 10:
+        OUTFILES = snet[1]
         CONTENT: str = snet[2]
         LOGS: str = snet[3]
         n1: int = int(snet[4].split(",")[0])
@@ -264,12 +275,12 @@ if getenv("MACROSS"):
         n3: list[int] = [int(d) for d in str(snet[4].split(",")[2])]
         N_: list = [n1,n2,n3]
         USR: str = snet[5]
-        if snet[6] == "T":
-            ROBOTECH: bool = True
+        if snet[6]:
+            TMP = snet[6]
         if snet[7] == "T":
+            ROBOTECH: bool = True
+        if snet[8] == "T":
             OPT1: bool = True
-        GBIO: str = f"{MACROOT}\\\\corefuncs\\\\pycross\\\\gbio"
-        MACPY: str = snet[8]
         PSVER: int = int(snet[9])
         del n1,n2,n3
     del snet
@@ -278,27 +289,34 @@ if getenv("MACROSS"):
 ## Set python's PROTOCULTURE tracker
 temp = False
 if GBIO:
-    sc_file = f"{GBIO}\\\\PROTOCULTURE.vf1"
+    sc_file = path.join(GBIO,"PROTOCULTURE.vf1")
 
 ## Set default PROTOCULTURE and CALLER values;
 ## powershell and python require different methods
 try:
-    ## This checks for values in the temp file created by the "collab" function
-    ## in both powershell and python for sharing data between the two
+    ## This checks for values in the temp file written by the valkyrie function (python)
+    ## or the pyNet function (powershell) for sharing data between the two. Format:
+    ##      {"caller": <requesting diamond>, "target": <value to process>,
+    ##       "result": "WAITING" | <response>}
     with open(sc_file) as tmp:
         temp = load(tmp)
-except:
+    if not isinstance(temp,dict):
+        temp = False
+except (OSError,TypeError,ValueError):
     pass
 
-## If there's no "PROTOCULTURE" temp file, check environment vars
+## Environment vars take priority over the PROTOCULTURE temp file
 if getenv("CALLER"):
     CALLER = getenv("CALLER")
-elif temp:
-    CALLER = [t for t in temp][0]
+elif temp and temp.get("caller"):
+    CALLER = temp["caller"]
 if getenv("PROTOCULTURE"):
     PROTOCULTURE = getenv("PROTOCULTURE")
 elif temp:
-    PROTOCULTURE = temp[CALLER]["result"]
+    if temp.get("result") == "WAITING":
+        PROTOCULTURE = temp.get("target")
+    else:
+        PROTOCULTURE = temp.get("result")
 del temp
 
 ## Calling powershell from a python script using "collab" requires duplicating the
@@ -314,36 +332,47 @@ if getenv("MACONF"):
 
 ## Convert powershell's [macross] objects to python macross class
 if GBIO:
-    attfile = f"{GBIO}\\\\LATTS.vf1"
+    attfile = path.join(GBIO,"LATTS.vf1")
     if path.isfile(attfile):
         LATTS = {}
-        with open(attfile) as af:
+        with open(attfile,encoding="utf-8-sig") as af:
             pa = load(af)
-            for diamond in pa:
-                l = []
-                K = diamond
-                V = pa[diamond]
-                for i in V.keys():
-                    l.append(str(V[i]))
-                ATT = macross(
-                    n=l[0],
-                    ac=l[1],
-                    p=l[2],
-                    vt=l[3],
-                    l=l[4],
-                    au=l[5],
-                    e=l[6],
-                    r=l[7],
-                    v=l[8],
-                    f=l[9])
-                LATTS.update({K:ATT})
+        ## Read attributes by name; the order powershell serializes them in
+        ## (name,priv,access,...) doesn't match this class' argument order
+        for K,V in pa.items():
+            LATTS[K] = macross(
+                n=str(V.get("name",K)),
+                ac=str(V.get("access","")),
+                p=str(V.get("priv","")),
+                vt=str(V.get("valtype","")),
+                l=str(V.get("lang","")),
+                au=str(V.get("author","")),
+                e=V.get("evalmax",0) or 0,
+                r=str(V.get("rtype","")),
+                v=str(V.get("ver","0")),
+                f=str(V.get("fname","")))
+        del pa,attfile
 
-        del ATT,pa,i,K,V,diamond,attfile,af
 
+
+## When a python diamond crashes, save the traceback where MACROSS' powershell launcher
+## can find it ($dyrl_TMP\pyerror.vf1), so the user sees the error that stopped the
+## diamond before returning to the main menu. The normal traceback still prints.
+def _macrossExcepthook(etype,value,tb):
+    if TMP and not issubclass(etype,KeyboardInterrupt):
+        try:
+            makedirs(TMP,exist_ok=True)
+            with open(path.join(TMP,"pyerror.vf1"),"w",encoding="utf-8") as pe:
+                pe.write("".join(traceback.format_exception(etype,value,tb)))
+        except OSError:
+            pass
+    sys.__excepthook__(etype,value,tb)
+
+sys.excepthook = _macrossExcepthook
 
 
 ## Enable colorized terminal in Windows
-system("color")
+system("")
 ## Foreground (text) colors
 fcolor = {
     "g":"\033[92m",     ## green
@@ -438,7 +467,7 @@ def w(TEXT,f="rs",b="n",i=False,u=False) -> None:
 def minmay(i=0):
     """ Display 1 of 12 Macross eries images by supplying a number between 0-11.
     """
-    if i in range(0,11):
+    if i in range(0,12):
         j = f"{RESOURCES}\\macross_art.json"
         with open(j) as o:
             arts = loads(o.read())
@@ -497,7 +526,7 @@ def slp(s,m=False) -> None:
 
     """
     if m:
-        ts(s//1000)
+        ts(s/1000)
     else:
         ts(s)
 
@@ -544,7 +573,7 @@ def errLog(*fields):
         for f in fields:
             msg = str(f"{msg}\t{f}")
 
-    msge = gerwalk(msg,2) + "\n"
+    msge = gerwalk(msg,'eb') + "\n"
 
     if ispath(current_log,p="file"):
         with open(current_log,"a") as cl:
@@ -599,17 +628,99 @@ def rgx(pattern,string,replace=None,exact=False) -> str:
             return r
 
 
-def kawamori(cid: str) -> str:
-    """ Retrieve MACROSS keys for use in your scripts.  Keys must
- be generated in MACROSS's powershell kawamori function; this
- python implementation can only retrieve existing keys, and only
- within the same configuration that created the key.
+def _psq(s) -> str:
+    """ Quote a value for a powershell single-quoted string """
+    return "'" + str(s if s else "").replace("'","''") + "'"
+
+
+def _kawaPS(args: str, stdin: str = None):
+    """ Run kawamoriNG in powershell (no prompts). Returns (ok, value_or_error). """
+    script = path.join(str(MACROOT),"corefuncs","kawamoring.ps1")
+    exe = "pwsh.exe" if (PSVER and PSVER >= 7) else "powershell.exe"
+    setup = ("[Console]::OutputEncoding = [Text.Encoding]::UTF8; [Console]::InputEncoding = [Text.Encoding]::UTF8; "
+             f"$ErrorActionPreference = 'Stop'; . {_psq(script)}; ")
+    if stdin is not None:
+        setup += "$in = [Console]::In.ReadToEnd(); "
+    ## -klog lets kawamoriNG write its own access/failure log entries (it logs every
+    ## failure itself, so callers here don't log those again)
+    cmd = setup + (f"$v = kawamoriNG {args} -kshare {_psq(CONTENT)} -klocal {_psq(RESOURCES)} "
+                   f"-klog {_psq(LOGS)}; [Console]::Out.Write($v)")
+    try:
+        r = run([exe,"-NoProfile","-NonInteractive","-Command",cmd],input=stdin,
+                capture_output=True,text=True,encoding="utf-8")
+    except OSError as e:
+        errLog("ERROR","MACROSS.kawamori()",f"Could not start {exe} to read a protected key: {e}")
+        return False,f"Could not start {exe}: {e}"
+    if r.returncode != 0:
+        return False,(r.stderr or r.stdout or "unknown error").strip()
+    return True,r.stdout
+
+
+def _kawamoriNG(cid: str):
+    """ Retrieve a shared v2 key through powershell's kawamoriNG (never prompts; if this
+ account isn't enrolled, the user is told to type "enroll" in the MACROSS menu). """
+    ok,res = _kawaPS(f"-cid {_psq(cid)} -silent")
+    if not ok:
+        w(f" Key {cid} is unavailable: {res}","y")     ## already logged by kawamoriNG
+        return None
+    return res
+
+
+def _kawamoriOwn(name: str, ask: str = None, replace: bool = False):
+    """ Personal (-own) value: use the saved one, or ask for it once and save it. """
+    from getpass import getpass
+    if not replace:
+        ok,res = _kawaPS(f"-cid {_psq(name)} -own -silent")
+        if ok:
+            return res
+        if "KAWAMORI_NOT_SAVED" not in res:      ## (kawamoriNG has already logged why)
+            w(f" Your saved '{name}' value could not be used, so it needs to be entered again.","y")
+    prompt = ask or f"Paste your value for '{name}' (it will be protected for your account only)"
+    w(f" {prompt}","c")
+    value = getpass(" > ").strip()
+    if not value:
+        w(" No value entered.","y")
+        return None
+    ok,res = _kawaPS(f"-cid {_psq(name)} -own -value $in",stdin=value)
+    if not ok:
+        w(f" Could not save your '{name}' value: {res}","y")
+        return value        ## still usable for this run
+    w(" Saved. It will be used automatically from now on.","g")
+    return res
+
+
+def kawamori(cid: str, own: bool = False, ask: str = None, replace: bool = False) -> str:
+    """ Retrieve MACROSS keys for use in your scripts.  Shared keys must
+ be generated in MACROSS's powershell kawamori/kawamoriNG functions; this
+ python implementation can only retrieve existing shared keys.
+
+ Set own=True for values each analyst keeps for themselves (e.g. personal
+ API keys): the first time, the user is asked to paste the value, which is
+ then protected for their account and saved in their local kawa folder; later
+ calls return it without asking. ask= sets the prompt text; replace=True asks
+ for a new value (e.g. the user's key changed).
 
  USAGE:
 
     temp_key = kawamori(<your macross id>)
+    my_vt_key = kawamori("virustotal", own=True, ask="Paste your VirusTotal API key")
 
     """
+    if own:
+        if not MACROOT:
+            return None
+        return _kawamoriOwn(cid,ask=ask,replace=replace)
+
+    ## v2 keys (created with kawamoriNG) are decrypted by powershell, which has the
+    ## Windows key-protection APIs; check the shared content folder first, then local
+    for kdir in [CONTENT,RESOURCES]:
+        if kdir:
+            K = path.join(str(kdir),"kawa",f"{cid}.mori")
+            if ispath(K,p="file"):
+                with open(K,encoding="utf-8-sig") as o:
+                    if o.readline().strip() == "### MACROSS KEY v2 ###":
+                        return _kawamoriNG(cid)
+                break
 
     F = f"{RESOURCES}\\kawa\\{cid}.mori"
     if not N_:
@@ -710,7 +821,7 @@ def findDF(val:any,lang:str=".*",emax:int=None,rtype:str=".*",exact:bool=False) 
 
     ## The library is likely being used without MACROSS if LATTS is "False"
     if not LATTS or not val:
-        return None
+        return []
 
     res: list = []
     for t in LATTS:
@@ -748,7 +859,7 @@ def valkyrie(Diamond:str=None,Caller:str=None,Protoculture:any=None,deculture:an
 ##          if( $pythonsrc -ne $null ){
 ##              $Global:CALLER = $pythonsrc
 ##              foreach( $core in gci "$PSScriptRoot\\..\\corefuncs\\*.ps1" |
-##                Where-Object{$core.name -ne 'configurations.ps1'}){
+##                Where-Object{$_.Name -ne 'configurations.ps1'}){
 ##                     . $core.fullname
 ##                  }
 ##              spaceFold
@@ -825,25 +936,21 @@ def valkyrie(Diamond:str=None,Caller:str=None,Protoculture:any=None,deculture:an
         with open(pf,"w") as o:
             o.write(dumps(sc))
 
-    # Read an existing PROTOCULTURE.vf1 file
+    # Read an existing PROTOCULTURE.vf1 file. Both powershell (pyNet) and python write the
+    # same layout: "target" is the value to process, "result" is "WAITING" until the called
+    # diamond writes its response there.
     def readProto_(pf=sc_file) -> dict:
-        target_pairs: dict = {}
-        with open(pf) as d:
-            read_proto = load(d)
+        target_pairs: dict = {"caller":None,"target":None,"result":None}
+        try:
+            with open(pf,encoding="utf-8-sig") as d:
+                read_proto = load(d)
+        except (OSError,ValueError):
+            return target_pairs
 
-        if read_proto:
-            res = read_proto["result"]  ; print(res)
-            tar = read_proto["target"]  ; print(tar)
-            cal = read_proto["caller"]  ; print(cal);input()
+        if isinstance(read_proto,dict):
+            for k in target_pairs:
+                target_pairs[k] = read_proto.get(k)
 
-            target_pairs["caller"] = cal
-            if isinstance(res,str) and res == "WAITING":    ## Confirm target data
-                target_pairs["target"] = tar
-                target_pairs["result"] = res
-            else:
-                target_pairs["target"] = res
-                target_pairs["result"] = tar
-        
         return target_pairs
 
     ## Make sure we can define the .vf1 file's primary index
@@ -916,22 +1023,20 @@ def valkyrie(Diamond:str=None,Caller:str=None,Protoculture:any=None,deculture:an
 
 
         # Launching a MACROSS script from python requires a brand new session
-        call = None
+        ## Build the command as an argument list so paths/values with spaces or shell
+        ## characters are passed through intact
         if L == 'powershell':
-            if PSVER < 7:
-                call = f"powershell.exe {fullpath} -pythonsrc {use_caller}"
-            else:
-                call = f"pwsh.exe {fullpath} -pythonsrc {use_caller}"
-
-            if deculture != None:
-                #call = f"{deculture}~{call}"
-                call = f"{call} -deculture {deculture}"
+            exe = "powershell.exe" if PSVER < 7 else "pwsh.exe"
+            call = [exe,"-NoProfile","-File",fullpath,"-pythonsrc",str(use_caller)]
+            if deculture is not None:
+                call += ["-deculture",str(deculture)]
         else:
-            call = f"{MACPY} {fullpath} {deculture}"
-            environ["PROTOCULTURE"] = protoculture["target"]
+            call = [MACPY or sys.executable,fullpath]
+            if deculture is not None:
+                call.append(str(deculture))
+            environ["PROTOCULTURE"] = protoculture["target"] if isinstance(protoculture["target"],str) else dumps(protoculture["target"])
             environ["CALLER"] = use_caller
-        if call:
-            psc(cc=call)
+        run(call)
 
         res = readProto_()
 
