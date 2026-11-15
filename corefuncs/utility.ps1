@@ -67,8 +67,9 @@ function runSomething(){
     w 'to close your session and return to' g
     w " the tools menu.`n`n" g
 
-    powershell.exe
+    & (Get-Process -Id $PID).Path       ## same powershell edition MACROSS is running in
 
+    skSanitize                          ## scrub anything sensitive typed in that shell
     Return
 }
 
@@ -164,11 +165,37 @@ function extras($1){
         kawamori $n -g
         hec_
     }
+    elseif($1 -eq 'newkey2'){
+        ## v2 keys usable by every authorized account (see "help kawamoriNG" in debug)
+        "`n`n"; startUp
+        $n = Read-Host 'Enter a name for your key'
+        $x = Read-Host 'Extra AD groups/users to grant (comma-separated, or ENTER for tier lists only)'
+        $p = @($x -split ',' | %{ $_.Trim() } | ?{ $_ })
+        try{ kawamoriNG -c $n -g -m -p $p }
+        catch{ w "$($_.Exception.Message)" y }
+        hec_
+    }
+    elseif($1 -eq 'chats'){
+        ## Review saved AI chats (.chat files anywhere under the outputs folder)
+        screenResultsForm -chats
+    }
+    elseif($1 -eq 'enroll'){
+        ## Let this account use v2 keys without the passphrase from now on
+        "`n`n"; startUp
+        try{ kawamoriNG -e }
+        catch{ w "$($_.Exception.Message)" y }
+        hec_
+    }
     elseif($1 -eq 'pydev'){
-        pyATTS; macrossMirror -n $N_
+        ## Interactive python with the MACROSS environment loaded ("import macross")
+        startUp; pyATTS; macrossMirror -n $N_
         splashBanner
-        launcher -p '1' -c "$dyrl_MACROSS\corefuncs\pydev.py"
-        macrossMirror -c
+        try{
+            if($MONTY){ & $dyrl_PYCROSS }
+            elseif($LIFEOFBRIAN){ py }
+            else{ w 'Python is not installed.' y; Read-Host }
+        }
+        finally{ macrossMirror -c }
     }
 }
 
@@ -222,15 +249,19 @@ function spaceFold(){
     $Global:ErrorActionPreference = 'SilentlyContinue'
     $Global:dyrl_CONF = @{};
     $dd = $env:MACONF -Split ';'
-    $ss = $env:TEMPENV -Split ';'; $snn = ($ss -Split ',')[4]
+    ## Field order is set by macrossMirror: root;outputs;content;logs;N_;user;temp;robotech;opt1;psversion
+    $ss = $env:TEMPENV -Split ';'; $snn = $ss[4] -Split ','
     foreach($d in $dd){
         $Global:dyrl_CONF.Add($(($d -Split '::')[0]),$(($d -Split '::')[1]))
     }
     $Global:dyrl_MACROSS=$ss[0]; $Global:dyrl_OUTFILES=$ss[1]
     $Global:dyrl_PYLIB = "$dyrl_MACROSS\corefuncs\pycross"
-    $Global:dyrl_CONTENT=$ss[2]; $Global:dyrl_LOGS=$ss[3];
-    $Global:N_=@($snn[0],$([int[]](($snn[0] -split '') -ne '')),$([int[]](($snn[1] -split '') -ne '')));
+    $Global:dyrl_RESOURCES = "$dyrl_MACROSS\corefuncs\resources"
+    $Global:dyrl_PLUGINS = "$dyrl_MACROSS\corefuncs\plugins"
+    $Global:dyrl_CONTENT=$ss[2]; $Global:dyrl_LOG=$ss[3];
+    $Global:N_=@([int64]$snn[0],$([int[]](($snn[1] -split '') -ne '')),$([int[]](($snn[2] -split '') -ne '')));
     $Global:USR=$ss[5]; $Global:dyrl_TMP=$ss[6]
+    $Global:ROBOTECH = ($ss[7] -eq 'T'); $Global:dyrl_OPT1 = ($ss[8] -eq 'T')
     $Global:dyrl_DIAMONDS="$dyrl_MACROSS\diamonds"
     $Global:dyrl_PG=@("$dyrl_PYLIB","$dyrl_PYLIB\gbio")
     $Global:dyrl_LATTS=(gc "$($dyrl_PG[1])\LATTS.vf1" | ConvertFrom-Json)
@@ -242,43 +273,74 @@ function consoleDebug($x=$null,$ch=$null){
     w "`n                         MACROSS DEBUG MODE`n" y
     macrossHelp show
     ''
-    function startup_(){
-        while(-not $dyrl_CONF.tr1 -and $x -Match $hb){w "$ha`n`n" -b r -f k;startUp -r "$(xEntry)"
-        if(-not $dyrl_CONF.tr1){Return}}
-    }
     if($x){
-        varCleanup;startUp;gerwalk VGhhdCdzIGEgcHJpdmlsZWdlZCBjb21tYW5kLg==;$ha=$dyrl_PT
-        gerwalk $dyrl_CONF.bl0;$hb=$dyrl_PT;errLog INFO;slp -m 450
-        if($ch -eq $hb){$if="$USR debug ($x)"}elseif($dyrl_BLD){varCleanup;$if="$USR debug ($x)"}
-        startup_
-        if($x -eq 'help'){
-            macrossHelp dev
-            splashPage
-            macrossHelp show
-        }
-        elseif($x -Like "help *"){
-            $x = $x -replace "help "
-            macrossHelp $x
-            cls
-            macrossHelp show
-        }
-        else{
-            $z = $x; while($z -ne ''){
-                startup_
-                if($z -eq 'd'){rv cmd,x,z; consoleDebug}
-                if($dyrl_LOG -ne 'none'){errLog INFO 'MACROSS.debug' "$USR/$dyrl_HN0`: $z"}
-                $cmd = [scriptblock]::Create("$z")
-                . $cmd;varCleanup;w $msgloop g; $z = Read-Host
+        varCleanup; startUp
+        gerwalk VGhhdCdzIGEgcHJpdmlsZWdlZCBjb21tYW5kLg==; $ha = $dyrl_PT
+        ## Debugging is restricted unless the config's bl0 holds the "no restriction" marker. bl0
+        ## only decides WHETHER it's restricted; the pattern always comes from the code (setLocal -i),
+        ## so updates to it apply to existing configs. No readable config = restricted.
+        $restricted = $true
+        if($dyrl_CONF -and $dyrl_CONF.bl0){ gerwalk $dyrl_CONF.bl0; $restricted = ($dyrl_PT -ne (returnDefault -b)[0]) }
+        ## Test commands run in this scope, so the pattern and the "admin verified" flag are
+        ## constants (and the pattern blocks their names) -- a command can't switch the check off.
+        New-Variable -Name dbgrx_ -Option Constant -Value $(if($restricted){ setLocal -i }else{ $null })
+        New-Variable -Name dbggate_ -Option Constant -Value @{ ok = $false }
+        ## $true if the command may run: unrestricted, already verified this session, not a
+        ## privileged command, or the admin password is entered now (checked against the config)
+        function dbggate_check($cmdText){
+            if(-not $dbgrx_ -or $dbggate_.ok -or $cmdText -notmatch $dbgrx_){ Return $true }
+            w "`n $ha" -b r -f k
+            w ' Enter the MACROSS admin password to run privileged commands in this debug session.' y
+            for($i = 1; $i -le 3; $i++){
+                $pw = xEntry
+                if(-not $pw){ Break }
+                if(confLoad_ $pw){
+                    $dbggate_.ok = $true
+                    try{ errLog INFO 'MACROSS.debug' "$USR verified as admin for privileged debug commands on $dyrl_HN0" }catch{ }
+                    Return $true
+                }
+                w ' That password is not correct.' y
             }
-            Return
+            try{ errLog WARN 'MACROSS.debug' "Privileged debug command refused for $USR on ${dyrl_HN0}: $(skScrub $cmdText)" }catch{ }
+            w ' Command not run.' y
+            Return $false
         }
-
-
-        w "`n    $msgloop`n" g
-        $response = Read-Host
-        if($response -ne ''){
-            consoleDebug $response
+        ## One loop handles every line typed in the debugger, so "help <name>" always means MACROSS
+        ## help -- before or after running test commands (PowerShell's own help only when asked
+        ## for explicitly with Get-Help on a non-MACROSS command).
+        $mfuncs = macrossFuncList_
+        $z = $x
+        while("$z".Trim() -ne ''){
+            $t = "$z".Trim()
+            if($t -eq 'd'){ consoleDebug; Return }
+            elseif($t -match '^(help|man)$'){
+                macrossHelp dev
+                splashBanner
+                macrossHelp show
+            }
+            elseif($t -match '^(help|man|get-help)\s+(\S+)\s*$' -and ($Matches[1] -ne 'get-help' -or $Matches[2] -in $mfuncs)){
+                $name = $Matches[2]
+                if($name -in $mfuncs){
+                    macrossHelp $name
+                    cls
+                    macrossHelp show
+                }
+                else{
+                    $near = @($mfuncs | ?{ $_ -like "*$name*" -or $name -like "*$_*" })
+                    w "`n '$name' is not a MACROSS function.$(if($near.Count){ " Did you mean: $($near -join ', ')?" })" y
+                    w " For PowerShell's own help on a command, use:  Get-Help $name" g
+                }
+            }
+            elseif(dbggate_check $t){      ## every command is checked, not just the first
+                if($dyrl_LOG -ne 'none'){ errLog INFO 'MACROSS.debug' "$USR/$dyrl_HN0`: $(skScrub $t)" }
+                $cmd = [scriptblock]::Create($t)
+                if(-not $dyrl_CONF){ startUp }      ## varCleanup below clears the config after every command
+                . $cmd; varCleanup
+            }
+            w "`n    $msgloop" g -i
+            $z = Read-Host
         }
+        Return
     }
     else{
         $e = @('SilentlyContinue','Continue','Inquire')
@@ -321,7 +383,7 @@ function consoleDebug($x=$null,$ch=$null){
             }
             else{
                 $Script:ErrorActionPreference = $e[$([int]$z - 1)]
-                splashPage
+                splashBanner
                 $c = $ErrorActionPreference
                 Write-Host -f CYAN "
                 Error display is now set to:  $c"
@@ -334,7 +396,7 @@ function consoleDebug($x=$null,$ch=$null){
                 $la += $_
                 $ln++
             }
-            splashPage
+            splashBanner
             ''
             while( $z -ne 'q' ){
                 $ln = 1;$row = 0
@@ -421,8 +483,7 @@ function consoleDebug($x=$null,$ch=$null){
 
 if(! $ROBOTECH){
 function updatePass(){
-    splashPage
-    $PSR = "C:\Users\$USR\AppData\Roaming\Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt"
+    splashBanner
     try{ $pls = "$((Get-QADUser -Identity $USR).passwordLastSet)`." }
     catch{
         errMsg "`"Get-QADUser`" Failed! Try again with a different powershell version (currently $pver)" -c r
@@ -444,13 +505,15 @@ function updatePass(){
             $a1 = Read-Host -AsSecureString
             $a1 = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($a1)
             $b1 = [System.Runtime.InteropServices.Marshal]::ptrToStringAuto($a1)
-            if($b1 -eq "q"){ Exit }
+            [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($a1)
+            if($b1 -eq "q"){ Remove-Variable -Force b1; Return }
             w '
                   Enter the password again: ' -i g
             $a2 = Read-Host -AsSecureString
             $a2 = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($a2)
             $b2 = [System.Runtime.InteropServices.Marshal]::ptrToStringAuto($a2)
-            if($b1 -ne $b2){ w 'Passwords to not match!' y }
+            [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($a2)
+            if($b1 -cne $b2){ w 'Passwords do not match!' y }
             else{ Break }
         }
     }
@@ -460,18 +523,15 @@ function updatePass(){
     ' g
 
     Set-QADUser -Identity $USR -UserPassword "$b1" -Proxy | Out-Null
+    Remove-Variable -Force b1,b2
 
 
     $date = $(Get-Date)
     $plu = $(Get-QADUser -Identity $USR).passwordLastSet
-    $sd = ($($plu) -Split ' ')[0]
-    $st = (($($plu) -Split ' ')[1] -split ':')[0,1]
-    $cd = ($date -Split ' ')[0]
-    $ct = ((($date -Split ' ')[1] -Split ':'))[0,1]
 
 
-    ## Compare the current date/time with the .PasswordLastSet time to verify success
-    if($sd -eq $cd -and "$($st[0]):$($st)[1]" -eq "$($ct[0]):$($ct[1])"){
+    ## The password was changed if .PasswordLastSet is within the last few minutes
+    if($plu -and ([datetime]$plu) -gt $date.AddMinutes(-5)){
         w '
     Success!
     ' g
@@ -481,7 +541,7 @@ function updatePass(){
     Current Date:              $($date)
     New Password Last Set:     $($plu)
 
-    If the day+hour match, then you're good to go!
+    If the date+time match (within a few minutes), then you're good to go!
 
     If not, this is the last error collected by Windows:
     " c
@@ -494,13 +554,9 @@ function updatePass(){
     Hit ENTER to exit.
     ' g
 
-    ## Don't leave password sitting around
-    if(Test-Path -Path $PSR){
-        $pr = $(Get-Content $PSR | %{$_ -replace "(Set-QADUser -Identity $USR -UserPassword .*|$c)",'MACROSS MSG: PASSWORD ENTRY REDACTED'})
-        Set-Content -Path $PSR -Value $pr
-    }
-    [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($b)
-    Remove-Variable -Force a0,a1,b,c
+    ## Don't leave passwords sitting in the powershell history
+    skSanitize
+    Remove-Variable -Force a0,a1,a2
 
     Read-Host
 }
@@ -637,15 +693,15 @@ function errLog(){   #mp
         [Parameter(Mandatory=$false)]$extra,
         [switch]$forward=$false
     )
-    if($dyrl_LOG -ne 'none' -and (Test-Path $dyrl_LOG)){
+    if($dyrl_LOG -and $dyrl_LOG -ne 'none' -and (Test-Path $dyrl_LOG)){     ## (log folder isn't known until the config loads)
         [string]$log = "$(Get-Date -Format 'yyyy-MM-dd')" + '.txt'      ## Create the log filename
-        [string]$local = $(Get-Date -Format 'yyyy-MM-dd hh:mm:ss')      ## First field is the timestamp
+        [string]$local = $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')      ## First field is the timestamp (24-hour)
         $msg = "MACROSS/$($env:COMPUTERNAME)/$USR"                       ## Specify the source
         $d = "`t"                                                       ## Delimiter
 
         if($forward){
             ## Use UTC for sending logs to QRadar
-            $utc = "$((Get-Date).toUniversalTime() | Get-Date -Format 'yyyy/MM/dd hh:mm:ss:ms+0000')"
+            $utc = "$((Get-Date).toUniversalTime() | Get-Date -Format 'yyyy/MM/dd HH:mm:ss.fff+0000')"
         }
 
         if($extra){
@@ -666,10 +722,15 @@ function errLog(){   #mp
         $newout = [System.IO.StreamWriter]::New("$dyrl_LOG\$log",$true)
         $newout.WriteLine("$menc"); $newout.Close()
 
-        if($forward -and ('qrd' -in $dyrl_CONF.keys)){
-            gerwalk $dyrl_CONF.qrd
+        ## Log server <host|ip>:port is set by the setup wizard as 'fwd'
+        if($forward -and ('fwd' -in $dyrl_CONF.keys)){ try{
+            gerwalk $dyrl_CONF.fwd
             $addr = ($dyrl_PT -Split ':')[0]; $port = ($dyrl_PT -Split ':')[1]
-            if($addr -Match "[a-z]"){ $addr = [System.Net.Dns]::GetHostAddresses("$addr").IPAddressToString }
+            if("$dyrl_PT" -notMatch '^[\w\.\-]+:\d{1,5}$'){ $addr = $null }   ## 'none' or malformed: don't forward
+            elseif($addr -Match "[a-z]"){
+                $addr = ([System.Net.Dns]::GetHostAddresses("$addr") |
+                    ?{$_.AddressFamily -eq 'InterNetwork'} | Select -First 1).IPAddressToString
+            }
             if($addr){
                 $target = [System.Net.IPAddress]::Parse($addr)
                 $sendto = New-Object System.Net.IPEndpoint $target,$port
@@ -677,7 +738,7 @@ function errLog(){   #mp
                 $set1 = [System.Net.Sockets.AddressFamily]::InterNetwork
                 $set2 = [System.Net.Sockets.SocketType]::Dgram
                 $proto = [System.Net.Sockets.ProtocolType]::UDP
-                $socket = New-Object System.Net.Sockets.Socket $set1,$set2,$port
+                $socket = New-Object System.Net.Sockets.Socket $set1,$set2,$proto
                 $socket.Connect($sendto)
 
                 $encoding = [System.Text.Encoding]::UTF8
@@ -685,6 +746,8 @@ function errLog(){   #mp
                 $fwd = $socket.Send($tosend)
                 $socket.Close()
             }
+        }
+        catch{ }        ## an unreachable log server must never break local logging
         }
     }
 
@@ -873,9 +936,7 @@ function pyNet(){   #mp
 
     function em_($m=$($error[0])){ errMsg -m $m -c r -f 'MACROSS.pyNet' }
     function w2f_($w,$file=$s){
-        $global:dbg = $j
-        #if($w -isNot [System.String] -and $v -isNot [System.Int32]){
-        if($w.getType().Name -eq 'PSCustomObject'){     ## Assuming a dict was sent as the $v value
+        if($w -is [System.Management.Automation.PSCustomObject]){     ## Assuming a dict was sent as the $v value
             try{ noBOM -f $file -t "$($w | ConvertTo-Json -Depth $d)" } ## Change depth if necessary...
             catch{ em_ $_ }
         }
@@ -894,15 +955,14 @@ function pyNet(){   #mp
     }
     elseif((Test-Path $s) -and ($caller_ -eq $CALLER)){
         $j = Get-Content -raw $s | ConvertFrom-Json
-        if($j.result -ne 'WAITING'){ $Global:PROTOCULTURE = $jr }
+        if($j.result -ne 'WAITING'){ $Global:PROTOCULTURE = $j.result }
         else{
             $j.result = $v
             w2f_ $j
         }
     }
     else{
-        $j.target = $v
-        $j.result = 'WAITING'
+        $j = [pscustomobject]@{ 'caller'=$caller_; 'target'=$v; 'result'='WAITING' }
         w2f_ $j
     }
 
@@ -1402,12 +1462,13 @@ function gerwalk($t,[switch]$hex=$false,[switch]$e=$false){   #mp
     if($dyrl_PT){Remove-Variable dyrl_PT -Scope Global}
     if($e){
         if($hex){$a = ([System.Text.Encoding]::UTF8.GetBytes($t) | Foreach{$_.ToString("X2")}) -Join ''}
-        else{$a = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($t))}
+        else{$a = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($t))}
         Return $a
     }
     elseif($hex){
-        $a = $t -replace "0x"; $a = $a -replace " "
-        $a = $(-join ($a -Split '(..)' | ?{$_ -ne ''} | %{[char][convert]::ToUInt32($_,16)}))
+        $a = $t -replace "0x"; $a = $a -replace "\s"
+        [byte[]]$hb = $a -Split '(..)' | ?{$_ -ne ''} | %{[convert]::ToByte($_,16)}
+        $a = [Text.Encoding]::UTF8.GetString($hb)
     }
     else{
         $a = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($t))
@@ -1475,8 +1536,18 @@ function decodePdf($filepath,[switch]$preserve,[switch]$split){   #mp
     $emsg = "Failed to extract text from $filepath"
     $filename = $filepath -replace "^.+\\" -replace "\.\w+$"
     $readfrom = "$dyrl_TMP\decoded-pdf-$filename.vf1"
-    if($preserve){ . $dyrl_PYCROSS "$dyrl_PLUGINS\pdfdecoder.py" $filepath $filename 1 }
-    else{ . $dyrl_PYCROSS "$dyrl_PLUGINS\pdfdecoder.py" $filepath $filename }
+    $pyargs = @("$dyrl_PLUGINS\pdfdecoder.py",$filepath,$filename)
+    if($preserve){ $pyargs += '1' }
+    if($MONTY){ & $dyrl_PYCROSS @pyargs }
+    elseif($LIFEOFBRIAN){ py @pyargs }
+    else{
+        errLog ERROR "MACROSS.decodePdf" "No python available to decode $filepath"
+        Return ''
+    }
+    if(-not (Test-Path $readfrom)){
+        errLog ERROR "MACROSS.decodePdf" $emsg
+        Return ''
+    }
     if($split){ $text = uniStrip $(Get-Content $readfrom | ?{$_.Trim() -ne ""}) }
     else{ $text = $(uniStrip $(Get-Content -Raw $readfrom)) }
     if($text){
@@ -1740,164 +1811,6 @@ function getFile($filter='all',$opendir="H:\",[switch]$directory=$false){   #mp
 
 }
 
-
-function kawamori(){  #mp
-    <#
-    ||shorthelp||
-    kawamori [-c 'ID or name for your key' <REQUIRED>] [-g <GENERATE A NEW KEY>]
-        [-l <LOCAL KEYS ONLY>] [-m <SHOW CREATED MSG>] [-n <USE LITERAL NAME>]
-
-    ||longhelp||
-    This is MACROSS's key generator for protecting regularly accessed data or
-    resources. To create a new key, provide any string as a key name, and use
-    the -g option. An entry window will open for you to paste whatever value you
-    need protected within MACROSS.
-
-    The -n option will disable creating a unique ID for your key, and instead
-    name it whatever you passed in the -c parameter, i.e. 'kawamori -c test -g'
-    will create a <UID> based on the string 'test', but 'kawamori -c test -g -n'
-    will create a key simply named 'test.mori'.
-
-    To retrieve your key, supply the ID that MACROSS generated when you created
-    the key. Keys are stored in MACROSS's corefuncs\resources folder.
-
-    ||examples||
-
-    ## Generate a new key and get an ID to use for retrieval:
-        kawamori 'give_me_a_key' -g
-    ## Retrieve the key's value:
-        $key = kawamori <macross-id>
-
-
-    Anime note: Shoji Kawamori is the main creator of the Macross series, along
-    with Vision of Escaflowne, two of the best anime shows ever made IMHO.
-
-
-    #>
-    param(
-        [Parameter(Mandatory=$true)]
-        [string]$cid,
-        [switch]$gen,
-        [switch]$local,
-        [switch]$msg,
-        [switch]$no_uid
-    )
-
-    ## In a multi-user setup, you can store keys in a central location
-    ## ($dyrl_CONTENT) where all validated users' scripts can read them.
-    ## Note that if there are local and central keys with the same ID,
-    ## the central key takes priority unless you call this function with
-    ## the -local option.
-    if(-not (Test-Path "$dyrl_RESOURCES\kawa")){
-        New-Item -ItemType directory -Name kawa -Path $dyrl_RESOURCES
-    }
-    $checkrep = "$dyrl_CONTENT\kawa\$cid.mori"
-    $assembled = "$dyrl_RESOURCES\kawa\$cid.mori"
-    if((Test-Path -Path $checkrep) -and -not $local){
-        $content_key = $checkrep
-    }
-    else{
-        $content_key = $false
-    }
-    $assembler1 = mkList
-    $assembler2 = mkList
-    $il1 = $N_[1].count -1; $il2 = $N_[2].count -1
-    if($gen){
-        $alpha = (alphanum)[0]
-        if($no_uid){ $eid = $cid }
-        else{
-            $tag = $($cid.substring(0,1))
-            if($tag -notMatch "\w"){ $tag = 's'}
-            $bid = gerwalk -e $cid
-            $hid = gerwalk -e -h $cid
-            $eid = "$tag$bid$hid" -replace "[+=/\.]"; $el = $eid.length
-        }
-        while($el -lt 35){
-            $al = Get-Random -min 0 -max 62
-            $eid = "$($eid)$($alpha[$al])"; $el = $eid.length
-        }
-        $eid = "$($eid.substring(0,15))-$($eid.substring(15,20))"
-        $of = "$dyrl_RESOURCES\kawa\$eid`.mori"
-        $vn = @('kh','kt','sg')
-        $vv = @('20232323205354415254204B455920232323',
-            '202323232320454E44204B45592023232323',
-            '4D4143524F5353')
-        0..2 | %{
-            gerwalk -h $vv[$_]
-            Set-Variable -Name $vn[$_] -Value $dyrl_PT
-        }
-        $rawmaterials = getBlox -t $sg -i 'Paste your inputs:'
-        $n = 0
-        foreach($c in ($rawmaterials.trim() -Split '' | ?{$_ -ne ''})){
-            $mod = ($N_[1][$n]+2) * $N_[0]
-            [void]$assembler1.add($(([int](ord $c) * $mod)))
-            if($n -eq $il1){ $n = 0 }
-            else{ $n++ }
-        }
-        $n = 0
-        foreach($c in $assembler1){
-            $mod = ($N_[2][$n]+2) * $N_[0]
-            [void]$assembler2.add($([int]$c + $mod))
-            if($n -eq $il2){ $n = 0 }
-            else{ $n++ }
-        }
-        if($n -eq 0){ $n = $il2 }
-        else{ $n-- }
-        #$h = [math]::truncate($assembler2.length / 4)
-        $assembler2.reverse()
-        $assembler2.insert(0,$n)
-
-        $compacting = gerwalk $($assembler2 -Join '.') -e
-        $compacted = mkList
-        [void]$compacted.add($kh)
-        foreach($comp in $compacting -Split "(.{12})" -ne ''){
-            [void]$compacted.add($comp)
-        }
-        [void]$compacted.add($kt)
-
-        $wr = "$($compacted -Join "`n")"
-        noBOM -f $of -t $wr
-        errLog INFO 'MACROSS.kawamori' "Key $eid generated for $cid"
-        if($msg){
-            w "SAVE THIS ID: $eid"
-            w "Your script can now retrieve this value using`n`n`tkawamori $eid`n`n"
-            w "This key will no longer function if your macross.conf file gets deleted!" y
-        }
-        else{ Return $eid }
-    }
-    else{
-        if($content_key -and (Test-Path $content_key)){
-            $assembled = $content_key   ## Give preference to files in central storage, if any
-        }
-        if(! (Test-Path $assembled)){
-            errLog ERROR 'MACROSS.kawamori' "No key found for $cid"
-            Return $false #"$cid does not exist!"
-        }
-        else{
-            gerwalk $((Get-Content $assembled | ?{$_ -notLike '*#*'}) -Join '').trim()
-            $compacted = $dyrl_PT -Split '\.'
-
-            $nc = [int]$compacted[0]; $n = $nc
-            $compacted = $compacted[1..($compacted.count)]
-            foreach($c in $compacted){
-                $mod = ($N_[2][$n]+2) * $N_[0]
-                $assembler1.add($([int]$c - $mod)) | Out-Null
-                if($n -lt 1){ $n = $il2 }
-                else{ $n-- }
-            }
-            $n = $nc
-            foreach($c in $assembler1){
-                $mod = ($N_[1][$n]+2) * $N_[0]
-                $assembler2.add($(chr $([int]$c / $mod))) | Out-Null
-                if($n -lt 1){ $n = $il1 }
-                else{ $n-- }
-            }
-            $assembler2.reverse()
-            Return $assembler2 -Join ''
-        }
-    }
-}
-
 function getBlox(){ #mp
     <#
     ||shorthelp||
@@ -2089,7 +2002,7 @@ function houseKeeping($reports,$tool){   #mp
     $Z = '';
 
     ''
-    while( $Z -notMatch "^[0-9]+$" ){
+    while( "$Z" -notMatch "^[0-9]+$" ){
         while($Z -eq ''){
             listFiles
             $Z = Read-Host
@@ -2111,6 +2024,11 @@ function houseKeeping($reports,$tool){   #mp
         }
 
 
+        if($Z -ne 99999 -and ("$Z" -notMatch '^\d+$' -or [int]$Z -lt 1 -or [int]$Z -gt $flist.count)){
+            Write-Host -f CYAN "  $Z is not on the list."
+            $Z = ''
+            Continue
+        }
         if($Z -ne 99999){
             $Z = $Z - 1
             $fpath |
