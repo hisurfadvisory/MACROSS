@@ -199,6 +199,13 @@ else:
 
             ## The python version of screenResults cannot write to file like the powershell version can.
 
+            ## For formatted output (markdown, tables, images such as graphs, or AI/LLM replies), use
+            ## macross.screenResultsForm(). It never renders HTML or runs scripts, so it is safe for
+            ## untrusted text. Use images= to show image files, bytes or base64 strings.
+            rows = "\n".join(f"| {l.strip()} | `{v}` |" for l,v in zip(labels,response["result"]))
+            ms.screenResultsForm(f"## File details from {diamond}\n\n| Field | Value |\n|---|---|\n{rows}",
+                                 header="BASARA demo")
+
     input("\n\n Be sure to review this python code's comments to see how MACROSS works.\n Hit ENTER to close this demo.")
     exit()
 
