@@ -131,6 +131,9 @@
     screenResults():
         format blocks of text into a table of up to 3 columns
 
+    screenResultsForm():
+        show markdown text and/or images in a window (uses powershell, not tkinter)
+
     battroid():
         generate ascii-art of large block words
 
@@ -150,7 +153,7 @@
 ################################################################
 import sys
 import traceback
-from subprocess import run
+from subprocess import run,PIPE
 from datetime import datetime as dt
 from os import chdir,path,getenv,environ,system,popen,remove,makedirs
 from json import dumps,load,loads
@@ -160,6 +163,8 @@ from random import randint
 import base64 as b64
 import textwrap
 import socket
+import tempfile
+from shutil import rmtree
 import ctypes
 from ctypes import *
 from ctypes import wintypes
@@ -288,22 +293,25 @@ if getenv("MACROSS"):
 
 ## Set python's PROTOCULTURE tracker
 temp = False
+## None (not False) when there's no MACROSS session: open(False) would read stdin
+sc_file = None
 if GBIO:
     sc_file = path.join(GBIO,"PROTOCULTURE.vf1")
 
 ## Set default PROTOCULTURE and CALLER values;
 ## powershell and python require different methods
-try:
-    ## This checks for values in the temp file written by the valkyrie function (python)
-    ## or the pyNet function (powershell) for sharing data between the two. Format:
-    ##      {"caller": <requesting diamond>, "target": <value to process>,
-    ##       "result": "WAITING" | <response>}
-    with open(sc_file) as tmp:
-        temp = load(tmp)
-    if not isinstance(temp,dict):
-        temp = False
-except (OSError,TypeError,ValueError):
-    pass
+if sc_file:
+    try:
+        ## This checks for values in the temp file written by the valkyrie function (python)
+        ## or the pyNet function (powershell) for sharing data between the two. Format:
+        ##      {"caller": <requesting diamond>, "target": <value to process>,
+        ##       "result": "WAITING" | <response>}
+        with open(sc_file) as tmp:
+            temp = load(tmp)
+        if not isinstance(temp,dict):
+            temp = False
+    except (OSError,TypeError,ValueError):
+        pass
 
 ## Environment vars take priority over the PROTOCULTURE temp file
 if getenv("CALLER"):
@@ -1392,6 +1400,136 @@ def screenResults(A='endr',B=None,C=None,display=False) -> None:
             out_(text,tc)
             out_(' ' * (wd - len(text) + 1))   ## Pad to exact width + trailing space
         w(SEP,'g')
+
+
+
+def screenResultsForm(text:str="",images:any=None,header:str="MACROSS results",
+                      fmt:str="auto",chats:bool=False,root:str=None) -> bool:
+    """ Show formatted text (markdown) and/or images such as graphs in a window.
+
+ This hands your content to MACROSS's powershell screenResultsForm function, so it
+ looks and behaves exactly the same, and needs no tkinter or other GUI libraries
+ (it works with the portable python environment). Type "debug" in the main menu and
+ view screenResultsForm's help for the full list of supported markdown.
+
+ The window blocks your script until the user closes it. If powershell can't open
+ a window (e.g. no desktop session), it writes the text to the console instead. If
+ powershell itself can't run, this function prints the text and returns False.
+
+ SAFE FOR UNTRUSTED OUTPUT (e.g. AI/LLM replies): nothing is rendered as HTML, no
+ scripts run, links are not clickable, and images are never downloaded.
+
+ Parameters:
+    text    the text to show; markdown is formatted
+    images  one or a list of: file paths, bytes, or base64 strings (including
+            "data:image/png;base64,..." as returned by many AI APIs)
+    header  the window title
+    fmt     "auto" (detects markdown), "markdown", or "text" (show as-is in a
+            monospace font, for already-aligned CLI output)
+    chats   True opens the saved .chat file browser instead (other args ignored
+            except header and root)
+    root    folder for the chats browser; default is OUTFILES
+
+ USAGE EXAMPLES:
+
+    # Show an AI response
+    macross.screenResultsForm(reply,header="Triage summary")
+
+    # Show a graph your script saved, with a caption
+    macross.screenResultsForm("## Logons by hour",images=f"{macross.OUTFILES}\\logons.png")
+
+    # Show an image an API returned as base64, next to its explanation
+    macross.screenResultsForm(resp["text"],images=resp["image_b64"],header="Analysis")
+
+    # Show CLI output exactly as-is
+    macross.screenResultsForm("\\n".join(raw_lines),fmt="text")
+
+    # Browse saved chats
+    macross.screenResultsForm(chats=True)
+
+    """
+    if fmt not in ("auto","markdown","text"):
+        fmt = "auto"
+    text = "" if text is None else str(text)
+
+    ## display.ps1 sits one folder above this library (corefuncs\pycross\..), which
+    ## also works when this library is imported outside of a MACROSS session
+    display = path.join(path.dirname(path.dirname(path.abspath(__file__))),"display.ps1")
+    exe = "pwsh.exe" if (PSVER and PSVER >= 7) else "powershell.exe"
+
+    def fallback_(why):
+        w(f" A window could not be opened ({why}); showing the text here instead.","y")
+        if text:
+            print(sub(r"\x1b\[[0-9;?]*[ -/]*[@-~]","",text))
+        return False
+
+    ## Everything goes to powershell in one UTF-8 JSON file, so there are no command-line
+    ## length limits or quoting problems with model output
+    base = TMP if (TMP and ispath(TMP)) else None
+    work = tempfile.mkdtemp(prefix="srf_",dir=base)
+    try:
+        imgs = []
+        if images is not None:
+            if isinstance(images,(str,bytes,bytearray)):
+                images = [images]
+            for n,img in enumerate(images,1):
+                if img is None:
+                    continue
+                if isinstance(img,(bytes,bytearray)):
+                    f = path.join(work,f"image{n}.bin")
+                    with open(f,"wb") as o:
+                        o.write(bytes(img))
+                    imgs.append({"k":"bytes","v":f})
+                elif isinstance(img,str) and len(img) < 260 and path.isfile(img):
+                    imgs.append({"k":"path","v":path.abspath(img)})
+                else:
+                    ## base64 (or anything else); powershell reports what it can't read
+                    f = path.join(work,f"image{n}.b64")
+                    with open(f,"w",encoding="utf-8") as o:
+                        o.write(str(img))
+                    imgs.append({"k":"b64","v":f})
+
+        manifest = path.join(work,"srf.json")
+        with open(manifest,"w",encoding="utf-8") as o:
+            o.write(dumps({"text":text,"header":str(header or "MACROSS results"),"format":fmt,
+                           "chats":bool(chats),"root":str(root or OUTFILES or ""),
+                           "outfiles":str(OUTFILES or ""),"images":imgs}))
+
+        cmd = ("[Console]::OutputEncoding = [Text.Encoding]::UTF8; "
+               "try{ "
+               f". {_psq(display)}; "
+               f"$m = [IO.File]::ReadAllText({_psq(manifest)},[Text.Encoding]::UTF8) | ConvertFrom-Json; "
+               "if($m.outfiles){ $Global:dyrl_OUTFILES = $m.outfiles }; "
+               "if($m.chats){ "
+               "  $r = if($m.root){ $m.root }else{ $dyrl_OUTFILES }; "
+               "  screenResultsForm -chats -r $r -h $m.header "
+               "} else { "
+               "  $i = New-Object System.Collections.ArrayList; "
+               "  foreach($e in @($m.images)){ "
+               "    if($e.k -eq 'bytes'){ [void]$i.Add([IO.File]::ReadAllBytes($e.v)) } "
+               "    elseif($e.k -eq 'b64'){ [void]$i.Add([IO.File]::ReadAllText($e.v)) } "
+               "    else{ [void]$i.Add([string]$e.v) } "
+               "  }; "
+               "  if(-not $i.Count){ $i = $null }; "
+               "  screenResultsForm -t $m.text -i $i -h $m.header -f $m.format "
+               "} "
+               "}catch{ [Console]::Error.WriteLine($_.Exception.Message); exit 1 }")
+
+        ## -STA: WinForms and the clipboard ("Copy text") need a single-threaded apartment.
+        ## stdout is not captured, so powershell's own console fallback still reaches the user.
+        try:
+            r = run([exe,"-NoProfile","-NonInteractive","-STA","-Command",cmd],
+                    stderr=PIPE,text=True,encoding="utf-8")
+        except OSError as e:
+            errLog("WARN","MACROSS.screenResultsForm()",f"Could not start {exe}: {e}")
+            return fallback_(f"could not start {exe}")
+        if r.returncode != 0:
+            err = (r.stderr or "unknown error").strip()
+            errLog("WARN","MACROSS.screenResultsForm()",err)
+            return fallback_(err)
+        return True
+    finally:
+        rmtree(work,ignore_errors=True)
 
 
 
