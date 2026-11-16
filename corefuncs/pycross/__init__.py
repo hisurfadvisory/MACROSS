@@ -55,7 +55,7 @@
 
  FUNCTIONS
 
-    collab():
+    valkyrie():
         sends your data to a MACROSS diamond
 
     cdate():
@@ -67,7 +67,7 @@
     errLog():
         write to a MACROSS error log
 
-    availableTypes():
+    findDF():
         find relevant MACROSS diamonds to process your data
 
     getFile():
@@ -94,6 +94,9 @@
     screenResults():
         format blocks of text into a table of up to 3 columns
 
+    screenResultsForm():
+        show markdown text and/or images in a window (uses powershell, not tkinter)
+
     battroid():
         generate ascii-art of large block words
 
@@ -107,9 +110,7 @@
 """
 
 from .macross import (
-    availableTypes,
     cdate,
-    collab,
     delfile,
     errLog,
     findDF,
@@ -121,8 +122,10 @@ from .macross import (
     psc,
     rgx,
     screenResults,
+    screenResultsForm,
     battroid,
     slp,
+    valkyrie,
     w,
     CALLER,
     CONF,
