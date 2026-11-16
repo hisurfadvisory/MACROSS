@@ -1,4 +1,4 @@
-## kawamoriNG -- protected secrets for MACROSS diamonds (".mori" v2 format)
+## kawamoriNG.ps1 / kawamori -- protected secrets for MACROSS diamonds (".mori" v2 format)
 ## Updated from the original kawamori function for protecting secrets, using  
 ## Claude Code assistance to improve security. As with the original version, use  
 ## only when no better solution is available, but this is waaay better nothing.
@@ -9,12 +9,13 @@
 ##    data key (DEK).
 ##   -The DEK is then stored in "slots", each of which can unlock it for a different
 ##    kind of account:
-##        domain  DPAPI-NG (CNG DPAPI) protected to "SID=... OR SID=..." -- every
-##                domain user/group from your MACROSS tier lists plus any extra groups
-##                you name. Keys come from Active Directory, so this slot survives
-##                profile resets and rebuilt VDI images.
-##        pass    a team passphrase (PBKDF2-SHA256). Used to enroll accounts the domain
-##                slot can't cover (local/non-AD accounts) and for recovery.
+##        domain  DPAPI-NG (CNG DPAPI), one slot per "SID=..." -- every domain user/group
+##                from site.ps1's tier groups, your MACROSS tier lists, and any extra
+##                groups you name. Keys come from Active Directory, so these slots
+##                survive profile resets and rebuilt VDI images.
+##        team    the team key (RSA-OAEP); its private half is locked with the team
+##                passphrase in the MACROSS config. Used to enroll accounts the domain
+##                slots can't cover (local/non-AD accounts) and for recovery.
 ##        user    per-account Windows DPAPI, written by "enrollment" to its own
 ##                <id>.<SID>.slot file next to the key, so simultaneous enrollments
 ##                never overwrite each other.
@@ -176,8 +177,20 @@ function kngFromLocal_([IntPtr]$p,[uint32]$len){
     ,$b
 }
 
-## DPAPI-NG: protect $data to a rule such as "SID=S-1-5-21-... OR SID=S-1-5-21-..."
-function kngNGProtect_([string]$rule,[byte[]]$data){
+## Normalize a byte[] that arrived wrapped in another array (e.g. @(,$bytes)). A [byte[]]
+## parameter rejects that with "Cannot convert System.Byte[] to type System.Byte".
+function kngBytes_($x){
+    while($x -is [array] -and -not ($x -is [byte[]]) -and $x.Count -eq 1){ $x = $x[0] }
+    if($x -is [byte[]]){ ,$x; Return }
+    $o = @($x)
+    try{ ,[byte[]]$o }
+    catch{ throw "Expected bytes, got $(if($null -eq $x){ 'null' }else{ $x.GetType().FullName }) with $($o.Count) item(s)." }
+}
+
+## DPAPI-NG: protect $data to a rule such as "SID=S-1-5-21-..."
+## $data is untyped on purpose (see kngBytes_).
+function kngNGProtect_([string]$rule,$data){
+    $data = kngBytes_ $data
     $n = kngNative_
     $hDesc = [IntPtr]::Zero; $pOut = [IntPtr]::Zero; [uint32]$cb = 0
     $pRule = [Runtime.InteropServices.Marshal]::StringToHGlobalUni($rule)
@@ -259,6 +272,46 @@ function kngMachineUnprotect_([byte[]]$blob,[byte[]]$entropy){ kngUserDpapi_ $bl
 ################################################################
 function kngMySid_(){ [Security.Principal.WindowsIdentity]::GetCurrent().User.Value }
 function kngMyName_(){ [Security.Principal.WindowsIdentity]::GetCurrent().Name }
+## This account's SID plus every group SID in its logon token (what DPAPI-NG checks)
+function kngMySids_(){
+    $id = [Security.Principal.WindowsIdentity]::GetCurrent()
+    @($id.User.Value) + @($id.Groups | %{ $_.Value })
+}
+## Domain slots worth trying for this account: per-SID slots whose SID is in this account's
+## token. Skipping the others avoids a failed round trip to AD for every slot.
+function kngMyDomainSlots_($slots){
+    $mine = kngMySids_
+    @($slots | ?{ $_.type -eq 'domain' -and $mine -contains $_.sid })
+}
+## DPAPI-NG domain slots, one per account/group ("SID=..."), instead of one combined
+## "SID=a OR SID=b OR ..." rule. The combined rule failed with 0x80090005 (NTE_BAD_DATA) on
+## a customer domain once it held more than a few SIDs; one SID per slot keeps each rule
+## minimal, and an account that fails is reported on its own instead of sinking the rest.
+## Each slot is a round trip to a domain controller, so a progress bar is shown (under
+## progress bar $parent when called from "kawamori all -rewrap").
+## Returns @{ slots; failed = @({name; sid; why}) }
+function kngDomainSlots_($dom,[byte[]]$dek,[int]$parent=-1){
+    $slots = New-Object System.Collections.ArrayList
+    $failed = New-Object System.Collections.ArrayList
+    $list = @($dom); $i = 0
+    $act = 'Granting domain access'
+    foreach($p in $list){
+        $i++
+        if($list.Count -gt 1){
+            $wp = @{ Id=2; Activity=$act; Status="$i of $($list.Count): $($p.name)"; PercentComplete=[int](100 * ($i - 1) / $list.Count) }
+            if($parent -ge 0){ $wp.ParentId = $parent }
+            Write-Progress @wp
+        }
+        try{
+            $blob = kngNGProtect_ "SID=$($p.sid)" $dek
+            [void]$slots.Add([pscustomobject][ordered]@{
+                type='domain'; sid=$p.sid; rule="SID=$($p.sid)"; names=$p.name; blob=(kngB64_ $blob) })
+        }
+        catch{ [void]$failed.Add([pscustomobject]@{ name=$p.name; sid=$p.sid; why=$_.Exception.Message }) }
+    }
+    if($list.Count -gt 1){ Write-Progress -Id 2 -Activity $act -Completed }
+    [pscustomobject]@{ slots=@($slots); failed=@($failed) }
+}
 
 function kngMachineDomain_(){
     if($null -ne $Global:dyrl_KNGMD){ Return $Global:dyrl_KNGMD }
@@ -272,22 +325,57 @@ function kngMachineDomain_(){
     Return $md
 }
 
-## Resolve a user/group name. kind = domain (can go in the DPAPI-NG rule), local (needs
+## This account's DNS domain (from setLocal; $env:USERDNSDOMAIN when setLocal isn't loaded,
+## e.g. when python runs this file on its own). Empty for local accounts.
+function kngUserDomain_(){
+    if($null -ne $Global:dyrl_KNGUD){ Return $Global:dyrl_KNGUD }
+    $d = ''
+    try{ if(Get-Command setLocal -ErrorAction SilentlyContinue){ $d = "$((setLocal)[2])".TrimStart('.') } }catch{ }
+    if(-not $d -and $env:USERDNSDOMAIN){ $d = $env:USERDNSDOMAIN.ToLower() }
+    $Global:dyrl_KNGUD = $d
+    Return $d
+}
+
+## Resolve a user/group name. kind = domain (gets a DPAPI-NG slot), local (needs
 ## enrollment), or pending (couldn't be resolved here, e.g. a local account on another PC)
+## Tier lists hold bare usernames (findUsers / setUser), and a bare name is looked up on
+## this computer first, so a local account with the same name would win. Bare names are
+## therefore tried in this domain first: name@dns.domain (implicit UPN, works for every
+## user), then DOMAIN\name (also covers groups, which have no UPN), then as typed.
 function kngResolve_([string]$name){
     $nm = "$name".Trim()
     if(-not $nm -or $nm -eq 'none'){ Return $null }
-    try{ $sid = ([Security.Principal.NTAccount]::new($nm)).Translate([Security.Principal.SecurityIdentifier]) }
-    catch{ Return [pscustomobject]@{ name=$nm; sid=$null; kind='pending' } }
+    $tries = @()
+    if($nm -notmatch '[\\@]'){
+        $ud = kngUserDomain_
+        if($ud){ $tries += "$nm@$ud" }
+        if($ud -and $env:USERDOMAIN){ $tries += "$env:USERDOMAIN\$nm" }
+    }
+    $tries += $nm
+    $sid = $null
+    foreach($t in $tries){
+        try{ $sid = ([Security.Principal.NTAccount]::new($t)).Translate([Security.Principal.SecurityIdentifier]); Break }
+        catch{ }
+    }
+    if(-not $sid){ Return [pscustomobject]@{ name=$nm; sid=$null; kind='pending' } }
     $dom = $sid.AccountDomainSid
     if(-not $dom -or $dom.Value -eq (kngMachineDomain_)){ $kind = 'local' }
     else{ $kind = 'domain' }
     Return [pscustomobject]@{ name=$nm; sid=$sid.Value; kind=$kind }
 }
 
-## Everyone in the requested MACROSS tiers (user and admin lists), plus extra names
+## Everyone in the requested MACROSS tiers (site.ps1 tier groups, user and admin lists),
+## plus extra names. Duplicates (same name or same SID) are dropped.
 function kngPrincipals_([int[]]$tiers,[string[]]$extra){
     $names = New-Object System.Collections.ArrayList
+    if($Global:dyrl_SITE -and $dyrl_SITE.TierGroups){
+        foreach($t in $tiers){
+            foreach($k in @("tier$t","admin$t")){
+                $g = "$($dyrl_SITE.TierGroups[$k])".Trim()
+                if($g){ [void]$names.Add($g) }
+            }
+        }
+    }
     if($Global:dyrl_CONF){
         foreach($t in $tiers){
             foreach($k in @("tr$t","ta$t")){
@@ -305,7 +393,12 @@ function kngPrincipals_([int[]]$tiers,[string[]]$extra){
         if($seen.ContainsKey($nm.ToLower())){ Continue }
         $seen[$nm.ToLower()] = $true
         $r = kngResolve_ $nm
-        if($r){ $r }
+        if(-not $r){ Continue }
+        if($r.sid){
+            if($seen.ContainsKey($r.sid)){ Continue }     ## same account under another name
+            $seen[$r.sid] = $true
+        }
+        $r
     }
 }
 
@@ -340,8 +433,8 @@ function kngFind_([string]$id,$dirs){
                 kngLog_ ERROR "Key file $f could not be parsed (corrupted or replaced?): $($_.Exception.Message) $(kngWho_)"
                 throw "Key file $f is damaged and can't be read."
             }
-            if($k){ Return $k }
-            Return [pscustomobject]@{ legacy=$true; _file=$f }
+            if(-not $k){ throw "$f is not a MACROSS v2 key file." }
+            Return $k
         }
     }
     Return $null
@@ -356,17 +449,6 @@ function kngReadPass_([string]$prompt){
     $ss = Read-Host " $prompt" -AsSecureString
     $pw = [Net.NetworkCredential]::new('',$ss).Password
     ,(kngUtf8_ $pw)
-}
-function kngNewPass_(){
-    while($true){
-        $a = kngReadPass_ 'New team passphrase (12+ characters; it unlocks this key for enrollment and recovery; ENTER to cancel)'
-        if($a.Length -eq 0){ throw 'Cancelled; nothing was changed.' }
-        if($a.Length -lt 12){ kngSay_ 'The passphrase must be at least 12 characters.' Yellow; kngWipe_ $a; Continue }
-        $b = kngReadPass_ 'Enter the passphrase again'
-        if(kngSame_ $a $b){ kngWipe_ $b; ,$a; Return }
-        kngSay_ 'Passphrases do not match.' Yellow
-        kngWipe_ $a; kngWipe_ $b
-    }
 }
 function kngPassSlot_($key,[byte[]]$dek,[byte[]]$pw){
     $salt = kngRandom_ 16; $iter = 600000
@@ -501,7 +583,7 @@ function kngUnlock_($key,$dirs,[switch]$silent,[ref]$how,[ref]$passcache,[switch
         kngLog_ $level $msg
     }
 
-    foreach($s in @($key.slots | ?{ $_.type -eq 'domain' })){
+    foreach($s in (kngMyDomainSlots_ $key.slots)){
         try{
             $dek = kngNGUnprotect_ (kngUnB64_ $s.blob)
             if(kngVerify_ $dek $key.data (kngAad_ $key 'data')){ if($how){ $how.Value = 'domain' }; ,$dek; Return }
@@ -590,39 +672,37 @@ function kngEnrollMe_($key,[byte[]]$dek,[string]$klocal){
     throw "Could not save the enrollment for $($key.id) in $($targets -join ' or ')."
 }
 
-## Build the slots that grant access (domain rule + passphrase), reporting what it did
-## Recovery slot: when a team key is set up (config 'tpk'), a fresh team slot is always made
-## (no passphrase needed, and older passphrase/team slots are replaced). Without a team key:
-## $pw = new passphrase for a passphrase slot; when it's empty, the key's existing passphrase
-## slot(s) are kept (valid as long as the data key hasn't changed, i.e. not rotating).
-function kngGrant_($key,[byte[]]$dek,[byte[]]$pw,[int[]]$tiers,[string[]]$principals){
+## Build the slots that grant access (domain slots + team recovery slot), reporting what it did.
+## The team slot is always rebuilt from the current team key (config 'tpk'); callers check that
+## a team key exists first.
+function kngGrant_($key,[byte[]]$dek,[int[]]$tiers,[string[]]$principals,[int]$progress=-1){
     $who = @(kngPrincipals_ $tiers $principals)
     $dom = @($who | ?{ $_.kind -eq 'domain' })
     $slots = New-Object System.Collections.ArrayList
-    $note = $null
+    $note = $null; $failed = @()
     if($dom.Count -gt 0){
-        $rule = ($dom | %{ "SID=$($_.sid)" }) -join ' OR '
-        try{
-            $blob = kngNGProtect_ $rule $dek
-            [void]$slots.Add([pscustomobject][ordered]@{
-                type='domain'; rule=$rule; names=(($dom | %{ $_.name }) -join ', '); blob=(kngB64_ $blob) })
+        $ds = kngDomainSlots_ $dom $dek $progress
+        foreach($s in $ds.slots){ [void]$slots.Add($s) }
+        $failed = @($ds.failed)
+        if($failed.Count){
+            $bad = @($failed | %{ $_.sid })
+            $dom = @($dom | ?{ $bad -notcontains $_.sid })
         }
-        catch{ $note = "Domain slot not created: $($_.Exception.Message)" }
+        if(-not $ds.slots.Count){ $note = "Domain slot not created: $($failed[0].why)" }
     }
     else{ $note = 'No domain accounts or groups were found in the selected tiers.' }
     $team = kngTeamSlot_ $key $dek
     if($team){ [void]$slots.Add($team) }
-    elseif($pw -and $pw.Length){ [void]$slots.Add((kngPassSlot_ $key $dek $pw)) }
-    else{ foreach($s in @($key.slots | ?{ $_.type -in @('pass','team') })){ [void]$slots.Add($s) } }
-    $pending = @($who | ?{ $_.kind -ne 'domain' -or $note } | %{ [pscustomobject][ordered]@{ name=$_.name; sid=$_.sid } })
     if($note){ $dom = @() }     ## nobody actually got domain access
-    Return [pscustomobject]@{ slots=@($slots); pending=$pending; note=$note; domain=$dom }
+    $got = @($dom | %{ $_.sid })
+    $pending = @($who | ?{ $_.kind -ne 'domain' -or $got -notcontains $_.sid } | %{ [pscustomobject][ordered]@{ name=$_.name; sid=$_.sid } })
+    Return [pscustomobject]@{ slots=@($slots); pending=$pending; note=$note; domain=$dom; failed=$failed }
 }
 
 ## Re-grant access to one key from the tier lists/groups. -rotate also replaces the key's data
-## key (needs $newpw), which cuts off enrollments and the old passphrase. Returns kngGrant_'s report.
-function kngRewrapOne_($key,$dirs,[string]$klocal,[byte[]]$newpw,[int[]]$rt,[string[]]$rp,[switch]$rotate,[ref]$passcache){
-    if($rotate -and -not (kngTeamPub_) -and -not ($newpw -and $newpw.Length)){ throw 'Rotating needs a new team passphrase.' }
+## key, which cuts off every enrollment. Returns kngGrant_'s report.
+## $progress = id of the caller's progress bar (domain slots are shown under it)
+function kngRewrapOne_($key,$dirs,[string]$klocal,[int[]]$rt,[string[]]$rp,[switch]$rotate,[ref]$passcache,[int]$progress=-1){
     $dek = kngUnlock_ $key $dirs -passcache $passcache
     try{
         if($rotate){
@@ -632,7 +712,7 @@ function kngRewrapOne_($key,$dirs,[string]$klocal,[byte[]]$newpw,[int[]]$rt,[str
             $key.data = kngSeal_ $dek $pt (kngAad_ $key 'data')
             kngWipe_ $pt
         }
-        $g = kngGrant_ $key $dek $newpw $rt $rp
+        $g = kngGrant_ $key $dek $rt $rp $progress
         $key | Add-Member -NotePropertyName tiers -NotePropertyValue @($rt) -Force
         $key | Add-Member -NotePropertyName extra -NotePropertyValue @($rp) -Force
         $key.slots = $g.slots; $key.pending = $g.pending
@@ -645,7 +725,7 @@ function kngRewrapOne_($key,$dirs,[string]$klocal,[byte[]]$newpw,[int[]]$rt,[str
         if(-not (kngCoversMe_ $g)){ [void](kngEnrollMe_ $key $dek $klocal) }
     }
     finally{ kngWipe_ $dek }
-    kngLog_ INFO "Key $($key.id) $(if($rotate){'rotated'}else{'rewrapped'}) by $(kngMyName_)$(if($newpw){' (new team passphrase)'})"
+    kngLog_ INFO "Key $($key.id) $(if($rotate){'rotated'}else{'rewrapped'}) by $(kngMyName_)"
     Return $g
 }
 
@@ -653,6 +733,10 @@ function kngRewrapOne_($key,$dirs,[string]$klocal,[byte[]]$newpw,[int[]]$rt,[str
 function kngReport_($g){
     if($g.note){ kngSay_ $g.note Yellow; kngSay_ 'Accounts must enroll with the team passphrase until that is fixed.' Yellow }
     if($g.domain.Count){ kngSay_ "Domain access: $(($g.domain | %{ $_.name }) -join ', ')" Green }
+    if($g.domain.Count -and $g.failed.Count){
+        foreach($f in $g.failed){ kngSay_ "No domain access for $($f.name): $($f.why)" Yellow }
+        kngLog_ WARN "Domain slot failed for: $(($g.failed | %{ "$($_.name) [$($_.sid)] $($_.why)" }) -join '; ')"
+    }
     if($g.pending.Count){ kngSay_ "Need to enroll (passphrase): $(($g.pending | %{ $_.name }) -join ', ')" Cyan }
 }
 function kngSecretInput_([string]$title,[string]$ask='Paste the value to protect (API key, token, password...):'){
@@ -689,7 +773,7 @@ function kngOwnSave_([string]$name,[string]$value,[string]$file){
         if(kngMeIsDomain_){
             try{
                 $blob = kngNGProtect_ "SID=$sid" $dek
-                [void]$slots.Add([pscustomobject][ordered]@{ type='domain'; rule="SID=$sid"; names=(kngMyName_); blob=(kngB64_ $blob) })
+                [void]$slots.Add([pscustomobject][ordered]@{ type='domain'; sid=$sid; rule="SID=$sid"; names=(kngMyName_); blob=(kngB64_ $blob) })
             }
             catch{ $why += "domain: $($_.Exception.Message)" }
         }
@@ -708,9 +792,11 @@ function kngOwnSave_([string]$name,[string]$value,[string]$file){
     finally{ kngWipe_ $dek; kngWipe_ $pt }
     kngLog_ INFO "$(kngMyName_) saved personal key '$name'"
 }
+## True if a domain slot covers this account directly or through one of its groups
 function kngCoversMe_($grant){
-    $me = kngMySid_
-    Return [bool](@($grant.domain | ?{ $_.sid -eq $me }).Count -and -not $grant.note)
+    if($grant.note){ Return $false }
+    $mine = kngMySids_
+    Return [bool](@($grant.domain | ?{ $mine -contains $_.sid }).Count)
 }
 
 
@@ -730,8 +816,7 @@ function kawamori(){   #mp
     Store secrets (API keys, tokens, passwords) that every authorized SOC account
     can use, including regular and admin-level domain accounts and local/non-AD
     accounts, without installing anything. Keys are .mori files (v2) in the kawa
-    folder of $dyrl_CONTENT (shared) or $dyrl_RESOURCES (local). Older kawamori
-    keys keep working with the original kawamori function.
+    folder of $dyrl_CONTENT (shared) or $dyrl_RESOURCES (local).
 
     How access works:
       -Domain accounts in the MACROSS tier lists (and any -p groups/users) can read
@@ -759,12 +844,12 @@ function kawamori(){   #mp
       -rewrap     re-grant access from the current tier lists (and the tiers/
                   groups the key was created with, unless you give new -t / -p).
                   Use a key ID, or 'all' for every shared key in the central kawa
-                  folder ($dyrl_CONTENT\kawa; personal -own and legacy files are
-                  skipped). The team passphrase is kept unless you choose to
-                  change it, so no passphrase is needed when your account can
-                  already open the keys. Add -rotate to replace each key's
-                  internal data key, which cuts off every existing enrollment and
-                  anyone who had the old passphrase (a new passphrase is set).
+                  folder ($dyrl_CONTENT\kawa; personal -own files are skipped).
+                  The recovery slot is rebuilt from the current team key, so no
+                  passphrase is needed when your account can already open the
+                  keys. Add -rotate to replace each key's internal data key, which
+                  cuts off every existing enrollment (to also cut off anyone who
+                  knew the team passphrase, create a new team key first).
       -u          replace the protected value, keeping everyone's access
       -i          show who has access (never shows the value)
       -local      prefer the local resources\kawa copy over the shared one
@@ -811,7 +896,7 @@ function kawamori(){   #mp
         $vtkey = kawamori 'virustotal' -own -ask 'Paste your VirusTotal API key:'
         if(-not $vtkey){ Return }   ## user cancelled
 
-    The user's key changed:
+    The user's key changed and needs updating:
 
         $vtkey = kawamori 'virustotal' -own -u
 
@@ -933,7 +1018,6 @@ function kawamori(){   #mp
         if(-not (kngTeamPub_)){
             throw 'No team passphrase has been set up yet, so keys can''t be created. Ask the MACROSS admin to set one: main menu > config > 4.'
         }
-        $pw = $null
         $dek = kngRandom_ 32
         $pt = kngUtf8_ $value; Remove-Variable value
         try{
@@ -943,12 +1027,12 @@ function kawamori(){   #mp
                 data=$null; slots=@(); pending=@(); _file=$target
             }
             $key.data = kngSeal_ $dek $pt (kngAad_ $key 'data')
-            $g = kngGrant_ $key $dek $pw $tiers $principals
+            $g = kngGrant_ $key $dek $tiers $principals
             $key.slots = $g.slots; $key.pending = $g.pending
             kngWrite_ $key $target
             if(-not (kngCoversMe_ $g)){ [void](kngEnrollMe_ $key $dek $klocal) }
         }
-        finally{ kngWipe_ $dek; kngWipe_ $pt; kngWipe_ $pw }
+        finally{ kngWipe_ $dek; kngWipe_ $pt }
 
         kngLog_ INFO "Key $id created by $(kngMyName_) in $target"
         kngReport_ $g
@@ -976,7 +1060,7 @@ function kawamori(){   #mp
                 }
             }
         }
-        $keys = @($keys | ?{ $_ -and -not $_.legacy -and -not $_.own })
+        $keys = @($keys | ?{ $_ -and -not $_.own })
         if(-not $keys.Count){ kngSay_ 'No v2 keys found to enroll.' Yellow; Return }
         try{
             foreach($k in $keys){
@@ -1009,7 +1093,7 @@ function kawamori(){   #mp
                     $fi = $_
                     try{ $k = kngRead_ $fi.FullName }
                     catch{ $k = $null; kngSay_ "Skipping $($fi.Name): damaged ($($_.Exception.Message))" Yellow }
-                    if($k -and -not $k.own){ $k }      ## legacy (v1) files read as $null and are skipped
+                    if($k -and -not $k.own){ $k }
                 }
             })
             if(-not $keys.Count){ kngSay_ "No shared v2 keys found in $kdir." Yellow; Return }
@@ -1019,38 +1103,32 @@ function kawamori(){   #mp
         else{
             $k = kngFind_ $cid $dirs
             if(-not $k){ throw "No key found for $cid." }
-            if($k.legacy){ throw "$cid is a legacy (v1) key; recreate it with kawamori -g to use -rewrap." }
             $keys = @($k)
         }
 
-        ## Recovery: with a team key (normal), each key's recovery slot is simply rebuilt from it;
-        ## no passphrase questions. Without one (setups from before team keys), the per-key
-        ## passphrase is kept unless changed; rotating always sets a new one.
-        $newpw = $null
-        if(kngTeamPub_){
-            if($rotate){
-                kngSay_ "Rotating replaces each key's data key: enrolled accounts must enroll again." Yellow
-                kngSay_ 'To also cut off anyone who knew the team passphrase, replace the team key first (config > 4).' Yellow
-            }
+        ## Each key's recovery slot is rebuilt from the team key; no passphrase questions
+        if(-not (kngTeamPub_)){
+            throw 'No team passphrase has been set up yet, so keys can''t be re-granted. Ask the MACROSS admin to set one: main menu > config > 4.'
         }
-        elseif($rotate){
-            kngSay_ "Rotating replaces each key's data key: enrolled accounts must enroll again, and the old passphrase stops working." Yellow
-            $newpw = kngNewPass_
-        }
-        else{
-            $q = if($keys.Count -gt 1){ " Set a new team passphrase for all $($keys.Count) keys? (y/N)" }else{ ' Change the team passphrase? (y/N)' }
-            if((Read-Host $q) -like 'y*'){ $newpw = kngNewPass_ }
+        if($rotate){
+            kngSay_ "Rotating replaces each key's data key: enrolled accounts must enroll again." Yellow
+            kngSay_ 'To also cut off anyone who knew the team passphrase, replace the team key first (config > 4).' Yellow
         }
 
         $pc = $null; $ok = 0; $bad = New-Object System.Collections.ArrayList
+        $n = 0; $act = "kawamori $cid -rewrap$(if($rotate){' -rotate'})"
         try{
             foreach($k in $keys){
+                $n++
+                if($keys.Count -gt 1){
+                    Write-Progress -Id 1 -Activity $act -Status "Key $n of $($keys.Count): $($k.id)" -PercentComplete ([int](100 * ($n - 1) / $keys.Count))
+                }
                 ## Reuse the tiers/groups each key was created with unless new ones were given
                 $rt = if($PSBoundParameters.ContainsKey('tiers') -or -not $k.tiers){ $tiers }else{ [int[]]@($k.tiers) }
                 $rp = if($PSBoundParameters.ContainsKey('principals') -or -not $k.extra){ $principals }else{ [string[]]@($k.extra) }
                 if($keys.Count -gt 1){ Write-Host ''; kngSay_ "[$($k.id)]" Cyan }
                 try{
-                    $g = kngRewrapOne_ $k $dirs $klocal $newpw $rt $rp -rotate:$rotate -passcache ([ref]$pc)
+                    $g = kngRewrapOne_ $k $dirs $klocal $rt $rp -rotate:$rotate -passcache ([ref]$pc) -progress $(if($keys.Count -gt 1){ 1 }else{ -1 })
                     kngReport_ $g
                     $ok++
                 }
@@ -1060,7 +1138,10 @@ function kawamori(){   #mp
                 }
             }
         }
-        finally{ kngWipe_ $newpw; kngWipe_ $pc }
+        finally{
+            kngWipe_ $pc
+            if($keys.Count -gt 1){ Write-Progress -Id 1 -Activity $act -Completed }
+        }
 
         if($keys.Count -gt 1){
             Write-Host ''
@@ -1078,10 +1159,6 @@ function kawamori(){   #mp
         kngLog_ ERROR "No key found for $cid in $($dirs -join ', '). $(kngWho_)"
         throw "No key found for $cid."
     }
-    if($key.legacy){
-        if($info -or $rewrap -or $update){ throw "$cid is a legacy (v1) key; recreate it with kawamori -g to use these options." }
-        Return (kawamori $cid -local:$local)
-    }
 
     ######## Info ########
     if($info){
@@ -1097,7 +1174,6 @@ function kawamori(){   #mp
                    if($pub -and ($tslot.kid -contains (kngTeamKid_ $pub))){ 'team passphrase' }
                    else{ 'team passphrase (OLD team key: run kawamori all -rewrap)' }
                }
-               elseif(@($key.slots | ?{ $_.type -eq 'pass' }).Count){ 'key passphrase (moves to the team key at the next -rewrap)' }
                else{ 'none' }
         kngSay_ "Recovery: $rec" Cyan
         $enrolled = foreach($d in @($dirs) + @(Split-Path $key._file) | Select-Object -Unique){
