@@ -21,7 +21,7 @@ class macross {
     [string]$valtype  ## The type of data a script is meant to process (IP, strings, logs, etc)
     [string]$lang     ## The script language, powershell vs. python
     [string]$author   ## Script author
-    [int]$evalmax     ## How many values a script can accept; max is 2 if you intend to use the macross.collab function!
+    [int]$evalmax     ## How many values a script can accept; max is 2 if you intend to use the macross.valkyrie function!
     [string]$rtype    ## What kind of response your script generates; example types are 'onscreen', 'json', 'file', 'string' or leave empty
     [string]$ver      ## The script version
     [string]$fname    ## The script's full filename + extension
