@@ -750,13 +750,18 @@ function kngSecretInput_([string]$title,[string]$ask='Paste the value to protect
     Return [Net.NetworkCredential]::new('',$ss).Password
 }
 
-## Personal (-own) keys: one file per account, <name>.<SID>.mori in the local kawa folder
+## Personal (-own) keys: <name>.mori in the local kawa folder (the name exactly as given, no SID)
+## The name is used as-is because diamonds hard-code the .mori filename. Collision risk: the local
+## kawa folder belongs to the MACROSS install, so accounts sharing one install (jump box, network
+## share) share one <name>.mori. Another account that can't unlock it is asked for its own value
+## and overwrites the file, and -forget deletes it for everyone. Fine when each analyst has their
+## own copy; otherwise refuse to overwrite a file whose 'sid' isn't the current account's.
 function kngMeIsDomain_(){
     $dom = [Security.Principal.WindowsIdentity]::GetCurrent().User.AccountDomainSid
     Return [bool]($dom -and $dom.Value -ne (kngMachineDomain_))
 }
 function kngOwnFile_([string]$name,[string]$klocal){
-    Join-Path (Join-Path $klocal 'kawa') "$name.$(kngMySid_).mori"
+    Join-Path (Join-Path $klocal 'kawa') "$name`.mori"
 }
 function kngOwnSave_([string]$name,[string]$value,[string]$file){
     $sid = kngMySid_
@@ -801,6 +806,237 @@ function kngCoversMe_($grant){
 
 
 ################################################################
+## Key list (-list) and key details (-i), shown with screenResultsForm as markdown.
+## Only file metadata is read; nothing is unlocked and values are never shown.
+################################################################
+## Text that is safe inside a markdown table cell or code span
+function kngMd_($s){ ("$s" -replace '[\r\n]+',' ' -replace '\|','/' -replace '`',"'").Trim() }
+## A key's 'created' value as text. PS 7's ConvertFrom-Json turns ISO dates into [datetime];
+## PS 5.1 leaves them as strings. $fallback (e.g. the file's creation time) is used if missing.
+function kngDate_($v,$fallback=$null){
+    $d = $null
+    if($v -is [datetime]){ $d = $v }
+    elseif("$v"){ try{ $d = [datetime]::Parse("$v",[Globalization.CultureInfo]::InvariantCulture) }catch{ } }
+    if(-not $d -and $fallback){ $d = $fallback }
+    if($d){ Return $d.ToString('yyyy-MM-dd HH:mm') }
+    Return '?'
+}
+## NTFS owner of a file, for keys that don't record who made them
+function kngFileOwner_([string]$path){ try{ (Get-Acl -LiteralPath $path -ErrorAction Stop).Owner }catch{ '?' } }
+## True if $dir is the central (shared) kawa folder
+function kngIsCentral_([string]$dir,[string]$kshare){
+    if(-not $kshare -or -not $dir){ Return $false }
+    Return ($dir.TrimEnd('\','/') -eq (Join-Path $kshare 'kawa').TrimEnd('\','/'))
+}
+## This account's name and SIDs, or blanks where Windows identities aren't available
+function kngMeSafe_(){
+    $r = @{ name=''; sid=''; sids=@() }
+    try{ $r.name = kngMyName_; $r.sid = kngMySid_; $r.sids = @(kngMySids_) }catch{ }
+    Return $r
+}
+## Enrollment files (<id>.<SID>.slot) in $dirs: id -> (sid -> enrollment). One pass per folder.
+function kngEnrollments_($dirs){
+    $all = @{}
+    foreach($d in (@($dirs) | Select-Object -Unique)){
+        if(-not $d -or -not (Test-Path -LiteralPath $d)){ Continue }
+        foreach($f in @(Get-ChildItem -File -LiteralPath $d -Filter '*.slot' -ErrorAction SilentlyContinue)){
+            if($f.Name -notmatch '^(.+)\.(S-1-[\d-]+)\.slot$'){ Continue }
+            $id = $Matches[1]; $sid = $Matches[2]
+            try{ $s = Get-Content -Raw -LiteralPath $f.FullName | ConvertFrom-Json }catch{ $s = $null }
+            if(-not $s){ $s = [pscustomobject]@{ name='?'; host='?'; created=$null } }
+            if(-not $all.ContainsKey($id)){ $all[$id] = @{} }
+            if(-not $all[$id].ContainsKey($sid)){
+                $all[$id][$sid] = [pscustomobject]@{ sid=$sid; name=$s.name; host=$s.host; created=$s.created; file=$f.FullName }
+            }
+        }
+    }
+    Return $all
+}
+## Accounts from a key's 'pending' list that have no enrollment yet
+function kngWaiting_($key,$enrolled){
+    @($key.pending | ?{
+        $p = $_
+        -not ($enrolled | ?{ ($p.sid -and $_.sid -eq $p.sid) -or ("$($_.name)" -split '\\')[-1] -eq ("$($p.name)" -split '\\')[-1] })
+    })
+}
+## The recovery (team) slot's state for a key
+function kngRecovery_($key){
+    $tslot = @($key.slots | ?{ $_.type -eq 'team' })
+    if(-not $tslot.Count){ Return 'none' }
+    $pub = kngTeamPub_
+    if($pub -and ($tslot.kid -contains (kngTeamKid_ $pub))){ Return 'team passphrase' }
+    Return 'OLD team key (run: kawamori all -rewrap)'
+}
+## Who made a key: 'by' for shared keys, 'owner' for personal ones, else the file's owner
+function kngCreator_($key){
+    $c = if($key.own){ $key.owner }else{ $key.by }
+    if(-not "$c"){ $c = kngFileOwner_ $key._file }
+    Return "$c"
+}
+## Show markdown in a window, or on the console when screenResultsForm isn't loaded
+## (e.g. when this file is used on its own)
+function kngShow_([string]$md,[string]$title){
+    if(Get-Command screenResultsForm -ErrorAction SilentlyContinue){ screenResultsForm -t $md -h $title -f markdown }
+    else{ Write-Host $md }
+}
+
+## Details for one key (-i)
+function kngInfoMd_($key,$dirs,[string]$kshare){
+    $me = kngMeSafe_
+    $md = New-Object System.Collections.ArrayList
+    $add = { param($l) [void]$md.Add($l) }
+    $dir = Split-Path $key._file
+    $where = if(kngIsCentral_ $dir $kshare){ 'central folder' }else{ 'local folder' }
+    $created = kngDate_ $key.created ((Get-Item -LiteralPath $key._file).CreationTime)
+    $ds = @($key.slots | ?{ $_.type -eq 'domain' })
+
+    if($key.own){
+        & $add "# Personal key: $(kngMd_ $key.id)"
+        & $add ''
+        & $add '| Detail | Value |'
+        & $add '|---|---|'
+        & $add "| Type | Personal (only its owner can open it), $where |"
+        & $add "| Owner | $(kngMd_ (kngCreator_ $key))$(if($me.sid -and $key.sid -eq $me.sid){ ' (you)' }) |"
+        & $add "| Owner SID | $(kngMd_ $key.sid) |"
+        & $add "| Created | $created |"
+        & $add ''
+        & $add "File: ``$(kngMd_ $key._file)``"
+        & $add ''
+        & $add '## How the owner can open it'
+        & $add ''
+        if($ds.Count){ & $add '- Domain account: from any domain computer' }
+        foreach($u in @($key.slots | ?{ $_.type -eq 'user' })){ & $add "- Windows account profile on $(kngMd_ $u.host)" }
+        if(-not $key.slots.Count){ & $add '- (no access methods: the value must be entered again)' }
+        Return (@($md) -join "`n")
+    }
+
+    $enr = kngEnrollments_ (@($dirs) + @($dir))
+    $enrolled = @(if($enr.ContainsKey($key.id)){ $enr[$key.id].Values | Sort-Object name })
+    $waiting = kngWaiting_ $key $enrolled
+
+    ## This account's access, from what's on file (nothing is unlocked)
+    $mine = @($ds | ?{ $me.sids -contains $_.sid })
+    $you = if(-not $me.sid){ 'unknown (no Windows identity)' }
+           elseif($mine.Count){ "domain, through $(kngMd_ (($mine | %{ @($_.names) -join ', ' }) -join ', '))" }
+           elseif($enrolled | ?{ $_.sid -eq $me.sid }){ "enrolled on $(kngMd_ (($enrolled | ?{ $_.sid -eq $me.sid } | %{ $_.host }) -join ', '))" }
+           else{ 'not set up yet: enroll once with the team passphrase (kawamori -e)' }
+
+    & $add "# Shared key: $(kngMd_ $key.id)"
+    & $add ''
+    & $add '| Detail | Value |'
+    & $add '|---|---|'
+    & $add "| Type | Shared, $where |"
+    & $add "| Created by | $(kngMd_ (kngCreator_ $key)) |"
+    & $add "| Created | $created |"
+    & $add "| Tiers | $(if($key.tiers){ kngMd_ (@($key.tiers) -join ', ') }else{ '(not recorded)' }) |"
+    & $add "| Recovery | $(kngRecovery_ $key) |"
+    & $add "| Your access | $you |"
+    & $add ''
+    & $add "File: ``$(kngMd_ $key._file)``"
+    & $add ''
+
+    & $add "## Domain access ($($ds.Count))"
+    & $add ''
+    if($ds.Count){
+        & $add '| Account or group | SID |'
+        & $add '|---|---|'
+        foreach($s in ($ds | Sort-Object { "$(@($_.names) -join ', ')" })){ & $add "| $(kngMd_ (@($s.names) -join ', ')) | $(kngMd_ $s.sid) |" }
+    }
+    else{ & $add '*None: every account must enroll with the team passphrase.*' }
+    & $add ''
+
+    $extra = @($key.extra | ?{ "$_".Trim() })
+    if($extra.Count){
+        & $add "## Extra groups/users given with -p ($($extra.Count))"
+        & $add ''
+        foreach($e in $extra){ & $add "- $(kngMd_ $e)" }
+        & $add ''
+    }
+
+    & $add "## Enrolled accounts ($($enrolled.Count))"
+    & $add ''
+    if($enrolled.Count){
+        & $add '| Account | Computer | Enrolled |'
+        & $add '|---|---|---|'
+        foreach($e in $enrolled){ & $add "| $(kngMd_ $e.name) | $(kngMd_ $e.host) | $(kngDate_ $e.created) |" }
+    }
+    else{ & $add '*None.*' }
+    & $add ''
+
+    if($waiting.Count){
+        & $add "## Not enrolled yet ($($waiting.Count))"
+        & $add ''
+        & $add '*These accounts have no domain access and must enroll once (main menu: enroll).*'
+        & $add ''
+        foreach($w in ($waiting | Sort-Object name)){ & $add "- $(kngMd_ $w.name)" }
+    }
+    Return (@($md) -join "`n")
+}
+
+## Every .mori file in the kawa folders (-list)
+function kngListMd_($dirs,[string]$kshare){
+    $me = kngMeSafe_
+    $enr = kngEnrollments_ $dirs
+    $body = New-Object System.Collections.ArrayList
+    $nShared = 0; $nOwn = 0; $nBad = 0
+    foreach($d in (@($dirs) | Select-Object -Unique)){
+        $label = if(kngIsCentral_ $d $kshare){ 'Central (shared) folder' }else{ 'Local folder' }
+        [void]$body.Add("## $label")
+        [void]$body.Add('')
+        [void]$body.Add("``$(kngMd_ $d)``")
+        [void]$body.Add('')
+        if(-not (Test-Path -LiteralPath $d)){ [void]$body.Add('*Folder not found.*'); [void]$body.Add(''); Continue }
+        $rows = @(foreach($f in @(Get-ChildItem -File -LiteralPath $d -Filter '*.mori' -ErrorAction SilentlyContinue)){
+            try{ $k = kngRead_ $f.FullName; $bad = if($k){ '' }else{ 'not a v2 key' } }
+            catch{ $k = $null; $bad = 'damaged' }
+            if(-not $k){
+                $nBad++
+                [pscustomobject]@{ sort="3$($f.Name)"; cells=@($f.Name,"**$bad**",(kngFileOwner_ $f.FullName),(kngDate_ $null $f.CreationTime),'?') }
+                Continue
+            }
+            $by = kngCreator_ $k
+            $when = kngDate_ $k.created $f.CreationTime
+            if($k.own){
+                $nOwn++
+                if($me.sid -and $k.sid -eq $me.sid){ $by = "$by (you)" }
+                $acc = @(foreach($s in @($k.slots)){
+                    if($s.type -eq 'domain'){ 'domain' }elseif($s.type -eq 'user'){ "profile on $($s.host)" }
+                }) -join ' + '
+                [pscustomobject]@{ sort="2$($k.id)|$by"; cells=@($k.id,'personal',$by,$when,$(if($acc){ $acc }else{ 'none' })) }
+            }
+            else{
+                $nShared++
+                $e = @(if($enr.ContainsKey($k.id)){ $enr[$k.id].Values })
+                $w = @(kngWaiting_ $k $e)
+                $acc = "$(@($k.slots | ?{ $_.type -eq 'domain' }).Count) domain, $($e.Count) enrolled"
+                if($w.Count){ $acc += ", $($w.Count) waiting" }
+                $rec = kngRecovery_ $k
+                if($rec -eq 'none'){ $acc += ', NO recovery' }elseif($rec -ne 'team passphrase'){ $acc += ', OLD team key' }
+                [pscustomobject]@{ sort="1$($k.id)"; cells=@($k.id,'shared',$by,$when,$acc) }
+            }
+        })
+        if(-not $rows.Count){ [void]$body.Add('*No key files.*'); [void]$body.Add(''); Continue }
+        [void]$body.Add('| Key | Type | Created by / owner | Created | Access |')
+        [void]$body.Add('|---|---|---|---|---|')
+        foreach($r in ($rows | Sort-Object sort)){ [void]$body.Add('| ' + ((@($r.cells) | %{ kngMd_ $_ }) -join ' | ') + ' |') }
+        [void]$body.Add('')
+    }
+
+    $head = @(
+        '# MACROSS protected keys'
+        ''
+        "**$nShared** shared, **$nOwn** personal$(if($nBad){ ", **$nBad** unreadable" }) key file(s)$(if($me.name){ ". You are $(kngMd_ $me.name)." }else{ '.' })"
+        ''
+        '*Shared keys: "domain" = accounts/groups with domain access, "enrolled" = accounts set up with the team passphrase, "waiting" = tier accounts that still need to enroll. Personal keys can only be opened by their owner.*'
+        ''
+        'For details on one key:  `kawamori <Key> -i`   (personal:  `kawamori <Key> -own -i`, your own keys only)'
+        ''
+    )
+    Return ((@($head) + @($body)) -join "`n")
+}
+
+
+################################################################
 ## Public function
 ################################################################
 function kawamori(){   #mp
@@ -810,7 +1046,8 @@ function kawamori(){   #mp
         [-p EXTRA_PRINCIPALS] [-e <ENROLL>] [-rewrap [-rotate]] [-u <UPDATE VALUE>]
     kawamori all -rewrap [-rotate] [-t TIERS] [-p EXTRA_PRINCIPALS]
         [-i <INFO>] [-m <SHOW CREATED MSG>] [-local] [-silent]
-    kawamori [-c NAME] -own [-ask PROMPT_TEXT] [-u <REPLACE>] [-forget]
+    kawamori [-c NAME] -own [-ask PROMPT_TEXT] [-u <REPLACE>] [-forget] [-i]
+    kawamori -list
 
     ||longhelp||
     Store secrets (API keys, tokens, passwords) that every authorized SOC account
@@ -851,7 +1088,12 @@ function kawamori(){   #mp
                   cuts off every existing enrollment (to also cut off anyone who
                   knew the team passphrase, create a new team key first).
       -u          replace the protected value, keeping everyone's access
-      -i          show who has access (never shows the value)
+      -i          show who has access, in a window (never shows the value):
+                  domain accounts/groups, enrolled accounts and computers,
+                  accounts that still need to enroll, and the recovery state
+      -list       list every .mori file in the central and local kawa folders:
+                  shared or personal, who created/owns it, when, and a short
+                  access summary (same as "kawamori all -i"; main menu: keys)
       -local      prefer the local resources\kawa copy over the shared one
       -silent     never prompt; throw an error instead (used by python)
 
@@ -860,12 +1102,13 @@ function kawamori(){   #mp
       shouldn't be shared), a diamond can just call kawamori with -own and a name.
       The first time, the user is asked to paste their value; it is protected for
       that account only and saved in their local resources\kawa folder as
-      <name>.<their SID>.mori. Every later call returns it without prompting. If
+      <name>.mori. Every later call returns it without prompting. If
       the saved value can't be unlocked (e.g. the account's profile was reset),
       the user is simply asked to paste it again.
       -ask        the text shown in the paste box
       -u          ask for a new value and replace the saved one (e.g. the key changed)
       -forget     delete this account's saved value
+      -i          show details for this account's saved key (never the value)
       -silent     don't prompt; throw an error if nothing usable is saved
 
     ||examples||
@@ -882,6 +1125,10 @@ function kawamori(){   #mp
         kawamori -e
         kawamori 'virustotal-Ab3dE9xQ2mPz' -i
 
+    List every key file (shared and personal) with its owner and creation date:
+
+        kawamori -list
+
     After changing the tier lists in "config" (one key, or every shared key):
 
         kawamori 'virustotal-Ab3dE9xQ2mPz' -rewrap
@@ -896,7 +1143,7 @@ function kawamori(){   #mp
         $vtkey = kawamori 'virustotal' -own -ask 'Paste your VirusTotal API key:'
         if(-not $vtkey){ Return }   ## user cancelled
 
-    The user's key changed and needs updating:
+    The user's key changed:
 
         $vtkey = kawamori 'virustotal' -own -u
 
@@ -914,6 +1161,7 @@ function kawamori(){   #mp
         [switch]$rotate,
         [switch]$update,
         [switch]$info,
+        [switch]$list,
         [switch]$local,
         [switch]$silent,
         [switch]$own,
@@ -927,6 +1175,12 @@ function kawamori(){   #mp
     $dirs = kngDirs_ $kshare $klocal -localfirst:$local
     $Global:dyrl_KNGLOG = $klog         ## used by kngLog_ when errLog isn't loaded
 
+    ######## List every key file (-list, or "all -i") ########
+    if($list -or ($cid -eq 'all' -and $info)){
+        kngShow_ (kngListMd_ $dirs $kshare) 'MACROSS protected keys'
+        Return
+    }
+
     ######## Personal value for this account (-own) ########
     if($own){
         if(-not $cid){ throw 'kawamori -own needs a name, e.g. kawamori ''virustotal'' -own' }
@@ -934,6 +1188,14 @@ function kawamori(){   #mp
         if(-not $klocal){ throw 'No local resources folder is configured for personal keys.' }
         $file = kngOwnFile_ $cid $klocal
         if(-not $ask){ $ask = "Paste your value for '$cid'. It will be protected for $(kngMyName_) only:" }
+
+        if($info){
+            if(-not (Test-Path $file)){ kngSay_ "You have no saved '$cid' value." Yellow; Return }
+            try{ $key = kngRead_ $file }catch{ $key = $null }
+            if(-not $key){ kngSay_ "$file is damaged or not a v2 key file." Yellow; Return }
+            kngShow_ (kngInfoMd_ $key $dirs $kshare) "MACROSS personal key: $cid"
+            Return
+        }
 
         if($forget){
             if(Test-Path $file){ Remove-Item -Force $file; kngSay_ "Removed your saved '$cid' value." Green }
@@ -1162,30 +1424,7 @@ function kawamori(){   #mp
 
     ######## Info ########
     if($info){
-        kngSay_ "Key:      $($key.id)" Cyan
-        kngSay_ "File:     $($key._file)" Cyan
-        kngSay_ "Created:  $($key.created) by $($key.by)" Cyan
-        $ds = @($key.slots | ?{ $_.type -eq 'domain' })
-        if($ds.Count){ kngSay_ "Domain:   $($ds.names -join ', ')" Green }
-        else{ kngSay_ 'Domain:   (none)' Yellow }
-        $tslot = @($key.slots | ?{ $_.type -eq 'team' })
-        $rec = if($tslot.Count){
-                   $pub = kngTeamPub_
-                   if($pub -and ($tslot.kid -contains (kngTeamKid_ $pub))){ 'team passphrase' }
-                   else{ 'team passphrase (OLD team key: run kawamori all -rewrap)' }
-               }
-               else{ 'none' }
-        kngSay_ "Recovery: $rec" Cyan
-        $enrolled = foreach($d in @($dirs) + @(Split-Path $key._file) | Select-Object -Unique){
-            if(Test-Path $d){ Get-ChildItem -File -Path $d -Filter "$($key.id).*.slot" | %{ (Get-Content -Raw $_.FullName | ConvertFrom-Json) } }
-        }
-        $enrolled = @($enrolled | ?{ $_ })
-        if($enrolled.Count){ kngSay_ "Enrolled: $(($enrolled | %{ "$($_.name) on $($_.host)" }) -join ', ')" Green }
-        $waiting = @($key.pending | ?{
-            $p = $_
-            -not ($enrolled | ?{ ($p.sid -and $_.sid -eq $p.sid) -or ($_.name -split '\\')[-1] -eq ($p.name -split '\\')[-1] })
-        })
-        if($waiting.Count){ kngSay_ "Not enrolled yet: $(($waiting | %{ $_.name }) -join ', ')" Yellow }
+        kngShow_ (kngInfoMd_ $key $dirs $kshare) "MACROSS key: $($key.id)"
         Return
     }
 
