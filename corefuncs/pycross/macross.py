@@ -642,16 +642,16 @@ def _psq(s) -> str:
 
 
 def _kawaPS(args: str, stdin: str = None):
-    """ Run kawamoriNG in powershell (no prompts). Returns (ok, value_or_error). """
-    script = path.join(str(MACROOT),"corefuncs","kawamoring.ps1")
+    """ Run powershell's kawamori (no prompts). Returns (ok, value_or_error). """
+    script = path.join(str(MACROOT),"corefuncs","kawamoriNG.ps1")
     exe = "pwsh.exe" if (PSVER and PSVER >= 7) else "powershell.exe"
     setup = ("[Console]::OutputEncoding = [Text.Encoding]::UTF8; [Console]::InputEncoding = [Text.Encoding]::UTF8; "
              f"$ErrorActionPreference = 'Stop'; . {_psq(script)}; ")
     if stdin is not None:
         setup += "$in = [Console]::In.ReadToEnd(); "
-    ## -klog lets kawamoriNG write its own access/failure log entries (it logs every
+    ## -klog lets kawamori write its own access/failure log entries (it logs every
     ## failure itself, so callers here don't log those again)
-    cmd = setup + (f"$v = kawamoriNG {args} -kshare {_psq(CONTENT)} -klocal {_psq(RESOURCES)} "
+    cmd = setup + (f"$v = kawamori {args} -kshare {_psq(CONTENT)} -klocal {_psq(RESOURCES)} "
                    f"-klog {_psq(LOGS)}; [Console]::Out.Write($v)")
     try:
         r = run([exe,"-NoProfile","-NonInteractive","-Command",cmd],input=stdin,
@@ -664,12 +664,12 @@ def _kawaPS(args: str, stdin: str = None):
     return True,r.stdout
 
 
-def _kawamoriNG(cid: str):
-    """ Retrieve a shared v2 key through powershell's kawamoriNG (never prompts; if this
+def _kawamoriShared(cid: str):
+    """ Retrieve a shared key through powershell's kawamori (never prompts; if this
  account isn't enrolled, the user is told to type "enroll" in the MACROSS menu). """
     ok,res = _kawaPS(f"-cid {_psq(cid)} -silent")
     if not ok:
-        w(f" Key {cid} is unavailable: {res}","y")     ## already logged by kawamoriNG
+        w(f" Key {cid} is unavailable: {res}","y")     ## already logged by kawamori
         return None
     return res
 
@@ -681,7 +681,7 @@ def _kawamoriOwn(name: str, ask: str = None, replace: bool = False):
         ok,res = _kawaPS(f"-cid {_psq(name)} -own -silent")
         if ok:
             return res
-        if "KAWAMORI_NOT_SAVED" not in res:      ## (kawamoriNG has already logged why)
+        if "KAWAMORI_NOT_SAVED" not in res:      ## (kawamori has already logged why)
             w(f" Your saved '{name}' value could not be used, so it needs to be entered again.","y")
     prompt = ask or f"Paste your value for '{name}' (it will be protected for your account only)"
     w(f" {prompt}","c")
@@ -699,7 +699,7 @@ def _kawamoriOwn(name: str, ask: str = None, replace: bool = False):
 
 def kawamori(cid: str, own: bool = False, ask: str = None, replace: bool = False) -> str:
     """ Retrieve MACROSS keys for use in your scripts.  Shared keys must
- be generated in MACROSS's powershell kawamori/kawamoriNG functions; this
+ be generated in MACROSS's powershell kawamori function; this
  python implementation can only retrieve existing shared keys.
 
  Set own=True for values each analyst keeps for themselves (e.g. personal
@@ -719,59 +719,10 @@ def kawamori(cid: str, own: bool = False, ask: str = None, replace: bool = False
             return None
         return _kawamoriOwn(cid,ask=ask,replace=replace)
 
-    ## v2 keys (created with kawamoriNG) are decrypted by powershell, which has the
-    ## Windows key-protection APIs; check the shared content folder first, then local
-    for kdir in [CONTENT,RESOURCES]:
-        if kdir:
-            K = path.join(str(kdir),"kawa",f"{cid}.mori")
-            if ispath(K,p="file"):
-                with open(K,encoding="utf-8-sig") as o:
-                    if o.readline().strip() == "### MACROSS KEY v2 ###":
-                        return _kawamoriNG(cid)
-                break
-
-    F = f"{RESOURCES}\\kawa\\{cid}.mori"
-    if not N_:
-        return "MACROSS is not configured."
-    elif not ispath(F,p="file"):
-        nokey = f"Key {cid} does not exist"
-        errLog("ERROR","MACROSS.kawamori()",nokey)
-        return f"{nokey}!"
-
-    assembler1 = []
-    assembler2 = []
-    il1 = len(N_[1]) - 1
-    il2 = len(N_[2]) - 1
-
-    with open(F) as o:
-        combine = "".join([c for c in o.read().split("\n") if "#" not in c])
-
-    compacted = (gerwalk(combine.strip())).split(".")
-    nc = int(compacted[0])
-    n = nc
-    try:
-        for c in compacted[1:]:
-            mod = (N_[2][n]+2) * N_[0]
-            assembler1.append(int(c) - mod)
-            if n == 0:
-                n = il2
-            else:
-                n -= 1
-
-        n = nc
-
-        for a in assembler1:
-            mod = (N_[1][n]+2) * N_[0]
-            ch = int(a) // mod
-            assembler2.append(chr(ch))
-            if n == 0:
-                n = il1
-            else:
-                n -= 1
-
-        return "".join(assembler2[::-1])
-    except:
+    ## Keys are decrypted by powershell, which has the Windows key-protection APIs
+    if not MACROOT:
         return None
+    return _kawamoriShared(cid)
 
 
 def psc(cc=None,cr=None) -> any:
@@ -853,14 +804,14 @@ def findDF(val:any,lang:str=".*",emax:int=None,rtype:str=".*",exact:bool=False) 
     return res
 
 
-def valkyrie(Diamond:str=None,Caller:str=None,Protoculture:any=None,deculture:any=None,response:bool=False) -> any:
+def valkyrie(Diamond:str=None,Caller:str=None,Protoculture:any=None,Spiritia:any=None,response:bool=False) -> any:
     """
 ######################################################################################
 ####   PYTHON COLLAB ~~~~~~~~~~~IMPORTANT!!!!!!~~~~~~~~~~~~~~~  ######################
 ######################################################################################
 ## If you want your MACROSS powershell scripts to be able to respond to python requests,
 ## you **MUST** include this parameter check at the start of your powershell script to
-## ensure it can run as expected (an optional $deculture param can accept another value
+## ensure it can run as expected (an optional $spiritia param can accept another value
 ## as well):
 ##
 ##          param( [string]$pythonsrc=$null )     ## You can also include any other params needed
@@ -886,7 +837,7 @@ def valkyrie(Diamond:str=None,Caller:str=None,Protoculture:any=None,deculture:an
     Diamond            = the name of the script you're calling
     Caller          = the name of your script
     Protoculture    = the value that needs to be investigated/enriched (global PROTOCULTURE)
-    deculture       = "alt param", if the script you send Protoculture to can accept an
+    Spiritia       = "alt param", if the script you send Protoculture to can accept an
                         addition arg/parameter, set it here
     response        = set True if you're only writing data to the PROTOCULTURE.vf1 file
                     for diamonds to read from, and not requesting them to send data back
@@ -913,11 +864,11 @@ def valkyrie(Diamond:str=None,Caller:str=None,Protoculture:any=None,deculture:an
         diamond = <the name of the powershell script>
         caller = "MyScript"
         protoculture = "some ioc value"
-        valkyrie(Diamond=diamond, Caller=caller, Protoculture=protoculture, deculture="optional param")
+        valkyrie(Diamond=diamond, Caller=caller, Protoculture=protoculture, spiritia="optional param")
 
  where Diamond is the powershell script you're calling (no extension), Caller is the name of
  your python script, and Protoculture is the value you need powershell to evaluate. You can
- also send an additional parameter (deculture=) if the powershell script accepts one.
+ also send an additional parameter (spiritia=) if the powershell script accepts one.
 
  The macross function "findDF()" can help you find scripts for forwarding any
  PROTOCULTURE values to.
@@ -948,7 +899,7 @@ def valkyrie(Diamond:str=None,Caller:str=None,Protoculture:any=None,deculture:an
     # same layout: "target" is the value to process, "result" is "WAITING" until the called
     # diamond writes its response there.
     def readProto_(pf=sc_file) -> dict:
-        target_pairs: dict = {"caller":None,"target":None,"result":None}
+        target_pairs: dict = {"caller":None,"target":None,"result":None,"spiritia":None}
         try:
             with open(pf,encoding="utf-8-sig") as d:
                 read_proto = load(d)
@@ -1016,7 +967,7 @@ def valkyrie(Diamond:str=None,Caller:str=None,Protoculture:any=None,deculture:an
         else:
             target = pr
             result = empty
-        protoculture = {"caller":use_caller,"target":target,"result":result}
+        protoculture = {"caller":use_caller,"target":target,"result":result,"spiritia":Spiritia}
         writeProto_(sc=protoculture)
 
         # When only writing a response to other scripts' valkyrie calls, quit here
@@ -1036,12 +987,12 @@ def valkyrie(Diamond:str=None,Caller:str=None,Protoculture:any=None,deculture:an
         if L == 'powershell':
             exe = "powershell.exe" if PSVER < 7 else "pwsh.exe"
             call = [exe,"-NoProfile","-File",fullpath,"-pythonsrc",str(use_caller)]
-            if deculture is not None:
-                call += ["-deculture",str(deculture)]
+            if Spiritia is not None:
+                call += ["-spiritia",str(Spiritia)]
         else:
             call = [MACPY or sys.executable,fullpath]
-            if deculture is not None:
-                call.append(str(deculture))
+            if Spiritia is not None:
+                call.append(str(Spiritia))
             environ["PROTOCULTURE"] = protoculture["target"] if isinstance(protoculture["target"],str) else dumps(protoculture["target"])
             environ["CALLER"] = use_caller
         run(call)
