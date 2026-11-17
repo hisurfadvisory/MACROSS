@@ -21,9 +21,11 @@ $Global:dyrl_SITE = @{
     ## MACROSS admins WRITE access to this file's folder.
     ConfigPath = '\\fileserver\soc$\MACROSS\macross.conf'
 
-    ## AD groups whose members can use your config (added to the domain slot alongside any
+    ## Set AD groups whose members can use your config (added to the domain slot alongside any
     ## domain accounts in the tier lists created at setup). Include both user-level and 
-    ## admin-level groups.
+    ## admin-level groups. NOTE: this supersedes any specific tier1-tier3 users you entered at
+    ## setup; all users in the groups you set below will be able to run MACROSS with your config,
+    ## along with your specific tier users!
     TierGroups = @{
         tier1  = 'CORP\SOC-Tier1'
         tier2  = 'CORP\SOC-Tier2'
