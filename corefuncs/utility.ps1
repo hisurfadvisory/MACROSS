@@ -9,7 +9,7 @@ function alphanum([switch]$hex=$false,$rand=0){    #mp
     ||longhelp||
     Returns a list of alphanumeric & special characters. Use -h to only
     return characters used in hexadecimal bytes. Use -r and a length to
-    return a string of random characters that
+    return a string of random characters.
 
     Index 0 is the lower-upper case alphabet and 0-9, while Index 1
     contains a string of special characters.
@@ -162,16 +162,9 @@ function extras($1){
     elseif($1 -eq 'newkey'){
         "`n`n"; startUp
         $n = Read-Host 'Enter a name for your key'
-        kawamori $n -g
-        hec_
-    }
-    elseif($1 -eq 'newkey2'){
-        ## v2 keys usable by every authorized account (see "help kawamoriNG" in debug)
-        "`n`n"; startUp
-        $n = Read-Host 'Enter a name for your key'
         $x = Read-Host 'Extra AD groups/users to grant (comma-separated, or ENTER for tier lists only)'
         $p = @($x -split ',' | %{ $_.Trim() } | ?{ $_ })
-        try{ kawamoriNG -c $n -g -m -p $p }
+        try{ kawamori -c $n -g -m -p $p }
         catch{ w "$($_.Exception.Message)" y }
         hec_
     }
@@ -180,9 +173,9 @@ function extras($1){
         screenResultsForm -chats
     }
     elseif($1 -eq 'enroll'){
-        ## Let this account use v2 keys without the passphrase from now on
+        ## Let this account use shared keys without the passphrase from now on
         "`n`n"; startUp
-        try{ kawamoriNG -e }
+        try{ kawamori -e }
         catch{ w "$($_.Exception.Message)" y }
         hec_
     }
@@ -249,7 +242,6 @@ function spaceFold(){
     $Global:ErrorActionPreference = 'SilentlyContinue'
     $Global:dyrl_CONF = @{};
     $dd = $env:MACONF -Split ';'
-    ## Field order is set by macrossMirror: root;outputs;content;logs;N_;user;temp;robotech;opt1;psversion
     $ss = $env:TEMPENV -Split ';'; $snn = $ss[4] -Split ','
     foreach($d in $dd){
         $Global:dyrl_CONF.Add($(($d -Split '::')[0]),$(($d -Split '::')[1]))
@@ -276,17 +268,10 @@ function consoleDebug($x=$null,$ch=$null){
     if($x){
         varCleanup; startUp
         gerwalk VGhhdCdzIGEgcHJpdmlsZWdlZCBjb21tYW5kLg==; $ha = $dyrl_PT
-        ## Debugging is restricted unless the config's bl0 holds the "no restriction" marker. bl0
-        ## only decides WHETHER it's restricted; the pattern always comes from the code (setLocal -i),
-        ## so updates to it apply to existing configs. No readable config = restricted.
         $restricted = $true
         if($dyrl_CONF -and $dyrl_CONF.bl0){ gerwalk $dyrl_CONF.bl0; $restricted = ($dyrl_PT -ne (returnDefault -b)[0]) }
-        ## Test commands run in this scope, so the pattern and the "admin verified" flag are
-        ## constants (and the pattern blocks their names) -- a command can't switch the check off.
         New-Variable -Name dbgrx_ -Option Constant -Value $(if($restricted){ setLocal -i }else{ $null })
         New-Variable -Name dbggate_ -Option Constant -Value @{ ok = $false }
-        ## $true if the command may run: unrestricted, already verified this session, not a
-        ## privileged command, or the admin password is entered now (checked against the config)
         function dbggate_check($cmdText){
             if(-not $dbgrx_ -or $dbggate_.ok -or $cmdText -notmatch $dbgrx_){ Return $true }
             w "`n $ha" -b r -f k
@@ -305,9 +290,7 @@ function consoleDebug($x=$null,$ch=$null){
             w ' Command not run.' y
             Return $false
         }
-        ## One loop handles every line typed in the debugger, so "help <name>" always means MACROSS
-        ## help -- before or after running test commands (PowerShell's own help only when asked
-        ## for explicitly with Get-Help on a non-MACROSS command).
+        
         $mfuncs = macrossFuncList_
         $z = $x
         while("$z".Trim() -ne ''){
@@ -331,10 +314,10 @@ function consoleDebug($x=$null,$ch=$null){
                     w " For PowerShell's own help on a command, use:  Get-Help $name" g
                 }
             }
-            elseif(dbggate_check $t){      ## every command is checked, not just the first
+            elseif(dbggate_check $t){
                 if($dyrl_LOG -ne 'none'){ errLog INFO 'MACROSS.debug' "$USR/$dyrl_HN0`: $(skScrub $t)" }
                 $cmd = [scriptblock]::Create($t)
-                if(-not $dyrl_CONF){ startUp }      ## varCleanup below clears the config after every command
+                if(-not $dyrl_CONF){ startUp }
                 . $cmd; varCleanup
             }
             w "`n    $msgloop" g -i
@@ -554,7 +537,8 @@ function updatePass(){
     Hit ENTER to exit.
     ' g
 
-    ## Don't leave passwords sitting in the powershell history
+    ## Don't leave passwords sitting in the powershell history, if they
+    ## somehow got recorded here
     skSanitize
     Remove-Variable -Force a0,a1,a2
 
@@ -678,7 +662,7 @@ function errLog(){   #mp
 
     These logs are written encoded to avoid weirdness, but can be viewed from MACROSS's debug screen.
 
-    If you call this function with the -f option, it will forward the log message to the SEIM,
+    If you call this function with the -f option, it will forward the log message to your SEIM,
     provided that the SEIM's address has been added to MACROSS's configurations.
 
     ||examples||
@@ -700,7 +684,7 @@ function errLog(){   #mp
         $d = "`t"                                                       ## Delimiter
 
         if($forward){
-            ## Use UTC for sending logs to QRadar
+            ## Use UTC for sending logs to SEIM
             $utc = "$((Get-Date).toUniversalTime() | Get-Date -Format 'yyyy/MM/dd HH:mm:ss.fff+0000')"
         }
 
@@ -723,31 +707,32 @@ function errLog(){   #mp
         $newout.WriteLine("$menc"); $newout.Close()
 
         ## Log server <host|ip>:port is set by the setup wizard as 'fwd'
-        if($forward -and ('fwd' -in $dyrl_CONF.keys)){ try{
-            gerwalk $dyrl_CONF.fwd
-            $addr = ($dyrl_PT -Split ':')[0]; $port = ($dyrl_PT -Split ':')[1]
-            if("$dyrl_PT" -notMatch '^[\w\.\-]+:\d{1,5}$'){ $addr = $null }   ## 'none' or malformed: don't forward
-            elseif($addr -Match "[a-z]"){
-                $addr = ([System.Net.Dns]::GetHostAddresses("$addr") |
-                    ?{$_.AddressFamily -eq 'InterNetwork'} | Select -First 1).IPAddressToString
-            }
-            if($addr){
-                $target = [System.Net.IPAddress]::Parse($addr)
-                $sendto = New-Object System.Net.IPEndpoint $target,$port
+        if($forward -and ('fwd' -in $dyrl_CONF.keys)){ 
+            try{
+                gerwalk $dyrl_CONF.fwd
+                $addr = ($dyrl_PT -Split ':')[0]; $port = ($dyrl_PT -Split ':')[1]
+                if("$dyrl_PT" -notMatch '^[\w\.\-]+:\d{1,5}$'){ $addr = $null }   ## 'none' or malformed: don't forward
+                elseif($addr -Match "[a-z]"){
+                    $addr = ([System.Net.Dns]::GetHostAddresses("$addr") |
+                        ?{$_.AddressFamily -eq 'InterNetwork'} | Select -First 1).IPAddressToString
+                }
+                if($addr){
+                    $target = [System.Net.IPAddress]::Parse($addr)
+                    $sendto = New-Object System.Net.IPEndpoint $target,$port
 
-                $set1 = [System.Net.Sockets.AddressFamily]::InterNetwork
-                $set2 = [System.Net.Sockets.SocketType]::Dgram
-                $proto = [System.Net.Sockets.ProtocolType]::UDP
-                $socket = New-Object System.Net.Sockets.Socket $set1,$set2,$proto
-                $socket.Connect($sendto)
+                    $set1 = [System.Net.Sockets.AddressFamily]::InterNetwork
+                    $set2 = [System.Net.Sockets.SocketType]::Dgram
+                    $proto = [System.Net.Sockets.ProtocolType]::UDP
+                    $socket = New-Object System.Net.Sockets.Socket $set1,$set2,$proto
+                    $socket.Connect($sendto)
 
-                $encoding = [System.Text.Encoding]::UTF8
-                $tosend = $encoding.GetBytes("$utc$d$msg")
-                $fwd = $socket.Send($tosend)
-                $socket.Close()
+                    $encoding = [System.Text.Encoding]::UTF8
+                    $tosend = $encoding.GetBytes("$utc$d$msg")
+                    $fwd = $socket.Send($tosend)
+                    $socket.Close()
+                }
             }
-        }
-        catch{ }        ## an unreachable log server must never break local logging
+            catch{ }
         }
     }
 
@@ -839,7 +824,7 @@ function blockWriter(){
 
 ## Make sure the GBIO folder is cleaned out:
 ## this is where .vf1 files are written so python can
-## read powershell outputs
+## read powershell outputs & vice-versa.
 function cleanGBIO([switch]$s=$false){
     ## Clear $PROTOCULTURE
     if($s){ Remove-Item -Force "$($dyrl_PG[1])\PROTOCULTURE.vf1"}
@@ -864,17 +849,13 @@ function cleanGBIO([switch]$s=$false){
 function pyNet(){   #mp
     <#
     ||shorthelp||
-    Write your powershell script's results to a json file (PROTOCULTURE.vf1) that can later
-    be read by MACROSS python scripts. This file is written to a folder, 'corefuncs\pycross\gbio',
-    that MACROSS regularly empties. You only need to send the name of your script as param1 and
-    your values as param2. If you need to write something other than the default json, send an
-    alternate filename in param3, and your data will be written as-is to another .vf1 file.
-    Usage:
-        pyNet [-c YOUR_SCRIPTNAME] [-v WRITE_VALUE] [-f OUTPUT_FILENAME] [-d DEPTH]
+    pyNet [-c YOUR_SCRIPTNAME] [-v WRITE_VALUE] [-f OUTPUT_FILENAME] [-d DEPTH]
 
     ||longhelp||
     This function lets scripts write results to a file in the directory
-    "corefuncs\pycross\gbio"
+
+        "corefuncs\pycross\gbio"
+
     so that python & powershell scripts can easily share the same investigation data during a
     MACROSS session. Eventually MACROSS will improve the way it handles this.
 
@@ -883,13 +864,13 @@ function pyNet(){   #mp
     REQUIRED:  Your script name, as well as the value you want written to that file ($val1).
     The default file will be PROTOCULTURE.vf1, written as a json string:
 
-        $CALLER : { 'target':$value1, 'result': $value2 }
+        { 'caller': $CALLER, 'target':$value1, 'result': $value2 }
 
     If you are providing a large json dataset, the default writing depth is 10, but you can
     increase it if necessary using the -d parameter.
 
     If you need something other than this format and want to use a method outside of the
-    collab functions, you can provide an alternative filename as the -f parameter to name the
+    valkyrie functions, you can provide an alternative filename as the -f parameter to name the
     file anything but "PROTOCULTURE", and write whatever type of data you need to it instead.
     (The ".vf1" extension is still applied). Note that by using -f, pyNet does not format your
     -v $value at all, it will only write the value to the file, so formatting needs to be
@@ -916,9 +897,14 @@ function pyNet(){   #mp
 
     }
 
-    ...and then your python script can do whatever with it:
-        json.dumps(open('PATH\\PROTOCULTURE.vf1).read())
-        open('PATH\\myResultFile.vf1').read()
+    ...and then your python diamond can import the macross library to read it:
+
+        $val = macross.valkyrie()
+        $val['result']
+        $val['caller']
+        $val['target']
+        $val['spiritia']
+
 
     The file outputs are written with the extension "*.vf1" (including your custom filenames)
     to ensure regular cleanup (see the "cleanGBIO" function elsewhere in this file).
@@ -945,7 +931,7 @@ function pyNet(){   #mp
             catch{ em_ $_ }
         }
         if( ! (Test-Path -Path "$file") ){
-            errLog ERROR "$USR/$caller_" "Failed to write $file file during macross.collab operation ($dyrl_HN0)"
+            errLog ERROR "$USR/$caller_" "Failed to write $file file during macross.valkyrie operation ($dyrl_HN0)"
         }
     }
 
@@ -969,13 +955,13 @@ function pyNet(){   #mp
 
 }
 
-function TL($t){    #mp
+function TL($d){    #mp
     <#
     ||shorthelp||
-    TL [-t TOOLNAME]
+    TL [-d DIAMOND_NAME]
 
     ||longhelp||
-    Get a full listing of *all* available tools and their [macross] attributes
+    Get a full listing of *all* available diamonds and their [macross] attributes
 
     ||examples||
     Call from the main menu with debug:
@@ -987,7 +973,7 @@ function TL($t){    #mp
         TL <tool name>
 
     #>
-    if($t){ $dyrl_LATTS[$t].toolInfo() }
+    if($d -and $d -in $dyrl_LATTS){ $dyrl_LATTS[$d].toolInfo() }
     else{ $dyrl_LATTS.keys | %{ $dyrl_LATTS[$_].toolInfo()} }
 }
 
@@ -1413,29 +1399,21 @@ function sheetz(){   #mp
 function gerwalk($t,[switch]$hex=$false,[switch]$e=$false){   #mp
     <#
     ||shorthelp||
-    Decode base64 and hex values to plaintext in the global variable `$dyrl_PT; encode
-    plaintext to hex or base64
-    Usage:
-        gerwalk [-t STRING] [-h USE_HEXADECIMAL] [-e ENCODE_PLAINTEXT]
+    gerwalk [-t STRING] [-h USE_HEXADECIMAL] [-e ENCODE_PLAINTEXT]
 
     ||longhelp||
-    Deobfuscate your encoded value ($t), plaintext gets saved as $dyrl_PT
+    Decode your encoded value ($t), plaintext gets saved as "$dyrl_PT".
     Default is Base64, change to hexadecimal with -h.
-    Encode your plaintext value ($t) by using -e.
+
+    Encode your plaintext value ($t) by using -e. The encoded text is automatically
+    returned; it is not written to "$dyrl_PT".
 
     -DO NOT USE ENCODING TO HIDE USERNAMES/PASSWORDS/KEYS or other sensitive info! This
     is only intended to prevent regular users from seeing your filepaths/URLs, etc.,
-    and avoiding automated keyword scanners.
-
-    The reason it always writes to $dyrl_PT instead of just returning a value to your script
-    is to ensure that decoded plaintext gets wiped from memory every time the MACROSS menu loads.
-    Yes, I'm one of those paranoid types, but I can only control my code, not yours!
-
-    This function can also be used by your scripts for normal decoding tasks, it isn't
-    limited to MACROSS' startup.
+    avoiding automated keyword scanners, and decoding values found during investigations.
 
     ||examples||
-    -If you need presistence, you MUST set your new variable to $dyrl_PT **before** this
+    -If you need persistence, you MUST set your new variable to $dyrl_PT **before** this
       function gets called again:
 
         gerwalk $base64string
@@ -1482,13 +1460,12 @@ function gerwalk($t,[switch]$hex=$false,[switch]$e=$false){   #mp
 function urlEnc($str,$alt='%20'){   #mp
     <#
     ||shorthelp||
-    Encode strings for passing as a URL to APIs.
-    Usage:
-        urlEnc [-s STRING] [-a ALTERNATE WHITESPACE ENCODING]
+    urlEnc [-s STRING] [-a ALTERNATE WHITESPACE ENCODING]
 
     ||longhelp||
     Converts a plaintext string to a URL-encoded string that can be passed to web APIs.
-    The default encoding for whitespace is "%20", but you can send an alternate if required.
+    The default encoding for whitespace is "%20", but you can send an alternate if required
+    with -a.
 
     ||examples||
 
@@ -1496,7 +1473,7 @@ function urlEnc($str,$alt='%20'){   #mp
     $site = 'http://example.com/api?q=msg+where+sockets=(1.2.3.4:8443)&&time=[some time frame]'
     $api_call = urlEnc $site
 
-    # Alternate usage - replace whitespace with a "+" character
+    # Alternate usage - replace whitespace with a "+" character instead of "%20"
     $api_call = urlEnc $site -a "+"
 
 
@@ -1522,9 +1499,18 @@ function decodePdf($filepath,[switch]$preserve,[switch]$split){   #mp
     ||longhelp||
     Returns decoded plaintext from PDF documents. The -p option helps
     preserve decoded text with minimal breakage (removed lines, conjoined
-    words, etc.). The default behavior just pulls out blobs of text, but
-    you can use -s to get back a list of text lines, which also
-    removes all empty lines.
+    words, etc.). 
+    
+    The default behavior just pulls out blobs of text, but you can use -s 
+    to get back a list of text lines, which also removes all empty lines.
+
+    NOTE: the plugin used for this function requires the python
+    packages pdfplumber and PdfReader, which are NOT part of a standard
+    python install. Check your company policy before installing these
+    packages:
+
+        pip install PdfReader
+        pip install pdfplumber
 
     ||examples||
 
@@ -1817,10 +1803,10 @@ function getBlox(){ #mp
     getBlox [-t <TITLE> REQUIRED] [-i <INSTRUCTION> OPTIONAL] [-p PREFILL TEXT]
 
     ||longhelp||
-    When your tool needs users to enter a large block of text, this function
+    When your diamond needs users to enter a large block of text, this function
     opens a dialog box where users can type or paste those blocks.
 
-    You must send a title with -t; The default instructions is
+    You must send a title with -t; The default instruction is
     "Use this entry form to add your input", but you can send a different
     instruction with the -i option.
 
@@ -1905,9 +1891,7 @@ function getBlox(){ #mp
 function ord(){   #mp
     <#
     ||shorthelp||
-    Get the decimal value of a text character
-    Usage:
-        ord [char]
+    ord [char]
 
     ||longhelp||
     Convert a single string char to its decimal format.
@@ -1924,9 +1908,7 @@ function ord(){   #mp
 function chr(){   #mp
     <#
     ||shorthelp||
-    Get the text character of a decimal value
-    Usage:
-        chr [int]
+    chr [int]
 
     ||longhelp||
     Convert a decimal value into its string format
@@ -1946,8 +1928,7 @@ function chr(){   #mp
 function houseKeeping($reports,$tool){   #mp
     <#
     ||shorthelp||
-
-        houseKeeping [-r PATH_TO_REPORTS] [-t YOUR_SCRIPTNAME]
+    houseKeeping [-r PATH_TO_REPORTS] [-t YOUR_SCRIPTNAME]
 
     ||longhelp||
     Delete stale reports generated by various tools.
