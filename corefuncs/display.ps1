@@ -166,7 +166,7 @@ function toolInfo($tool){   #mp
 
 ## Names of the MACROSS functions that have help pages (marked "#mp" in the core files)
 function macrossFuncList_(){
-    $cores = @('utility.ps1','display.ps1','validation.ps1','kawamoring.ps1','configurations.ps1')
+    $cores = @('utility.ps1','display.ps1','validation.ps1','kawamoriNG.ps1','configurations.ps1')
     $list = foreach($core in $cores){
         $f = "$dyrl_MACROSS\corefuncs\$core"
         if(Test-Path $f){
@@ -182,7 +182,7 @@ function macrossHelp($1,[switch]$full=$false,[switch]$help=$false){
     for its details and usage, or send "dev" to get a full list of descriptions.
     Calling without parameters just lists the Local Attributes table.
     #>
-    $cores = @('utility.ps1','display.ps1','validation.ps1','kawamoring.ps1','configurations.ps1')
+    $cores = @('utility.ps1','display.ps1','validation.ps1','kawamoriNG.ps1','configurations.ps1')
     if($full){
         $dyrl_LATTS.keys | %{
             screenResults "$($dyrl_LATTS[$_].name) v$($dyrl_LATTS[$_].ver)" "Evaluates $($dyrl_LATTS[$_].valtype)"
@@ -1599,9 +1599,6 @@ function startUp([switch]$init=$false,$refresh=$null,$new){
         lockIn -n N_ -v $di
         gerwalk $dyrl_CONF.dbg
         if(! $dyrl_BLD ){ lockIn -n dyrl_BLD -v "$([bool][int]$dyrl_PT)" }
-        ## (Older versions exported every setting to $env:dyrl_DL, which child processes inherit;
-        ## nothing used it. Clear any copy left in this window by an earlier run.)
-        if(Test-Path env:dyrl_DL){ Remove-Item env:dyrl_DL -ErrorAction SilentlyContinue }
     }
 
 }
@@ -1618,8 +1615,8 @@ function diamondSelect(){
         'strings',
         'phone',
         'newkey',
-        'newkey2',
         'enroll',
+        'keys',
         'chats',
         'passw',
         'pydev',
