@@ -1,34 +1,29 @@
 ## MACROSS configuration management
 
+## Every user account in an AD group, including members of nested groups, as samAccountNames
+## for confirmUsers to (de)select. Needs the RSAT ActiveDirectory module. The names are stored
+## without a domain (setUser matches them to the bare username); kngResolve_ adds the domain
+## when it looks up their SIDs.
 function findUsers($gpnm){
+    $n = "$gpnm".Trim() -replace '^.+\\'          ## allow DOMAIN\group
+    $q = $n -replace "'","''"
     try{
-        $l = (Get-ADGroup -filter "Name -eq '$gpnm'" -properties Members |
-            Select -ExpandProperty Members) -replace ",OU=.+" -replace "CN="
+        $g = Get-ADGroup -Filter "Name -eq '$q' -or SamAccountName -eq '$q'" -ErrorAction Stop | Select -First 1
+        if(-not $g){ Return $null }
+        $l = @(Get-ADGroupMember -Identity $g -Recursive -ErrorAction Stop |
+            ?{ $_.objectClass -eq 'user' } | %{ $_.SamAccountName })
     }
     catch{
-        w "$($error[0])"
+        w " $($_.Exception.Message)" y
         Return @()
     }
-    if($l.count -lt 1){ Return $null }
-    $ll = @()
-    $l | %{
-        $n = $_ -replace "\\,",','
-        $san = (Get-ADUser -filter "samAccountName -eq '$n' -or Name -eq '$n' -or displayName -eq '$n'").samAccountName
-        $ll += $san
-    }
-    $ll = $ll | Sort -u
-    Return $ll
+    if($l.Count -lt 1){ Return $null }
+    Return @($l | Sort -Unique)
 }
-function updateSKY($new,$old){
-    $current_conf = mkList
-    $current_conf.add("sky$(gerwalk -e $new)") | Out-Null
-    $old.keys | %{
-        if($_ -ne 'sky'){$current_conf.add("$_$($old.$_)") | Out-Null}
-    }
-    return $current_conf
-}
-function confirmUsers($ulist,[string]$utype,[int]$tier){
-
+## With -checked, only those names start checked (everyone else unchecked); -stale names are
+## highlighted as current tier members that are no longer in the tier's GPO (-gpo).
+function confirmUsers($ulist,[string]$utype,[int]$tier,$checked=$null,$stale=@(),[string]$gpo){
+    $ulist = @($ulist)      ## a one-member group arrives as a plain string; [$i] would index its characters
     $ucount = $ulist.count
 
     Add-Type -AssemblyName System.Windows.Forms
@@ -72,17 +67,26 @@ function confirmUsers($ulist,[string]$utype,[int]$tier){
 
 
     for($i = 0; $i -lt $checkedlist.Items.Count; $i++){
-        $checkedlist.Items[$i].Checked = $true
         $item = $checkedlist.Items[$i].SubItems[0].Text
+        if($null -ne $checked){ $checkedlist.Items[$i].Checked = ($item -in @($checked)) }
+        else{ $checkedlist.Items[$i].Checked = $true }
         if($item -eq 'none'){
             $checkedlist.Items[$i].ForeColor = "Red"
+        }
+        elseif($item -in @($stale)){
+            $checkedlist.Items[$i].ForeColor = "DarkOrange"
+            $checkedlist.Items[$i].ToolTipText = "Current tier member, no longer in $gpo"
         }
     }
 
     $label = New-Object System.Windows.Forms.Label
-    $label.Location = New-Object System.Drawing.Point(10,20)
-    $label.Size = New-Object System.Drawing.Size(310,20)
-    $label.Text = 'If you did not enter users for this tier, leave "none" checked.'
+    $label.Location = New-Object System.Drawing.Point(10,5)
+    $label.Size = New-Object System.Drawing.Size(465,32)
+    if($gpo){
+        $label.Text = "Members of `"$gpo`". Current tier members are checked."
+        if(@($stale).Count -gt 0){ $label.Text += ' Orange = no longer in the GPO (unchecked).' }
+    }
+    else{ $label.Text = 'If you did not enter users for this tier, leave "none" checked.' }
     $form.Controls.Add($label)
 
     $textbox = New-Object System.Windows.Forms.TextBox
@@ -297,7 +301,7 @@ function wizard([switch]$tiers,[string]$adminpw){
 
         }
 
-        ## Team passphrase (required): protects key recovery/enrollment for kawamoriNG.
+        ## Team passphrase (required): protects key recovery/enrollment for kawamori.
         ## CONFIRM SETTINGS stays disabled until it's valid.
         $tpRows = foreach($t in 'Team passphrase','Confirm passphrase'){
             $label = New-Object System.Windows.Forms.Label
@@ -358,24 +362,21 @@ function wizard([switch]$tiers,[string]$adminpw){
         }
         $Script:clicked = $true
         if($tiers){
-            $tr1 = $tierfields[0]
-            $tr2 = $tierfields[1]
-            $tr3 = $tierfields[2]
-            $ta1 = $tierfields[3]
-            $ta2 = $tierfields[4]
-            $ta3 = $tierfields[5]
-            if($tr1[2].Checked){$tr1c='true'}else{$tr1c='false'}
-            if($tr2[2].Checked){$tr2c='true'}else{$tr2c='false'}
-            if($tr3[2].Checked){$tr3c='true'}else{$tr3c='false'}
-            if($ta1[2].Checked){$ta1c='true'}else{$ta1c='false'}
-            if($ta2[2].Checked){$ta2c='true'}else{$ta2c='false'}
-            if($ta3[2].Checked){$ta3c='true'}else{$ta3c='false'}
-            $list.add('tr1',@("$($tr1[1].Text)",$tr1c))
-            $list.add('tr2',@("$($tr2[1].Text)",$tr2c))
-            $list.add('tr3',@("$($tr3[1].Text)",$tr3c))
-            $list.add('ta1',@("$($ta1[1].Text)",$ta1c))
-            $list.add('ta2',@("$($ta2[1].Text)",$ta2c))
-            $list.add('ta3',@("$($ta3[1].Text)",$ta3c))
+            ## tgp remembers which tiers came from a GPO so "Update users" can re-pull its members
+            $tgp = mkList
+            $tk = @('tr1','tr2','tr3','ta1','ta2','ta3')
+            for($i = 0; $i -lt 6; $i++){
+                $tf = $tierfields[$i]
+                $tv = "$($tf[1].Text)".Trim()
+                if($tf[2].Checked){
+                    $tc = 'true'
+                    if($tv -and $tv -ne 'none'){ [void]$tgp.add("'$($tk[$i])'='$($tv -replace "'","''")'") }
+                }
+                else{ $tc = 'false' }
+                $list.add($tk[$i],@($tv,$tc))
+            }
+            if($tgp.Count -gt 0){ $list.add('tgp',($tgp -Join ';')) }
+            else{ $list.add('tgp','none') }
         }
         else{
             $repo1 = $cfgfields[0]
@@ -387,11 +388,7 @@ function wizard([switch]$tiers,[string]$adminpw){
             else{ $blist = returnDefault -b }
             $bl0 = $blist[0]
             $dbg = [string]$blist[1]
-            #if($logs[1].Text -eq 'keep'){ $log = returnDefault log }
-            #else{ $log = $logs[1].Text }
             $log = $logs[1].Text
-            #if($content[1].Text -eq 'keep'){ $con = returnDefault con }
-            #else{ $con = $content[1].Text }
             $con = $content[1].Text
             $list.Add('cre',$repo1[1].Text)
             $list.Add('hrn',$repo2[1].Text)
@@ -399,8 +396,8 @@ function wizard([switch]$tiers,[string]$adminpw){
             $list.Add('con',$con)
             $list.Add('bl0',$bl0)
             $list.Add('dbg',$dbg)
-            $list.Add('fwd',$fwdv)          ## SIEM/log collector <host|ip>:port, or 'none'
-            $list.Add('tpw',$tp1.Text)     ## team passphrase; turned into the team key by runStart, never stored
+            $list.Add('fwd',$fwdv)
+            $list.Add('tpw',$tp1.Text)
         }
         $cfgwiz.Close()
     })
@@ -427,6 +424,17 @@ function returnDefault($ix,[switch]$bdis){
         $r = $conf[$ix]
     }
     Return $r
+}
+## Decode the tgp config value ("'tr1'='SOC1';'ta2'='SOC Admins'" or "none") into
+## @{tr1='SOC1';ta2='SOC Admins'}. Empty when there is no tgp key (older configs) or it's "none".
+function tierGpos_(){
+    $h = @{}
+    if(-not $dyrl_CONF -or -not $dyrl_CONF['tgp']){ Return $h }
+    gerwalk $dyrl_CONF['tgp']
+    foreach($m in [regex]::Matches("$dyrl_PT","'(t[ar][1-3])'='((?:[^']|'')*)'")){
+        $h[$m.Groups[1].Value] = $m.Groups[2].Value -replace "''","'"
+    }
+    Return $h
 }
 function configAccess($t){
     function e_($e){
@@ -456,135 +464,10 @@ function configAccess($t){
     if($z -eq 'none'){ Return @($z,0) }
     else{ Return @($members,$l) }
 }
-function localWriteP($xtext){
-    Add-Type -AssemblyName System.Security
-    $bytes = [System.Text.Encoding]::Unicode.GetBytes($xtext)
-    $scp = [Security.Cryptography.ProtectedData]::Protect(
-        $bytes,
-        $null,
-        [Security.Cryptography.DataProtectionScope]::CurrentUser
-    )
-    $et = [System.Convert]::ToBase64String($scp)
-    Return $et
-}
-function stringHash($string){
-    $sha256 = [System.Security.Cryptography.SHA256]::Create()
-    $bytes = [System.Text.Encoding]::UTF8.GetBytes($string)
-    $shaBytes = $sha256.ComputeHash($bytes)
-    Return $([System.BitConverter]::ToString($shaBytes) -replace '-')
-}
-function localReadP($ytext){
-    Add-Type -AssemblyName System.Security
-    $scfb = [System.Convert]::FromBase64String($ytext)
-    $bytes = [Security.Cryptography.ProtectedData]::Unprotect(
-        $scfb,
-        $null,
-        [Security.Cryptography.DataProtectionScope]::CurrentUser
-    )
-    $dt = [System.Text.Encoding]::Unicode.GetString($bytes)
-    Return $dt
-}
-function sideWrite($bside,$eside=16,[switch]$on){
-    if($on){ Return (gerwalk ($(gerwalk "$bside`macross.conf" -h -e) * 2) -e).Substring(0,$eside) }
-    gerwalk $bside.Substring($eside)
-    Return $(($dyrl_PT -split '\D\D' | ?{$_ -Match '\d'} | %{chr $_} ) -join '' -replace '[^\w=/\.]')
-}
-## LEGACY (v1) config writer. Only used to repair a v1 config so it can be read and migrated;
-## all new writes go through upWrite -> confSave_ (see "CONFIG PROTECTION v2" below).
-function upWriteLegacy_($n,$conf,$o_file='macross.conf',[switch]$xe,[switch]$fin){
-    function wut_($1){
-        errMsg -f 'MACROSS.upWrite' "upWrite: $1"
-        $error[0]
-        varCleanup -c
-        Exit
-    }
-    function bkup_(){
-        if(Test-Path $ofile){
-            $rename = $(Get-Date -f "yyMMdd-HHmmss")
-            $b_file = Join-Path (Split-Path $ofile) "$rename`_$o_file`.backup"
-            Copy-Item -Path $ofile -Destination $b_file
-        }
-    }
-    function add_($10){
-        Return $add[$(Get-Random -Min 0 -Max $10)]
-    }
-
-    $selected_choice = $false
-    $ofile = "$dyrl_MACROSS\corefuncs\$o_file"
-    $sfile = "$dyrl_OUTFILES\$o_file"
-    $sdc = "$('#'*8) MACROSS DATA CONFIGURATION $('#'*9)"
-    $dbt = "$('#'*10)   DEFAULT BASE TEMPLATE   $('#'*13)"
-    $dfc = $dyrl_CONFIG[1]
-    $template_m = @(
-        $dbt,
-        "Initialized: $(Get-Date -f 'yyyy.MM.dd hh:mm:ss')",
-        "MACROSS Version: $dyrl_VERSION",
-        "Python: $dyrl_PYVERS"
-    )
-
-    if($xe){
-        w 'Reading template...' g
-        try{
-            $versioned = $(Get-Content -Stream $dfc -Path $ofile -ErrorAction Stop | Select -First 5)
-            $selected_choice = ((Get-Content -Stream $dfc -Path $ofile -ErrorAction Stop | Select -Skip 5) -Join '').Trim()
-        }
-        catch{
-            w 'There are no templates to load. Starting setup wizard...' y
-            if(Test-Path $ofile){ Remove-Item $ofile -Force }
-            wizard
-        }
-    }
-    else{ bkup_ }
-    if(! $selected_choice){
-        $add = (alphanum)[0]
-        $c,$d = '',''
-        $transformer = sideWrite $n -o
-        $k = byter $transformer -b
-        0..15 | %{
-            $a = add_ 51
-            $b = add_ 51
-            $c += add_ 61
-            $cc = ord $transformer[$_]
-            $d += "$cc$a$b"
-        }
-        $d = "$(gerwalk -e $d)"
-        $default = $conf | ConvertTo-SecureString -AsPlainText -Force
-        $default = "$($default | ConvertFrom-SecureString -Key $k)"
-        $selected_choice = "$c$d=00$default"
-        $default = blockWriter -b "$selected_choice" -m 50 -n
-        $id = stringHash $default
-        $template_m += "Signature: $id"
-        $versioned = $template_m
-        $template_m += $default; $template_m = $template_m -Join "`n"
-        $versioned[0] = $sdc
-    }
-
-    $selected_choice = localWriteP "$selected_choice"
-    $sc = blockWriter -b "$selected_choice" -m 45 -n
-    $versioned += $sc
-    Set-Content -Path $ofile -Value $($versioned -Join "`n")
-
-    if(! (Test-Path -Path $ofile)){
-        wut_ "Unknown error: failed to create new $o_file file"
-    }
-    if($xe){ Return }
-    Set-Content -Path $ofile -Stream $dfc -Value $template_m
-    w "`n`n Setup is complete. Run the MACROSS.ps1 script to start MACROSS.`n" g
-    Remove-Variable dyrl_* -Force -Scope Global
-    Exit
-}
-function downWrite($a,$b,$c=0,$k='',[switch]$l){
-    if($l){ $a = sideWrite $a -o }
-    else{ $a = sideWrite $a }
-    $k = byter $a -b
-    $config = ConvertTo-SecureString -String $b -Key $k
-    $ptr = byter $config
-    Return $ptr
-}
 function addWrites($m,$skycf='MACROSS CONFIGURATION'){
     $k = 'k'; $v,$z = $null,$null
     $modified = $false
-    $gpc = @('tr1','tr2','tr3','ta1','ta2','ta3')
+    $gpc = @('tr1','tr2','tr3','ta1','ta2','ta3','tgp')
     $extra = @($null,$null)
     while($k -notIn $dyrl_CONF.keys){
         w "`n Enter the 3-character index key or `"c`" to cancel: " g -i
@@ -624,29 +507,26 @@ function addWrites($m,$skycf='MACROSS CONFIGURATION'){
     errLog INFO 'MACROSS.addWrites' "Config $k was updated"
     Return @($k,$v,$modified,$extra[0],$extra[1])
 }
-function runStart($update=0,$micro=@('c2t5','Ymww','ZGkx','ZGky','dWFj'),$static){
-    function in_($n0=$null){
-        if($n0){$gnh = $(getHash $n0 -s)}
-        else{
-            $n1 = 100; $n3 = 101
-            while($n1 -ne $n3){
-                gerwalk -h 456E7465722061206E65772061646D696E2070617373776F7264
-                $n0 = Read-Host "         $dyrl_PT" -AsSecureString
-                $n1 = byter $n0
-                gerwalk -h 456E74657220746865206E65772061646D696E2070617373776F726420616761696E
-                $n2 = Read-Host " $dyrl_PT" -AsSecureString
-                $n3 = byter $n2
-                if($n1 -ne $n3){ w "$nomsg`n" y }
-            }
-            gerwalk 'NTk2Rjc1MjA3NzY5NkM2QzIwNkU2NTY1NjQyMDc0Njg2OTczMjA3MDY
-            xNzM3Mzc3NkY3MjY0MjA2OTY2MjA3OTZGNzUyMDc3NjE2RTc0MjA3NDZGMjA2MzY4
-            NjE2RTY3NjUyMDUzNEI1OTRFNDU1NDI3NzMyMDYzNkY2RTY2Njk2Nzc1NzI2MTc0N
-            jk2RjZFNzMyMDZDNjE3NDY1NzIyRQ=='
-            gerwalk -h $dyrl_PT
-            w "`n $dyrl_PT`n`n" y
-            $gnh = $n3
+function runStart($update=0,$micro=@('Ymww','ZGkx','ZGky','dWFj'),$static){
+    ## Ask for the new admin password (twice); returns it as plaintext
+    function in_(){
+        $n1 = 100; $n3 = 101
+        while($n1 -ne $n3){
+            gerwalk -h 456E7465722061206E65772061646D696E2070617373776F7264
+            $n0 = Read-Host "         $dyrl_PT" -AsSecureString
+            $n1 = byter $n0
+            gerwalk -h 456E74657220746865206E65772061646D696E2070617373776F726420616761696E
+            $n2 = Read-Host " $dyrl_PT" -AsSecureString
+            $n3 = byter $n2
+            if($n1 -ne $n3){ w "$nomsg`n" y }
         }
-        Return $gnh
+        gerwalk 'NTk2Rjc1MjA3NzY5NkM2QzIwNkU2NTY1NjQyMDc0Njg2OTczMjA3MDY
+        xNzM3Mzc3NkY3MjY0MjA2OTY2MjA3OTZGNzUyMDc3NjE2RTc0MjA3NDZGMjA2MzY4
+        NjE2RTY3NjUyMDUzNEI1OTRFNDU1NDI3NzMyMDYzNkY2RTY2Njk2Nzc1NzI2MTc0N
+        jk2RjZFNzMyMDZDNjE3NDY1NzIyRQ=='
+        gerwalk -h $dyrl_PT
+        w "`n $dyrl_PT`n`n" y
+        Return $n3
     }
     $valid = mkList; $bar = battroid -b; $mod = $false
     $Global:dyrl_LOG = 'none'; $env:MACROSS = "$dyrl_MACROSS"
@@ -671,12 +551,12 @@ function runStart($update=0,$micro=@('c2t5','Ymww','ZGkx','ZGky','dWFj'),$static
     if($update -gt 0){
         startUp
         $reform = $dyrl_CONF
-        gerwalk $micro[0]
     }
-    if($update -eq 1){ $valid = updateSKY $nap $reform }
+    
+    if($update -eq 1){ $reform.keys | %{ [void]$valid.add("$_$($reform.$_)") } }
     elseif($update -eq 2){
         $ixlabels = @{
-            'cre'='URL for your code repository';
+            'cre'='Default/preferred python executable path';
             'hrn'='URL for your AI services/API';
             'con'='Content files (enter a custom location or "keep" to set the default)';
             'dbg'='Debugging is restricted ("keep" to restrict or "none" to disable)';
@@ -694,7 +574,7 @@ function runStart($update=0,$micro=@('c2t5','Ymww','ZGkx','ZGky','dWFj'),$static
         }
 
         $conf = @{}; $ci = 0
-        $reform.keys | ?{"$_" -notIn $hkm -and $_ -notMatch "t[ar][1-3]" -and $_ -notIn @('tpk','tsk')} | Sort | %{
+        $reform.keys | ?{"$_" -notIn $hkm -and $_ -notMatch "t[ar][1-3]" -and $_ -notIn @('tpk','tsk','tgp')} | Sort | %{
             $c1 = "w~$_"
             if($_ -eq 'dbg'){ $c3 = $dyrl_BLD }
             else{
@@ -721,7 +601,7 @@ function runStart($update=0,$micro=@('c2t5','Ymww','ZGkx','ZGky','dWFj'),$static
             if($z -Like "y*"){
                 if($ch -eq 0){ $ch++ }
                 $z = $null
-                $new = addWrites -m @(@('uac','tpk','tsk') + $hkm)   ## decoded names: sky,bl0,di1,di2,uac (+ team key, managed by option 4)
+                $new = addWrites -m @(@('uac','tpk','tsk') + $hkm)
                 if($new[2]){
                     $mod = $new[2]
                     $conf.add($new[0],$new[1])
@@ -732,7 +612,7 @@ function runStart($update=0,$micro=@('c2t5','Ymww','ZGkx','ZGky','dWFj'),$static
         }
         if($conf.count -gt 0){
             "`n"
-            gerwalk $micro[1]
+            gerwalk $micro[0]
             $cl = $dyrl_PT
             $nap = $static
             $originals = @{}
@@ -786,7 +666,6 @@ function runStart($update=0,$micro=@('c2t5','Ymww','ZGkx','ZGky','dWFj'),$static
         $tr = runUserTier -i
 
         $required = @{
-            'sky' = gerwalk -e "$(in_ $nap)";
             'di1' = gerwalk -e $di1;
             'di2' = gerwalk -e $di2;
             'tr1' = gerwalk -e $tr.tr1;
@@ -794,7 +673,8 @@ function runStart($update=0,$micro=@('c2t5','Ymww','ZGkx','ZGky','dWFj'),$static
             'tr3' = gerwalk -e $tr.tr3;
             'ta1' = gerwalk -e $tr.ta1;
             'ta2' = gerwalk -e $tr.ta2;
-            'ta3' = gerwalk -e $tr.ta3
+            'ta3' = gerwalk -e $tr.ta3;
+            'tgp' = gerwalk -e $(if($tr.tgp){ $tr.tgp }else{ 'none' })
         }
         @(
             'cre',
@@ -806,7 +686,7 @@ function runStart($update=0,$micro=@('c2t5','Ymww','ZGkx','ZGky','dWFj'),$static
             'fwd'
             ) | %{ $required.add($_,$(gerwalk -e $wiz.$_)) }
 
-        ## Team passphrase for protected keys (kawamoriNG), set here so it's chosen by the admin
+        ## Team passphrase for protected keys (kawamori), set here so it's chosen by the admin
         ## Team key from the passphrase entered in the setup form (the form requires 12+ characters)
         $tpw = "$($wiz.tpw)"
         if($tpw.Length -ge 12){
@@ -829,48 +709,8 @@ function runStart($update=0,$micro=@('c2t5','Ymww','ZGkx','ZGky','dWFj'),$static
     if($mod){
         w "`n Formatting and encrypting configurations...`n" g
         gerwalk QEBA
-        ## $static is the admin password entered to open the config menu (the old password when changing it)
         upWrite -n $nap -c $($valid -Join "$dyrl_PT") -f -oldpass $static
     }
-}
-function runContinue($continue=$null,[switch]$update){
-    function e_(){
-        $e = @('ERROR','Config unreadable')
-        errLog $e[0] $e[1]
-        w "$($e -Join ": ") " -b r -f k
-        Return $null
-    }
-    function u_($fn='corrupted.deleteme'){
-        Copy-Item -Path $dyrl_CONFIG[0] -Destination "$($dyrl_CONFIG[0])`.$fn" -Force
-        if(-not $update){
-            w "NOTICE: MACROSS config is corrupted. Please wait while I attempt to rebuild it... `n" -b y -f k
-            upWriteLegacy_ -x
-            slp 3
-            Return $true    ## rebuilt; caller re-reads the config
-        }
-        Return $false
-    }
-    if($update){ [void](u_ "old.$(Get-Date -f 'mm-ss')"); Return }
-    gerwalk PTAw
-    $raw = ((Get-Content -Path $dyrl_CONFIG[0] | Select -Skip 5) -Join '').Trim()
-    $raw = localReadP $raw
-    if($raw | sls $dyrl_PT){$divraw = $raw -Split $dyrl_PT}
-    elseif(-not $script:rebuilt_ -and (u_)){
-        ## Only try rebuilding once so a config that can't be repaired doesn't loop forever
-        $script:rebuilt_ = $true
-        try{ Return (runContinue $continue) }
-        finally{ Remove-Variable rebuilt_ -Scope Script -ErrorAction SilentlyContinue }
-    }
-    else{ Return (e_) }
-    if($continue -ne $null){
-        try{ $r = $(downWrite $continue $divraw[1] -l) }
-        catch{ $r = e_ }
-    }
-    else{
-        try{ $r = $(downWrite $divraw[0] $divraw[1]) }
-        catch{ $r = e_ }
-    }
-    Return $r
 }
 function runUserList([switch]$t=$false){
     if($t){ $ulist = getFile -f txt }
@@ -903,6 +743,7 @@ function runUserTier([switch]$init,$update=0){
     function rt_($1,[switch]$save){
         $sl = @{}
         foreach($tk in ($1.keys | sort)){
+            if($tk -eq 'tgp'){ $sl.add($tk,$1.$tk); Continue }
             $glkup = $1.$tk[1]
             $gval = $1.$tk[0]
             $tr = [int]$tk.substring(2)
@@ -938,15 +779,32 @@ function runUserTier([switch]$init,$update=0){
             $array.add("tr$_",'none')
             $array.add("ta$_",'none')
         }
+        $array.add('tgp','none')
     }
     elseif($update -and $update -in $dyrl_CONF.keys){
         if($update -Like "ta*"){ $cu = 'admin' }
         else{ $cu = 'user' }
         [int]$ti = $($update -replace "\D")
+        $gpos = tierGpos_
         gerwalk $dyrl_CONF.$update
         $compare1 = $dyrl_PT
-        $current = $compare1 -Split ','
-        $compare2 = confirmUsers $current $cu $ti
+        $current = @($compare1 -Split ',' | ?{ $_ -and $_ -ne 'none' })
+        $members = $null
+        if($gpos[$update]){
+            w " Pulling current members of $($gpos[$update])..." g
+            $members = findUsers $gpos[$update]
+            if(-not $members){ w " Couldn't read members of $($gpos[$update]); showing the current list instead." y }
+        }
+        if($members){
+            ## GPO members first (current tier members checked, new members unchecked), then any
+            ## current tier members who have left the GPO (highlighted, unchecked)
+            $stale = @($current | ?{ $_ -notIn $members })
+            $compare2 = confirmUsers (@($members) + $stale) $cu $ti -checked @($current | ?{ $_ -in $members }) -stale $stale -gpo $gpos[$update]
+        }
+        else{
+            if($current.Count -eq 0){ $current = @('none') }
+            $compare2 = confirmUsers $current $cu $ti
+        }
         if($compare2){ $array = $($compare2 -Join ',') }
         else{ $array = $null }
     }
@@ -961,7 +819,7 @@ function runUserTier([switch]$init,$update=0){
     Return $array
 
 }
-function runModify([switch]$resistance,$micro=@('c2t5','Ymww','ZGkx','ZGky'),$actual){
+function runModify([switch]$resistance,$actual){
     startUp -r $actual
     if(! $dyrl_CONF){ w 'Hit ENTER to continue.' g; Read-Host; Return }
     $upconf = $dyrl_CONF
@@ -990,6 +848,10 @@ function runModify([switch]$resistance,$micro=@('c2t5','Ymww','ZGkx','ZGky'),$ac
             catch{ $null }
         }
         if($shown){
+            $gpos = tierGpos_
+            if($gpos.Count -gt 0){
+                screenResults 'GPO tiers' $(($gpos.Keys | Sort | %{ "$_ = $($gpos[$_])" }) -Join ', ')
+            }
             screenResults -e
             "`n"
             $chg = 0
@@ -1035,29 +897,27 @@ function runModify([switch]$resistance,$micro=@('c2t5','Ymww','ZGkx','ZGky'),$ac
 ##            site.ps1 has an AdminPubKey, configs without a valid admin signature are refused.
 ##
 ## The admin password check is "can it unlock the pass slot" -- no password hash is stored.
-## Legacy (v1) configs keep loading the old way until the admin password is entered (startup
-## prompt or the config menu); they are then upgraded and the old file is kept as a backup
-## (without its unprotected alternate data stream).
 ##
-## Uses the crypto helpers in kawamoring.ps1.
+## Uses the crypto helpers in kawamoriNG.ps1.
 ################################################################################################
 
 function confHeader_(){ '### MACROSS CONFIG v2 ###' }
 
-## Ask the admin for a new team passphrase and create the team key pair (see kawamoring.ps1).
+## Ask the admin for a new team passphrase and create the team key pair (see kawamoriNG.ps1).
 ## Returns @{tpk;tsk} config values, or $null if skipped. $adminpw is only used to warn when
-## the same password is reused.
+## the same password is reused. I mean, if you really wanna use the same pw twice, go ahead and
+## disable that check below.
 function confTeamNew_([string]$adminpw,[switch]$replacing){
     w "`n TEAM PASSPHRASE" c
-    w ' Protected keys (kawamoriNG) are created with a team key, so analysts never choose a' g
+    w ' Protected keys (kawamori) are created with a team key, so analysts never choose a' g
     w ' passphrase themselves. The team passphrase you set here is only needed to give' g
     w ' access to local/non-AD accounts (enroll) and to recover keys. Keep it somewhere safe,' g
     w ' and use something different from the admin password.' g
-    if($replacing){ w ' A NEW team key will be created: run "kawamoriNG all -rewrap" afterwards to move every key to it.' y }
+    if($replacing){ w ' A NEW team key will be created: run "kawamori all -rewrap" afterwards to move every key to it.' y }
     while($true){
         $a = kngReadPass_ 'New team passphrase (12+ characters; ENTER to skip for now)'
         if($a.Length -eq 0){
-            w ' Skipped. Keys can''t be created until a team passphrase is set (config > 4).' y
+            w " Skipped. Keys can't be created until a team passphrase is set (config > 4)." y
             Return $null
         }
         if($a.Length -lt 12){ w ' The team passphrase must be at least 12 characters.' y; kngWipe_ $a; Continue }
@@ -1116,8 +976,8 @@ function confTeamMenu_([string]$adminpw){
             $team = confTeamNew_ $adminpw -replacing
             if(-not $team){ Return }
             $conf['tpk'] = $team.tpk; $conf['tsk'] = $team.tsk
-            try{ errLog WARN 'MACROSS.config' "New team key created by $env:USERDOMAIN\$env:USERNAME; keys need kawamoriNG all -rewrap" }catch{ }
-            w "`n After MACROSS restarts, run:  kawamoriNG all -rewrap" y
+            try{ errLog WARN 'MACROSS.config' "New team key created by $env:USERDOMAIN\$env:USERNAME; keys need kawamori all -rewrap" }catch{ }
+            w "`n After MACROSS restarts, run:  kawamori all -rewrap" y
             w ' (from an account that can open the keys: a tier member, or an enrolled account).' y
         }
     }
@@ -1203,7 +1063,11 @@ function confPrincipals_([hashtable]$h){
         if($seen.ContainsKey($nm.ToLower())){ Continue }
         $seen[$nm.ToLower()] = $true
         $r = kngResolve_ $nm
-        if($r -and $r.kind -eq 'domain'){ $r }
+        if($r -and $r.kind -eq 'domain'){
+            if($seen.ContainsKey($r.sid)){ Continue }     ## same account under another name
+            $seen[$r.sid] = $true
+            $r
+        }
     }
 }
 
@@ -1265,7 +1129,7 @@ function confUnlock_($obj,[string]$password,[switch]$prompt,[ref]$how,[ref]$why)
     ## report that ($how = 'altered') instead of asking for the admin password.
     $altered = $false
     $all = @($obj.slots)
-    foreach($s in @($all | ?{ $_.type -eq 'domain' })){
+    foreach($s in (kngMyDomainSlots_ $all)){
         try{
             $dek = kngNGUnprotect_ (kngUnB64_ $s.blob)
             if(kngVerify_ $dek $obj.data (kngAad_ $obj 'data')){ if($how){ $how.Value = 'domain' }; ,$dek; Return }
@@ -1314,7 +1178,6 @@ function confSave_([hashtable]$h,[string]$password,[string]$oldpass){
     $existing = $null
     if((Test-Path -PathType Leaf $target) -and (confIsV2_ $target)){ $existing = confRead_ $target }
 
-    $h = $h.Clone(); [void]$h.Remove('sky')      ## the admin password check is the pass slot now
     $obj = [pscustomobject][ordered]@{
         v=2; id='macross.conf'; created=$(if($existing){ $existing.created }else{ Get-Date -Format 's' })
         updated=(confStamp_); by="$env:USERDOMAIN\$env:USERNAME"
@@ -1331,12 +1194,10 @@ function confSave_([hashtable]$h,[string]$password,[string]$oldpass){
 
         $dom = @(confPrincipals_ $h)
         if($dom.Count){
-            $rule = ($dom | %{ "SID=$($_.sid)" }) -join ' OR '
-            try{
-                [void]$slots.Add([pscustomobject][ordered]@{
-                    type='domain'; rule=$rule; names=(($dom | %{ $_.name }) -join ', '); blob=(kngB64_ (kngNGProtect_ $rule $dek)) })
-            }
-            catch{ [void]$notes.Add("No domain slot: $($_.Exception.Message)") }
+            ## one slot per account/group; see kngDomainSlots_
+            $ds = kngDomainSlots_ $dom $dek
+            foreach($s in $ds.slots){ [void]$slots.Add($s) }
+            foreach($f in $ds.failed){ [void]$notes.Add("No domain slot for $($f.name): $($f.why)") }
         }
         if(-not $p.central){
             try{ [void]$slots.Add((confMachineSlot_ $obj $dek)) }
@@ -1418,50 +1279,11 @@ function confOverrides_([hashtable]$h){
     try{
         $o = Get-Content -Raw $p.overrides | ConvertFrom-Json
         foreach($pr in $o.PSObject.Properties){
-            if($pr.Name -in @('sky','di1','di2','uac','bl0','dbg','tr1','tr2','tr3','ta1','ta2','ta3','tpk','tsk')){ Continue }
+            if($pr.Name -in @('di1','di2','uac','bl0','dbg','tr1','tr2','tr3','ta1','ta2','ta3','tgp','tpk','tsk')){ Continue }
             $h[$pr.Name] = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes("$($pr.Value)"))
         }
     }
     catch{ w " Ignoring $($p.overrides): $($_.Exception.Message)" y }
-}
-
-## LEGACY (v1): load the old way; upgrade when the admin password is available
-function confLegacy_([string]$password){
-    $s = if($password){ runContinue $password }else{ runContinue $null }    ## v1 treats '' as a (wrong) password
-    if(-not $s){ Return $null }
-    gerwalk QEBA; $sep = $dyrl_PT
-    $h = @{}
-    foreach($c in ($s -split [regex]::Escape($sep))){ if($c.Length -ge 3){ $h[$c.Substring(0,3)] = $c.Substring(3) } }
-
-    $pw = $password
-    if(-not $pw -and -not $Global:dyrl_CONFASKED){
-        $Global:dyrl_CONFASKED = $true      ## ask once per session
-        w "`n MACROSS can upgrade its configuration protection now." c
-        w " Enter the admin password to upgrade, or press ENTER to skip (you'll be asked next time)." c
-        $ss = Read-Host '  Admin password' -AsSecureString
-        $try = [Net.NetworkCredential]::new('',$ss).Password
-        if($try){
-            if(runContinue $try){ $pw = $try }      ## v1 only decrypts with the right password
-            else{ w ' That password is not correct; the upgrade was skipped.' y }
-        }
-    }
-    if($pw){
-        try{
-            $p = confPaths_
-            $old = $p.local
-            $bk = confBackup_ $old 'v1'
-            confSave_ $h $pw
-            if($p.central -and (Test-Path -LiteralPath $old)){ Remove-Item -LiteralPath $old -Force }
-            w " Config upgraded. The old config was kept as $bk (without its unprotected template stream)." g
-            $legacy = @(Get-ChildItem -Path (Split-Path $old) -Filter '*macross.conf.backup' -ErrorAction SilentlyContinue)
-            if($legacy.Count){
-                w ' These older backups still contain the unprotected template; delete them once you have tested:' y
-                $legacy | %{ w "   $($_.FullName)" y }
-            }
-        }
-        catch{ w " The config could not be upgraded: $($_.Exception.Message)" y }
-    }
-    Return $h
 }
 
 ## Load the settings (used by startUp). With $password, only the admin password slot is tried
@@ -1478,12 +1300,10 @@ function confLoad_([string]$password){
                 $Global:dyrl_CONFWARNED = $true
             }
         }
-        elseif((Test-Path -PathType Leaf $p.local) -and -not (confIsV2_ $p.local)){ Return (confLegacy_ $password) }
         else{ w " The central MACROSS config ($($p.central)) can't be reached and there is no cached copy." r; Return $null }
     }
     else{
         if(-not (Test-Path -PathType Leaf $p.local)){ Return $null }
-        if(-not (confIsV2_ $p.local)){ Return (confLegacy_ $password) }
         $src = 'local'; $file = $p.local
     }
 
@@ -1560,11 +1380,9 @@ function confLoad_([string]$password){
     Return $h
 }
 
-## Replaces the v1 writer. Same parameters as before: -n admin password, -c settings joined
-## with @@@ (as built by runStart/runModify). Like before, MACROSS exits afterwards so the
-## new settings load cleanly.
-function upWrite($n,$conf,$o_file='macross.conf',[switch]$xe,[switch]$fin,$oldpass=$null){
-    if($xe){ upWriteLegacy_ -x; Return }
+## Save the settings: -n admin password, -c settings joined with @@@ (as built by
+## runStart/runModify). MACROSS exits afterwards so the new settings load cleanly.
+function upWrite($n,$conf,[switch]$fin,$oldpass=$null){
     gerwalk QEBA; $sep = $dyrl_PT
     $h = @{}
     foreach($c in ("$conf" -split [regex]::Escape($sep))){ if($c.Length -ge 3){ $h[$c.Substring(0,3)] = $c.Substring(3) } }
@@ -1605,7 +1423,7 @@ function confInfo(){   #mp
     #>
     $p = confPaths_
     w "`n MACROSS CONFIG" c
-    w " Local:     $($p.local)$(if(Test-Path $p.local){ if(confIsV2_ $p.local){' (v2)'}else{' (v1, not upgraded yet)'} }else{' (none)'})"
+    w " Local:     $($p.local)$(if(Test-Path $p.local){ if(confIsV2_ $p.local){''}else{' (not a MACROSS config)'} }else{' (none)'})"
     if($p.central){
         w " Central:   $($p.central)$(if(Test-Path $p.central){''}else{' (not reachable)'})"
         w " Cache:     $($p.cache)$(if(Test-Path $p.cache){''}else{' (none)'})"
@@ -1617,10 +1435,11 @@ function confInfo(){   #mp
         $o = confRead_ $f
         $when = try{ [DateTime]::ParseExact("$($o.updated)",'yyyyMMddHHmmssfffffff',$null).ToLocalTime().ToString('yyyy-MM-dd HH:mm') }catch{ "$($o.updated)" }
         w " Updated:   $when by $($o.by)"
+        $ds = @($o.slots | ?{ $_.type -eq 'domain' })
+        if($ds.Count){ w "   domain slots ($($ds.Count)): $(($ds | %{ $_.names }) -join ', ')" }
         foreach($s in @($o.slots)){
             switch($s.type){
                 'machine' { w "   machine slot for $($s.host)" }
-                'domain'  { w "   domain slot: $($s.names)" }
                 'pass'    { w '   admin password slot' }
             }
         }
@@ -1649,9 +1468,6 @@ function confSigningKey(){   #mp
     Every later save from the config menu re-signs the config automatically. Running
     this again replaces the key (asks first), and site.ps1 must then be updated.
 
-    The config must already be in the v2 format (it's upgraded automatically the
-    first time the admin password is entered).
-
     ||examples||
     From the debug menu:
 
@@ -1660,7 +1476,7 @@ function confSigningKey(){   #mp
     #>
     $p = confPaths_
     $f = if($p.central){ $p.central }else{ $p.local }
-    if(-not ((Test-Path $f) -and (confIsV2_ $f))){ w ' The config must be upgraded to v2 first.' y; Return }
+    if(-not ((Test-Path $f) -and (confIsV2_ $f))){ w " No readable MACROSS config at $f." y; Return }
     $obj = confRead_ $f
     if($obj.signkey){
         $a = Read-Host ' This config already has a signing key. Replace it? (y/N)'
@@ -1808,7 +1624,8 @@ function confDiag(){   #mp
         step_ 'AES + tamper check' { $k = kngRandom_ 32; $b = kngSeal_ $k (kngUtf8_ 'diag') 'x'; [Text.Encoding]::UTF8.GetString((kngOpen_ $k $b 'x')) }
         if($obj -and @($obj.slots | ?{ $_.type -eq 'domain' }).Count){
             step_ 'domain slot opens for this account' {
-                $s = @($obj.slots | ?{ $_.type -eq 'domain' })[0]
+                $s = @(kngMyDomainSlots_ $obj.slots)[0]
+                if(-not $s){ throw 'no domain slot lists this account or any group in its logon token' }
                 $dek = kngNGUnprotect_ (kngUnB64_ $s.blob)
                 if(-not (kngVerify_ $dek $obj.data (kngAad_ $obj 'data'))){ throw 'opened, but failed the tamper check' }
                 'ok'
