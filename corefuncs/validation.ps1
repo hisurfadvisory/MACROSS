@@ -298,7 +298,7 @@ function macrossMirror([switch]$c,$nval="11,153,731"){
     else{
         $np,$opt = 'F','F'
         $l = mkList
-        startUp; $dyrl_CONF.keys | Sort -Descending | ?{$_ -notIn @('di1','di2','sky','tsk')} | %{     ## python never needs the sealed team key
+        startUp; $dyrl_CONF.keys | Sort -Descending | ?{$_ -notIn @('di1','di2','tsk')} | %{     ## python never needs the sealed team key
             [void]$l.add($_ + '::' + "$($dyrl_CONF[$_])")
         }
         $psv = $PSVersionTable.PSVersion.Major
@@ -749,7 +749,7 @@ function valkyrie(){   #mp
     another. You can send up to 3 parameters.
 
     The 1st param is the diamond ID you're calling, and is *required*. The diamond
-    also needs to be located in the modules folder and recognized by MACROSS, i.e. it
+    also needs to be located in the diamonds folder and recognized by MACROSS, i.e. it
     has the magic terms in the first three lines --
 
         #_sdf1
@@ -812,7 +812,7 @@ function valkyrie(){   #mp
      alien Zentradi. The valkyrie had 3 modes: a traditional fighter jet, a "battroid" mecha
      (giant robot) and "gerwalk", a hybrid form as a fighter jet with arms and legs.
 
-     "spiritia" is the term used by the alien Protodevlin to describethe energy & morale generated
+     "spiritia" is the term used by the alien Protodevlin to describe the energy & morale generated
      by human music. Specifically, the band "Firebomber's" rock anthems.
 
 
@@ -906,9 +906,10 @@ function findDF($v,$l,[switch]$e,$m=$null){   #mp
     Use -e if you want the .valtype to be an EXACT match.
 
     The -m option lets you specify scripts that accept n number of parameters (default is 1: if
-    a MACROSS diamondonly looks for a $PROTOCULTURE value, its .evalmax value should be 1; if a diamond can
-    accept a separate parameter, the .evalmax will be 2; if niether of those is true, the .evalmax
-    will be 0).
+    a MACROSS diamond only looks for a $PROTOCULTURE value, its .evalmax value should be 0; if a 
+    diamond can accept only a -spiritia parameter, the .evalmax will be 1; if the value is more than 
+    1, it can accept params other than -spiritia, so you should call it directly instead of using
+    valkyrie, which can only ever pass a single -spiritia param).
 
     Any diamonds matching your request get added to the response list, that returns to your script.
     You can use that list to automatically query other diamonds via the "valkyrie" function.
@@ -1127,10 +1128,9 @@ function launcher(){
 }
 
 ################################
-## Verify a diamond's location, permissions, and options, get it ready for launch; $r will force
-## an update/download of the latest version of the selected diamond if a repo is configured
+## Verify a diamond's location, permissions, and options, get it ready for launch
 ################################
-function flightDeck($dmd,[switch]$r){
+function flightDeck($dmd){
 
     if($dmd -in $dyrl_LATTS.keys){
 
@@ -1163,11 +1163,11 @@ function flightDeck($dmd,[switch]$r){
                 if( $dyrl_NEWW ){ launcher -n $DIAMOND -v $valtype }
                 else{ launcher $DIAMOND -v $valtype }
             }
-            $Global:dyrl_NEWW = $false  ## Always make sure this is reset
+            $Global:dyrl_NEWW = $false                  ## Always make sure this is reset
 
         }
         elseif($check){
-            w '  Wrong tier group   ' -b r -f k     ## Incorrect tier group
+            w '  Wrong tier group   ' -b r -f k         ## Access controls enabled
             sleep 2
         }
     }
@@ -1180,7 +1180,7 @@ function setPY(){
     ## This is the *usual* path with the "py" alias that will be used if $LIFEOFBRIAN 
     ## is $true:
     ##      "$env:LOCALAPPDATA\Programs\Python\Python3*\python.exe"
-    ## If you specified an alternate python install during setup, set your diamond
+    ## If you specified a preferred python install during setup, set your diamond
     ## script's .lang value to "python0" to use it.
     ## MACROSS' macross library was only tested with python 3.13, so your mileage 
     ## may vary.
