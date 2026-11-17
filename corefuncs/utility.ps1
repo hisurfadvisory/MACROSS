@@ -179,6 +179,11 @@ function extras($1){
         catch{ w "$($_.Exception.Message)" y }
         hec_
     }
+    elseif($1 -eq 'keys'){
+        ## Every protected key file (shared and personal), with owner and creation date
+        try{ kawamori -list }
+        catch{ w "$($_.Exception.Message)" y; hec_ }
+    }
     elseif($1 -eq 'pydev'){
         ## Interactive python with the MACROSS environment loaded ("import macross")
         startUp; pyATTS; macrossMirror -n $N_
