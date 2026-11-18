@@ -360,16 +360,15 @@ function screenResults(){   #mp
     $ht = [regex]"^[a-z]{1,2}~"
     $tw = 90
 
-    if($outfile){ $write_to = "$dyrl_OUTFILES\$outfile`.txt"}
+    if($outfile){ $write_to = Join-Path $dyrl_OUTFILES "$outfile`.txt" }
     else{ $write_to = $false }
 
+    ## Files get exactly what the screen shows: -n continues the line, anything else ends
+    ## it (Windows line endings, so every editor shows the rows on separate lines)
     function saveOrShow_($100,$cy='GREEN',[switch]$nnl,[switch]$endline){
         if($write_to){
-            if($100 -eq $r){$100 = "$fr$c"}
-            if(! (Test-Path $write_to)){ noBOM -t "$100`n" -f $write_to }
-            elseif($endline){ noBOM -t "$100`n" -f $write_to -a }
-            elseif($nnl){ noBOM -t $100 -f $write_to -a }
-            else{ noBOM -t "$100" -f $write_to -n }
+            $nl = if($nnl){ '' }else{ "`r`n" }
+            noBOM -t "$100$nl" -f $write_to -a      ## (noBOM creates the file if needed)
         }
         else{
             if($nnl){ Write-Host -f $cy $100 -NoNewline}
@@ -377,19 +376,19 @@ function screenResults(){   #mp
         }
     }
 
-    ## Clean up trailing empty space
+    ## Clean up trailing empty space, CR, tabs, non-ASCII
     $strip = [regex]"(\s|\t|\n|\r)+$"
-    $c1 = $c1 -replace $dyrl_ASCII -replace $strip,' ' -replace "`n",' ' -replace "`r",' '
-    if($c2){ $c2 = $c2 -replace $dyrl_ASCII -replace $strip,' ' -replace "`n",' ' -replace "`r",' ' }
-    if($c3){ $c3 = $c3 -replace $dyrl_ASCII -replace $strip,' ' -replace "`n",' ' -replace "`r",' ' }
+    $c1 = $c1 -replace $dyrl_ASCII -replace $strip,' ' -replace "`n",' ' -replace "`r",' ' -replace "`t",' '
+    if($c2){ $c2 = $c2 -replace $dyrl_ASCII -replace $strip,' ' -replace "`n",' ' -replace "`r",' ' -replace "`t",' ' }
+    if($c3){ $c3 = $c3 -replace $dyrl_ASCII -replace $strip,' ' -replace "`n",' ' -replace "`r",' ' -replace "`t",' ' }
 
     gerwalk '4pWR'; $c = $dyrl_PT
+    gerwalk '4pWQ'; $hb = $dyrl_PT
+    if($write_to){ $c = '|'; $hb = '=' }
     $r = $c
-    gerwalk '4omh'; $hb = $dyrl_PT
     1..$tw | %{$r += $hb}; $r = "$r$c"
-    $fr = $r -replace ".{26}$","$hb"     ## Have to play around with the border length when writing to file
     if($e){
-        saveOrShow_ $r -n
+        saveOrShow_ $r -e
         Return
     }
     if($c1 -Match $ht){
@@ -398,36 +397,36 @@ function screenResults(){   #mp
     }
 
 
-
     ## This function counts characters to create borders based on string-length
     ## and the number of inputs. It tries not to split words but create \newlines
     ## based on whitespace.
     function genBlocks($outputs,$max,$min){
-        if(-not $last){ $last = ' '*($max+1) }
         $o1 = @()
         $o2 = @()
         $o3 = $outputs.length
+
+        ## Add one line of text, padded to $max. Text longer than $max (hashes, URLs, paths
+        ## with no spaces) is split into $max-wide pieces instead of being cut off.
+        function addLine_($s){
+            $s = ($s -replace "\s\s+",' ').TrimEnd()
+            if($s.Length -le $max){ Return $s.PadRight($max) }
+            for($i = 0; $i -lt $s.Length; $i += $max){ $s.Substring($i,[Math]::Min($max,$s.Length - $i)).PadRight($max) }
+        }
+
         if($o3 -gt $max){
             if($outputs -Match ' '){
                 $outputs = $outputs -replace "(\s\s+|\t|\n)",' '
                 $p = $outputs -Split(' ')
                 $wide = 0
             }
-            else{
-                $o2 += $last.Substring(0,$max)
-                if($max -gt $o3){ $o2 += $last.Substring($($max-$o3)) }
-            }
+            else{ $o2 += @(addLine_ $outputs) }
         }
-        else{
-            while($o3 -ne $max){
-                $outputs = $outputs + ' '
-                $o3++
-            }
-            $o2 += $outputs
-        }
+        else{ $o2 += $outputs.PadRight($max) }
 
         if($p){
+            $pn = 0
             $p | ForEach-Object {
+                $pn++
                 $l = $($_.length)
                 $wide = $wide + ($l + 1)
 
@@ -435,53 +434,15 @@ function screenResults(){   #mp
                     $o1 += $($_ + ' ')
                 }
                 else{
-                    $block = $o1 -Join(' ')
-                    $block = $block -replace "\s\s+",' '
-                    $bl = $($block.length)
-                    if($bl -gt $max){                   ## Cut extra long strings without whitespace
-                        #$cut = $max - $bl
-                        $cut = [math]::max(0,$max - $bl)
-                        $o2 += $block.Substring(0,$max)
-                        if($cut -gt 0){ $o2 += $block.Substring($cut) }
-                    }
-                    else{
-                        if($bl -lt $max){
-                            while($bl -ne $max){
-                                $block = $block + ' '   ## Add whitespace if the line is < $max
-                                $bl++
-                            }
-                        }
-                        $o2 += $block
-                    }
-                    Clear-Variable o1                   ## Reset the list
-                    $o1 += $($_ + ' ')                  ## Add the current word to the list
+                    ## Start a new line (nothing to write yet if the first word alone is too long)
+                    if($o1.Count){ $o2 += @(addLine_ ($o1 -Join(' '))) }
+                    $o1 = @($_ + ' ')                   ## Add the current word to the new line
                     $wide = ($l + 1)                    ## Reset the line length
-
                 }
 
-                ## If the current $o1 item is the last item from $outputs, add it to
-                ## the $o2 response
-                if($_ -eq $p[-1]){
-                        $last = $o1 -Join(' ')
-                        $l = $last.length
-                        if($l -gt $max){                   ## The last item might be > $max
-                            #$cut = $max - $l
-                            $cut = [math]::max(0,$max - $l)
-                            $o2 += $last.Substring(0,$max)
-                            if($cut -gt 0){$o2 += $last.Substring($cut) }
-                        }
-                        else{
-                            if($l -lt $max){
-                                while($l -ne $max){
-                                    $last = $last + ' '    ## Add spaces if the line is < $max
-                                    $l++
-                                }
-                            }
-                            $o2 += $last
-                        }
-                }
-
-
+                ## After the last word (by position: the same word can appear earlier in the
+                ## text), add what's left to the $o2 response
+                if($pn -eq $p.Count){ $o2 += @(addLine_ ($o1 -Join(' '))) }
             }
         }
         Return $o2
@@ -612,7 +573,7 @@ function screenResults(){   #mp
                     saveOrShow_ $_ -c $ncolor -n #Write-Host -f $ncolor $_ -NoNewline;
                     saveOrShow_ $c -n #Write-Host -f GREEN $c -NoNewline;
                     saveOrShow_ $empty2 -n  #Write-Host $empty2 -NoNewline;
-                    saveOrShow_ $c #Write-Host -f GREEN $c
+                    saveOrShow_ $c -e #Write-Host -f GREEN $c
                     $linenum++
                 }
                 else{
