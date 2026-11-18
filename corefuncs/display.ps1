@@ -383,7 +383,7 @@ function screenResults(){   #mp
     if($c3){ $c3 = $c3 -replace $dyrl_ASCII -replace $strip,' ' -replace "`n",' ' -replace "`r",' ' -replace "`t",' ' }
 
     gerwalk '4pWR'; $c = $dyrl_PT
-    gerwalk '4pWQ'; $hb = $dyrl_PT
+    gerwalk '4omh'; $hb = $dyrl_PT
     if($write_to){ $c = '|'; $hb = '=' }
     $r = $c
     1..$tw | %{$r += $hb}; $r = "$r$c"
