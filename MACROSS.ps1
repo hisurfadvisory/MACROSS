@@ -386,14 +386,14 @@ cleanGBIO
 
 ## Verify any desired programs are installed: add program names and a descriptive
 ## variable name for it in the installed_programs.json file ($dyrl_CONTENT, or
-## corefuncs\resources if the central share doesn't have one).
+## corefuncs\resources if the central share doesn't have one). Currently I set it
+## looking for Excel because the sheetz function requires it; and Wireshark because
+## it's awesome.
 $plist = @("$dyrl_CONTENT\installed_programs.json","$dyrl_RESOURCES\installed_programs.json") |
     ?{ $_ -and (Test-Path $_) } | Select -First 1
 if($plist){
     $proglist = @{}
     (Get-Content -Raw $plist | ConvertFrom-Json).PSObject.Properties | %{ $proglist[$_.Name] = $_.Value }
-    ## Installed programs' display names (key names are often GUIDs), plus registered
-    ## executables (App Paths: e.g. excel.exe exists for every Office edition)
     $all = @(
         Get-ItemProperty -ErrorAction SilentlyContinue -Path @(
             'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
@@ -403,7 +403,6 @@ if($plist){
             'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths',
             'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths') | %{ $_.PSChildName }
     ) -join "`n"
-    ## Plain case-insensitive text match (names like "Notepad++" are not treated as regex)
     foreach($prog in $proglist.Keys){
         if($all.IndexOf($prog,[StringComparison]::OrdinalIgnoreCase) -ge 0){ lockIn -n $proglist[$prog] -v $true }
     }
