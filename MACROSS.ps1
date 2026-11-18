@@ -250,7 +250,12 @@
             entire python session is torn down as soon as the diamond finishes. So,
             $dyrl_CONTENT is just CONTENT, $dyrl_LATTS is just LATTS, etc.
 
-        10. To modify the macross.conf file, type "config" in the main menu.
+        10. UNLISTED MENU OPTIONS
+            -To modify the macross.conf file, enter "config" in the main menu.
+            -To open the debugger and view help, logs, or test commands, enter "debug".
+            -To view stats on protected .mori files, enter "keys".
+            -To view a slideshow of available ascii art you can use in your scripts,
+                enter "screens".
 
 
 #>
