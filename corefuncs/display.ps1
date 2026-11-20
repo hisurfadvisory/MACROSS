@@ -930,6 +930,27 @@ function srfStyle_(){
         }
     }
 }
+## Show a form modally. Errors raised by the form or its event handlers are logged and
+## returned (so the caller can fall back to the console) instead of surfacing mid-message-loop.
+## Native faults can't be caught here; check the Application event log (.NET Runtime / Application Error).
+function srfRun_($form,[string]$caller){
+    $err = @{ e = $null }
+    $h = [Threading.ThreadExceptionEventHandler]{ param($s,$a)
+        $err.e = $a.Exception
+        try{ $form.Close() }catch{}
+    }
+    [Windows.Forms.Application]::add_ThreadException($h)
+    try{ [void]$form.ShowDialog() }
+    catch{ $err.e = $_.Exception }
+    finally{ [Windows.Forms.Application]::remove_ThreadException($h) }
+    if($err.e){
+        $x = $err.e; while($x.InnerException){ $x = $x.InnerException }
+        $msg = "$($x.GetType().FullName): $($x.Message)"
+        try{ errLog ERROR "MACROSS.$caller" "$msg`t$($x.StackTrace -replace '\s*\r?\n\s*',' | ')" }catch{}
+        w "The results window failed: $msg" r
+    }
+    Return $err.e
+}
 ## A read-only text box that never makes links clickable
 function srfBox_($st){
     $rtb = New-Object Windows.Forms.RichTextBox
@@ -1010,7 +1031,7 @@ function srfChatText_([string]$raw){
 
 ## The chat browser window
 function srfChats_([string]$root,[string]$title){
-    $all = srfChatList_ $root
+    $all = @(srfChatList_ $root)      ## @(): PS 5.1 gives a lone pscustomobject no .Count
     if(-not $all.Count){
         w "No saved chats (.chat files) were found in $root" y
         Return
@@ -1104,7 +1125,7 @@ function srfChats_([string]$root,[string]$title){
     $copy.Add_Click({ if($state.text){ [Windows.Forms.Clipboard]::SetText($state.text) } })
     $refresh = button_ 'Refresh'
     $refresh.Add_Click({
-        $state.all = srfChatList_ $root
+        $state.all = @(srfChatList_ $root)
         $form.Text = "$title ($($state.all.Count))"
         fillList_
     })
@@ -1112,13 +1133,117 @@ function srfChats_([string]$root,[string]$title){
     $form.Controls.Add($split)
     $form.Controls.Add($bar)
     $form.CancelButton = $close
-    fillList_
+    $form.Add_Shown({ fillList_ })     ## fill once the window exists (older .NET dislikes parentless RichEdit handles)
 
-    try{ [void]$form.ShowDialog() }
+    try{ $e = srfRun_ $form 'screenResultsForm -chats' }
     finally{
         $form.Dispose()
         foreach($f in $st.fonts.Values){ $f.Dispose() }
     }
+    if($e){ Return $e }
+}
+
+
+################################
+## screenResultsForm runs its window in a separate powershell process, so a native crash
+## in WinForms/RichEdit (seen on Server 2016/2019) can't take MACROSS down with it. The
+## parent writes a UTF-8 JSON manifest; the child (srfChild_) shows it and exits 0, or
+## non-zero on failure, and the parent then falls back to the console. macross.py's
+## screenResultsForm() writes the same manifest and calls srfChild_ the same way.
+## Manifest: {text, header, format, chats, root, outfiles, images:[{k=path|bytes|b64; v=FILE}]}
+################################
+function srfConsole_([string]$text,[bool]$chats,[string]$root){
+    if($chats){
+        w "Saved chats in ${root}:" y
+        srfChatList_ $root | %{ w "  $($_.Modified.ToString('yyyy-MM-dd HH:mm'))  $($_.Name)" }
+    }
+    elseif($text){ Write-Host ($text -replace "$([char]27)\[[0-9;?]*[ -/]*[@-~]",'') }
+}
+## Parent side: returns $true if the window opened and closed normally
+function srfLaunch_([string]$text,$images,[string]$header,[string]$format,[bool]$chats,[string]$root){
+    $base = if($dyrl_TMP -and (Test-Path -PathType Container $dyrl_TMP)){ $dyrl_TMP }else{ [IO.Path]::GetTempPath() }
+    $work = Join-Path $base "srf_$([guid]::NewGuid().ToString('N'))"
+    $utf8 = New-Object Text.UTF8Encoding($false)
+    try{
+        [void](New-Item -ItemType Directory -Path $work -ErrorAction Stop)
+        $imgs = New-Object System.Collections.ArrayList
+        if($images -is [byte[]] -or $images -is [string] -or $images -is [System.Drawing.Image]){ $srcs = ,$images }
+        else{ $srcs = @($images) }
+        $n = 0
+        foreach($src in $srcs){
+            if($null -eq $src){ Continue }
+            $n++; $f = Join-Path $work "image$n"
+            if($src -is [byte[]]){ [IO.File]::WriteAllBytes("$f.bin",$src); [void]$imgs.Add(@{ k='bytes'; v="$f.bin" }) }
+            elseif($src -is [System.Drawing.Image]){
+                $src.Save("$f.bin",[Drawing.Imaging.ImageFormat]::Png); [void]$imgs.Add(@{ k='bytes'; v="$f.bin" })
+            }
+            else{
+                $s = "$src".Trim()
+                if($s.Length -lt 260 -and (Test-Path -PathType Leaf -LiteralPath $s)){
+                    [void]$imgs.Add(@{ k='path'; v=(Resolve-Path -LiteralPath $s).Path })
+                }
+                else{ [IO.File]::WriteAllText("$f.b64",$s,$utf8); [void]$imgs.Add(@{ k='b64'; v="$f.b64" }) }   ## child reports what it can't read
+            }
+        }
+        $manifest = Join-Path $work 'srf.json'
+        $json = @{ text=$text; header=$header; format=$format; chats=$chats; root=$root
+                   outfiles="$dyrl_OUTFILES"; images=@($imgs) } | ConvertTo-Json -Depth 4
+        [IO.File]::WriteAllText($manifest,$json,$utf8)
+
+        $q = { param($s) "'" + ($s -replace "'","''") + "'" }
+        $display = (Get-Command screenResultsForm).ScriptBlock.File
+        $cmd = "`$ProgressPreference = 'SilentlyContinue'; . $(& $q $display); srfChild_ $(& $q $manifest)"
+        $exe = Join-Path $PSHOME $(if($PSVersionTable.PSEdition -eq 'Core'){ 'pwsh.exe' }else{ 'powershell.exe' })
+        $psi = New-Object Diagnostics.ProcessStartInfo
+        $psi.FileName = $exe
+        $psi.Arguments = '-NoProfile -NonInteractive -STA -EncodedCommand ' + [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($cmd))
+        $psi.UseShellExecute = $false
+        $psi.CreateNoWindow = $true
+        $psi.RedirectStandardError = $true
+        $proc = [Diagnostics.Process]::Start($psi)
+        $errOut = $proc.StandardError.ReadToEndAsync()
+        $proc.WaitForExit()
+        $code = $proc.ExitCode; $proc.Dispose()
+        if($code -eq 0){ Return $true }
+        ## PS 5.1 wraps progress/streams on a redirected stderr in CLIXML; keep only plain lines
+        $why = ("$($errOut.Result)" -replace '(?s)#< CLIXML\s*|<Objs.*?</Objs>','').Trim()
+        $why = "$(if($why){ "$why; " })window process exit code 0x{0:X8}" -f $code
+    }
+    catch{ $why = "could not start the window process: $($_.Exception.Message)" }
+    finally{ Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue }
+    try{ errLog WARN 'MACROSS.screenResultsForm' $why }catch{}
+    w "The results window failed ($why); showing the results here instead." y
+    Return $false
+}
+## Child side: show a manifest written by srfLaunch_ or macross.py, then exit (0 = OK)
+function srfChild_([string]$manifest){
+    try{
+        $m = [IO.File]::ReadAllText($manifest,[Text.Encoding]::UTF8) | ConvertFrom-Json
+        if($m.outfiles){ $Global:dyrl_OUTFILES = $m.outfiles }
+        if($m.chats){
+            $r = if($m.root){ $m.root }else{ $dyrl_OUTFILES }
+            $out = screenResultsForm -noSpawn -chats -r $r -h $m.header
+        }
+        else{
+            $i = New-Object System.Collections.ArrayList
+            foreach($e in @($m.images)){
+                if(-not $e){ Continue }
+                if($e.k -eq 'bytes'){ [void]$i.Add([IO.File]::ReadAllBytes($e.v)) }
+                elseif($e.k -eq 'b64'){ [void]$i.Add([IO.File]::ReadAllText($e.v)) }
+                else{ [void]$i.Add([string]$e.v) }
+            }
+            if(-not $i.Count){ $i = $null }
+            $out = screenResultsForm -noSpawn -t $m.text -i $i -h $m.header -f $m.format
+        }
+        $err = @($out) | ?{ $_ -is [Exception] } | Select-Object -Last 1
+        if($err){ throw $err }
+    }
+    catch{
+        $x = $_.Exception; while($x.InnerException){ $x = $x.InnerException }
+        [Console]::Error.WriteLine("$($x.GetType().Name): $($x.Message)")
+        exit 1
+    }
+    exit 0
 }
 
 
@@ -1167,8 +1292,10 @@ function screenResultsForm(){   #mp
     links are NOT clickable (copy them if you need them), and images are never
     downloaded; your diamond must already have them.
 
-    If a window can't be opened (e.g. no desktop session), the text is written to
-    the console instead.
+    The window runs in its own powershell process (expect about a second's delay
+    before it opens), so if it crashes MACROSS keeps running. If a window can't be
+    opened or it fails (e.g. no desktop session), the text is written to the
+    console instead and the reason is logged.
 
     ||examples||
     Show an AI response:
@@ -1202,7 +1329,9 @@ function screenResultsForm(){   #mp
         [ValidateSet('auto','markdown','text')]
         [string]$format = 'auto',
         [switch]$chats,
-        [string]$root = $dyrl_OUTFILES
+        [string]$root = $dyrl_OUTFILES,
+        [switch]$noSpawn    ## internal: draw the window in this process (used by srfChild_). Don't
+                            ## name it -i*/-t*/-h*/-f*/-c*/-r*: that breaks the documented short forms
     )
 
     try{
@@ -1210,21 +1339,22 @@ function screenResultsForm(){   #mp
         Add-Type -AssemblyName System.Drawing -ErrorAction Stop
     }
     catch{
-        if($chats){
-            w "A window could not be opened. Saved chats in ${root}:" y
-            srfChatList_ $root | %{ w "  $($_.Modified.ToString('yyyy-MM-dd HH:mm'))  $($_.Name)" }
+        w "A window could not be opened; showing the results here instead." y
+        srfConsole_ $text $chats $root
+        Return
+    }
+    if($chats -and $header -eq 'MACROSS results'){ $header = 'MACROSS saved chats' }
+
+    if(-not $noSpawn){
+        if($chats -and -not @(srfChatList_ $root).Count){
+            w "No saved chats (.chat files) were found in $root" y
             Return
         }
-        w "A window could not be opened; showing the text here instead." y
-        if($text){ Write-Host ($text -replace "$([char]27)\[[0-9;?]*[ -/]*[@-~]",'') }
+        if(-not (srfLaunch_ $text $images $header $format $chats $root)){ srfConsole_ $text $chats $root }
         Return
     }
 
-    if($chats){
-        if($header -eq 'MACROSS results'){ $header = 'MACROSS saved chats' }
-        srfChats_ $root $header
-        Return
-    }
+    if($chats){ Return (srfChats_ $root $header) }
 
     ## Load images first so problems can be reported in the text area
     $pics = New-Object System.Collections.ArrayList
@@ -1258,7 +1388,7 @@ function screenResultsForm(){   #mp
     $rtb = $null
     if($text){
         $rtb = srfBox_ $st
-        srfFill_ $rtb $text $format $st
+        $form.Add_Shown({ srfFill_ $rtb $text $format $st })   ## fill once the window exists (older .NET dislikes parentless RichEdit handles)
     }
 
     function picBox_($p){
@@ -1329,12 +1459,13 @@ function screenResultsForm(){   #mp
     $form.AcceptButton = $close
     $form.CancelButton = $close
 
-    try{ [void]$form.ShowDialog() }
+    try{ $e = srfRun_ $form 'screenResultsForm' }
     finally{
         $form.Dispose()
         foreach($p in $pics){ if($p.img){ $p.img.Dispose() }; if($p.stream){ $p.stream.Dispose() } }
         foreach($f in $fonts.Values){ $f.Dispose() }
     }
+    if($e){ Return $e }     ## srfChild_ turns this into a non-zero exit
 }
 
 
