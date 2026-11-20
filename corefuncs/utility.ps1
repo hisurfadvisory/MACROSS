@@ -1774,7 +1774,7 @@ function getFile($filter='all',$opendir="H:\",[switch]$directory=$false){   #mp
         'scr'="Script files|*.ps1; *.psm; *.py; *.pyc; *.pyd; *.bat; *.lua; *.js";
         'txt'="Text file|*.txt; *.txt";
         'web'="Web Files|*.html; *.htm; *.css; *.js; *.aspx; *.php; *.json";
-        'xls'="Excel Spreadsheet|.xlsx; *.xls";
+        'xls'="Excel Spreadsheet|*.xlsx; *.xls";
         'zip'="Compressed|*.zip; *.rar; *.7z; *.tar; *.gz; *.jar"
     }
 
