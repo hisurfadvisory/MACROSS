@@ -1,0 +1,617 @@
+#_sdf1 Code-signing & Cert inspection
+#_ver 2.0
+#_class user,common,digital certificates sign/inspect,powershell,HiSurfAdvisory,0,none
+
+<#
+.SYNOPSIS
+    Signs scripts and other files with an Authenticode code-signing certificate, or
+    inspects a file's digital signature.
+
+.DESCRIPTION
+    DSIG asks you to choose a code-signing certificate, then opens a file dialog so you can
+    pick files to sign one at a time. Cancel the dialog to quit.
+
+    Certificates are listed from Cert:\CurrentUser\My and Cert:\LocalMachine\My. This
+    includes smart cards (CAC/PIV), virtual smart cards, Windows Hello, and keys stored by
+    CNG/HSM providers. Expired certificates and certificates without a private key are
+    hidden. Enter 'p' at the certificate menu to load a .pfx/.p12 file instead.
+
+    Signatures use SHA256 and are timestamped by the server in $DS_TSA, so they stay valid
+    after the certificate expires. If the timestamp server can't be reached, the file is
+    signed without a timestamp and DSIG tells you; that signature stops validating when
+    the certificate expires.
+
+    Before signing, DSIG:
+      - asks before replacing an existing signature, and backs the file up to
+        <file>.bkup (or <file>.<yyyyMMddHHmmss>.bkup if a backup already exists)
+      - warns about PowerShell files that are saved without a BOM and contain non-ASCII
+        characters (Windows PowerShell 5.1 and PowerShell 7 read them differently) and
+        offers to re-save them as UTF-8 with BOM
+      - only accepts file types Authenticode can sign: ps1, psm1, psd1, ps1xml,
+        exe, dll, vbs, js, wsf and cat
+
+    After signing, DSIG shows the result and warns if the certificate isn't in the
+    TrustedPublisher store; AllSigned/RemoteSigned execution policies still block
+    scripts from publishers that aren't trusted.
+
+    Settings at the top of the script:
+      $DS_PIN    Thumbprint of the certificate to use without asking. $null = pick from
+                 the list each time.
+      $DS_TSA    RFC 3161 timestamp server URL. $null = sign without a timestamp.
+      $DS_TYPES  File extensions DSIG will sign.
+
+    NOTE:
+    On networks that enforce code-signing, you will need to sign this script first using
+    the instructions found on lines 130-131. Modify the $DS_... variables before signing! 
+
+.PARAMETER spiritia
+    Path to a file to sign (or inspect, with -inspect) first, before the file dialog opens.
+
+.PARAMETER inspect
+    Inspect signatures instead of signing. Shows each file's signature status, signer,
+    issuer, thumbprint, certificate validity dates, timestamp, and whether the signer is a
+    trusted publisher on this computer.
+
+.PARAMETER help
+    Show this help page.
+
+.EXAMPLE
+    .\DSIG.ps1
+
+    Choose a certificate, then pick files to sign.
+
+.EXAMPLE
+    .\DSIG.ps1 -spiritia C:\Scripts\Get-Report.ps1
+
+    Choose a certificate and sign Get-Report.ps1, then pick more files if needed.
+
+.EXAMPLE
+    .\DSIG.ps1 -inspect
+
+    Pick files and show their signature details.
+
+.NOTES
+    Requires Windows PowerShell 5.1 or PowerShell 7 on Windows. Nothing beyond what ships
+    with Windows is needed.
+
+    Changing anything in a signed file, including this script's settings or comments,
+    invalidates its signature. Sign it again afterwards.
+
+    If the file dialog can't load (for example in Constrained Language Mode), DSIG asks
+    you to type the full path instead.
+
+    Python files can't be signed with Authenticode.
+#>
+
+<#
+    v2.0
+    -This script can be used with or without MACROSS
+    -SHA256 signatures with an RFC 3161 timestamp, so signatures stay valid after your cert expires
+     (offers to sign without one if the timestamp server can't be reached)
+    -Signing certs come from CurrentUser\My or LocalMachine\My (CAC/PIV, virtual smart card,
+     Windows Hello, CNG/HSM providers) or a .pfx file. Expired certs and certs without a
+     private key are hidden. Pin your preferred cert by thumbprint with $DS_PIN.
+    -Any file that is already signed (whatever its status) is backed up before it is re-signed
+    -Warns about scripts without a BOM that contain non-ASCII text (PS 5.1 and PS 7 read them
+     differently) and offers to re-save them as UTF-8 with BOM
+    -Warns when the signer isn't in TrustedPublisher (AllSigned would still block the script)
+    -Only file types that Authenticode can sign are accepted
+    -Inspect mode ('s' option in MACROSS, or -inspect when run directly) shows signer,
+     timestamp, chain and trust details
+    -Falls back to typing a path when the file dialog can't load (Constrained Language Mode)
+
+    v1.2
+    -Updated to allow for selection when tokens contain more than one certificate
+#>
+
+## This script can be run by itself; it does not require MACROSS resources.
+##   .\DSIG.ps1                  sign files
+##   .\DSIG.ps1 -inspect         inspect files' signatures
+##   .\DSIG.ps1 -spiritia <file> start with this file
+##   .\DSIG.ps1 -help            show the help page (same as Get-Help .\DSIG.ps1 -Full)
+param(
+    $spiritia=$null,                ## MACROSS alt option: a file to sign/inspect first
+    [switch]$inspect=$false,        ## Inspect signatures instead of signing
+    [switch]$help=$false            ## Show the PowerShell help page
+)
+
+## Standalone help page. (MACROSS's own help mode below reads $Global:HELP, because this
+## parameter creates a local $help that hides the global one when MACROSS dot-sources DSIG.)
+if( $help ){
+    Get-Help $PSCommandPath -Full
+    Remove-Variable help,inspect -ErrorAction SilentlyContinue
+    Return
+}
+
+<#
+    To sign DSIG itself the first time (Execution Policy AllSigned), paste this into a console
+    with your cert's thumbprint and the path to this file:
+
+    $cert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | ?{ $_.Thumbprint -eq '<THUMBPRINT>' }
+    Set-AuthenticodeSignature -LiteralPath '<path>\DSIG.ps1' -Certificate $cert -HashAlgorithm SHA256 -TimestampServer 'http://timestamp.digicert.com'
+#>
+
+
+############################  SETTINGS  ############################
+## Thumbprint of your preferred signing cert (searched in CurrentUser\My and LocalMachine\My).
+## Leave $null to pick from a list each time.
+$DS_PIN = $null
+
+## RFC 3161 timestamp server. On a closed network, use your internal timestamp server. $null
+## signs without a timestamp; the signature then stops validating when your cert expires.
+#$DS_TSA = $null
+$DS_TSA = 'http://timestamp.digicert.com'
+
+## File types Authenticode can sign, and the PowerShell text types that get the encoding check
+$DS_TYPES  = '.ps1','.psm1','.psd1','.ps1xml','.exe','.dll','.vbs','.js','.wsf','.cat'
+$DS_PSTEXT = '.ps1','.psm1','.psd1','.ps1xml'
+
+
+################################
+## Expanded info
+################################
+if( $Global:HELP ){
+    cls
+    if( $dyrl_LATTS -and $dyrl_LATTS.DSIG ){
+        $dyrl_LATTS.DSIG.toolInfo() | %{ Write-Host -f YELLOW $_ }
+    }
+    Write-Host -f YELLOW "
+ Code-signing is enforced for security. If you have a signing certificate
+ (CAC/PIV card, virtual smart card, a cert in your Windows store or a .pfx
+ file), use this tool to sign new scripts so they will be allowed to run,
+ or to re-sign scripts you have changed.
+
+ Signatures use SHA256 and are timestamped, so they stay valid after your
+ certificate expires. Files that are already signed are backed up to
+ <file>.bkup before they are re-signed.
+
+ Add the 's' option to the menu selection (ex '1s') to inspect a file's
+ digital signature instead of signing.
+
+ Press ENTER to continue.
+ "
+    Read-Host
+    Return
+}
+
+
+################################
+## File selection (copied from MACROSS utility.ps1 so DSIG can run standalone)
+################################
+function getFile($filter='all',$opendir="$env:USERPROFILE",[switch]$directory=$false){
+    <#
+    ||shorthelp||
+    $file = getFile [-f <all|csv|doc|dox|exe|msg|mso|pdf|pfx|ppt|scr|sig|txt|web|xls|zip>]
+    $folder = getFile -d
+
+    ||longhelp||
+    This opens a dialog window so the user can specify a filepath to whatever.
+    DSIG's copy adds the 'sig' and 'pfx' filters, and throws if the dialog can't
+    load (e.g. Constrained Language Mode) so the caller can fall back to typing.
+
+    OPTIONS
+    -o = Set the root directory to search in (default is your profile folder)
+    -d = Use to limit user selections to a folder path
+    -f = Limit user selections to type of file
+        'all' = All filetypes (default)
+        'csv' = Comma-separated value format
+        'doc' = pdf, doc, docx, rtf files
+        'dox' = Microsoft Word formats
+        'exe' = Executables
+        'ioc' = Common document types containing intel on IPs or URLs
+        'msg' = Saved email messages
+        'mso' = All common Microsoft Office formats
+        'pdf' = pdf files
+        'pfx' = Certificate files with a private key
+        'ppt' = Microsoft Powerpoint formats
+        'scr' = Common script types
+        'sig' = File types that can be code-signed
+        'txt' = Plaintext .txt files
+        'web' = htm, html, css, js, json, aspx, php files
+        'xls' = Microsoft Excel formats
+        'zip' = zip, gz, 7z, jar, rar files
+
+        You can also send a file extension as a filter for custom file types,
+        if necessary.
+
+    ||examples||
+    Ask user to specify any file:
+
+        $file_to_read = getFile
+
+    Ask user for specific types of file:
+
+        $file_to_read = getFile -f txt
+        $compressed_file = getFile -f zip
+
+    Ask user to specify a folder:
+
+        $folder = getFile -d
+
+    #>
+    $ft = @{
+        'all'="All files|*.*; *.*";
+        'csv'="Comma-Separated Document|*.csv; *.csv";
+        'custom'="Custom Filetype|*.$filter";
+        'doc'="Document Types|*.docx; *.doc; *.rtf; *.pdf; *.xls; *.xlsx";
+        'dox'="MS Word Doc|*.docx; *.doc";
+        'exe'="Executables|*.exe; *.exe";
+        'ioc'="Indicator dumps|*.xml;*.docx;*.xlsx;*.txt;*.csv;*.json;*.pdf;*.yara;;*.log";
+        'msg'="Email message|*.msg; *.msg";
+        'mso'="Microsoft Office|*.doc; *.docx; *.xls; *.xlsx; *.one; *.ppt; *.pptx; *.accdb; *.accde; *.ost; *.pst";
+        'pdf'="Portable Document Format|*.pdf; *.pdf";
+        'pfx'="Certificate with private key|*.pfx; *.p12";
+        'ppt'="MS Powerpoint|*.pptx; *.ppt";
+        'scr'="Script files|*.ps1; *.psm; *.py; *.pyc; *.pyd; *.bat; *.lua; *.js";
+        'sig'="Signable files|*.ps1; *.psm1; *.psd1; *.ps1xml; *.exe; *.dll; *.vbs; *.js; *.wsf; *.cat|All files|*.*";
+        'txt'="Text file|*.txt; *.txt";
+        'web'="Web Files|*.html; *.htm; *.css; *.js; *.aspx; *.php; *.json";
+        'xls'="Excel Spreadsheet|*.xlsx; *.xls";
+        'zip'="Compressed|*.zip; *.rar; *.7z; *.tar; *.gz; *.jar"
+    }
+
+    Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop
+
+    if($directory){
+        $f = New-Object System.Windows.Forms.FolderBrowserDialog -ErrorAction Stop
+        $f.Description = "Select a folder"
+        $f.SelectedPath = $opendir
+
+        if($f.ShowDialog() -eq "OK")
+        {
+            Return $f.SelectedPath
+        }
+    }
+    else{
+        $o = New-Object System.Windows.Forms.OpenFileDialog -ErrorAction Stop
+        $o.InitialDirectory = $opendir
+        if($filter -in $ft.keys){ $o.filter = $ft[$filter] }
+        else{ $o.filter = $ft['custom'] }
+        $o.ShowDialog() | Out-Null
+        $o.filename
+    }
+
+}
+
+
+################################
+## Helpers
+################################
+## Ask for a file with the dialog; type a path if the dialog can't load. Returns '' to quit.
+function dsPick_($filter){
+    if( -not $DS.noforms ){
+        try{ return "$(getFile -f $filter -o $DS.dir)" }
+        catch{
+            $DS.noforms = $true
+            Write-Host -f YELLOW " The file dialog can't load here (Constrained Language Mode?)."
+        }
+    }
+    Write-Host -f GREEN " Full path of the file (ENTER to quit): " -NoNewline;
+    "$(Read-Host)".Trim().Trim('"')
+}
+
+## y/n question
+function dsAsk_($q){
+    do{
+        Write-Host -f GREEN $q -NoNewline;
+        $a = "$(Read-Host)".Trim().ToLower()
+    }while( $a -notmatch '^[yn]$' )
+    $a
+}
+
+## Common name from a distinguished name
+function dsCn_($dn){
+    if( "$dn" -match '(?:^|,\s*)CN=([^,]+)' ){ $Matches[1] }else{ "$dn" }
+}
+
+## True if the cert has the Code Signing EKU (1.3.6.1.5.5.7.3.3)
+function dsEku_($c){
+    $eku = @($c.Extensions | ?{ $_ -is [Security.Cryptography.X509Certificates.X509EnhancedKeyUsageExtension] })
+    [bool]($eku | %{ $_.EnhancedKeyUsages } | ?{ $_.Value -eq '1.3.6.1.5.5.7.3.3' })
+}
+
+## True if the cert is in either TrustedPublisher store (needed for AllSigned/RemoteSigned)
+function dsTrusted_($c){
+    foreach( $s in 'CurrentUser','LocalMachine' ){
+        if( Test-Path "Cert:\$s\TrustedPublisher\$($c.Thumbprint)" ){ return $true }
+    }
+    $false
+}
+
+## Log to MACROSS when it's loaded (never logs PINs or passwords)
+function dsLog_($lvl,$msg){
+    if( Get-Command errLog -ErrorAction SilentlyContinue ){
+        $who = if( $USR ){ $USR }else{ $env:USERNAME }
+        try{ errLog $lvl "$who/DSIG" $msg }catch{ $null }
+    }
+}
+
+## Usable code-signing certs: current, has a private key. Smart card certs only show their
+## private key while the card's certificate is propagated to the store.
+function dsCerts_(){
+    $now = Get-Date; $seen = @{}; $DS.hidden = 0
+    foreach( $store in 'CurrentUser\My','LocalMachine\My' ){
+        foreach( $c in @(Get-ChildItem -Path "Cert:\$store" -CodeSigningCert -ErrorAction SilentlyContinue) ){
+            if( $seen.ContainsKey($c.Thumbprint) ){ continue }
+            $seen[$c.Thumbprint] = $true
+            if( -not $c.HasPrivateKey -or $c.NotAfter -le $now -or $c.NotBefore -gt $now ){ $DS.hidden++; continue }
+            $c | Add-Member -NotePropertyName dsStore -NotePropertyValue $store -Force -PassThru
+        }
+    }
+}
+
+## Load a signing cert from a .pfx/.p12 file (Get-PfxCertificate asks for its password)
+function dsPfx_(){
+    $p = dsPick_ pfx
+    if( -not $p ){ return $null }
+    try{ $c = Get-PfxCertificate -FilePath $p -ErrorAction Stop }
+    catch{
+        Write-Host -f CYAN " Could not open $p : $($_.Exception.Message)"
+        return $null
+    }
+    $why = $null
+    if( -not $c.HasPrivateKey ){ $why = 'it has no private key' }
+    elseif( -not (dsEku_ $c) ){ $why = "it isn't a code-signing certificate" }
+    elseif( $c.NotAfter -le (Get-Date) ){ $why = "it expired on $($c.NotAfter.ToString('yyyy-MM-dd'))" }
+    if( $why ){
+        Write-Host -f CYAN " Can't sign with $(dsCn_ $c.Subject): $why."
+        return $null
+    }
+    $c | Add-Member -NotePropertyName dsStore -NotePropertyValue 'PFX file' -Force -PassThru
+}
+
+## Pick the signing cert: the pinned thumbprint, or a choice from the list
+function dsChooseCert_(){
+    $all = @(dsCerts_)
+    if( $DS_PIN ){
+        $pin = "$DS_PIN" -replace '[^0-9a-fA-F]'
+        $c = $all | ?{ $_.Thumbprint -eq $pin } | Select-Object -First 1
+        if( $c ){
+            Write-Host -f GREEN " Using pinned cert: $(dsCn_ $c.Subject) ($($c.dsStore), expires $($c.NotAfter.ToString('yyyy-MM-dd')))"
+            return $c
+        }
+        Write-Host -f CYAN " The pinned cert ($pin) wasn't found, has expired, or its private key isn't available (card not inserted?)."
+    }
+    while( $true ){
+        Write-Host -f GREEN "`n Select a signing certificate:`n"
+        if( $all.Count -eq 0 ){
+            Write-Host -f YELLOW "`t(no usable code-signing certificates in CurrentUser\My or LocalMachine\My)"
+        }
+        for( $i = 0; $i -lt $all.Count; $i++ ){
+            $c = $all[$i]
+            Write-Host -f YELLOW ("`t{0}. {1}" -f ($i+1),(dsCn_ $c.Subject))
+            Write-Host ("`t   issuer: {0} | expires {1} | ...{2} | {3}" -f (dsCn_ $c.Issuer),
+                $c.NotAfter.ToString('yyyy-MM-dd'),$c.Thumbprint.Substring($c.Thumbprint.Length - 8),$c.dsStore)
+        }
+        if( $DS.hidden ){
+            Write-Host -f GREEN "`t($($DS.hidden) expired cert(s) or cert(s) without a private key hidden)"
+        }
+        Write-Host -f GREEN "`n Enter a number, 'p' to load a .pfx file, or 'q' to quit: " -NoNewline;
+        $a = "$(Read-Host)".Trim().ToLower()
+        if( $a -eq 'q' ){ return $null }
+        if( $a -eq 'p' ){
+            $c = dsPfx_
+            if( $c ){ return $c }
+            continue
+        }
+        if( $a -match '^\d+$' -and [int]$a -ge 1 -and [int]$a -le $all.Count ){ return $all[[int]$a - 1] }
+    }
+}
+
+## Encoding check for PowerShell text files: 'ok', 'utf8' (UTF-8 without BOM, non-ASCII text)
+## or 'ansi' (non-ASCII text that isn't valid UTF-8). PS 5.1 reads files without a BOM as ANSI
+## and PS 7 reads them as UTF-8, so these scripts behave differently between the two.
+function dsEncoding_($path){
+    $b = [IO.File]::ReadAllBytes($path)
+    if( $b.Length -ge 3 -and $b[0] -eq 0xEF -and $b[1] -eq 0xBB -and $b[2] -eq 0xBF ){ return 'ok' }
+    if( $b.Length -ge 2 -and (($b[0] -eq 0xFF -and $b[1] -eq 0xFE) -or ($b[0] -eq 0xFE -and $b[1] -eq 0xFF)) ){ return 'ok' }
+    if( @($b -gt 127).Count -eq 0 ){ return 'ok' }
+    try{ $null = (New-Object Text.UTF8Encoding($false,$true)).GetString($b); 'utf8' }
+    catch{ 'ansi' }
+}
+
+## Show a file's signature details
+function dsInspect_($path){
+    $s = Get-AuthenticodeSignature -LiteralPath $path
+    $color = if( $s.Status -eq 'Valid' ){ 'GREEN' }else{ 'CYAN' }
+    Write-Host ''
+    Write-Host -f YELLOW " $path"
+    Write-Host -f $color "   Status:      $($s.Status)"
+    Write-Host "   Message:     $($s.StatusMessage)"
+    if( $s.SignatureType ){ Write-Host "   Type:        $($s.SignatureType)$(if($s.IsOSBinary){' (Windows OS binary)'})" }
+    $c = $s.SignerCertificate
+    if( $c ){
+        Write-Host "   Signer:      $(dsCn_ $c.Subject)"
+        Write-Host "   Issuer:      $(dsCn_ $c.Issuer)"
+        Write-Host "   Thumbprint:  $($c.Thumbprint)"
+        Write-Host "   Cert valid:  $($c.NotBefore.ToString('yyyy-MM-dd')) to $($c.NotAfter.ToString('yyyy-MM-dd'))"
+        Write-Host "   Trusted publisher: $(if(dsTrusted_ $c){'yes'}else{'no (AllSigned/RemoteSigned will block it on this machine)'})"
+        if( $s.TimeStamperCertificate ){
+            Write-Host "   Timestamp:   $(dsCn_ $s.TimeStamperCertificate.Subject)"
+        }
+        else{
+            Write-Host -f YELLOW "   Timestamp:   none (the signature stops validating after $($c.NotAfter.ToString('yyyy-MM-dd')))"
+        }
+    }
+}
+
+## Sign one file with SHA256 (+ timestamp when $tsa is set). Returns the cmdlet's result,
+## or an object with Status 'Error' if it threw.
+function dsSet_($path,$cert,$tsa){
+    $p = @{ LiteralPath = $path; Certificate = $cert; HashAlgorithm = 'SHA256'; ErrorAction = 'Stop' }
+    if( $tsa ){ $p.TimestampServer = $tsa }
+    try{ Set-AuthenticodeSignature @p }
+    catch{ [pscustomobject]@{ Status = 'Error'; StatusMessage = $_.Exception.Message; SignerCertificate = $null } }
+}
+
+## True if the file ($now) has an intact signature by $tp that this attempt wrote: the cmdlet
+## result ($r) names $tp, or the file changed ($changed). When the timestamp server can't be
+## reached, the cmdlet returns no signer but still writes an untimestamped signature, so $changed
+## catches that; and a failed re-sign with the same cert (old signature still there) doesn't pass.
+function dsOk_($r,$now,$tp,$changed){
+    [bool]($now.SignerCertificate -and $now.SignerCertificate.Thumbprint -eq $tp -and $now.Status -ne 'HashMismatch' -and
+        ($changed -or ($r -and $r.SignerCertificate -and $r.SignerCertificate.Thumbprint -eq $tp)))
+}
+
+function dsHash_($path){ (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash }
+
+## Check, back up, fix encoding, sign and verify one file
+function dsSign_($path,$cert){
+    $ext = [IO.Path]::GetExtension($path).ToLower()
+    if( $ext -eq '.py' ){
+        Write-Host -f CYAN " Python files can't be Authenticode-signed. In MACROSS, approve them with 'diamondAudit -approve'."
+        return
+    }
+    if( $ext -notin $DS_TYPES ){
+        Write-Host -f CYAN " '$ext' files can't be signed with Authenticode. Supported: $($DS_TYPES -join ' ')"
+        return
+    }
+
+    ## Already signed (valid, edited, expired, other signer...)? Confirm and back up first.
+    $old = Get-AuthenticodeSignature -LiteralPath $path
+    $backup = $false
+    if( $old.Status -ne 'NotSigned' ){
+        Write-Host -f CYAN "`n Warning! " -NoNewline;
+        Write-Host -f GREEN "This file is already signed. Status: $($old.Status)"
+        if( $old.SignerCertificate ){
+            Write-Host -f GREEN " Signed by: $(dsCn_ $old.SignerCertificate.Subject)"
+            if( $old.SignerCertificate.Thumbprint -ne $cert.Thumbprint ){
+                Write-Host -f YELLOW " (a different certificate than the one you selected)"
+            }
+        }
+        if( (dsAsk_ ' Replace the signature (y/n)?  ') -ne 'y' ){ return }
+        $backup = $true
+    }
+
+    ## Encoding check (PowerShell text files only)
+    $fix = $false
+    if( $ext -in $DS_PSTEXT ){
+        switch( dsEncoding_ $path ){
+            'utf8' {
+                Write-Host -f YELLOW "`n This file is UTF-8 without a BOM and has non-ASCII characters. PowerShell 5.1"
+                Write-Host -f YELLOW " reads it as ANSI and PowerShell 7 reads it as UTF-8, so it can break in one of them."
+                $fix = (dsAsk_ ' Re-save it as UTF-8 with BOM before signing (y/n)?  ') -eq 'y'
+                if( $fix ){ $backup = $true }
+            }
+            'ansi' {
+                Write-Host -f YELLOW "`n This file has non-ASCII characters in an ANSI encoding; PowerShell 7 will misread"
+                Write-Host -f YELLOW " them. Consider re-saving it as UTF-8 with BOM in your editor, then sign it again."
+            }
+        }
+    }
+
+    if( $backup ){
+        $bk = "$path.bkup"
+        if( Test-Path -LiteralPath $bk ){ $bk = "$path.$((Get-Date).ToString('yyyyMMddHHmmss')).bkup" }
+        try{ Copy-Item -LiteralPath $path -Destination $bk -ErrorAction Stop }
+        catch{
+            Write-Host -f CYAN " Backup failed ($($_.Exception.Message)); the file was not changed."
+            return
+        }
+        Write-Host -f GREEN "`n *** Backed up to $bk ***"
+    }
+
+    if( $fix ){
+        $text = (New-Object Text.UTF8Encoding($false)).GetString([IO.File]::ReadAllBytes($path))
+        [IO.File]::WriteAllText($path,$text,(New-Object Text.UTF8Encoding($true)))
+        Write-Host -f GREEN " Re-saved as UTF-8 with BOM."
+    }
+
+    ## Sign. If the cert needs a PIN (smart card), Windows prompts for it now.
+    Write-Host -f GREEN "`n Signing $path ..."
+    $tp = $cert.Thumbprint
+    $h0 = dsHash_ $path
+    $r = @(dsSet_ $path $cert $DS_TSA)[0]
+    $now = Get-AuthenticodeSignature -LiteralPath $path
+    $signed = dsOk_ $r $now $tp ($h0 -ne (dsHash_ $path))
+
+    if( -not $signed -and $DS_TSA ){
+        Write-Host -f CYAN " Signing failed: $($r.StatusMessage)"
+        Write-Host -f YELLOW " If the timestamp server ($DS_TSA) is the problem, you can sign without a timestamp;"
+        Write-Host -f YELLOW " the signature will then stop validating on $($cert.NotAfter.ToString('yyyy-MM-dd'))."
+        if( (dsAsk_ ' Try again without a timestamp (y/n)?  ') -eq 'y' ){
+            $h0 = dsHash_ $path
+            $r = @(dsSet_ $path $cert $null)[0]
+            $now = Get-AuthenticodeSignature -LiteralPath $path
+            $signed = dsOk_ $r $now $tp ($h0 -ne (dsHash_ $path))
+        }
+    }
+    elseif( $signed -and $DS_TSA -and -not $now.TimeStamperCertificate ){
+        Write-Host -f YELLOW " The timestamp server ($DS_TSA) didn't answer: $($r.StatusMessage)"
+        Write-Host -f YELLOW " The file was signed WITHOUT a timestamp. Re-sign it when the server is reachable."
+    }
+
+    if( -not $signed ){
+        Write-Host -f CYAN " Certificate signing failed: $($r.StatusMessage)"
+        dsLog_ ERROR "Signing failed for $path with cert $tp : $($r.StatusMessage)"
+        return
+    }
+    if( $now.Status -eq 'Valid' ){
+        Write-Host -f GREEN " Success! " -NoNewline;
+        if( $now.TimeStamperCertificate ){ Write-Host -f GREEN "Timestamped by $(dsCn_ $now.TimeStamperCertificate.Subject)." }
+        else{ Write-Host -f YELLOW "No timestamp; valid until $($cert.NotAfter.ToString('yyyy-MM-dd'))." }
+    }
+    else{
+        ## Signed, but this machine doesn't trust the chain (e.g. self-signed or missing intermediate)
+        Write-Host -f YELLOW " Signed, but the status is $($now.Status): $($now.StatusMessage)"
+    }
+    dsLog_ INFO "Signed $path with cert $tp ($($cert.dsStore)); status $($now.Status); timestamp: $([bool]$now.TimeStamperCertificate)"
+
+    if( -not $DS.tpWarned -and -not (dsTrusted_ $cert) ){
+        $DS.tpWarned = $true
+        Write-Host -f YELLOW "`n Note: this certificate isn't in TrustedPublisher on this machine, so execution"
+        Write-Host -f YELLOW " policy AllSigned/RemoteSigned will still block your scripts here (current policy:"
+        Write-Host -f YELLOW " $(Get-ExecutionPolicy)). Ask your admins to deploy it by GPO."
+    }
+}
+
+
+
+#################
+## MAIN SCRIPT ##
+#################
+## Hashtable state: MACROSS dot-sources diamond scripts inside a function, so $Script: isn't ours
+$DS = @{
+    dir      = $(if( $PSScriptRoot ){ $PSScriptRoot }else{ "$PWD" })    ## Dialog's starting folder
+    noforms  = $false       ## True when the file dialog can't load
+    hidden   = 0            ## Unusable certs skipped by dsCerts_
+    tpWarned = $false       ## TrustedPublisher warning shown
+    inspect  = [bool]($inspect -or $dyrl_OPT1)
+    cert     = $null
+    first    = $null
+    file     = $null
+}
+if( $spiritia -and (Test-Path -LiteralPath "$spiritia" -PathType Leaf) ){
+    $DS.first = (Resolve-Path -LiteralPath "$spiritia").ProviderPath
+}
+
+cls
+Write-Host ''
+if( $DS.inspect ){
+    Write-Host -f GREEN " DSIG: inspect digital signatures. Cancel the file dialog to quit."
+}
+else{
+    Write-Host -f GREEN " DSIG: code-signing. Cancel the file dialog to quit."
+    $DS.cert = dsChooseCert_
+}
+
+while( $DS.inspect -or $DS.cert ){
+    if( $DS.first ){ $DS.file = $DS.first; $DS.first = $null }
+    else{ $DS.file = dsPick_ $(if( $DS.inspect ){ 'all' }else{ 'sig' }) }
+    if( -not $DS.file ){ break }
+    if( -not (Test-Path -LiteralPath $DS.file -PathType Leaf) ){
+        Write-Host -f CYAN " File not found: $($DS.file)`n"
+        continue
+    }
+    $DS.file = (Resolve-Path -LiteralPath $DS.file).ProviderPath
+    $DS.dir = Split-Path -Parent $DS.file
+
+    if( $DS.inspect ){ dsInspect_ $DS.file }
+    else{ dsSign_ $DS.file $DS.cert }
+
+    if( (dsAsk_ "`n Another file (y/n)?  ") -ne 'y' ){ break }
+    Write-Host ''
+}
+
+Remove-Variable DS,DS_PIN,DS_TSA,DS_TYPES,DS_PSTEXT,inspect,help -ErrorAction SilentlyContinue
+Return
