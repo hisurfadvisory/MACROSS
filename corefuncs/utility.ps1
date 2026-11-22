@@ -1,22 +1,34 @@
 ## MACROSS added functionalities
 
 
-function alphanum([switch]$hex=$false,$rand=0){    #mp
+function alphanum([switch]$hex=$false,$rand=0,[switch]$special=$false){    #mp
     <#
     ||shorthelp||
-    alphanum [-h HEX CHARS] [-r STRING OF $r RANDOM CHARS]
+    alphanum [-h HEX CHARS] [-r STRING OF $r RANDOM CHARS] [-s INCLUDE SPECIAL CHARS WITH -r]
 
     ||longhelp||
     Returns a list of alphanumeric & special characters. Use -h to only
     return characters used in hexadecimal bytes. Use -r and a length to
-    return a string of random characters.
+    return a string of random alphanumeric characters; add -s to include
+    the special characters too.
 
+    Without -s, random strings are safe for filenames, URLs and CSV cells.
+    With -s, they may contain characters that break those (* ? < > are
+    illegal in Windows filenames; & + = break URLs; a leading = + @ is
+    read as a formula by spreadsheets; $ ^ * ? + are regex operators, so
+    use [regex]::Escape() before matching on them).
+
+    Random strings use Get-Random, which is fine for test data but is not
+    cryptographically secure; don't use them as real passwords or keys.
+
+    Calling without any options:
     Index 0 is the lower-upper case alphabet and 0-9, while Index 1
     contains a string of special characters.
 
     ||examples||
     $hex_chars = alphanum -h            List of characters used in hexadecimal
     $random_string = alphanum -r 32     String of 32 random characters
+    $random_string = alphanum -r 32 -s  String of 32 random characters, including specials
     $a = (alphanum)[0][0]               The letter 'a'
     $zero = (alphanum)[0][52]           The number '0'
     $nine = (alphanum)[0][61]           The number '9'
@@ -25,11 +37,12 @@ function alphanum([switch]$hex=$false,$rand=0){    #mp
     #>
     $an = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789' -Split '' | ?{$_ -ne ''}
     $hc = '0123456789ABCDEF' -Split '' | ?{$_ -ne ''}
-    $sc = '!@#$%^&*_?><' -Split '' | ?{$_ -ne ''}
+    $sc = '!@#$%^&*_?><+=' -Split '' | ?{$_ -ne ''}
     if($hex){ $an = $hc }
     elseif($rand -gt 0){
+        if($special){ $an = $an + $sc }
         $na = @()
-        0..$rand | %{$na += $an[$(Get-Random -min 0 -max $an.count)]}
+        1..$rand | %{$na += $an[$(Get-Random -min 0 -max $an.count)]}
         $an = $na -Join ''
     }
     else{ $an = @($an,$sc) }
