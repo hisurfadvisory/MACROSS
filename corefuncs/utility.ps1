@@ -186,7 +186,10 @@ function extras($1){
     }
     elseif($1 -eq 'pydev'){
         ## Interactive python with the MACROSS environment loaded ("import macross")
-        startUp; pyATTS; macrossMirror -n $N_
+        startUp
+        if(-not (pyGate_ 'pydev')){ Return }
+        try{ errLog INFO 'MACROSS.debug' "pydev opened by $USR on $dyrl_HN0" }catch{ }
+        pyATTS; macrossMirror -n $N_
         splashBanner
         try{
             if($MONTY){ & $dyrl_PYCROSS }
@@ -265,6 +268,33 @@ function spaceFold(){
     $Global:PROTOCULTURE=(gc "$($dyrl_PG[1])\PROTOCULTURE.vf1" | ConvertFrom-Json).target
 }
 
+## $true unless the admin turned debug restriction off in the config ('dbg' -> 'bl0')
+function dbgRestricted_(){
+    if(-not $dyrl_CONF){ startUp }
+    if($dyrl_CONF -and $dyrl_CONF.bl0){ gerwalk $dyrl_CONF.bl0; Return ($dyrl_PT -ne (returnDefault -b)[0]) }
+    Return $true
+}
+## Admin password check for interactive python (pydev / debug "python"), which runs with the
+## decrypted config in MACONF. Returns $true if allowed. Respects the debug-restriction setting.
+function pyGate_([string]$what){
+    if(-not (dbgRestricted_)){ Return $true }
+    w "`n $what opens python with the MACROSS configuration loaded and requires the admin password." y
+    for($i = 1; $i -le 3; $i++){
+        $pw = xEntry
+        if(-not $pw){ Break }
+        $ok = [bool](confLoad_ $pw)
+        Remove-Variable pw
+        if($ok){
+            try{ errLog INFO 'MACROSS.debug' "$USR verified as admin for $what on $dyrl_HN0" }catch{ }
+            Return $true
+        }
+        w ' That password is not correct.' y
+    }
+    try{ errLog WARN 'MACROSS.debug' "$what refused for $USR on $dyrl_HN0 (admin password)" -forward }catch{ }
+    w ' Python was not opened. Hit ENTER to continue.' y; Read-Host | Out-Null
+    Return $false
+}
+
 function consoleDebug($x=$null,$ch=$null){
     $msgloop = 'Type another command for testing, "d" to reload the menu, or hit ENTER to exit debugging: '
     w "`n                         MACROSS DEBUG MODE`n" y
@@ -273,8 +303,7 @@ function consoleDebug($x=$null,$ch=$null){
     if($x){
         varCleanup; startUp
         gerwalk VGhhdCdzIGEgcHJpdmlsZWdlZCBjb21tYW5kLg==; $ha = $dyrl_PT
-        $restricted = $true
-        if($dyrl_CONF -and $dyrl_CONF.bl0){ gerwalk $dyrl_CONF.bl0; $restricted = ($dyrl_PT -ne (returnDefault -b)[0]) }
+        $restricted = dbgRestricted_
         New-Variable -Name dbgrx_ -Option Constant -Value $(if($restricted){ setLocal -i }else{ $null })
         New-Variable -Name dbggate_ -Option Constant -Value @{ ok = $false }
         function dbggate_check($cmdText){
@@ -361,6 +390,7 @@ function consoleDebug($x=$null,$ch=$null){
                 Return
             }
             elseif($z -eq 'python'){
+                if(-not (pyGate_ 'Debug python')){ Return }
                 startUp;pyATTS;macrossMirror -n $N_;if($dyrl_LOG -ne 'none'){errLog INFO 'MACROSS.debug' "pydev success ($dyrl_HN0)"};cls
                 if($dyrl_PYCROSS){ . $dyrl_PYCROSS }
                 else{ py }
@@ -583,12 +613,11 @@ function stringz($f=$(getFile),[switch]$w=$false){   #mp
 
     $of = "$dyrl_OUTFILES\strings.txt"
 
-    if($f -Match "\.(doc|ppt|xls)"){
-        if($w){
-            decodeDoc $f -o $of
-            $stringlist = Get-Content $of
-        }
-        else{ $stringlist = $(decodeDoc $f -n) }
+    if($f -Match "\.(doc|dot|ppt|pot|xls|xlt|od[tspg]|ot[tspg]|fod[tspg]|sx[wci])\w*$"){
+        ## Office/LibreOffice documents: let decodeDoc pull the text and macros out
+        $r = decodeDoc $f -n
+        $stringlist = @($r.vb) + @($r.pt | %{ $_ -split "`n" })
+        if($w){ noBOM -t ($stringlist -join "`n") -f $of -m }
     }
     elseif($f -Like "*pdf"){
         $stringlist = decodePdf $f
@@ -996,36 +1025,45 @@ $Global:dyrl_ASCII = "[^\x00-\x7F]"
 function sheetz(){   #mp
     <#
     ||shorthelp||
-    Output results to an excel worksheet. Specify the name of your spreadsheet with
-    -o; -v is the values you're writing, separated by "<::>". -r is the row to start
-    writing in (default is 1; if you are adding values to an existing sheet, set this
-    to the next empty row). Use -h for comma-separated column names, OR if you are
-    editing an existing sheet/don't need column headers, you can send the number of
-    columns you require. You can colorize text by adding a 'color~' to the beginning
-    of any field in the first parameter's comma-separated list, or colorize the cell
-    by adding 'cellColor~textColor~' to the value.
+    Output results to a spreadsheet (MS Excel, or LibreOffice Calc if Excel is not
+    installed). Specify the name of your spreadsheet with -o; -v is the values you're
+    writing, separated by "<::>". -r is the row to start writing in (when adding to an
+    existing sheet, the default is the next empty row). Use -h for comma-separated
+    column names, OR if you are editing an existing sheet/don't need column headers, you
+    can send the number of columns you require. You can colorize text by adding a 'color~'
+    to the beginning of any value in -v, or colorize the cell by adding
+    'cellColor~textColor~' to the value. Use -libre to force LibreOffice Calc.
     Usage:
         sheetz [-o FILENAME] [-v VALUE1<::>VALUE2...] [-r ROW_NUMBER] [-h COLUMN1,COLUMN2...]
-            [-s SHEET_NAME1,SHEET_NAME2...]
+            [-s SHEET_NAME1,SHEET_NAME2...] [-libre]
 
     ||longhelp||
-    Output tool values to an Excel spreadsheet on user's desktop
+    Output tool values to a spreadsheet in your MACROSS outputs folder ($dyrl_OUTFILES)
 
     (This is very simplistic at the moment; the goal is to eventually make more useful
     spreadsheets when simple CSV files aren't good enough.)
 
     Parameters for this function:
     -o = (req'd) the name of the output file
-        -will always read/write to your desktop
-        -do NOT include an extension, sheetz sets it automatically
+        -will always read/write to $dyrl_OUTFILES
+        -do NOT include an extension, sheetz sets it automatically (.xlsx)
     -v = (req'd) cell values, "<::>"-separated. YOU MUST SEPARATE YOUR CELL VALUES
         USING THIS PATTERN. This allows your cell text to contain commas and other
         commonly-used delimiter characters, without mistakenly splitting them into
         separate cells.
-    -r = (optional) the starting row number to write to (default is 1)
+    -r = (optional) the starting row number to write to. The default is 1 for a new
+        sheet, or the next empty row when adding to a sheet that already has values.
     -h = (optional) comma-separated column names, OR the number of columns you are
         writing across
     -s = (optional) comma-separated names for individual sheets/tabs.
+    -libre = (optional) use LibreOffice Calc even if MS Excel is installed. Without this
+        switch, sheetz defaults to Excel if it is installed, then falls back to LibreOffice 
+        Calc if it is available when Excel is not. Either way, the file is saved in .xlsx 
+        format.
+
+    Every cell is written as plain text, including numbers and dates. Values that start with
+    "=" are never turned into formulas, so data from logs or other untrusted sources are not
+    executable when you open the spreadsheet.
 
     If only -o and -v are sent, this function will separate -v values and write them as a
     list into column A.
@@ -1034,7 +1072,7 @@ function sheetz(){   #mp
 
     To write values across multiple sheets/tabs, send a **list** of separated values
     in -v instead of a string. For example, to write cells on two tabs, all the cell values
-    for each tab should be comma-separated strings within the list:
+    for each tab should be "<::>"-separated strings within the list:
 
         -v @(
             'station001<::>windows 10, licensed<::>192.168.1.100',
@@ -1051,18 +1089,18 @@ function sheetz(){   #mp
 
     In the above -h, the first sheet will have the headers HOSTNAME, OS and IP for columns
     A, B and C; the second sheet will simply write across the first 3 columns without naming
-    them.
+    them. An empty entry ('' or $null) writes that sheet's values as a list in column A.
 
     The -s option for naming each individual sheet is optional, but if you use it, it must
     include the exact amount of names (comma-separated) as there are items in your -v and -h
     lists, and make sure they are arranged **in order** to match the first-thru-last items
-    in your -v and -h lists!
+    in your -v and -h lists! Tabs are created in that same order.
 
     ###### UPDATING EXISTING WORKBOOKS ######
 
-    If you're adding values to an existing sheet, the -r parameter lets you specify which
-    row to start in. For example, if you know the next empty row is 200, send 200 as a 3rd
-    parameter.
+    If you're adding values to an existing sheet, sheetz starts writing at the next empty
+    row automatically. The -r parameter lets you specify a different row to start in. For
+    example, to start at row 200, send -r 200.
 
     If you send a NUMBER as the -h parameter, it tells this function how many values to write
     horizontally from parameter -v, before it shifts to the next row and continues writing
@@ -1070,14 +1108,19 @@ function sheetz(){   #mp
 
     If you send comma-separated strings as param -h, this function will write those values as
     the column headers in the worksheet, and then begin writing the values from param -v into
-    the appropriate row/columns.
+    the appropriate row/columns. When the headers are written to row 1, the top row is frozen.
 
     ###### FORMATTING ######
 
     TO COLORIZE TEXT:
-    Send the first letter of your color choice (red, green, blue, yellow, cyan, gray, white,
-    "k" for black or "gr" for gray) with a  "~" symbol between your color and the value, i.e.
-    "r~RESULT FAILED!" will write "RESULT FAILED!" in red text.
+    Send the single-letter code of your color choice with a "~" symbol between your color and
+    the value:
+
+        r = red        g = green      b = blue       y = yellow
+        c = cyan       m = magenta    a = gray       w = white
+        k = black
+
+    i.e. "r~RESULT FAILED!" will write "RESULT FAILED!" in red text.
 
     TO COLORIZE CELLS:
     Add a color letter (same choices as above) AND the color you want for text, separated with "~"
@@ -1086,12 +1129,13 @@ function sheetz(){   #mp
         "k~r~RESULT FAILED"
 
     The above will make the cell black with red text. You must send BOTH a cell color AND a
-    text color to colorize cells.
+    text color to colorize cells. A letter that isn't in the list above is not treated as a
+    color, and the value is written as-is.
 
     ||examples||
     EXAMPLE 1
 
-        $vals1 = 'host 10,host 24,host 13,host 3'
+        $vals = 'host 10<::>host 24<::>host 13<::>host 3'
         sheetz -o 'myoutput' -v $vals
 
     The above example will write out the hosts in a simple list to 'myoutput.xlsx' in cells
@@ -1103,7 +1147,7 @@ function sheetz(){   #mp
             'b~w~windows',
             '11',
             '192.168.10.10',
-            host2',
+            'host 2',
             'linux',
             'r~kali',
             '192.168.10.11') -Join '<::>'
@@ -1111,7 +1155,7 @@ function sheetz(){   #mp
         sheetz -o 'myoutput' -v $hosts -r 5 -h $headers
 
     The above will create (or open) myoutput.xlsx, and then writes 'HOST' to cell A5, 'OS' to B5,
-    'VER' to C5, and 'IP' to D5. Next it will go through all the comma-separated values in param 2,
+    'VER' to C5, and 'IP' to D5. Next it will go through all the "<::>"-separated values in -v,
     writing values into the next row until it reaches column D, then jump to the next row back at
     column A. And in this example, cell B6 (windows) will be blue with white text while cell C7
     (kali) will be in red text.
@@ -1123,30 +1167,26 @@ function sheetz(){   #mp
 
     Make sure your script is sending your -v values IN ORDER, otherwise they'll get
     written to the wrong cells! Also, if you're adding values to an existing sheet, don't send the
-    headers, sheetz will automatically start writing to the next empty row (or you can specify a row
-    in parameter -r, and the number of columns being written, in this case 4 columns (A-D).
+    headers; send the number of columns being written instead, in this case 4 columns (A-D).
 
     EXAMPLE 3
 
     Sometimes you don't need headers. You could set -h to 6 if you just need to specify
     that there should be 6 columns (A-F). If $patchInfo contains hosts and patch dates:
 
-        sheetz -o 'patch report' -v $patchInfo -r 1 -c 6
+        sheetz -o 'patch report' -v $patchInfo -r 1 -h 6
 
                     A         B        C         D                 E           F
         row 1      host 1   windows   11    192.168.10.10      patched     1/31/2020
         row 2      host 2   windows   10    192.168.10.11      unpatched
 
 
-
     #>
     <#
     TO ADD OR MODIFY THE DEFAULT CELL & FONT COLORIZATION:
-    Colors have to be calculated by adding R + G + B, but G has to be multiplied by G and 256,
-    and B has to be multiplied by B * 256 * 256 because why just let us write 'blue', 'green,
-    'red'...
-
-        Play with the equations to find more colors, and add them to $colors
+    Add a single-letter key and its RGB(red,green,blue) values to $rgb below. Excel and
+    LibreOffice store colors differently (Excel = R + G*256 + B*65536, LibreOffice =
+    R*65536 + G*256 + B), so sheetz converts the RGB values for whichever program it uses.
 
         RGB COLORS:
         Black: RGB(0,0,0)
@@ -1168,236 +1208,357 @@ function sheetz(){   #mp
         [array]$v,
         [int]$r=1,
         [array]$h,
-        [string]$s='Sheet 1'
+        [string]$s='Sheet 1',
+        [switch]$libre
     )
 
-    if(! $sheetz){ 
-        errMsg -f 'MACROSS.sheetz' -m 'MS Excel is not installed!' -c r
-        Return 
+    ## Pick the spreadsheet program ($SHEETZ and $LIBRECALC are set from installed_programs.json)
+    if($libre -or -not $SHEETZ){
+        if(-not $LIBRECALC){
+            if($libre){ $em = 'LibreOffice Calc is not installed!' }
+            else{ $em = 'Neither MS Excel nor LibreOffice Calc is installed!' }
+            errMsg -f 'MACROSS.sheetz' -m $em -c r
+            Return
+        }
+        $useLibre = $true
+    }
+    else{ $useLibre = $false }
+
+    $rgb = @{
+        'r' = @(255,0,0);
+        'g' = @(204,255,204);
+        'b' = @(0,0,255);
+        'w' = @(255,255,255);
+        'a' = @(128,128,128);
+        'y' = @(255,255,0);
+        'c' = @(0,255,255);
+        'm' = @(255,0,255);
+        'k' = @(0,0,0)
+    }
+
+    ## No point continuing if mismatched values were sent...
+    if($h -and ($h.count -ne $v.count)){
+        errMsg -m "The -h and -v counts do not match; could not write $o.xlsx" -c r -f sheetz
+        w "`n Hit ENTER to close`n" g
+        Read-Host
+        Return
+    }
+
+    $plan = sheetzPlan_ $v $h $s $rgb
+    if(-not $plan.count){ Return }
+
+    ## Convert the RGB values to the chosen program's color format
+    $colors = @{}
+    foreach($k in $rgb.Keys){
+        $c3 = $rgb[$k]
+        if($useLibre){ $colors[$k] = ($c3[0]*65536) + ($c3[1]*256) + $c3[2] }
+        else{ $colors[$k] = $c3[0] + ($c3[1]*256) + ($c3[2]*65536) }
     }
 
     w "$(' '*76)" -b g -f k
     w "Do not click anywhere in the sheet as it is being written, or it may fail! " -b g -f k
     w "$(' '*76)" -b g -f k
 
-    $colors = @{
-        'r~' = 255 + (1*256) + (1*256*256);
-        'g~' = 204 + (255*256) + (204*256*256);
-        'b~' = (255*256*256);
-        'w~' = 255 + (255*256) + (255*256*256);
-        'gr~' = 128 + (128*256) + (128*256*256);
-        'y~' = 255 + (255*256);
-        'c~' = (255*256) + (255*256*256);
-        'k~' = 0
-    }
-
-    $c = 1  ## Start in column A
-
-    ## Collect the columns info, make sure it's an array
-    if($h -and $h.getType().Name -eq 'String'){ $h = @($h) }
-
-    ## Collect cell values, make sure it's an array
-    if($v.getType().Name -eq 'String'){ $v = @($v) }
-
-    ## Collect sheet names, make sure it's an array
-    $snames = $s -Split ','
-
-    $values_table = @{}
-
-    ## No point continuing if mismatched values were sent...
-    if($h -and ($h.count -ne $v.count)){
-        $errmsg = "The -h and -v counts do not match; could not write $o.xlsx"
-        errMsg $errms -c 'RED' -f sheetz
-        w "`n Hit ENTER to close`n" g
-        Read-Host
-        Return
-    }
-
-    ## Set the cell value placement based on provided headers and sheet names (if any)
-    0..$($v.count-1) | %{
-        $vlist = $v[$_].Trim()
-        if($snames.count -ne $v.count){ $skey = "Sheet $($_+1)"}
-        else{ $skey = "$($snames[$_])"}
-        if($h){ $hd = $h[$_].Trim() }
-        else{ $hd = $null }
-        $values_table.add($skey,@($vlist,$hd))
-    }
-
-    ## Dump the original values to free up resources
-    @('h','s','v','hd','sn','skey','vlist') | %{
-        try{ Remove-Variable $_ }
-        catch{ $null }
-    }
-
     $outpath = "$dyrl_OUTFILES\$o.xlsx"
+    $auto = -not $PSBoundParameters.ContainsKey('r')     ## No -r sent: append to sheets that have values
+    if($useLibre){ sheetzLo_ $plan $outpath $r $auto $colors }
+    else{ sheetzXl_ $plan $outpath $r $auto $colors }
+}
 
-    # Add reference to the Microsoft Excel assembly
-    Add-Type -AssemblyName Microsoft.Office.Interop.Excel
-
-
-    # Create a new Excel application
-    $excel = New-Object -ComObject Excel.Application
-
-    # Make Excel visible (optional)
-    $excel.Visible = $true
-
-    # Create a new workbook or load an existing one
-    if(Test-Path $outpath){
-        $edit = $true
-        $workbook = $excel.Workbooks.Open($outpath)
+## sheetz helper: split the color tags ('text~VALUE' or 'cell~text~VALUE') from a cell value.
+## Returns @(value, cellColor, textColor); letters that aren't in $p are left in the value.
+function sheetzTag_($t,$p){
+    $bg = $null; $fg = $null
+    if($t -Match '^([a-z])~([a-z])~' -and $p.ContainsKey($Matches[1]) -and $p.ContainsKey($Matches[2])){
+        $bg = $Matches[1].ToLower(); $fg = $Matches[2].ToLower(); $t = $t.Substring(4)
     }
-    else{
-        $edit = $false
-        $workbook = $excel.Workbooks.Add()
+    elseif($t -Match '^([a-z])~' -and $p.ContainsKey($Matches[1])){
+        $fg = $Matches[1].ToLower(); $t = $t.Substring(2)
     }
+    Return ,@($t,$bg,$fg)
+}
 
+## sheetz helper: turn the -v/-h/-s values into one plan per sheet, shared by the Excel and
+## LibreOffice writers. Each plan has the sheet name, a 2-D grid of values (header row first,
+## if any), and 'marks' = @(rowOffset, colOffset, cellColor, textColor) for colored cells.
+function sheetzPlan_($v,$h,$s,$p){
+    if($v -is [string]){ $v = @($v) }
+    if($h -and $h -is [string]){ $h = @($h) }
+    $snames = @($s -Split ',')
+    $plan = New-Object System.Collections.ArrayList
 
-    # Start creating new worksheets or loading existing sheets in order, then write headers+values to cells
-    foreach($newsheet in $values_table.keys){
-    $startrow = $r
-    if($edit){
-        $current_sheets = New-Object System.Collections.Arraylist
-        $workbook.sheets | %{
-            $current_sheets.add($_.name) | Out-Null
+    for($i = 0; $i -lt $v.count; $i++){
+        if($snames.count -ne $v.count){ $name = "Sheet $($i+1)" }
+        else{ $name = $snames[$i].Trim() }
+
+        $cells = @("$($v[$i])".Trim() -Split '<::>')
+        $heads = $null
+        $ncols = 1
+        $top = ''; if($h){ $top = "$($h[$i])".Trim() }
+        if($top -ne ''){                                ## An empty -h entry = list in column A
+            if($top -Match '^\d+$'){ $ncols = [math]::Max(1,[int]$top) }
+            elseif($top -Match '[a-zA-Z]'){
+                $heads = @($top -Split ',' | %{ $_.Trim() })
+                $ncols = $heads.count
+            }
+            else{
+                errMsg -m "Incorrect header value for '$name'; that sheet was not written" -c r -f sheetz
+                continue
+            }
         }
-        if($newsheet -notIn $current_sheets){
-            $worksheet = $workbook.Worksheets.Add()
-            $worksheet.Name = "$newsheet"
+
+        $hrow = [int]($null -ne $heads)
+        $nrows = $hrow + [math]::Ceiling($cells.count / $ncols)
+        $grid = New-Object 'object[,]' $nrows,$ncols
+        $marks = New-Object System.Collections.ArrayList
+        if($heads){ for($j = 0; $j -lt $ncols; $j++){ $grid[0,$j] = $heads[$j] } }
+
+        $ro = $hrow; $co = 0
+        foreach($cell in $cells){
+            $tag = sheetzTag_ $cell $p
+            $grid[$ro,$co] = $tag[0]
+            if($tag[1] -or $tag[2]){ [void]$marks.Add(@($ro,$co,$tag[1],$tag[2])) }
+            $co++
+            if($co -ge $ncols){ $co = 0; $ro++ }      ## all columns written, go to the next row
         }
-        rv current_sheets
+
+        [void]$plan.Add([pscustomobject]@{
+            name = $name; heads = [bool]$hrow; grid = $grid
+            rows = $nrows; cols = $ncols; marks = $marks
+        })
     }
-    else{
-        $worksheet = $workbook.Worksheets.Add()
-        $worksheet.Name = "$newsheet"
-    }
+    Return ,$plan
+}
 
-    $worksheet = $workbook.Worksheets.Item("$newsheet")
+## sheetz writer for MS Excel
+function sheetzXl_($plan,$path,$r,$auto,$colors){
+    $new = -not (Test-Path $path)
+    $excel = $null; $workbook = $null; $worksheet = $null
+    try{
+        $excel = New-Object -ComObject Excel.Application -ErrorAction Stop
+        $excel.Visible = $true
+        if($new){ $workbook = $excel.Workbooks.Add() }
+        else{ $workbook = $excel.Workbooks.Open($path) }
 
-    $cell_values = "$($values_table.$newsheet[0])" -Split '<::>'
+        ## A new workbook comes with blank sheets; remember them so unused ones can be removed
+        $blank = @(); if($new){ foreach($ws in $workbook.Worksheets){ $blank += $ws.Name } }
 
+        $excel.Interactive = $false                 ## Ignore clicks/typing while the sheet is written
+        foreach($sheet in $plan){
+            $exists = $true
+            try{ $worksheet = $workbook.Worksheets.Item($sheet.name) }
+            catch{
+                $last = $workbook.Worksheets.Item($workbook.Worksheets.Count)
+                $worksheet = $workbook.Worksheets.Add([System.Reflection.Missing]::Value, $last)    ## add as the last tab
+                $worksheet.Name = $sheet.name
+                $exists = $false
+            }
 
-    # Write values to cells; if no $h values were passed, just write $cell_values as a list in column A
-    if($values_table.$newsheet[1]){
-        function columnVals_($rr,$cc,$count){
-            Foreach($v1 in $cell_values){
-                if($v1 -Match "^[a-z]+~[a-z]+~"){
-                    $shade_cell = $v1 -replace "~[a-z]+~",'~' -replace "~.+",'~'
-                    $shade_text = $v1 -replace "^[a-z]+~?" -replace "~.+",'~'
-                    $v1 = $v1 -replace "^[a-z]+~[a-z]+~"
+            $start = $r
+            if($exists -and $auto){
+                $used = $worksheet.UsedRange
+                if($used.Rows.Count -gt 1 -or $used.Columns.Count -gt 1 -or $null -ne $worksheet.Cells.Item(1,1).Value2){
+                    $start = $used.Row + $used.Rows.Count     ## next empty row
                 }
-                elseif($v1 -Match "^[a-z]+~"){
-                    $shade_text = $v1 -replace "~.+",'~'
-                    $v1 = $v1 -replace "^[a-z]+~"
+            }
+
+            ## Write the whole grid in one call, then color only the tagged cells
+            $range = $worksheet.Range($worksheet.Cells.Item($start,1),
+                $worksheet.Cells.Item($start + $sheet.rows - 1, $sheet.cols))
+            $range.NumberFormat = '@'                 ## Text format: values are never read as formulas, numbers or dates
+            $range.Value2 = $sheet.grid
+            foreach($m in $sheet.marks){
+                $cell = $worksheet.Cells.Item($start + $m[0], 1 + $m[1])
+                if($m[2]){ $cell.Interior.Color = $colors[$m[2]] }
+                if($m[3]){ $cell.Font.Color = $colors[$m[3]] }
+            }
+
+            if($sheet.heads -and $start -eq 1){       ## Freeze the header row
+                $worksheet.Activate()
+                $win = $excel.ActiveWindow
+                $win.FreezePanes = $false
+                $win.SplitColumn = 0
+                $win.SplitRow = 1
+                $win.FreezePanes = $true
+            }
+        }
+
+        if($new){
+            $excel.DisplayAlerts = $false
+            foreach($b in $blank){
+                if($b -notIn $plan.name){ $workbook.Worksheets.Item($b).Delete() }
+            }
+            $excel.DisplayAlerts = $true
+            $workbook.SaveAs($path, 51)               ## 51 = xlOpenXMLWorkbook (.xlsx)
+        }
+        else{ $workbook.Save() }
+    }
+    catch{
+        errMsg -m "Could not write $path to Excel: $($_.Exception.Message)" -c r -f sheetz
+    }
+    finally{
+        if($excel){ try{ $excel.Interactive = $true }catch{ $null } }
+        ## Excel stays open so the user can review the sheet; just release the COM objects
+        @($worksheet,$workbook,$excel) | ?{ $_ } | %{
+            [void][System.Runtime.Interopservices.Marshal]::ReleaseComObject($_)
+        }
+        [System.GC]::Collect()
+        [System.GC]::WaitForPendingFinalizers()
+    }
+}
+
+## sheetz helper: call a LibreOffice COM bridge object. PowerShell can't use these objects directly
+## ($obj.method() throws "not implemented" because the bridge has no type info), so every call goes
+## through InvokeMember. -get/-set read or write a property (used for UNO structs).
+function sheetzUno_($o,[string]$m,[array]$a=@(),[switch]$get,[switch]$set){
+    $how = [System.Reflection.BindingFlags]::InvokeMethod
+    if($get){ $how = [System.Reflection.BindingFlags]::GetProperty }
+    elseif($set){ $how = [System.Reflection.BindingFlags]::SetProperty }
+    ## The bridge can't convert PowerShell's wrapped objects (PSObject), so pass the real ones
+    $args2 = New-Object 'object[]' $a.Count
+    for($i = 0; $i -lt $a.Count; $i++){
+        $x = $a[$i]
+        if($x -is [System.Management.Automation.PSObject]){ $x = $x.PSObject.BaseObject }
+        $args2[$i] = $x
+    }
+    if($o -is [System.Management.Automation.PSObject]){ $o = $o.PSObject.BaseObject }
+    try{ Return ,([System.__ComObject].InvokeMember($m, $how, $null, $o, $args2)) }
+    catch{
+        $em = $_.Exception
+        while($em.InnerException){ $em = $em.InnerException }
+        throw "$m(): $($em.Message)"
+    }
+}
+
+## sheetz writer for LibreOffice Calc (uses LibreOffice's COM bridge, com.sun.star.ServiceManager)
+function sheetzLo_($plan,$path,$r,$auto,$colors){
+    $new = -not (Test-Path $path)
+    $url = ([System.Uri]$path).AbsoluteUri       ## file:///C:/... with spaces encoded
+    $sm = $null; $doc = $null; $locked = $false; $opened = $false
+    $freeze = New-Object System.Collections.ArrayList
+
+    try{
+        $sm = New-Object -ComObject com.sun.star.ServiceManager -ErrorAction Stop
+        $desk = sheetzUno_ $sm 'createInstance' @('com.sun.star.frame.Desktop')
+
+        ## If the file is already open in Calc (e.g. from an earlier sheetz run), write to that window;
+        ## loading it a second time pops up a "Document in Use" dialog that would hang MACROSS
+        if(-not $new){
+            $en = sheetzUno_ (sheetzUno_ $desk 'getComponents') 'createEnumeration'
+            while($null -eq $doc -and (sheetzUno_ $en 'hasMoreElements')){
+                $d = sheetzUno_ $en 'nextElement'
+                try{ if((sheetzUno_ $d 'getURL') -eq $url){ $doc = $d } }catch{ $null }
+            }
+        }
+        if($null -eq $doc){
+            if(-not $new){
+                ## Not open here; a lock file means it's open in another program or by another user
+                $fn = Split-Path $path -Leaf; $dir = Split-Path $path -Parent
+                $lock = @(@("$dir\.~lock.$fn#", "$dir\~`$$fn") | ?{ Test-Path -LiteralPath $_ })
+                if($lock){
+                    throw "the file is open in another program or by another user. Close it and try again (if nobody has it open, delete $($lock[0]))"
                 }
+                $src = $url
+            }
+            else{ $src = 'private:factory/scalc' }
+            $doc = sheetzUno_ $desk 'loadComponentFromURL' @($src,'_blank',0,[Array]::CreateInstance([object],0))
+            $opened = $true
+        }
+        $sheets = sheetzUno_ $doc 'getSheets'
 
-                $worksheet.Cells.Item($rr, $cc).Value2 = $v1     ## Write values as a list in column A
+        ## A new document comes with a blank sheet; remember it so it can be removed if unused
+        $blank = @(); if($new){ $blank = @(sheetzUno_ $sheets 'getElementNames') }
 
+        [void](sheetzUno_ $doc 'lockControllers'); $locked = $true    ## No screen redraws while writing
+        foreach($sheet in $plan){
+            $exists = sheetzUno_ $sheets 'hasByName' @($sheet.name)
+            if(-not $exists){   ## add as the last tab
+                [void](sheetzUno_ $sheets 'insertNewByName' @($sheet.name, [int16](sheetzUno_ $sheets 'getCount')))
+            }
+            $sh = sheetzUno_ $sheets 'getByName' @($sheet.name)
 
-                ## Format cells if applicable
-                if($shade_cell){
-                    $worksheet.Cells.Item($rr, $cc).Interior.Color = $colors[$shade_cell]
+            $start = $r
+            if($exists -and $auto){
+                $cur = sheetzUno_ $sh 'createCursor'
+                [void](sheetzUno_ $cur 'gotoEndOfUsedArea' @($false))
+                $end = sheetzUno_ $cur 'getRangeAddress'
+                $endRow = sheetzUno_ $end 'EndRow' -get
+                $endCol = sheetzUno_ $end 'EndColumn' -get
+                $a1 = sheetzUno_ (sheetzUno_ $sh 'getCellByPosition' @(0,0)) 'getString'
+                if($endRow -gt 0 -or $endCol -gt 0 -or $a1 -ne ''){
+                    $start = $endRow + 2                  ## EndRow counts from 0; next empty row counting from 1
                 }
-                if($shade_text){
-                    $worksheet.Cells.Item($rr, $cc).Font.Color = $colors[$shade_text]
-                }
+            }
 
-                Remove-Variable shade_*
+            ## Calc wants an array of rows instead of a 2-D grid. Every value is sent as a string, and
+            ## setDataArray stores strings as text (never as formulas, numbers or dates)
+            ## ([Array]::CreateInstance gives plain arrays; New-Object would wrap them in PSObjects)
+            $data = [Array]::CreateInstance([object], $sheet.rows)
+            for($i = 0; $i -lt $sheet.rows; $i++){
+                $row = [Array]::CreateInstance([object], $sheet.cols)
+                for($j = 0; $j -lt $sheet.cols; $j++){ $row.SetValue([string]"$($sheet.grid[$i,$j])", $j) }
+                $data.SetValue($row, $i)
+            }
 
-                $cc++                                         ## shift to the next column
-                $count++                                      ## track which column is current
-                if($count -gt $column_ct){                    ## stop shifting if all columns have been written
-                    $rr++                                     ## shift to the next row
-                    $cc = 1                                   ## go back to column A
-                    $count = 1                                ## reset column tracker
-                }
+            ## Calc counts rows and columns from 0, and takes (column, row) instead of (row, column)
+            $top = $start - 1
+            $range = sheetzUno_ $sh 'getCellRangeByPosition' @(0, $top, ($sheet.cols - 1), ($top + $sheet.rows - 1))
+            [void](sheetzUno_ $range 'setDataArray' @(,$data))
+
+            foreach($m in $sheet.marks){
+                $cell = sheetzUno_ $sh 'getCellByPosition' @($m[1], ($top + $m[0]))
+                if($m[2]){ [void](sheetzUno_ $cell 'setPropertyValue' @('CellBackColor', [int]$colors[$m[2]])) }
+                if($m[3]){ [void](sheetzUno_ $cell 'setPropertyValue' @('CharColor', [int]$colors[$m[3]])) }
+            }
+
+            if($sheet.heads -and $start -eq 1){ [void]$freeze.Add($sh) }
+        }
+
+        if($new){
+            foreach($b in $blank){
+                if($b -notIn $plan.name){ [void](sheetzUno_ $sheets 'removeByName' @($b)) }
             }
         }
 
-        ## Determine headers or number of columns
-        $toprow = $values_table.$newsheet[1]
-        if($toprow -Match "[a-zA-Z]"){
-            $column_nm = $toprow -Split ','
-            $column_ct = $column_nm.count
-        }
-        elseif($toprow -Match "^\d+$"){
-            $column_nm = $null
-            $column_ct = [int]$toprow
-        }
-        else{
-            errMsg 'Incorrect header value; cannot write to Excel' -c RED -f sheetz
+        [void](sheetzUno_ $doc 'unlockControllers'); $locked = $false
+        $ctrl = sheetzUno_ $doc 'getCurrentController'
+        foreach($sh in $freeze){                      ## Freeze the header row
+            [void](sheetzUno_ $ctrl 'setActiveSheet' @($sh))
+            [void](sheetzUno_ $ctrl 'freezeAtPosition' @(0,1))
         }
 
-
-        if($column_nm){
-            Foreach($v2 in $column_nm){
-                $worksheet.Cells.Item($startrow, $c).Value2 = $v2   ## Write all the initial column values in row 1
-                $c++                                                ## shift to next column
-            }
-            $c = 1                                                  ## go back to column A
-            $startrow++                                             ## shift to next row
-            if($startrow -eq 2){
-                $excel.Rows.Item("$startrow`:$startrow").Select()   ## Select 2nd row for next command
-                $excel.ActiveWindow.FreezePanes = $true             ## Freeze the top row
-            }
-
-            columnVals_ $startrow $c 1
+        ## Always save in .xlsx format so the output matches the Excel version
+        $props = [Array]::CreateInstance([object], 2)
+        $i = 0
+        foreach($pv in @(@('FilterName','Calc MS Excel 2007 XML'), @('Overwrite',$true))){
+            $s = sheetzUno_ $sm 'Bridge_GetStruct' @('com.sun.star.beans.PropertyValue')
+            [void](sheetzUno_ $s 'Name' @($pv[0]) -set)
+            [void](sheetzUno_ $s 'Value' @($pv[1]) -set)
+            if($s -is [System.Management.Automation.PSObject]){ $s = $s.PSObject.BaseObject }
+            $props.SetValue($s, $i); $i++
         }
-        else{
-            columnVals_ $startrow 1 1
-        }
-
+        [void](sheetzUno_ $doc 'storeAsURL' @($url, $props))
     }
-    else{
-        Foreach($v1 in $cell_values){
-            if($v1 -Match "^[a-z]+~[a-z]+~"){
-                $shade_cell = $v1 -replace "~[a-z]+~",'~' -replace "~.+",'~'
-                $shade_text = $v1 -replace "^[a-z]+~?" -replace "~.+",'~'
-                $v1 = $v1 -replace "^[a-z]+~[a-z]+~"
-            }
-            elseif($v1 -Match "^[a-z]~"){
-                $shade_text = $v1 -replace "~.+",'~'
-                $v1 = $v1 -replace "^[a-z]~"
-            }
-
-            $worksheet.Cells.Item($startrow, $c).Value2 = $v1     ## Write values as a list in column A
-
-            if($shade_cell){
-                $worksheet.Cells.Item($startrow, $cc).Interior.Color = $colors[$shade_cell]
-            }
-            if($shade_text){
-                $worksheet.Cells.Item($startrow, $cc).Font.Color = $colors[$shade_text]
-            }
-
-            Remove-Variable shade_*
-
-            $startrow++
+    catch{
+        $em = $_.Exception
+        while($em.InnerException){ $em = $em.InnerException }    ## InvokeMember wraps the real error
+        errMsg -m "Could not write $path to LibreOffice Calc: $($em.Message)" -c r -f sheetz
+        ## Don't leave a half-written new document open (a document the user already had open stays)
+        if($new -and $opened -and $null -ne $doc){
+            try{ [void](sheetzUno_ $doc 'close' @($true)) }catch{ $null }
+            $locked = $false
         }
     }
+    finally{
+        if($locked){ try{ [void](sheetzUno_ $doc 'unlockControllers') }catch{ $null } }
+        ## Calc stays open so the user can review the sheet; just release the COM objects
+        ## ($null checks only: PowerShell can't test these objects for true/false)
+        foreach($o in @($doc,$sm)){
+            if($null -ne $o){ try{ [void][System.Runtime.Interopservices.Marshal]::ReleaseComObject($o) }catch{ $null } }
+        }
+        [System.GC]::Collect()
+        [System.GC]::WaitForPendingFinalizers()
     }
-
-
-    #$worksheet.Cells.Item(4, 3).Value2 = 'TEST'
-    #$worksheet.Cells.Item(4, 4).Value2 = 'SUCCESSFUL'
-
-
-
-    # Save the workbook (optional)
-    if( Test-Path $outpath ){
-        $workbook.Save()
-    }
-    else{
-        $workbook.SaveAs($outpath)
-    }
-
-    # Close Excel
-    #$excel.Quit()
-
-    # Clean up COM objects
-    [System.Runtime.Interopservices.Marshal]::ReleaseComObject($worksheet) | Out-Null
-    [System.Runtime.Interopservices.Marshal]::ReleaseComObject($workbook) | Out-Null
-    [System.Runtime.Interopservices.Marshal]::ReleaseComObject($excel) | Out-Null
-    [System.GC]::Collect()
-    [System.GC]::WaitForPendingFinalizers()
 }
 
 
@@ -1551,165 +1712,674 @@ function decodePdf($filepath,[switch]$preserve,[switch]$split){   #mp
     }
 }
 
-function decodeDoc($filepath,[switch]$nosave,$outfile=$null){   #mp
+## decodeDoc helper: what kind of document this is, from its first bytes (not the file extension)
+function docKind_($path){
+    $h = New-Object byte[] 512
+    $fs = [IO.File]::OpenRead($path)
+    try{ $n = $fs.Read($h,0,512) }
+    finally{ $fs.Close() }
+    if($n -ge 4 -and $h[0] -eq 0x50 -and $h[1] -eq 0x4B -and $h[2] -eq 3 -and $h[3] -eq 4){ Return 'zip' }
+    if($n -ge 8 -and [BitConverter]::ToString($h,0,8) -eq 'D0-CF-11-E0-A1-B1-1A-E1'){ Return 'ole' }
+    $t = [Text.Encoding]::UTF8.GetString($h,0,$n).TrimStart([char]0xFEFF,' ',"`t","`r","`n")
+    if($t -match '^<(\?xml|office:document|w:wordDocument|pkg:package)'){ Return 'xml' }
+    Return 'other'
+}
+
+## decodeDoc helper: read a zip entry, refusing to inflate more than $cap bytes (zip bombs)
+function docEntryBytes_($e,$cap){
+    $s = $e.Open(); $ms = New-Object IO.MemoryStream
+    try{
+        $buf = New-Object byte[] 81920
+        while(($n = $s.Read($buf,0,$buf.Length)) -gt 0){
+            $ms.Write($buf,0,$n)
+            if($ms.Length -gt $cap){ throw "it unpacks to more than $([math]::Round($cap/1MB)) MB" }
+        }
+    }
+    finally{ $s.Close() }
+    Return ,$ms.ToArray()
+}
+
+## decodeDoc helper: turn document XML into readable lines. Paragraphs, rows and breaks become new
+## lines and other tags are dropped (other XML gets one value per line); entities are decoded and
+## invisible direction/zero-width characters are shown as [U+XXXX] so spoofed text stands out.
+function docText_([string]$xml){
+    $t = $xml -replace '(?s)<(office:binary-data|w:binData|pkg:binaryData|ooo:source-code)\b.*?</\1>',''
+    $t = $t -replace '<(w:tab|text:tab)\b[^>]*/>',"`t" -replace '<text:s\b[^>]*/>',' '
+    if($t -match '<(w:p|a:p|text:p|text:h|si)[\s>]'){
+        $t = $t -replace '</(w:p|a:p|text:p|text:h|si|w:tc|w:tr|table:table-cell|table:table-row)>|<(w:br|w:cr|a:br|text:line-break)\b[^>]*/?>',"`n"
+        $t = $t -replace '<[^>]*>',''
+    }
+    else{ $t = $t -replace '<[^>]*>',"`n" }
+    $t = [System.Net.WebUtility]::HtmlDecode($t)
+    $t = $t -replace '[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]',''
+    $t = [regex]::Replace($t, '[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]', { param($m) '[U+{0:X4}]' -f [int][char]$m.Value })
+    Return (@($t -split "`r?`n" | %{ $_.TrimEnd() } | ?{ $_.Trim() -ne '' }) -join "`n")
+}
+
+## decodeDoc helper: image type from the file's first bytes, never its name. $null = not an image
+## we save. SVG can carry scripts, so it is saved as .svg.txt and won't open in a browser.
+function docImgType_([byte[]]$b){
+    if($null -eq $b -or $b.Length -lt 16){ Return $null }
+    $hex = [BitConverter]::ToString($b,0,16)
+    if($hex.StartsWith('89-50-4E-47')){ Return 'png' }
+    if($hex.StartsWith('FF-D8-FF')){ Return 'jpg' }
+    if($hex.StartsWith('47-49-46-38')){ Return 'gif' }
+    if($hex.StartsWith('49-49-2A-00') -or $hex.StartsWith('4D-4D-00-2A')){ Return 'tif' }
+    if($hex.StartsWith('42-4D')){ Return 'bmp' }
+    if($hex.StartsWith('52-49-46-46') -and $hex.Substring(24,11) -eq '57-45-42-50'){ Return 'webp' }
+    if($hex.StartsWith('D7-CD-C6-9A') -or $hex.StartsWith('01-00-09-00') -or $hex.StartsWith('02-00-09-00')){ Return 'wmf' }
+    if($hex.StartsWith('01-00-00-00') -and $b.Length -gt 44 -and [Text.Encoding]::ASCII.GetString($b,40,4) -eq ' EMF'){ Return 'emf' }
+    if([Text.Encoding]::ASCII.GetString($b,0,6) -eq 'VCLMTF'){ Return 'svm' }
+    if([Text.Encoding]::UTF8.GetString($b,0,[math]::Min(1024,$b.Length)) -match '<svg[\s>]'){ Return 'svg.txt' }
+    Return $null
+}
+
+## decodeDoc helper: check a PNG for data hidden after its end marker (the IEND chunk), a common
+## way to smuggle a payload inside an innocent-looking picture. Walks the chunks instead of
+## searching for "IEND", so the text "IEND" inside image data can't fool it.
+## Returns @{ Extra = bytes after the end; Bad = chunk structure is broken; Hint = what the extra data looks like }
+function docPngTail_([byte[]]$b){
+    $p = 8; $end = -1; $n = 0
+    while($p + 12 -le $b.Length -and $n -lt 100000){
+        $len = ([int64]$b[$p] -shl 24) -bor ([int64]$b[$p+1] -shl 16) -bor ([int64]$b[$p+2] -shl 8) -bor $b[$p+3]
+        $type = [Text.Encoding]::ASCII.GetString($b, $p + 4, 4)
+        if($type -cnotmatch '^[A-Za-z]{4}$' -or $p + 12 + $len -gt $b.Length){ break }
+        $p += 12 + $len; $n++
+        if($type -ceq 'IEND'){ $end = $p; break }
+    }
+    if($end -lt 0){ Return @{ Extra = 0; Bad = $true; Hint = '' } }
+    $extra = $b.Length - $end
+    $hint = ''
+    if($extra -gt 0){
+        $t = [Text.Encoding]::GetEncoding(28591).GetString($b, $end, $extra)       ## one char per byte
+        if($t -notmatch '[^\x00]'){ $hint = 'all zero bytes, probably just padding' }
+        elseif($t.StartsWith('MZ')){ $hint = 'it starts with "MZ", the header of a Windows program (.exe/.dll)' }
+        elseif($t.StartsWith("PK$([char]3)$([char]4)")){ $hint = 'it is a zip archive (could hold a .docx, .jar or other files)' }
+        elseif($t.StartsWith("$([char]0xD0)$([char]0xCF)$([char]0x11)$([char]0xE0)")){ $hint = 'it is an OLE2 file (old Office format or MSI)' }
+        elseif($t.StartsWith('%PDF')){ $hint = 'it is a PDF' }
+        elseif($t.StartsWith("$([char]0x89)PNG") -or $t.StartsWith("$([char]0xFF)$([char]0xD8)$([char]0xFF)")){ $hint = 'it is another image' }
+        else{ $hint = "it starts with: $($t.Substring(0, [math]::Min(60, $t.Length)) -replace '[^\x20-\x7E]','.')" }
+    }
+    Return @{ Extra = $extra; Bad = $false; Hint = $hint }
+}
+
+## decodeDoc helper: copy part of a byte array
+function docSlice_([byte[]]$b,$from,$to){
+    $o = New-Object byte[] ($to - $from)
+    [Array]::Copy($b,$from,$o,0,$to - $from)
+    Return ,$o
+}
+
+## decodeDoc helper: find PNG and JPEG images inside binary data (legacy .doc/.xls/.ppt streams).
+## Each match is checked by walking the image's own structure, so random byte matches are dropped.
+function docCarve_([byte[]]$b){
+    $found = New-Object System.Collections.ArrayList
+    if($null -eq $b -or $b.Length -lt 100){ Return ,$found }
+    $s = [Text.Encoding]::GetEncoding(28591).GetString($b)      ## one char per byte, for fast searching
+    $ord = [StringComparison]::Ordinal
+
+    $sig = "$([char]0x89)PNG`r`n$([char]0x1A)`n"
+    $i = $s.IndexOf($sig, $ord)
+    while($i -ge 0){
+        $p = $i + 8; $end = -1; $n = 0
+        while($p + 12 -le $b.Length -and $n -lt 100000){
+            $len = ([int64]$b[$p] -shl 24) -bor ([int64]$b[$p+1] -shl 16) -bor ([int64]$b[$p+2] -shl 8) -bor $b[$p+3]
+            $type = $s.Substring($p + 4, 4)
+            if($type -cnotmatch '^[A-Za-z]{4}$' -or $p + 12 + $len -gt $b.Length){ break }
+            $p += 12 + $len; $n++
+            if($type -ceq 'IEND'){ $end = $p; break }
+        }
+        if($end -gt 0){ [void]$found.Add((docSlice_ $b $i $end)); $i = $s.IndexOf($sig, [int]$end, $ord) }
+        else{ $i = $s.IndexOf($sig, $i + 8, $ord) }
+    }
+
+    $sig = "$([char]0xFF)$([char]0xD8)$([char]0xFF)"
+    $i = $s.IndexOf($sig, $ord)
+    while($i -ge 0){
+        $p = $i + 2; $end = -1; $scan = $false; $n = 0
+        while($p + 2 -le $b.Length -and $n -lt 100000){
+            $n++
+            if($b[$p] -ne 0xFF){ break }
+            $m = $b[$p+1]
+            if($m -eq 0xFF){ $p++; continue }
+            if($m -eq 0xD9){ if($scan){ $end = $p + 2 }; break }        ## end marker: the image may end the data
+            if(($m -ge 0xD0 -and $m -le 0xD7) -or $m -eq 0x01){ $p += 2; continue }
+            if($p + 4 -gt $b.Length){ break }
+            $len = ([int]$b[$p+2] -shl 8) -bor $b[$p+3]      ## [int]: a [byte] shifted left stays a byte (and becomes 0)
+            if($len -lt 2){ break }
+            $p += 2 + $len
+            if($m -eq 0xDA){
+                $scan = $true
+                ## Skip the compressed image data: stop at the next real marker (not FF00 or a restart marker)
+                while($true){
+                    $p = $s.IndexOf([char]0xFF, [int][math]::Min($p, $s.Length))
+                    if($p -lt 0 -or $p + 1 -ge $b.Length){ $p = $b.Length; break }
+                    $q = $b[$p+1]
+                    if($q -eq 0 -or $q -eq 0xFF -or ($q -ge 0xD0 -and $q -le 0xD7)){ $p++; continue }
+                    break
+                }
+            }
+        }
+        if($end -gt 0){ [void]$found.Add((docSlice_ $b $i $end)); $i = $s.IndexOf($sig, [int]$end, $ord) }
+        else{ $i = $s.IndexOf($sig, $i + 3, $ord) }
+    }
+    Return ,$found
+}
+
+## decodeDoc helper: read the streams out of an OLE2 compound file (legacy .doc/.xls/.ppt,
+## vbaProject.bin, password-protected .docx/.xlsx/.pptx). This only reads the file's structure;
+## nothing in it is run. Returns a list of @{Path; Name; Bytes}, empty if it isn't OLE2.
+function docCfb_([byte[]]$b){
+    $out = New-Object System.Collections.ArrayList
+    if($null -eq $b -or $b.Length -lt 1024 -or [BitConverter]::ToString($b,0,8) -ne 'D0-CF-11-E0-A1-B1-1A-E1'){ Return ,$out }
+    $ss = 1 -shl [BitConverter]::ToUInt16($b,0x1E)
+    if($ss -notin 512,4096 -or [BitConverter]::ToUInt16($b,0x20) -ne 6){ Return ,$out }
+    $cut = [BitConverter]::ToUInt32($b,0x38)
+    $per = $ss / 4
+    $nsec = [math]::Floor(($b.Length - $ss) / $ss)
+
+    ## Follow a sector chain; stops at the end marker, bad entries or loops
+    function cfbRead_($start,$size,$tbl,$src,$unit,$base){
+        $ms = New-Object IO.MemoryStream
+        $sec = $start; $g = 0
+        while($sec -ge 0 -and $sec -lt $tbl.Length -and $g -le $tbl.Length){
+            $o = $base + $sec * $unit
+            if($o + $unit -gt $src.Length){ break }
+            $ms.Write($src, $o, $unit)
+            $sec = $tbl[$sec]; $g++
+        }
+        $r = $ms.ToArray()
+        if($size -ge 0 -and $size -lt $r.Length){ $r = docSlice_ $r 0 $size }
+        Return ,$r
+    }
+
+    ## Sectors holding the FAT: 109 listed in the header, the rest in the DIFAT chain
+    $fatSecs = New-Object System.Collections.Generic.List[int]
+    for($k = 0; $k -lt 109; $k++){
+        $v = [BitConverter]::ToInt32($b, 0x4C + 4*$k)
+        if($v -ge 0 -and $v -lt $nsec){ $fatSecs.Add($v) }
+    }
+    $d = [BitConverter]::ToInt32($b,0x44); $g = 0
+    while($d -ge 0 -and $d -lt $nsec -and $g -lt $nsec){
+        $o = ($d + 1) * $ss
+        for($k = 0; $k -lt $per - 1; $k++){
+            $v = [BitConverter]::ToInt32($b, $o + 4*$k)
+            if($v -ge 0 -and $v -lt $nsec){ $fatSecs.Add($v) }
+        }
+        $d = [BitConverter]::ToInt32($b, $o + $ss - 4); $g++
+    }
+    $fat = New-Object int[] ($fatSecs.Count * $per)
+    for($k = 0; $k -lt $fatSecs.Count; $k++){ [Buffer]::BlockCopy($b, ($fatSecs[$k] + 1) * $ss, $fat, $k * $ss, $ss) }
+
+    ## Directory entries (128 bytes each)
+    $dirB = cfbRead_ ([BitConverter]::ToInt32($b,0x30)) (-1) $fat $b $ss $ss
+    $n = [math]::Floor($dirB.Length / 128)
+    if($n -lt 1 -or $dirB[66] -ne 5){ Return ,$out }        ## entry 0 must be the root
+    $dirs = New-Object object[] $n
+    for($k = 0; $k -lt $n; $k++){
+        $o = $k * 128
+        $nl = [BitConverter]::ToUInt16($dirB, $o + 64)
+        $name = ''
+        if($nl -ge 2 -and $nl -le 64){ $name = [Text.Encoding]::Unicode.GetString($dirB, $o, $nl - 2) }
+        $dirs[$k] = @{
+            Name = $name; Type = $dirB[$o + 66]
+            L = [BitConverter]::ToInt32($dirB, $o + 68); R = [BitConverter]::ToInt32($dirB, $o + 72)
+            C = [BitConverter]::ToInt32($dirB, $o + 76); Start = [BitConverter]::ToInt32($dirB, $o + 116)
+            Size = [int64][BitConverter]::ToUInt32($dirB, $o + 120)
+        }
+    }
+
+    ## Small streams live in the "mini stream", indexed by the mini FAT
+    $mini = cfbRead_ $dirs[0].Start $dirs[0].Size $fat $b $ss $ss
+    $mfB = cfbRead_ ([BitConverter]::ToInt32($b,0x3C)) (-1) $fat $b $ss $ss
+    $mfat = New-Object int[] ([math]::Floor($mfB.Length / 4))
+    [Buffer]::BlockCopy($mfB, 0, $mfat, 0, $mfat.Length * 4)
+
+    ## Walk the storage tree (each storage's children are a tree of siblings)
+    $stack = New-Object System.Collections.Stack
+    $seen = @{}
+    $stack.Push(@($dirs[0].C, ''))
+    while($stack.Count){
+        $it = $stack.Pop(); $k = $it[0]; $pre = $it[1]
+        if($k -lt 0 -or $k -ge $n -or $seen.ContainsKey($k)){ continue }
+        $seen[$k] = 1
+        $e = $dirs[$k]
+        $stack.Push(@($e.L, $pre)); $stack.Push(@($e.R, $pre))
+        $path = "$pre$($e.Name)"
+        if($e.Type -eq 1){ $stack.Push(@($e.C, "$path/")) }
+        elseif($e.Type -eq 2){
+            $size = [math]::Min($e.Size, [int64]$b.Length)
+            if($size -lt $cut){ $data = cfbRead_ $e.Start $size $mfat $mini 64 0 }
+            else{ $data = cfbRead_ $e.Start $size $fat $b $ss $ss }
+            [void]$out.Add([pscustomobject]@{ Path = $path; Name = $e.Name; Bytes = $data })
+        }
+    }
+    Return ,$out
+}
+
+## decodeDoc helper: macro module names from a VBA project's streams (the PROJECT stream lists
+## them in plain text). This lists the modules; the macro source itself stays compressed.
+function docVbaNames_($streams){
+    $names = New-Object System.Collections.ArrayList
+    foreach($st in $streams){
+        if($st.Name -ceq 'PROJECT'){
+            $txt = [Text.Encoding]::GetEncoding(28591).GetString($st.Bytes)
+            foreach($ln in ($txt -split "`r?`n")){
+                if($ln -match '^(Module|Document|Class|BaseClass)=([^/]+)'){ [void]$names.Add("$($Matches[2]) ($($Matches[1]))") }
+            }
+        }
+    }
+    if(-not $names.Count){      ## No PROJECT stream: fall back to the module streams' names
+        foreach($st in $streams){
+            if($st.Path -match '(^|/)VBA/' -and $st.Name -notmatch '^(dir|_VBA_PROJECT|__SRP_\d+|PROJECT.*)$'){
+                [void]$names.Add($st.Name)
+            }
+        }
+    }
+    Return ,$names
+}
+
+## decodeDoc helper: readable text runs in binary data, both 8-bit and UTF-16 (like 'strings'),
+## kept in the order they appear. UTF-16 runs are limited to Latin, Cyrillic and punctuation
+## characters, so random bytes don't come out as fake Asian text.
+function docStrings_([byte[]]$b,$min=4){
+    $runs = New-Object System.Collections.ArrayList
+    if($null -eq $b -or $b.Length -lt $min){ Return '' }
+    $l1 = [Text.Encoding]::GetEncoding(28591).GetString($b)
+    foreach($m in [regex]::Matches($l1, "[\x20-\x7E\t]{$min,}")){ [void]$runs.Add(@($m.Index, $m.Value)) }
+    foreach($off in 0,1){
+        $len = ($b.Length - $off) - (($b.Length - $off) % 2)
+        if($len -lt 2){ continue }
+        $u = [Text.Encoding]::Unicode.GetString($b, $off, $len)
+        foreach($m in [regex]::Matches($u, "[\u0020-\u007E\u00A0-\u024F\u0400-\u04FF\u2010-\u206F\t]{$min,}")){
+            [void]$runs.Add(@(($off + 2 * $m.Index), $m.Value))
+        }
+    }
+    $t = @($runs | Sort-Object { $_[0] } | %{ $_[1].Trim() } | ?{ $_ }) -join "`n"
+    Return [regex]::Replace($t, '[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]', { param($m) '[U+{0:X4}]' -f [int][char]$m.Value })
+}
+
+## decodeDoc helper: walk an .xls Workbook stream. Joins the drawing records (images are split
+## across CONTINUE records), flags Excel 4.0 macro sheets and notices encryption.
+function docBiff_([byte[]]$w){
+    $draw = New-Object IO.MemoryStream
+    $xlm = New-Object System.Collections.ArrayList
+    $enc = $false; $p = 0; $last = 0
+    $state = @('visible','hidden','very hidden','unknown')
+    while($p + 4 -le $w.Length){
+        $id = [BitConverter]::ToUInt16($w,$p); $len = [BitConverter]::ToUInt16($w,$p + 2)
+        $d = $p + 4
+        if($d + $len -gt $w.Length){ break }
+        if($id -eq 0x00EB -or ($id -eq 0x003C -and $last -eq 0x00EB)){ $draw.Write($w,$d,$len); $last = 0x00EB }
+        else{ $last = $id }
+        if($id -eq 0x002F){ $enc = $true }
+        if($id -eq 0x0085 -and $len -ge 8 -and $w[$d + 5] -eq 1){        ## BOUNDSHEET for a macro sheet
+            $cch = $w[$d + 6]
+            if($w[$d + 7] -band 1){ $nm = [Text.Encoding]::Unicode.GetString($w, $d + 8, [math]::Min($cch * 2, $len - 8)) }
+            else{ $nm = [Text.Encoding]::GetEncoding(28591).GetString($w, $d + 8, [math]::Min($cch, $len - 8)) }
+            [void]$xlm.Add("Excel 4.0 macro sheet: $nm ($($state[$w[$d + 4] -band 3]))")
+        }
+        $p = $d + $len
+    }
+    Return @{ draw = $draw.ToArray(); xlm = $xlm; enc = $enc }
+}
+
+function decodeDoc($filepath,[switch]$nosave,$outfile=$null,[switch]$images){   #mp
     <#
     ||shorthelp||
     decodeDoc [-f PATH_TO_FILE] [-n NO_OUTPUT_FILE] [-o OUTPUT_FILENAME (optional)]
+        [-i EXTRACT_IMAGES]
 
     ||longhelp||
-    Extract plaintext from Microsoft Office documents without executing them in
-    Word, Excel, or Powerpoint. This function will also extract any macros or VBA
-    scripts it finds and add them to the output file.
+    Extract plaintext from Microsoft Office and LibreOffice/OpenOffice documents without
+    opening them in Office. Nothing inside the document is run. This function also lists
+    any macros it finds and adds them to the output file:
+        -Word macro names, and the module names in any VBA project (.docm, .xlsm, .pptm,
+         .doc, .xls, .ppt). The VBA source itself is compressed and is not shown.
+        -LibreOffice Basic macros and scripts, with their full source code
+        -Macros that a LibreOffice document runs on an event (like opening it)
+        -Excel 4.0 macro sheets, including hidden ones
+    It also notes password protection, hidden sheets, and links to outside resources
+    (like a remote template) that the document would reach out to when opened.
 
-    Use -o to specify an output filename, otherwise it will share the same name as
-    the document you're scraping. The .txt files are written to the MACROSS\outputs
-    folder.
+    Everything is saved to a folder in your MACROSS outputs ($dyrl_OUTFILES) named after
+    the document without its extension, and the .txt file keeps the extension, e.g.
+    "Suspicious\Suspicious.docx.txt". Documents with the same name in different formats
+    share the folder ("Suspicious\Suspicious.doc.txt" goes next to it). Use -o to choose a
+    different name for the .txt file; the folder name stays the same. (If a file with the
+    folder's name is already in the outputs folder, the folder gets ".decoded" added.)
 
-    Use -n to receive a hashtable containing macros and plaintext, without saving
-    any output file.
+    If the document has images, you'll be asked whether to extract them into the same
+    folder. Use -i to extract them without asking. Image files start with the document's
+    name ("Suspicious.docx_001_image1.png") so they don't mix with images from the other
+    formats. They are saved by their real type (not their name), and SVG images are saved
+    as .svg.txt because they can hold scripts.
 
-    Currently only handles doc, docx, xls, xlsx, ppt, and pptx files.
+    Every PNG found (extracted or not) is checked for extra data after its end marker, a
+    common way to hide a payload in a picture, and for a broken internal structure. These
+    show as red ALERT lines on screen and in an "!! ALERTS" section at the top of the .txt
+    file. (PNGs cut out of the older binary formats always end at their end marker, so this
+    check can't see hidden data there.)
+
+    Use -n to receive a hashtable instead of saving the .txt file:
+        .vb      = list of macros found
+        .pt      = list of plaintext sections ("## <part name>" on the first line)
+        .links   = links to outside resources
+        .notes   = warnings (password protection, hidden sheets, skipped parts)
+        .alerts  = signs of something hidden on purpose (data after a PNG's end marker)
+        .img     = paths of extracted images (only with -i)
+        .imgct   = number of images found
+        .format  = the document format
+    With -n you are never asked about images; add -i to extract them.
+
+    Handles doc, docx, docm, dot, dotx, dotm, xls, xlsx, xlsm, xlsb, ppt, pptx, pptm,
+    odt, ods, odp, odg, ott, ots, otp, sxw, sxc, sxi, and the flat XML formats (fodt, fods,
+    fodp, fodg, Word XML). The format is detected from the file's contents, so renamed files
+    are handled correctly. For the older binary formats (doc, xls, ppt) the text is pulled out
+    as readable runs (like the 'strings' tool), so it can include some formatting leftovers,
+    and only their PNG and JPEG images can be extracted.
 
     ||examples||
         ## Get plaintext without saving to file:
             $plaintext = decodeDoc "C:\Users\Me\Documents\Suspicious.docx" -n
             $plaintext.vb       ## List of macros, if any
-            $plaintext.pt       ## List of plaintext lines from the document
+            $plaintext.pt       ## List of plaintext sections from the document
 
-        ## Write plaintext to "report001.txt" in the outputs folder:
+        ## Write plaintext to "Suspicious\report001.txt" in the outputs folder:
             decodeDoc "C:\Users\Me\Documents\Suspicious.docx" -o 'report001'
 
-        ## Write plaintext to "Suspicious.txt" in the outputs folder:
-            decodeDoc "C:\Users\Me\Documents\Suspicious.xlsx"
+        ## Write plaintext to "Suspicious\Suspicious.ods.txt" in the outputs folder, and
+        ## extract any images without asking:
+            decodeDoc "C:\Users\Me\Documents\Suspicious.ods" -i
 
     #>
 
-
-    if($outfile){ $fn = "$outfile`.txt" }
-    else{ $fn = $filepath -replace "^.*\\" -replace "\.\w+$",'.txt' }
-    $fn = "$dyrl_OUTFILES\$fn"
-    $msa = mkList
-    $fnt = mkList
-    if($nosave){ $final = @{} }
-    else{ $final = '' }
-
-    ## Get the contents of each XML extracted from the document
-    function grabXML_($xml){
-        $s = $xml.Open()
-        $r = New-Object -TypeName System.IO.StreamReader($s)
-        $t = $r.ReadToEnd()
-        $s.Close()
-        $r.Close()
-        Return $t
+    if(-not $filepath -or -not (Test-Path -LiteralPath $filepath -PathType Leaf)){
+        errMsg -m "decodeDoc: file not found: $filepath" -c r -f 'MACROSS.decodeDoc'
+        Return
     }
+    $filepath = (Resolve-Path -LiteralPath $filepath).ProviderPath
+    $src = Split-Path $filepath -Leaf
+    ## Folder = name without extension, so other formats of the same document share it;
+    ## the .txt keeps the extension ("Suspicious\Suspicious.docx.txt")
+    $base = [IO.Path]::GetFileNameWithoutExtension($src)
+    if(-not $base){ $base = $src }
+    $folder = "$dyrl_OUTFILES\$base"
+    ## A file with the folder's name may already be in the outputs folder
+    if(Test-Path -LiteralPath $folder -PathType Leaf){ $folder = "$folder.decoded" }
+    if($outfile){ $tname = [IO.Path]::GetFileNameWithoutExtension((Split-Path "$outfile" -Leaf)) }
+    else{ $tname = $src }
+    if(-not $tname){ $tname = 'document' }
+    $fn = "$folder\$tname.txt"
 
+    $maxPart = 64MB                 ## Largest part we'll unpack from a zip-based document
+    $maxFile = 256MB                ## Largest file we'll read into memory whole
+    $msa = mkList                   ## macros
+    $fnt = mkList                   ## plaintext sections
+    $notes = mkList                 ## warnings
+    $alerts = mkList                ## findings that suggest something was hidden on purpose
+    $links = mkList                 ## outside resources
+    $imgs = New-Object System.Collections.ArrayList     ## @{ Name; Bytes }
+    $seen = @{}                     ## de-duplicates macros/links
+    function addOnce_($list,$val){ if(-not $seen.ContainsKey($val)){ $seen[$val] = 1; [void]$list.Add($val) } }
+    $b64 = { param($s) try{ ,[Convert]::FromBase64String(($s -replace '\s','')) }catch{ ,$null } }
 
-    ## Scan the extracted plaintext for user's keywords
-    function extractText_($pt,$macroname){
-        $kws = mkList
-        $pt | %{
-            $b = $_ -replace $dyrl_ASCII                      ## Dump unreadable bytes
-            if($macroname -eq 'notvba'){
-                $b = $b -replace "<.*?>","`n" -split("`n")    ## Remove office/xml tags, then ignore empty lines
+    $kind = docKind_ $filepath
+    $x = $null
+    try{
+        if($kind -eq 'zip'){
+            Add-Type -Assembly System.IO.Compression.FileSystem
+            $x = [IO.Compression.ZipFile]::OpenRead($filepath)
+            $names = @($x.Entries | %{ $_.FullName })
+            if($names -contains 'mimetype' -or $names -contains 'content.xml'){ $fmt = 'OpenDocument (LibreOffice/OpenOffice)' }
+            elseif($names -contains '[Content_Types].xml'){ $fmt = 'Office Open XML (MS Office 2007+)' }
+            else{ $fmt = 'zip archive' }
+
+            ## OpenDocument password protection: the manifest lists the encrypted parts
+            $crypt = @{}
+            $man = @($x.Entries | ?{ $_.FullName -eq 'META-INF/manifest.xml' })
+            if($man.Count){
+                $mt = [Text.Encoding]::UTF8.GetString((docEntryBytes_ $man[0] $maxPart))
+                foreach($seg in ($mt -split '<manifest:file-entry')){
+                    if($seg -match '<manifest:encryption-data' -and $seg -match 'manifest:full-path="([^"]+)"'){ $crypt[$Matches[1]] = 1 }
+                }
+                if($crypt.Count){ addOnce_ $notes "Password-protected: $($crypt.Count) parts are encrypted and can't be read without the password" }
             }
-            else{
-                $b = $b -replace "<.*$macroname"              ## Look for the line with the macro name
-            }
-            $b | ?{ $_ -ne '' } | %{
-                [void]$kws.Add("$_")
-            }
-        }
-        Return "$($kws -Join "`n")"
-    }
 
-    ##  Compressed office documents have multiple directories and files;
-    ##  Only care about the XMLs containing text or vbs contents
-    if( $filepath -Match "[mx]$" ){
-        Add-Type -Assembly System.IO.Compression.FileSystem        ## Need to uncompress MSOffice stuff
-        $x = [IO.Compression.ZipFile]::OpenRead("$filepath")
-    }
+            ## Parts that only hold formatting, layouts or settings (no document text)
+            $noise = '^(\[Content_Types\]\.xml|word/(styles|stylesWithEffects|fontTable|settings|webSettings|numbering)\.xml|(word|xl|ppt)/theme/|xl/styles\.xml|ppt/(slideMasters|slideLayouts|presProps|viewProps|tableStyles)|META-INF/|settings\.xml|Configurations2/|manifest\.rdf)'
 
-    ## Excel contents are *typically* in "xl\worksheets\Sheet[0-9].xml" and ".\sharedStrings.xml" paths,
-    ## and MSWord contents are in the Document.xml... but we'll search the whole thing anyway. If there is
-    ## noticeable lag we'll go back to just grabbing Document.xml from Word files
-    if( $x ){
-        $err = @("Could not read xml from $fn","failed to extract macro from $fn","$fn text extraction was corrupted")
-        $x.Entries | ?{ $_.Name -Match "\.xml$" } | %{
-            if($_.name -Match "^vba"){
-                try{ $PLAINTEXT = grabXML_ $_  }
-                catch{ errLog ERROR 'MACROSS.decodeDoc' $err; $PLAINTEXT = $false }
-                if($PLAINTEXT){
-                    try{
-                        $ks = extractText_ $PLAINTEXT 'wne:macroName=' ## uncompressed file has VBA info
-                        [void]$msa.Add($ks)
+            foreach($e in $x.Entries){
+                $p = $e.FullName
+                if($p.EndsWith('/') -or $crypt.ContainsKey($p)){ continue }
+                try{
+                    if($p -match '(^|/)vbaProject\.bin$'){
+                        $mods = docVbaNames_ (docCfb_ (docEntryBytes_ $e $maxPart))
+                        if($mods.Count){ addOnce_ $msa "VBA project ($p), modules: $($mods -join ', ')" }
+                        else{ addOnce_ $msa "VBA project ($p)" }
                     }
-                    catch{
-                        [void]$msa.Add($err[1])
+                    elseif($p -match '^(word|xl|ppt)/media/|^Pictures/|^Thumbnails/|^docProps/thumbnail\.'){
+                        [void]$imgs.Add(@{ Name = $p; Bytes = (docEntryBytes_ $e $maxPart) })
+                    }
+                    elseif($p -match '^Basic/.+\.xml$'){
+                        if($p -notmatch '/(script|dialog)-l[bc]\.xml$'){
+                            $raw = [Text.Encoding]::UTF8.GetString((docEntryBytes_ $e $maxPart))
+                            if($raw -match '(?s)<script:module\b[^>]*>(.*)</script:module>'){
+                                addOnce_ $msa "LibreOffice Basic macro ($p):`n$([System.Net.WebUtility]::HtmlDecode($Matches[1]).Trim())"
+                            }
+                        }
+                    }
+                    elseif($p -match '^Scripts/.+[^/]$'){
+                        addOnce_ $msa "Script ($p):`n$([Text.Encoding]::UTF8.GetString((docEntryBytes_ $e $maxPart)).Trim())"
+                    }
+                    elseif($p -match '\.rels$'){
+                        ## External targets: remote templates, linked objects, web links
+                        $raw = [Text.Encoding]::UTF8.GetString((docEntryBytes_ $e $maxPart))
+                        foreach($m in [regex]::Matches($raw,'<Relationship\b[^>]*>')){
+                            if($m.Value -match 'TargetMode="External"' -and $m.Value -match '\bTarget="([^"]*)"'){
+                                $tg = [System.Net.WebUtility]::HtmlDecode($Matches[1])
+                                $ty = ''; if($m.Value -match '\bType="[^"]*/([^"/]+)"'){ $ty = $Matches[1] }
+                                addOnce_ $links "$tg  ($ty, from $p)"
+                            }
+                        }
+                    }
+                    elseif($p -match '\.xml$' -and $p -notmatch $noise){
+                        $raw = [Text.Encoding]::UTF8.GetString((docEntryBytes_ $e $maxPart))
+                        if($p -match '(^|/)vbaData\.xml$'){
+                            $mn = @([regex]::Matches($raw,'wne:macroName="([^"]+)"') | %{ $_.Groups[1].Value })
+                            if($mn.Count){ addOnce_ $msa "Word macro names ($p): $($mn -join ', ')" }
+                            continue
+                        }
+                        if($p -match '^xl/macrosheets/'){ addOnce_ $msa "Excel 4.0 macro sheet ($p)" }
+                        if($p -eq 'xl/workbook.xml'){
+                            foreach($m in [regex]::Matches($raw,'<sheet\b[^>]*>')){
+                                if($m.Value -match 'state="(hidden|veryHidden)"'){
+                                    $st = $Matches[1]
+                                    if($m.Value -match '\bname="([^"]*)"'){ addOnce_ $notes "Sheet '$([System.Net.WebUtility]::HtmlDecode($Matches[1]))' is $st" }
+                                }
+                            }
+                        }
+                        foreach($m in [regex]::Matches($raw,'vnd\.sun\.star\.script:[^"''<>\s]+')){
+                            addOnce_ $msa "Macro run by a document event ($p): $([System.Net.WebUtility]::HtmlDecode($m.Value))"
+                        }
+                        $t = docText_ $raw
+                        if($t){ [void]$fnt.Add("## $p`n$t") }
                     }
                 }
-                else{ [void]$msa.Add($err[1]) }
+                catch{ addOnce_ $notes "Skipped $p`: $($_.Exception.Message)" }
             }
-            else{
-                try{ $PLAINTEXT = grabXML_ $_ }
-                catch{ errLog ERROR 'MACROSS.decodeDoc' $err; $PLAINTEXT = $false }
-                if($PLAINTEXT){
-                    try{
-                        $ks = extractText_ $PLAINTEXT 'notvba'
-                        [void]$fnt.Add($ks)
-                    }
-                    catch{
-                        [void]$fnt.Add($err[0])
+        }
+        elseif($kind -eq 'xml'){
+            if((Get-Item -LiteralPath $filepath).Length -gt $maxFile){ throw "the file is larger than 256 MB" }
+            $raw = [IO.File]::ReadAllText($filepath)
+            if($raw -match '<office:document\b'){ $fmt = 'Flat OpenDocument XML (LibreOffice .fodt/.fods/.fodp/.fodg)' }
+            elseif($raw -match '<pkg:package\b'){ $fmt = 'Flat Office Open XML (Word/PowerPoint XML)' }
+            elseif($raw -match '<w:wordDocument\b'){ $fmt = 'Word 2003 XML' }
+            else{ $fmt = 'XML' }
+
+            foreach($m in [regex]::Matches($raw,'(?s)<ooo:module\b[^>]*ooo:name="([^"]*)"[^>]*>\s*<ooo:source-code>(.*?)</ooo:source-code>')){
+                addOnce_ $msa "LibreOffice Basic macro ($($m.Groups[1].Value)):`n$([System.Net.WebUtility]::HtmlDecode($m.Groups[2].Value).Trim())"
+            }
+            foreach($m in [regex]::Matches($raw,'vnd\.sun\.star\.script:[^"''<>\s]+')){
+                addOnce_ $msa "Macro run by a document event: $([System.Net.WebUtility]::HtmlDecode($m.Value))"
+            }
+            foreach($m in [regex]::Matches($raw,'(?s)<pkg:part\b[^>]*pkg:name="([^"]+)"[^>]*>\s*<pkg:binaryData>(.*?)</pkg:binaryData>')){
+                $data = & $b64 $m.Groups[2].Value
+                if($null -eq $data){ continue }
+                if($m.Groups[1].Value -match 'vbaProject\.bin$'){
+                    $mods = docVbaNames_ (docCfb_ $data)
+                    addOnce_ $msa "VBA project ($($m.Groups[1].Value)), modules: $($mods -join ', ')"
+                }
+                else{ [void]$imgs.Add(@{ Name = $m.Groups[1].Value; Bytes = $data }) }
+            }
+            foreach($m in [regex]::Matches($raw,'(?s)<pkg:part\b[^>]*pkg:name="([^"]+\.rels)"[^>]*>(.*?)</pkg:part>')){
+                foreach($r in [regex]::Matches($m.Groups[2].Value,'<Relationship\b[^>]*>')){
+                    if($r.Value -match 'TargetMode="External"' -and $r.Value -match '\bTarget="([^"]*)"'){
+                        addOnce_ $links "$([System.Net.WebUtility]::HtmlDecode($Matches[1]))  (from $($m.Groups[1].Value))"
                     }
                 }
-                else{ [void]$fnt.Add($err[0]) }
+            }
+            $k = 0
+            foreach($m in [regex]::Matches($raw,'(?s)<office:binary-data>(.*?)</office:binary-data>')){
+                $k++; $data = & $b64 $m.Groups[1].Value
+                if($null -ne $data){ [void]$imgs.Add(@{ Name = "image$k"; Bytes = $data }) }
+            }
+            foreach($m in [regex]::Matches($raw,'(?s)<w:binData\b[^>]*w:name="([^"]*)"[^>]*>(.*?)</w:binData>')){
+                if($m.Groups[1].Value -match 'editdata\.mso'){ addOnce_ $msa 'Word 2003 XML: embedded macro storage (editdata.mso)'; continue }
+                $data = & $b64 $m.Groups[2].Value
+                if($null -ne $data){ [void]$imgs.Add(@{ Name = $m.Groups[1].Value; Bytes = $data }) }
+            }
+            $t = docText_ $raw
+            if($t){ [void]$fnt.Add("## $src`n$t") }
+        }
+        else{
+            if($kind -eq 'ole'){
+                $fmt = 'OLE2 compound file (MS Office 97-2003)'
+                if((Get-Item -LiteralPath $filepath).Length -le $maxFile){
+                    $streams = docCfb_ ([IO.File]::ReadAllBytes($filepath))
+                    if(@($streams | ?{ $_.Name -eq 'EncryptedPackage' }).Count){
+                        $fmt = 'Password-protected Office Open XML (.docx/.xlsx/.pptx)'
+                        addOnce_ $notes "Password-protected: the document's contents are encrypted and can't be read without the password"
+                    }
+                    $mods = docVbaNames_ $streams
+                    if($mods.Count){ addOnce_ $msa "VBA project, modules: $($mods -join ', ')" }
+                    foreach($st in $streams){
+                        if($st.Path -match '(^|/)(VBA|_VBA_PROJECT_CUR)/'){ continue }
+                        ## Text: readable runs from the streams that hold document text and properties
+                        if($st.Name -match '^(WordDocument|PowerPoint Document|Workbook|Book|Current User|.?SummaryInformation|.?DocumentSummaryInformation)$'){
+                            $t = docStrings_ $st.Bytes
+                            if($t){ [void]$fnt.Add("## $($st.Path -replace '[\x00-\x1F]','') (text runs)`n$t") }
+                        }
+                        if($st.Bytes.Length -lt 100){ continue }
+                        $data = $st.Bytes
+                        if($st.Name -in 'Workbook','Book'){
+                            $bf = docBiff_ $data
+                            $data = $bf.draw
+                            foreach($xm in $bf.xlm){ addOnce_ $msa $xm }
+                            if($bf.enc){ addOnce_ $notes 'Password-protected: the workbook is encrypted, so its text and images are unreadable' }
+                        }
+                        foreach($img in (docCarve_ $data)){ [void]$imgs.Add(@{ Name = "$($st.Name)-image"; Bytes = $img }) }
+                    }
+                }
+                else{ addOnce_ $notes 'The file is larger than 256 MB; images and macro names were not scanned' }
+            }
+            else{ $fmt = 'Unrecognized format (raw text scan)' }
+
+            ## Unknown formats (or an OLE2 file whose streams couldn't be read): just read the raw text
+            if($kind -ne 'ole' -or -not $fnt.Count){
+                $findvba = Get-Content -LiteralPath $filepath
+                $findstr = [IO.File]::ReadLines($filepath)
+
+                ## If 'VBA...DLL' and 'Sub ' are in the same doc, it's likely a macro
+                if( $findvba | Select-String -CaseSensitive 'VBA' | Select-String 'dll' ){
+                    $mac = ($findvba | Select-String -Pattern "Sub .+\(\)") -replace $dyrl_ASCII
+                    $mac = $mac -replace "^Sub " -replace "\(\)"
+                    if("$mac".Trim()){ addOnce_ $msa "Possible macro names (raw scan): $($mac -join ', ')" }
+                }
+                [void]$fnt.Add("## raw text`n$(@($findstr) -join "`n")")
+                Remove-Variable findstr,findvba
             }
         }
     }
+    catch{
+        errLog ERROR 'MACROSS.decodeDoc' "$src`: $($_.Exception.Message)"
+        addOnce_ $notes "Extraction stopped early: $($_.Exception.Message)"
+    }
+    finally{
+        if($null -ne $x){ $x.Dispose() }
+    }
 
-    ## If doc is old 97-2003 non-compressed format, can't use extractText_ function
-    ## because it is for parsing extracted XML files.
-    else{
-        $findvba = Get-Content $filepath
-        $findstr = [IO.File]::ReadLines($filepath)
+    ## Keep only real images (by their bytes), once each
+    $sha = [Security.Cryptography.SHA256]::Create()
+    $hashes = @{}
+    $found = New-Object System.Collections.ArrayList
+    foreach($im in $imgs){
+        $ext = docImgType_ $im.Bytes
+        if(-not $ext){ continue }
+        $h = [BitConverter]::ToString($sha.ComputeHash($im.Bytes))
+        if($hashes.ContainsKey($h)){ continue }
+        $hashes[$h] = 1
+        [void]$found.Add(@{ Name = $im.Name; Bytes = $im.Bytes; Ext = $ext })
 
-        ## If 'VBA...DLL' and 'Sub ' are in the same doc, it's likely a macro
-        if( $findvba | Select-String -CaseSensitive 'VBA' | Select-String 'dll' ){
-            $mac = ($findvba | Select-String -Pattern "Sub .+\(\)") -replace $dyrl_ASCII
-            $mac = $mac -replace "^Sub " -replace "\(\)"
-            [void]$msa.Add($mac)
+        ## PNGs: anything after the end marker could be a hidden payload ("#n" = the extracted file's number)
+        if($ext -eq 'png'){
+            $pt = docPngTail_ $im.Bytes
+            if($pt.Bad){ addOnce_ $alerts "PNG #$($found.Count) ($($im.Name)): its internal structure is broken, so it may not really be an image" }
+            elseif($pt.Extra -gt 0){ addOnce_ $alerts "PNG #$($found.Count) ($($im.Name)): $($pt.Extra) bytes of extra data after the image's end marker; $($pt.Hint)" }
         }
-        $findstr | %{
-            [void]$fnt.Add($_)
+    }
+    foreach($a in $alerts){ w "ALERT ($src): $a" r }
+    $sha.Dispose()
+
+    $doImg = [bool]$images
+    if($found.Count -and -not $images -and -not $nosave){
+        $doImg = (yorn -l 'decodeDoc' -q "Found $($found.Count) image(s) in $src. Extract them to $folder ?" -b 4 -i 32) -eq 'Yes'
+    }
+    $saved = mkList
+    if($doImg -and $found.Count){
+        New-Item -ItemType Directory -Force -Path $folder | Out-Null
+        $k = 0
+        foreach($im in $found){
+            $k++
+            $ibase = [IO.Path]::GetFileNameWithoutExtension(($im.Name -split '/')[-1]) -replace '[^\w.-]','_'
+            if(-not $ibase){ $ibase = 'image' }
+            $out = "$folder\{0}_{1:D3}_{2}.{3}" -f $src, $k, $ibase, $im.Ext     ## document name + number: never collide
+            [IO.File]::WriteAllBytes($out, $im.Bytes)
+            [void]$saved.Add($out)
         }
-        rv findstr,findvba,mac
     }
 
     if($nosave){
-        $final.Add('vb',$msa)
-        $final.Add('pt',$fnt)
-        Return $final
+        Return @{ vb = $msa; pt = $fnt; links = $links; notes = $notes; alerts = $alerts; img = $saved; imgct = $found.Count; format = $fmt }
     }
 
-    if($msa.count -gt 0){
-        $final += "FOUND MACROS:`n"
-        $final += "$($msa -Join "`n")"
-        $final += "$('='*65)`n"
+    $final = mkList
+    [void]$final.Add("SOURCE:  $filepath")
+    [void]$final.Add("SHA256:  $((Get-FileHash -LiteralPath $filepath -Algorithm SHA256).Hash)")
+    [void]$final.Add("FORMAT:  $fmt")
+    if($alerts.Count){ [void]$final.Add("`n!! ALERTS:"); $alerts | %{ [void]$final.Add("  - $_") } }
+    if($notes.Count){ [void]$final.Add("`nNOTES:"); $notes | %{ [void]$final.Add("  - $_") } }
+    if($links.Count){
+        [void]$final.Add("`nOUTSIDE LINKS (the document can reach out to these when opened):")
+        $links | %{ [void]$final.Add("  - $_") }
     }
-    $final += "$($fnt -Join "`n")"
-
-    ## Cleanup
-    try{ $x.Dispose() }
-    catch{ $null }
+    if($msa.Count){ [void]$final.Add("`nFOUND MACROS:"); $msa | %{ [void]$final.Add("$_`n") } }
+    if($found.Count){
+        if($saved.Count){ [void]$final.Add("`nIMAGES: $($saved.Count) extracted to $folder") }
+        else{ [void]$final.Add("`nIMAGES: $($found.Count) found, not extracted") }
+    }
+    [void]$final.Add("$('='*65)`n")
+    $fnt | %{ [void]$final.Add("$_`n") }
 
     try{
-        noBOM -t "$final" -f $fn -m
+        New-Item -ItemType Directory -Force -Path $folder | Out-Null
+        noBOM -t "$($final -join "`n")" -f $fn -m
         notepad.exe $fn
     }
     catch{
         $error[0]
         Read-Host
     }
-
 }
 
 function getFile($filter='all',$opendir="H:\",[switch]$directory=$false){   #mp
