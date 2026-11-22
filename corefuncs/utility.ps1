@@ -1212,9 +1212,9 @@ function sheetz(){   #mp
         [switch]$libre
     )
 
-    ## Pick the spreadsheet program ($SHEETZ and $LIBRECALC are set from installed_programs.json)
-    if($libre -or -not $SHEETZ){
-        if(-not $LIBRECALC){
+    ## Pick the spreadsheet program ($SHEETZ1 and $SHEETZ2 are set from installed_programs.json)
+    if($libre -or -not $SHEETZ1){
+        if(-not $SHEETZ2){
             if($libre){ $em = 'LibreOffice Calc is not installed!' }
             else{ $em = 'Neither MS Excel nor LibreOffice Calc is installed!' }
             errMsg -f 'MACROSS.sheetz' -m $em -c r
