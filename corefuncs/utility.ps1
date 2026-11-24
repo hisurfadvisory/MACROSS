@@ -405,7 +405,7 @@ function consoleDebug($x=$null,$ch=$null){
             elseif($z -eq 'python'){
                 if(-not (pyGate_ 'Debug python')){ Return }
                 startUp;pyATTS;macrossMirror -n $N_;if($dyrl_LOG -ne 'none'){errLog INFO 'MACROSS.debug' "pydev success ($dyrl_HN0)"};cls
-                if($dyrl_PYCROSS){ . $dyrl_PYCROSS }
+                if($dyrl_PYCROSS -and $dyrl_PYCROSS -ne 'none'){ . $dyrl_PYCROSS }
                 else{ py }
             }
             elseif($z -notIn 1..3){
