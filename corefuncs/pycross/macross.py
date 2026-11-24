@@ -114,7 +114,7 @@
         verify a file or folder path is valid
 
     minmay():
-        display a terminator image.
+        display ascii Macross anime art.
 
     kawamori():
         decrypt a MACROSS data key
@@ -153,7 +153,11 @@
 ################################################################
 import sys
 import traceback
-from subprocess import run,PIPE
+from subprocess import run,PIPE,DEVNULL
+import subprocess as _sp
+## Hidden console for powershell children that don't need the user's console, so nothing
+## they do (code page changes, progress bars) can alter it; 0 outside of Windows
+NOCON = getattr(_sp,"CREATE_NO_WINDOW",0)
 from datetime import datetime as dt
 from os import chdir,path,getenv,environ,system,popen,remove,makedirs
 from json import dumps,load,loads
@@ -645,17 +649,23 @@ def _kawaPS(args: str, stdin: str = None):
     """ Run powershell's kawamori (no prompts). Returns (ok, value_or_error). """
     script = path.join(str(MACROOT),"corefuncs","kawamoriNG.ps1")
     exe = "pwsh.exe" if (PSVER and PSVER >= 7) else "powershell.exe"
-    setup = ("[Console]::OutputEncoding = [Text.Encoding]::UTF8; [Console]::InputEncoding = [Text.Encoding]::UTF8; "
-             f"$ErrorActionPreference = 'Stop'; . {_psq(script)}; ")
+    ## Don't set [Console]::OutputEncoding/InputEncoding here: that changes the code page of
+    ## the console, and on legacy conhost (Win10, Server 2016/2019) the font switches to
+    ## raster. UTF-8 goes through the raw stdin/stdout streams instead.
+    setup = f"$ErrorActionPreference = 'Stop'; . {_psq(script)}; "
     if stdin is not None:
-        setup += "$in = [Console]::In.ReadToEnd(); "
+        setup += ("$in = (New-Object IO.StreamReader([Console]::OpenStandardInput(),"
+                  "(New-Object Text.UTF8Encoding $false))).ReadToEnd(); ")
     ## -klog lets kawamori write its own access/failure log entries (it logs every
     ## failure itself, so callers here don't log those again)
     cmd = setup + (f"$v = kawamori {args} -kshare {_psq(CONTENT)} -klocal {_psq(RESOURCES)} "
-                   f"-klog {_psq(LOGS)}; [Console]::Out.Write($v)")
+                   f"-klog {_psq(LOGS)}; $b = [Text.Encoding]::UTF8.GetBytes([string]$v); "
+                   "$o = [Console]::OpenStandardOutput(); $o.Write($b,0,$b.Length); $o.Flush()")
     try:
-        r = run([exe,"-NoProfile","-NonInteractive","-Command",cmd],input=stdin,
-                capture_output=True,text=True,encoding="utf-8")
+        r = run([exe,"-NoProfile","-NonInteractive","-Command",cmd],
+                input=stdin,stdin=(DEVNULL if stdin is None else None),
+                capture_output=True,text=True,encoding="utf-8",errors="replace",
+                creationflags=NOCON)
     except OSError as e:
         errLog("ERROR","MACROSS.kawamori()",f"Could not start {exe} to read a protected key: {e}")
         return False,f"Could not start {exe}: {e}"
@@ -1446,31 +1456,18 @@ def screenResultsForm(text:str="",images:any=None,header:str="MACROSS results",
                            "chats":bool(chats),"root":str(root or OUTFILES or ""),
                            "outfiles":str(OUTFILES or ""),"images":imgs}))
 
-        cmd = ("[Console]::OutputEncoding = [Text.Encoding]::UTF8; "
-               "try{ "
-               f". {_psq(display)}; "
-               f"$m = [IO.File]::ReadAllText({_psq(manifest)},[Text.Encoding]::UTF8) | ConvertFrom-Json; "
-               "if($m.outfiles){ $Global:dyrl_OUTFILES = $m.outfiles }; "
-               "if($m.chats){ "
-               "  $r = if($m.root){ $m.root }else{ $dyrl_OUTFILES }; "
-               "  screenResultsForm -chats -r $r -h $m.header "
-               "} else { "
-               "  $i = New-Object System.Collections.ArrayList; "
-               "  foreach($e in @($m.images)){ "
-               "    if($e.k -eq 'bytes'){ [void]$i.Add([IO.File]::ReadAllBytes($e.v)) } "
-               "    elseif($e.k -eq 'b64'){ [void]$i.Add([IO.File]::ReadAllText($e.v)) } "
-               "    else{ [void]$i.Add([string]$e.v) } "
-               "  }; "
-               "  if(-not $i.Count){ $i = $null }; "
-               "  screenResultsForm -t $m.text -i $i -h $m.header -f $m.format "
-               "} "
-               "}catch{ [Console]::Error.WriteLine($_.Exception.Message); exit 1 }")
+        ## srfChild_ (display.ps1) reads the manifest, shows the window in this process and
+        ## exits non-zero on failure; a crash also gives a non-zero code, so python falls back
+        ## (no [Console]::OutputEncoding change: it would alter the shared console's code page,
+        ## which switches legacy conhost to a raster font; powershell's host writes Unicode anyway)
+        cmd = (f"try{{ . {_psq(display)} }}catch{{ [Console]::Error.WriteLine($_.Exception.Message); exit 1 }}; "
+               f"srfChild_ {_psq(manifest)}")
 
         ## -STA: WinForms and the clipboard ("Copy text") need a single-threaded apartment.
         ## stdout is not captured, so powershell's own console fallback still reaches the user.
         try:
             r = run([exe,"-NoProfile","-NonInteractive","-STA","-Command",cmd],
-                    stderr=PIPE,text=True,encoding="utf-8")
+                    stderr=PIPE,text=True,encoding="utf-8",errors="replace")
         except OSError as e:
             errLog("WARN","MACROSS.screenResultsForm()",f"Could not start {exe}: {e}")
             return fallback_(f"could not start {exe}")
